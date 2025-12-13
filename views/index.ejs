@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Duelo</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; }
+    .arena { display: flex; gap: 20px; }
+    .card { border: 1px solid #444; padding: 15px; width: 250px; }
+    .log { margin-top: 20px; background: #000; padding: 10px; max-height: 300px; overflow-y: auto; }
+    h2 { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>⚔️ Duelo</h1>
+
+  <div class="arena">
+    <div class="card">
+      <h2><%= hero.name %></h2>
+      <p>Tipo: <%= hero.type %></p>
+      <p>HP: <%= hero.hp %> / <%= hero.maxHp %></p>
+      <p>Energia: <%= hero.energy %> / <%= hero.maxEnergy %></p>
+
+      <h3>Movimentos</h3>
+      <ul>
+        <% hero.moves.forEach(move => { %>
+          <li><%= move.name %> (<%= move.type %>) - custo <%= move.cost %></li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><%= monster.name %></h2>
+      <p>Tipo: <%= monster.type %></p>
+      <p>HP: <%= monster.hp %> / <%= monster.maxHp %></p>
+      <p>Energia: <%= monster.energy %> / <%= monster.maxEnergy %></p>
+
+      <h3>Movimentos</h3>
+      <ul>
+        <% monster.moves.forEach(move => { %>
+          <li><%= move.name %> (<%= move.type %>) - custo <%= move.cost %></li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+
+  <div class="log">
+    <h3>Log do Combate</h3>
+    <% battleLog.forEach(entry => { %>
+      <p><%= entry %></p>
+    <% }) %>
+  </div>
+</body>
+</html>

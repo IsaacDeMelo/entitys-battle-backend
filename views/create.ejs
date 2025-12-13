@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Criar Entidade</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #222; color: #fff; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #333; padding: 20px; border-radius: 10px; }
+        label { display: block; margin-top: 10px; color: #aaa; }
+        input, select { width: 100%; padding: 8px; margin-top: 5px; background: #444; border: 1px solid #555; color: white; border-radius: 4px; }
+        .moves-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .move-option { background: #444; padding: 10px; border-radius: 5px; display: flex; align-items: center; }
+        .move-option input { width: auto; margin-right: 10px; }
+        button { margin-top: 20px; width: 100%; padding: 10px; background: #27ae60; color: white; border: none; font-size: 16px; cursor: pointer; border-radius: 5px; }
+        button:hover { background: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Criar Lutador</h1>
+        <form action="/create" method="POST">
+            <label>Nome</label>
+            <input type="text" name="name" required placeholder="Ex: Dragão Infernal">
+
+            <label>Tipo Elemental</label>
+            <select name="type">
+                <% for (let t in types) { %>
+                    <option value="<%= types[t] %>"><%= types[t].toUpperCase() %></option>
+                <% } %>
+            </select>
+
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1"><label>HP</label><input type="number" name="hp" value="100"></div>
+                <div style="flex:1"><label>Energia</label><input type="number" name="energy" value="50"></div>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <div style="flex:1"><label>Ataque</label><input type="number" name="attack" value="10"></div>
+                <div style="flex:1"><label>Defesa</label><input type="number" name="defense" value="5"></div>
+                <div style="flex:1"><label>Velocidade</label><input type="number" name="speed" value="10"></div>
+            </div>
+
+            <label>Golpes Conhecidos (Selecione até 4)</label>
+            <div class="moves-grid">
+                <% for (let k in moves) { %>
+                    <div class="move-option">
+                        <input type="checkbox" name="selectedMoves" value="<%= k %>">
+                        <div>
+                            <strong><%= moves[k].name %></strong> <small>(<%= moves[k].cost %> EN)</small>
+                        </div>
+                    </div>
+                <% } %>
+            </div>
+
+            <button type="submit">Criar</button>
+        </form>
+        <a href="/" style="display:block; text-align:center; margin-top:15px; color:#aaa;">Voltar</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Arena RPG</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; text-align: center; padding-top: 50px; }
+        .box { background: #333; display: inline-block; padding: 40px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        select { padding: 10px; font-size: 16px; width: 200px; }
+        .vs { font-size: 30px; font-weight: bold; margin: 0 20px; color: #e74c3c; }
+        button { padding: 10px 30px; font-size: 18px; background: #e74c3c; color: white; border: none; cursor: pointer; border-radius: 5px; margin-top: 20px;}
+        .create-btn { display: block; margin-top: 20px; color: #3498db; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <h1>⚔️ Simulador de Batalha</h1>
+    
+    <div class="box">
+        <% if(entities.length < 2) { %>
+            <p>Você precisa de pelo menos 2 lutadores!</p>
+            <a href="/create" class="create-btn" style="font-size: 20px;">+ Criar Lutador</a>
+        <% } else { %>
+            <form action="/battle" method="POST">
+                <select name="fighter1">
+                    <% entities.forEach(e => { %>
+                        <option value="<%= e.id %>"><%= e.name %> (<%= e.type %>)</option>
+                    <% }) %>
+                </select>
+
+                <span class="vs">VS</span>
+
+                <select name="fighter2">
+                    <% entities.forEach(e => { %>
+                        <option value="<%= e.id %>" <%= (entities[1] && e.id == entities[1].id) ? 'selected' : '' %>><%= e.name %> (<%= e.type %>)</option>
+                    <% }) %>
+                </select>
+                
+                <br>
+                <button type="submit">INICIAR DUELO</button>
+            </form>
+            <a href="/create" class="create-btn">Criar novo lutador</a>
+        <% } %>
+    </div>
+</body>
+</html>

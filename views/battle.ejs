@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Batalha em Andamento</title>
+    <style>
+        /* --- ESTILOS GERAIS --- */
+        body { margin: 0; background: #111; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        .arena { display: flex; justify-content: space-between; align-items: center; height: 70vh; padding: 0 10%; background: radial-gradient(circle at center, #2c3e50, #000); position: relative; }
+        
+        /* --- LUTADORES --- */
+        .fighter { width: 200px; text-align: center; position: relative; transition: transform 0.2s; }
+        .sprite { 
+            width: 150px; height: 150px; margin: 0 auto; 
+            background: #555; border-radius: 10px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 60px; border: 4px solid #fff;
+            position: relative; z-index: 2;
+        }
+        
+        /* Tipos */
+        .type-fire .sprite { background: #e74c3c; box-shadow: 0 0 20px #e74c3c; }
+        .type-water .sprite { background: #3498db; box-shadow: 0 0 20px #3498db; }
+        .type-plant .sprite { background: #27ae60; box-shadow: 0 0 20px #27ae60; }
+        .type-ghost .sprite { background: #8e44ad; box-shadow: 0 0 20px #8e44ad; }
+        .type-fighter .sprite { background: #d35400; box-shadow: 0 0 20px #d35400; }
+        .type-dark .sprite { background: #2c3e50; box-shadow: 0 0 20px #000; }
+
+        /* --- BARRAS --- */
+        .stats { margin-bottom: 20px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; }
+        .bar-container { width: 100%; height: 10px; background: #333; margin: 5px 0; border-radius: 5px; overflow: hidden; position: relative; }
+        .hp-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.5s ease-out; }
+        .en-fill { height: 100%; background: #f1c40f; width: 100%; transition: width 0.5s ease-out; }
+        .values { font-size: 12px; display: flex; justify-content: space-between; }
+
+        /* --- LOG DE BATALHA --- */
+        .battle-log { 
+            height: 30vh; background: #000; border-top: 2px solid #444; 
+            padding: 20px; overflow-y: auto; font-family: monospace; font-size: 16px;
+        }
+        .log-entry { margin-bottom: 5px; opacity: 0; animation: fadeIn 0.5s forwards; }
+        
+        /* --- ANIMAÇÕES CSS --- */
+        @keyframes fadeIn { to { opacity: 1; } }
+        
+        .anim-attack-right { animation: lungeRight 0.3s forwards; }
+        @keyframes lungeRight { 0% { transform: translateX(0); } 50% { transform: translateX(100px); } 100% { transform: translateX(0); } }
+
+        .anim-attack-left { animation: lungeLeft 0.3s forwards; }
+        @keyframes lungeLeft { 0% { transform: translateX(0); } 50% { transform: translateX(-100px); } 100% { transform: translateX(0); } }
+
+        .anim-shake { animation: shake 0.5s; }
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+
+        .floating-text {
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            font-size: 24px; font-weight: bold; 
+            animation: floatUp 1s forwards;
+            text-shadow: 2px 2px 0 #000; pointer-events: none;
+        }
+        @keyframes floatUp { 0% { top: 0; opacity: 1; } 100% { top: -100px; opacity: 0; } }
+
+        .damage-text { color: #e74c3c; }
+        .heal-text { color: #2ecc71; }
+        .status-icon { position: absolute; top: -20px; font-size: 24px; }
+        
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10;
+        }
+        #overlay h1 { font-size: 50px; color: #f1c40f; text-shadow: 0 0 20px orange; }
+    </style>
+</head>
+<body>
+
+    <div class="arena">
+        <!-- PLAYER 1 (Esquerda) -->
+        <div class="fighter type-<%= p1.type %>" id="fighter-<%= p1.id %>">
+            <div class="stats">
+                <div class="name"><%= p1.name %></div>
+                <div class="values"><span>HP</span> <span id="hp-val-<%= p1.id %>"><%= p1.hp %></span></div>
+                <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p1.id %>"></div></div>
+                <div class="bar-container" style="height: 5px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div>
+            </div>
+            <div class="sprite">
+                <!-- Ícone baseado no tipo -->
+                <% if(p1.type=='fire'){%>🔥<%}else if(p1.type=='water'){%>💧<%}else if(p1.type=='plant'){%>🍃<%}else if(p1.type=='ghost'){%>👻<%}else if(p1.type=='fighter'){%>🥋<%}else{%>🌑<%}%>
+            </div>
+        </div>
+
+        <!-- PLAYER 2 (Direita) -->
+        <div class="fighter type-<%= p2.type %>" id="fighter-<%= p2.id %>">
+            <div class="stats">
+                <div class="name"><%= p2.name %></div>
+                <div class="values"><span>HP</span> <span id="hp-val-<%= p2.id %>"><%= p2.hp %></span></div>
+                <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p2.id %>"></div></div>
+                <div class="bar-container" style="height: 5px;"><div class="en-fill" id="en-bar-<%= p2.id %>"></div></div>
+            </div>
+            <div class="sprite">
+                <% if(p2.type=='fire'){%>🔥<%}else if(p2.type=='water'){%>💧<%}else if(p2.type=='plant'){%>🍃<%}else if(p2.type=='ghost'){%>👻<%}else if(p2.type=='fighter'){%>🥋<%}else{%>🌑<%}%>
+            </div>
+        </div>
+
+        <div id="overlay">
+            <h1 id="winnerText">VENCEDOR</h1>
+            <a href="/" style="color: white; font-size: 20px; margin-top: 20px;">Voltar ao Início</a>
+        </div>
+    </div>
+
+    <div class="battle-log" id="logBox">
+        <div class="log-entry" style="color: #aaa;">Iniciando batalha...</div>
+    </div>
+
+ <script>
+        // Dados vindos do servidor (JSON puro injetado no código)
+        const battleResult = <%- battleData %>;
+        
+        // Agora battleResult é um Objeto JS normal no navegador.
+        // Não usamos mais tags EJS (<% %>) para acessá-lo.
+        const events = battleResult.log;
+        const winnerId = battleResult.winnerId; // <--- CORREÇÃO AQUI
+        
+        // Estado local para gerenciar a UI
+        // Aqui ainda usamos EJS pois p1 e p2 foram passados diretamente pelo render
+        const p1Id = "<%= p1.id %>";
+        const p2Id = "<%= p2.id %>";
+        
+        // Funções de Ajuda
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // ... resto do código continua igual ...
+        
+        function log(msg, color = 'white') {
+            const box = document.getElementById('logBox');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerText = msg;
+            entry.style.color = color;
+            box.insertBefore(entry, box.firstChild); // Novo log no topo
+        }
+
+        function updateBar(id, current, max, type) {
+            const pct = Math.max(0, (current / max) * 100);
+            const el = document.getElementById(`${type}-bar-${id}`);
+            if(el) el.style.width = `${pct}%`;
+            
+            if(type === 'hp') {
+                document.getElementById(`hp-val-${id}`).innerText = Math.max(0, current);
+            }
+        }
+
+        function showFloatingText(targetId, text, className) {
+            const fighter = document.getElementById(`fighter-${targetId}`);
+            const el = document.createElement('div');
+            el.className = `floating-text ${className}`;
+            el.innerText = text;
+            fighter.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // ========================
+        // EXECUTOR DA BATALHA
+        // ========================
+        async function runBattle() {
+            await wait(1000);
+
+            for (let evt of events) {
+                
+                // --- INÍCIO ---
+                if (evt.type === 'INIT') {
+                    // Já renderizado pelo HTML, só garante as barras cheias
+                    log("A batalha começou!", "#f1c40f");
+                } 
+                
+                // --- MOVIMENTO USADO ---
+                else if (evt.type === 'USE_MOVE') {
+                    const isP1 = evt.actorId == p1Id;
+                    const fighterEl = document.getElementById(`fighter-${evt.actorId}`);
+                    
+                    // Animação de ataque (P1 vai pra direita, P2 pra esquerda)
+                    if (evt.moveType === 'attack') {
+                        fighterEl.classList.add(isP1 ? 'anim-attack-right' : 'anim-attack-left');
+                        setTimeout(() => fighterEl.classList.remove('anim-attack-right', 'anim-attack-left'), 300);
+                    }
+
+                    // Atualiza energia
+                    // Precisamos saber o MaxEnergy, vamos assumir que não mudou do inicial
+                    const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>;
+                    updateBar(evt.actorId, evt.newEnergy, initialMax, 'en');
+
+                    log(`⚡ ${evt.actorId == p1Id ? '<%= p1.name %>' : '<%= p2.name %>'} usou ${evt.moveName}!`);
+                    await wait(500);
+                }
+
+                // --- DANO RECEBIDO ---
+                else if (evt.type === 'ATTACK_HIT') {
+                    const targetEl = document.getElementById(`fighter-${evt.targetId}`);
+                    
+                    // Shake effect
+                    targetEl.classList.add('anim-shake');
+                    setTimeout(() => targetEl.classList.remove('anim-shake'), 500);
+
+                    // Floating text
+                    let extra = "";
+                    if(evt.isEffective) extra = "super!";
+                    if(evt.isBlocked) extra = "block!";
+                    showFloatingText(evt.targetId, `-${evt.damage} ${extra}`, 'damage-text');
+
+                    // Atualiza HP
+                    const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
+                    updateBar(evt.targetId, evt.newHp, maxHp, 'hp');
+
+                    let color = '#ccc';
+                    if(evt.isEffective) color = '#e74c3c'; // Vermelho se doeu muito
+                    log(evt.message, color);
+                    
+                    await wait(800);
+                }
+
+                // --- CURA ---
+                else if (evt.type === 'HEAL') {
+                    showFloatingText(evt.actorId, `+${evt.amount}`, 'heal-text');
+                    const maxHp = (evt.actorId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
+                    updateBar(evt.actorId, evt.newHp, maxHp, 'hp');
+                    log(evt.message, '#2ecc71');
+                    await wait(800);
+                }
+
+                // --- DEFESA ---
+                else if (evt.type === 'DEFEND') {
+                    log(evt.message, '#3498db');
+                    await wait(500);
+                }
+
+                // --- EFEITOS (Veneno etc) ---
+                else if (evt.type === 'EFFECT_TICK') {
+                    const targetEl = document.getElementById(`fighter-${evt.targetId}`);
+                    targetEl.classList.add('anim-shake');
+                    setTimeout(() => targetEl.classList.remove('anim-shake'), 500);
+                    
+                    showFloatingText(evt.targetId, `-${evt.damage} (${evt.effectName})`, 'damage-text');
+                    
+                    const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
+                    updateBar(evt.targetId, evt.newHp, maxHp, 'hp');
+                    
+                    log(evt.message, '#9b59b6');
+                    await wait(600);
+                }
+
+                // --- DESCANSO ---
+                else if (evt.type === 'REST') {
+                    const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>;
+                    updateBar(evt.actorId, evt.newEnergy, initialMax, 'en');
+                    log(evt.message, '#95a5a6');
+                    await wait(500);
+                }
+            }
+
+            // Fim da batalha
+            await wait(1000);
+            document.getElementById('overlay').style.display = 'flex';
+            if(winnerId && winnerId !== "null") {
+                const wName = (winnerId == p1Id) ? "<%= p1.name %>" : "<%= p2.name %>";
+                document.getElementById('winnerText').innerText = `🏆 ${wName} VENCEU!`;
+            } else {
+                document.getElementById('winnerText').innerText = "EMPATE!";
+            }
+        }
+
+        // Iniciar
+        runBattle();
+    </script>
+</body>
+</html>
