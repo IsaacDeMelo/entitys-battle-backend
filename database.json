@@ -1,0 +1,58 @@
+[
+  {
+    "id": "1765890258837",
+    "name": "Sharkgon",
+    "type": "water",
+    "hp": "150",
+    "energy": "40",
+    "stats": {
+      "attack": "30",
+      "defense": "20",
+      "speed": "2"
+    },
+    "moves": [
+      { "id": "smash", "name": "Smash", "type": "attack", "power": 5, "cost": 2, "icon": "👊" },
+      { "id": "hydro_pump", "name": "Hydro Pump", "type": "attack", "power": 9, "cost": 5, "icon": "💧" },
+      { "id": "iron_defense", "name": "Iron Defense", "type": "defend", "power": 0, "cost": 2, "icon": "🛡️" },
+      { "id": "poison_jab", "name": "Poison Jab", "type": "attack", "power": 3, "cost": 3, "icon": "☠️", "effect": { "name": "Poison", "type": "dot", "duration": 3, "value": 3 } }
+    ],
+    "sprite": "1765890258830.gif"
+  },
+  {
+    "id": "1765890385400",
+    "name": "LilDemon",
+    "type": "fire",
+    "hp": "70",
+    "energy": "50",
+    "stats": {
+      "attack": "25",
+      "defense": "5",
+      "speed": "10"
+    },
+    "moves": [
+      { "id": "smash", "name": "Smash", "type": "attack", "power": 5, "cost": 2, "icon": "👊" },
+      { "id": "fireball", "name": "Fireball", "type": "attack", "power": 8, "cost": 4, "icon": "🔥" },
+      { "id": "iron_defense", "name": "Iron Defense", "type": "defend", "power": 0, "cost": 2, "icon": "🛡️" }
+    ],
+    "sprite": "1765890385398.gif"
+  },
+  {
+    "id": "1765895396599",
+    "name": "Bracholis",
+    "type": "plant",
+    "hp": "200",
+    "energy": "30",
+    "stats": {
+      "attack": "30",
+      "defense": "10",
+      "speed": "1"
+    },
+    "moves": [
+      { "id": "vine_whip", "name": "Vine Whip", "type": "attack", "power": 7, "cost": 3, "icon": "🍃" },
+      { "id": "shadow_ball", "name": "Shadow Ball", "type": "attack", "power": 10, "cost": 6, "icon": "🟣" },
+      { "id": "mega_heal", "name": "Mega Heal", "type": "heal", "power": 15, "cost": 6, "icon": "🧪" },
+      { "id": "ultimate", "name": "Hyper Beam", "type": "attack", "power": 20, "cost": 10, "icon": "💥" }
+    ],
+    "sprite": "1765895396589.gif"
+  }
+]

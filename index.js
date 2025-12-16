@@ -1,264 +1,363 @@
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
+
+// =====================
+// CONFIGURAÇÃO GERAL
+// =====================
+const DB_FILE = path.join(__dirname, 'database.json');
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'public/uploads/';
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage: storage });
+
+function readDB() {
+    if (!fs.existsSync(DB_FILE)) { fs.writeFileSync(DB_FILE, JSON.stringify([])); return []; }
+    try {
+        const data = fs.readFileSync(DB_FILE, 'utf-8');
+        return data ? JSON.parse(data) : [];
+    } catch (e) { return []; }
+}
+function saveDB(data) { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2)); }
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
 // =====================
-// DEFINIÇÕES
+// DEFINIÇÕES E CONSTANTES
 // =====================
-const EntityType = {
-    FIRE: 'fire', WATER: 'water', PLANT: 'plant',
-    GHOST: 'ghost', FIGHTER: 'fighter', DARK: 'dark'
-};
-
+const EntityType = { FIRE: 'fire', WATER: 'water', PLANT: 'plant', GHOST: 'ghost', FIGHTER: 'fighter', DARK: 'dark' };
 const MoveType = { ATTACK: 'attack', HEAL: 'heal', DEFEND: 'defend' };
 const EffectType = { DOT: 'dot' }; 
 
-const TypeChart = {
-    [EntityType.FIRE]: EntityType.PLANT,
-    [EntityType.PLANT]: EntityType.WATER,
-    [EntityType.WATER]: EntityType.FIRE,
-    [EntityType.GHOST]: EntityType.FIGHTER,
-    [EntityType.FIGHTER]: EntityType.DARK,
-    [EntityType.DARK]: EntityType.GHOST
+const TypeChart = { 
+    [EntityType.FIRE]: EntityType.PLANT, 
+    [EntityType.PLANT]: EntityType.WATER, 
+    [EntityType.WATER]: EntityType.FIRE, 
+    [EntityType.GHOST]: EntityType.FIGHTER, 
+    [EntityType.FIGHTER]: EntityType.DARK, 
+    [EntityType.DARK]: EntityType.GHOST 
 };
 
+// BIBLIOTECA ATUALIZADA (COM ELEMENTOS)
 const MOVES_LIBRARY = {
-    'smash': { name: 'Smash', type: MoveType.ATTACK, power: 5, cost: 2, icon: '👊' },
-    'fireball': { name: 'Fireball', type: MoveType.ATTACK, power: 8, cost: 4, icon: '🔥' },
-    'hydro_pump': { name: 'Hydro Pump', type: MoveType.ATTACK, power: 9, cost: 5, icon: '💧' },
-    'vine_whip': { name: 'Vine Whip', type: MoveType.ATTACK, power: 7, cost: 3, icon: '🍃' },
-    'shadow_ball': { name: 'Shadow Ball', type: MoveType.ATTACK, power: 10, cost: 6, icon: '🟣' },
-    'quick_heal': { name: 'Quick Heal', type: MoveType.HEAL, power: 5, cost: 3, icon: '💚' },
-    'mega_heal': { name: 'Mega Heal', type: MoveType.HEAL, power: 15, cost: 6, icon: '🧪' },
-    'iron_defense': { name: 'Iron Defense', type: MoveType.DEFEND, power: 0, cost: 2, icon: '🛡️' },
-    'poison_jab': { 
-        name: 'Poison Jab', type: MoveType.ATTACK, power: 3, cost: 3, icon: '☠️',
-        effect: { name: 'Poison', type: EffectType.DOT, duration: 3, value: 3 }
-    },
-    'ultimate': { name: 'Hyper Beam', type: MoveType.ATTACK, power: 20, cost: 10, icon: '💥' }
+    'smash': { id:'smash', name: 'Smash', type: MoveType.ATTACK, power: 5, cost: 2, icon: '👊', element: 'normal' },
+    'fireball': { id:'fireball', name: 'Fireball', type: MoveType.ATTACK, power: 8, cost: 4, icon: '🔥', element: EntityType.FIRE },
+    'hydro_pump': { id:'hydro_pump', name: 'Hydro Pump', type: MoveType.ATTACK, power: 9, cost: 5, icon: '💧', element: EntityType.WATER },
+    'vine_whip': { id:'vine_whip', name: 'Vine Whip', type: MoveType.ATTACK, power: 7, cost: 3, icon: '🍃', element: EntityType.PLANT },
+    'shadow_ball': { id:'shadow_ball', name: 'Shadow Ball', type: MoveType.ATTACK, power: 10, cost: 6, icon: '🟣', element: EntityType.GHOST },
+    'quick_heal': { id:'quick_heal', name: 'Quick Heal', type: MoveType.HEAL, power: 5, cost: 3, icon: '💚' },
+    'mega_heal': { id:'mega_heal', name: 'Mega Heal', type: MoveType.HEAL, power: 15, cost: 6, icon: '🧪' },
+    'iron_defense': { id:'iron_defense', name: 'Iron Defense', type: MoveType.DEFEND, power: 0, cost: 2, icon: '🛡️' },
+    'poison_jab': { id:'poison_jab', name: 'Poison Jab', type: MoveType.ATTACK, power: 3, cost: 3, icon: '☠️', element: 'normal', effect: { name: 'Poison', type: EffectType.DOT, duration: 3, value: 3 } },
+    'ultimate': { id:'ultimate', name: 'Hyper Beam', type: MoveType.ATTACK, power: 20, cost: 10, icon: '💥', element: 'normal' }
 };
 
+const activeBattles = {};
+
+// =====================
+// CLASSE ENTIDADE
+// =====================
 class Entity {
-    constructor({ id, name, type, hp, energy, attack, defense, speed, moves }) {
-        this.id = id;
-        this.name = name;
-        this.type = type;
-        this.maxHp = parseInt(hp);
-        this.hp = parseInt(hp);
-        this.maxEnergy = parseInt(energy);
-        this.energy = parseInt(energy);
+    constructor(data) {
+        this.id = data.id;
+        this.name = data.name || "Sem Nome";
+        this.type = data.type || EntityType.FIGHTER;
+        
+        this.maxHp = parseInt(data.maxHp || data.hp || 100);
+        this.hp = parseInt(data.hp || 100);
+        this.maxEnergy = parseInt(data.maxEnergy || data.energy || 50);
+        this.energy = parseInt(data.energy || 50);
+
+        // CORREÇÃO: Lê stats tanto da raiz (banco antigo) quanto do objeto stats (novo)
+        const statsSource = data.stats || data; 
         this.stats = { 
-            attack: parseInt(attack), 
-            defense: parseInt(defense), 
-            speed: parseInt(speed) 
+            attack: parseInt(statsSource.attack || 10), 
+            defense: parseInt(statsSource.defense || 5), 
+            speed: parseInt(statsSource.speed || 5) 
         };
+
         this.effects = []; 
-        this.moves = moves; 
+        this.sprite = data.sprite; 
         this.isDefending = false;
+
+        // CORREÇÃO CRÍTICA: Força recarregamento da biblioteca
+        // Isso garante que "vine_whip" pegue o 'element: plant' da constante
+        // mesmo que no JSON antigo ele esteja sem elemento.
+        const movesList = data.moves || [];
+        this.moves = movesList.map(m => {
+            // Tenta achar ID direto
+            if (m && m.id && MOVES_LIBRARY[m.id]) {
+                return { ...MOVES_LIBRARY[m.id], id: m.id };
+            }
+            // Fallback: Tenta achar pelo nome
+            if (m && m.name) {
+                const libKey = Object.keys(MOVES_LIBRARY).find(k => MOVES_LIBRARY[k].name === m.name);
+                if(libKey) return { ...MOVES_LIBRARY[libKey], id: libKey };
+            }
+            return { ...MOVES_LIBRARY['smash'], id: 'smash' };
+        });
+
+        if(this.moves.length === 0) this.moves.push({ ...MOVES_LIBRARY['smash'], id: 'smash' });
     }
 }
 
 // =====================
-// MOTOR DE BATALHA MODIFICADO (Gera JSON)
+// FUNÇÕES DE BATALHA
 // =====================
-function duel(entityA, entityB) {
-    const events = []; // Lista de eventos para o frontend reproduzir
-    
-    let attacker = entityA.stats.speed >= entityB.stats.speed ? entityA : entityB;
-    let defender = attacker === entityA ? entityB : entityA;
 
-    let turnCount = 0;
-    const MAX_TURNS = 50; 
+function processAction(attacker, defender, move, logArray) {
+    attacker.isDefending = false; 
+    attacker.energy -= move.cost;
 
-    // Snapshot inicial
-    events.push({
-        type: 'INIT',
-        p1: { id: entityA.id, hp: entityA.hp, maxHp: entityA.maxHp, energy: entityA.energy, maxEnergy: entityA.maxEnergy },
-        p2: { id: entityB.id, hp: entityB.hp, maxHp: entityB.maxHp, energy: entityB.energy, maxEnergy: entityB.maxEnergy }
+    logArray.push({
+        type: 'USE_MOVE', actorId: attacker.id, moveName: move.name, moveIcon: move.icon || '⚡', moveType: move.type, cost: move.cost, newEnergy: attacker.energy
     });
 
-    while (entityA.hp > 0 && entityB.hp > 0 && turnCount < MAX_TURNS) {
-        turnCount++;
-        attacker.isDefending = false; 
+    if (move.type === MoveType.DEFEND) {
+        attacker.isDefending = true;
+        logArray.push({ type: 'DEFEND', actorId: attacker.id });
+    } 
+    else if (move.type === MoveType.HEAL) {
+        const oldHp = attacker.hp;
+        attacker.hp = Math.min(attacker.maxHp, attacker.hp + move.power);
+        logArray.push({ type: 'HEAL', actorId: attacker.id, amount: attacker.hp - oldHp, newHp: attacker.hp });
+    } 
+    else if (move.type === MoveType.ATTACK) {
+        // --- CÁLCULO DE DANO ---
+        let multiplier = 1;
+        const attackElement = move.element || 'normal';
 
-        // 1. Efeitos (DoT)
-        attacker.effects.forEach(eff => {
-            if(eff.type === EffectType.DOT) {
-                attacker.hp -= eff.value;
-                events.push({
-                    type: 'EFFECT_TICK',
-                    targetId: attacker.id,
-                    damage: eff.value,
-                    effectName: eff.name,
-                    newHp: attacker.hp,
-                    message: `${attacker.name} sofreu ${eff.value} de dano por ${eff.name}.`
-                });
-            }
-            eff.duration--;
-        });
-        attacker.effects = attacker.effects.filter(e => e.duration > 0);
-
-        if (attacker.hp <= 0) break;
-
-        // 2. IA Escolha
-        let possibleMoves = attacker.moves.filter(m => attacker.energy >= m.cost);
-        if (attacker.hp >= attacker.maxHp) possibleMoves = possibleMoves.filter(m => m.type !== MoveType.HEAL);
-        
-        let chosenMove = null;
-        if (possibleMoves.length > 0) {
-            chosenMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        if (attackElement !== 'normal') {
+            if (TypeChart[attackElement] === defender.type) multiplier = 1.5;
+            if (TypeChart[defender.type] === attackElement) multiplier = 0.75;
         }
 
-        // 3. Execução
-        if (!chosenMove) {
-            const recovery = 5;
-            attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + recovery);
-            events.push({
-                type: 'REST',
-                actorId: attacker.id,
-                newEnergy: attacker.energy,
-                message: `💤 ${attacker.name} descansou (+${recovery} EN).`
-            });
+        let stab = (attacker.type === attackElement) ? 1.2 : 1;
+
+        let damage = (move.power + attacker.stats.attack) - defender.stats.defense;
+        if (damage < 1) damage = 1;
+        
+        let blocked = false;
+        if (defender.isDefending) { 
+            damage = Math.floor(damage / 2); 
+            blocked = true; 
+        }
+        
+        damage = Math.floor(damage * multiplier * stab);
+        defender.hp -= damage;
+
+        if (move.effect) {
+            const existing = defender.effects.find(e => e.name === move.effect.name);
+            if(existing) existing.duration = move.effect.duration;
+            else defender.effects.push({ ...move.effect });
+        }
+
+        logArray.push({
+            type: 'ATTACK_HIT', 
+            attackerId: attacker.id, 
+            targetId: defender.id, 
+            damage: damage, 
+            newHp: defender.hp,
+            isEffective: multiplier > 1,
+            isNotEffective: multiplier < 1 && multiplier > 0,
+            isBlocked: blocked
+        });
+    }
+}
+
+function processStartTurn(entity, logArray) {
+    entity.effects.forEach(eff => {
+        if(eff.type === EffectType.DOT) {
+            entity.hp -= eff.value;
+            logArray.push({ type: 'EFFECT_TICK', targetId: entity.id, damage: eff.value, effectName: eff.name, newHp: entity.hp });
+        }
+        eff.duration--;
+    });
+    entity.effects = entity.effects.filter(e => e.duration > 0);
+    
+    if(entity.hp > 0 && entity.energy < entity.maxEnergy) {
+        entity.energy += 1;
+    }
+}
+
+function duelAutomatic(entityA, entityB) {
+    const events = [];
+    events.push({ type: 'INIT' });
+
+    let attacker = entityA.stats.speed >= entityB.stats.speed ? entityA : entityB;
+    let defender = attacker === entityA ? entityB : entityA;
+    let turnCount = 0;
+
+    while (entityA.hp > 0 && entityB.hp > 0 && turnCount < 50) {
+        turnCount++;
+        processStartTurn(attacker, events);
+        if(attacker.hp <= 0) break;
+
+        let possibleMoves = attacker.moves.filter(m => attacker.energy >= m.cost);
+        if (attacker.hp >= attacker.maxHp) possibleMoves = possibleMoves.filter(m => m.type !== MoveType.HEAL);
+        let move = possibleMoves.length > 0 ? possibleMoves[Math.floor(Math.random() * possibleMoves.length)] : null;
+
+        if (!move) {
+            attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + 5);
+            attacker.isDefending = false;
+            events.push({ type: 'REST', actorId: attacker.id, newEnergy: attacker.energy });
         } else {
-            attacker.energy -= chosenMove.cost;
-            
-            // Evento de uso de energia
-            events.push({
-                type: 'USE_MOVE',
-                actorId: attacker.id,
-                moveName: chosenMove.name,
-                moveIcon: chosenMove.icon,
-                moveType: chosenMove.type,
-                cost: chosenMove.cost,
-                newEnergy: attacker.energy
-            });
-
-            if (chosenMove.type === MoveType.DEFEND) {
-                attacker.isDefending = true;
-                events.push({
-                    type: 'DEFEND',
-                    actorId: attacker.id,
-                    message: `🛡️ ${attacker.name} levantou a guarda!`
-                });
-            
-            } else if (chosenMove.type === MoveType.HEAL) {
-                const oldHp = attacker.hp;
-                attacker.hp = Math.min(attacker.maxHp, attacker.hp + chosenMove.power);
-                const healedAmount = attacker.hp - oldHp;
-                events.push({
-                    type: 'HEAL',
-                    actorId: attacker.id,
-                    amount: healedAmount,
-                    newHp: attacker.hp,
-                    message: `💚 ${attacker.name} curou ${healedAmount} HP.`
-                });
-            
-            } else if (chosenMove.type === MoveType.ATTACK) {
-                let multiplier = 1;
-                if (TypeChart[attacker.type] === defender.type) multiplier = 1.5;
-                if (TypeChart[defender.type] === attacker.type) multiplier = 0.75;
-
-                let damage = (chosenMove.power + attacker.stats.attack) - defender.stats.defense;
-                if (damage < 1) damage = 1;
-
-                let blocked = false;
-                if (defender.isDefending) {
-                    damage = Math.floor(damage / 2);
-                    blocked = true;
-                }
-
-                damage = Math.floor(damage * multiplier);
-                defender.hp -= damage;
-
-                if (chosenMove.effect) {
-                    defender.effects.push({ ...chosenMove.effect });
-                }
-
-                events.push({
-                    type: 'ATTACK_HIT',
-                    attackerId: attacker.id,
-                    targetId: defender.id,
-                    damage: damage,
-                    newHp: defender.hp,
-                    isEffective: multiplier > 1,
-                    isNotEffective: multiplier < 1,
-                    isBlocked: blocked,
-                    message: `⚔️ ${attacker.name} atacou ${defender.name} (${damage} dano)!`
-                });
-            }
+            processAction(attacker, defender, move, events);
         }
 
         if (defender.hp <= 0) break;
         [attacker, defender] = [defender, attacker];
     }
-
-    // Resultado final
+    
     let winner = null;
     if (entityA.hp > 0 && entityB.hp <= 0) winner = entityA;
     else if (entityB.hp > 0 && entityA.hp <= 0) winner = entityB;
 
-    return {
-        winnerId: winner ? winner.id : null,
-        log: events
-    };
+    return { winnerId: winner ? winner.id : null, log: events };
 }
 
 // =====================
-// DATABASE & ROTAS
+// ROTAS
 // =====================
-const db = { entities: [] };
 
-app.get('/', (req, res) => {
-    res.render('home', { entities: db.entities });
+app.get('/', (req, res) => { 
+    const rawList = readDB();
+    // Sanitiza os dados passando pela Classe Entity
+    const entities = rawList.map(data => new Entity(data));
+    res.render('home', { entities: entities }); 
 });
 
-app.get('/create', (req, res) => {
-    res.render('create', { types: EntityType, moves: MOVES_LIBRARY });
-});
+app.get('/create', (req, res) => { res.render('create', { types: EntityType, moves: MOVES_LIBRARY }); });
 
-app.post('/create', (req, res) => {
+app.post('/create', upload.single('sprite'), (req, res) => {
     const { name, type, hp, energy, attack, defense, speed, selectedMoves } = req.body;
     const movesKeys = [].concat(selectedMoves || []);
-    const finalMoves = movesKeys.map(k => MOVES_LIBRARY[k]).filter(Boolean);
     
-    if(finalMoves.length === 0) finalMoves.push(MOVES_LIBRARY['smash']);
+    const finalMoves = movesKeys.map(k => {
+        return MOVES_LIBRARY[k] ? { ...MOVES_LIBRARY[k], id: k } : null;
+    }).filter(Boolean);
+
+    if(finalMoves.length === 0) finalMoves.push({ ...MOVES_LIBRARY['smash'], id: 'smash' });
 
     const newEntity = {
-        id: Date.now().toString(), // String ID para facilitar no front
-        name, type, hp, energy, attack, defense, speed,
-        moves: finalMoves
+        id: Date.now().toString(), name, type, hp, energy, 
+        stats: { attack, defense, speed }, // Salvando na estrutura nova
+        moves: finalMoves, sprite: req.file ? req.file.filename : null
     };
-    db.entities.push(newEntity);
+    const entities = readDB(); entities.push(newEntity); saveDB(entities);
     res.redirect('/');
 });
 
 app.post('/battle', (req, res) => {
-    const { fighter1, fighter2 } = req.body;
-    const blueprintA = db.entities.find(e => e.id == fighter1);
-    const blueprintB = db.entities.find(e => e.id == fighter2);
+    const { fighter1, fighter2, mode } = req.body;
+    const entities = readDB();
+    const e1 = entities.find(e => e.id == fighter1);
+    const e2 = entities.find(e => e.id == fighter2);
 
-    if (!blueprintA || !blueprintB) return res.redirect('/');
+    if (!e1 || !e2) return res.redirect('/');
 
-    const entityA = new Entity(blueprintA);
-    const entityB = new Entity(blueprintB);
+    try {
+        const entityA = new Entity(e1);
+        const entityB = new Entity(e2);
 
-    // Salvar estado original para renderizar
-    const p1Data = { ...entityA };
-    const p2Data = { ...entityB };
+        entityA.id = 'p1_' + entityA.id;
+        entityB.id = 'p2_' + entityB.id;
 
-    const battleResult = duel(entityA, entityB);
+        if (mode === 'manual') {
+            const battleId = Date.now().toString();
+            activeBattles[battleId] = { p1: entityA, p2: entityB };
+            
+            res.render('battle', { 
+                p1: entityA, p2: entityB, 
+                battleMode: 'manual', battleId: battleId,
+                battleData: JSON.stringify({ log: [{type: 'INIT'}] }) 
+            });
+        } else {
+            // Clones para simulação (para não zerar HP na view)
+            const simP1 = new Entity(e1); simP1.id = entityA.id;
+            const simP2 = new Entity(e2); simP2.id = entityB.id;
 
-    res.render('battle', { 
-        p1: p1Data,
-        p2: p2Data,
-        battleData: JSON.stringify(battleResult) 
-    });
+            const result = duelAutomatic(simP1, simP2);
+            
+            res.render('battle', { 
+                p1: entityA, p2: entityB, 
+                battleMode: 'auto', battleId: null,
+                battleData: JSON.stringify(result) 
+            });
+        }
+    } catch (err) {
+        console.error("Erro batalha:", err);
+        res.redirect('/');
+    }
+});
+
+app.post('/api/turn', (req, res) => {
+    const { battleId, moveId } = req.body;
+    const battle = activeBattles[battleId];
+    if(!battle) return res.status(404).json({ error: 'Batalha expirou' });
+
+    const p1 = battle.p1;
+    const p2 = battle.p2;
+    const events = [];
+
+    processStartTurn(p1, events);
+    processStartTurn(p2, events);
+
+    if(p1.hp <= 0 || p2.hp <= 0) {
+         let winner = p1.hp > 0 ? p1 : (p2.hp > 0 ? p2 : null);
+         return res.json({ events, winnerId: winner ? winner.id : 'draw' });
+    }
+
+    let p1Move = null;
+    if(moveId !== 'rest') p1Move = p1.moves.find(m => m.id === moveId);
+    if(p1Move && p1.energy < p1Move.cost) p1Move = null;
+
+    let possibleMovesP2 = p2.moves.filter(m => p2.energy >= m.cost);
+    if(p2.hp >= p2.maxHp) possibleMovesP2 = possibleMovesP2.filter(m => m.type !== MoveType.HEAL);
+    let p2Move = possibleMovesP2.length > 0 ? possibleMovesP2[Math.floor(Math.random() * possibleMovesP2.length)] : null;
+
+    let first, second;
+    if(p1.stats.speed >= p2.stats.speed) { first = { actor: p1, target: p2, move: p1Move }; second = { actor: p2, target: p1, move: p2Move }; } 
+    else { first = { actor: p2, target: p1, move: p2Move }; second = { actor: p1, target: p2, move: p1Move }; }
+
+    if(!first.move) {
+        first.actor.energy = Math.min(first.actor.maxEnergy, first.actor.energy + 5);
+        first.actor.isDefending = false;
+        events.push({ type: 'REST', actorId: first.actor.id, newEnergy: first.actor.energy });
+    } else {
+        processAction(first.actor, first.target, first.move, events);
+    }
+
+    if(second.actor.hp > 0 && second.target.hp > 0) {
+        if(!second.move) {
+            second.actor.energy = Math.min(second.actor.maxEnergy, second.actor.energy + 5);
+            second.actor.isDefending = false;
+            events.push({ type: 'REST', actorId: second.actor.id, newEnergy: second.actor.energy });
+        } else {
+            processAction(second.actor, second.target, second.move, events);
+        }
+    }
+
+    let winnerId = null;
+    if (p1.hp <= 0 || p2.hp <= 0) {
+        winnerId = p1.hp > 0 ? p1.id : p2.id;
+        delete activeBattles[battleId]; 
+    }
+
+    res.json({ events, winnerId });
 });
 
 app.listen(3000, () => console.log('Servidor rodando em http://localhost:3000'));
