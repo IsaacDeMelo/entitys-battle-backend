@@ -259,7 +259,15 @@
             } else {
                 imgEl.style.display = "none";
                 emjEl.style.display = "block";
-                const typeEmojis = { fire: '🔥', water: '💧', plant: '🍃', ghost: '👻', fighter: '🥋', dark: '🌑' };
+                // ... dentro da função openDetails ...
+const typeEmojis = { 
+    normal: '⚪', fire: '🔥', water: '💧', plant: '🍃', 
+    electric: '⚡', ice: '❄️', flying: '🌪️', fighter: '🥋', 
+    ghost: '👻', dark: '🌑', poison: '☠️', ground: '🏜️', 
+    rock: '🪨', steel: '🔩', dragon: '🐉', psychic: '🔮',
+    bug: '🪲', fairy: '✨'
+};
+// ...
                 emjEl.innerText = typeEmojis[mon.type] || '❓';
             }
 

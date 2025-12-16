@@ -4,10 +4,13 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const fs = require('fs');
 
+// IMPORTA OS DADOS (Agora com a tabela balanceada)
+const { EntityType, MoveType, EffectType, TypeChart, MOVES_LIBRARY } = require('./gameData');
+
 const app = express();
 
 // =====================
-// CONFIGURAÇÃO GERAL
+// BANCO DE DADOS & UPLOAD
 // =====================
 const DB_FILE = path.join(__dirname, 'database.json');
 const storage = multer.diskStorage({
@@ -22,10 +25,7 @@ const upload = multer({ storage: storage });
 
 function readDB() {
     if (!fs.existsSync(DB_FILE)) { fs.writeFileSync(DB_FILE, JSON.stringify([])); return []; }
-    try {
-        const data = fs.readFileSync(DB_FILE, 'utf-8');
-        return data ? JSON.parse(data) : [];
-    } catch (e) { return []; }
+    try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8')); } catch (e) { return []; }
 }
 function saveDB(data) { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2)); }
 
@@ -34,36 +34,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
-
-// =====================
-// DEFINIÇÕES E CONSTANTES
-// =====================
-const EntityType = { FIRE: 'fire', WATER: 'water', PLANT: 'plant', GHOST: 'ghost', FIGHTER: 'fighter', DARK: 'dark' };
-const MoveType = { ATTACK: 'attack', HEAL: 'heal', DEFEND: 'defend' };
-const EffectType = { DOT: 'dot' }; 
-
-const TypeChart = { 
-    [EntityType.FIRE]: EntityType.PLANT, 
-    [EntityType.PLANT]: EntityType.WATER, 
-    [EntityType.WATER]: EntityType.FIRE, 
-    [EntityType.GHOST]: EntityType.FIGHTER, 
-    [EntityType.FIGHTER]: EntityType.DARK, 
-    [EntityType.DARK]: EntityType.GHOST 
-};
-
-// BIBLIOTECA ATUALIZADA (COM ELEMENTOS)
-const MOVES_LIBRARY = {
-    'smash': { id:'smash', name: 'Smash', type: MoveType.ATTACK, power: 5, cost: 2, icon: '👊', element: 'normal' },
-    'fireball': { id:'fireball', name: 'Fireball', type: MoveType.ATTACK, power: 8, cost: 4, icon: '🔥', element: EntityType.FIRE },
-    'hydro_pump': { id:'hydro_pump', name: 'Hydro Pump', type: MoveType.ATTACK, power: 9, cost: 5, icon: '💧', element: EntityType.WATER },
-    'vine_whip': { id:'vine_whip', name: 'Vine Whip', type: MoveType.ATTACK, power: 7, cost: 3, icon: '🍃', element: EntityType.PLANT },
-    'shadow_ball': { id:'shadow_ball', name: 'Shadow Ball', type: MoveType.ATTACK, power: 10, cost: 6, icon: '🟣', element: EntityType.GHOST },
-    'quick_heal': { id:'quick_heal', name: 'Quick Heal', type: MoveType.HEAL, power: 5, cost: 3, icon: '💚' },
-    'mega_heal': { id:'mega_heal', name: 'Mega Heal', type: MoveType.HEAL, power: 15, cost: 6, icon: '🧪' },
-    'iron_defense': { id:'iron_defense', name: 'Iron Defense', type: MoveType.DEFEND, power: 0, cost: 2, icon: '🛡️' },
-    'poison_jab': { id:'poison_jab', name: 'Poison Jab', type: MoveType.ATTACK, power: 3, cost: 3, icon: '☠️', element: 'normal', effect: { name: 'Poison', type: EffectType.DOT, duration: 3, value: 3 } },
-    'ultimate': { id:'ultimate', name: 'Hyper Beam', type: MoveType.ATTACK, power: 20, cost: 10, icon: '💥', element: 'normal' }
-};
 
 const activeBattles = {};
 
@@ -74,14 +44,13 @@ class Entity {
     constructor(data) {
         this.id = data.id;
         this.name = data.name || "Sem Nome";
-        this.type = data.type || EntityType.FIGHTER;
+        this.type = data.type || EntityType.NORMAL;
         
         this.maxHp = parseInt(data.maxHp || data.hp || 100);
         this.hp = parseInt(data.hp || 100);
         this.maxEnergy = parseInt(data.maxEnergy || data.energy || 50);
         this.energy = parseInt(data.energy || 50);
 
-        // CORREÇÃO: Lê stats tanto da raiz (banco antigo) quanto do objeto stats (novo)
         const statsSource = data.stats || data; 
         this.stats = { 
             attack: parseInt(statsSource.attack || 10), 
@@ -93,29 +62,24 @@ class Entity {
         this.sprite = data.sprite; 
         this.isDefending = false;
 
-        // CORREÇÃO CRÍTICA: Força recarregamento da biblioteca
-        // Isso garante que "vine_whip" pegue o 'element: plant' da constante
-        // mesmo que no JSON antigo ele esteja sem elemento.
         const movesList = data.moves || [];
         this.moves = movesList.map(m => {
-            // Tenta achar ID direto
-            if (m && m.id && MOVES_LIBRARY[m.id]) {
+            if(m && m.id && MOVES_LIBRARY[m.id]) {
                 return { ...MOVES_LIBRARY[m.id], id: m.id };
             }
-            // Fallback: Tenta achar pelo nome
-            if (m && m.name) {
+            if(m && m.name) {
                 const libKey = Object.keys(MOVES_LIBRARY).find(k => MOVES_LIBRARY[k].name === m.name);
                 if(libKey) return { ...MOVES_LIBRARY[libKey], id: libKey };
             }
-            return { ...MOVES_LIBRARY['smash'], id: 'smash' };
+            return { ...MOVES_LIBRARY['tackle'], id: 'tackle' };
         });
 
-        if(this.moves.length === 0) this.moves.push({ ...MOVES_LIBRARY['smash'], id: 'smash' });
+        if(this.moves.length === 0) this.moves.push({ ...MOVES_LIBRARY['tackle'], id: 'tackle' });
     }
 }
 
 // =====================
-// FUNÇÕES DE BATALHA
+// MOTOR DE BATALHA
 // =====================
 
 function processAction(attacker, defender, move, logArray) {
@@ -136,16 +100,18 @@ function processAction(attacker, defender, move, logArray) {
         logArray.push({ type: 'HEAL', actorId: attacker.id, amount: attacker.hp - oldHp, newHp: attacker.hp });
     } 
     else if (move.type === MoveType.ATTACK) {
-        // --- CÁLCULO DE DANO ---
-        let multiplier = 1;
-        const attackElement = move.element || 'normal';
+        // --- CÁLCULO DE DANO (COM NEUTRO) ---
+        let multiplier = 1; // Padrão Neutro
+        const atkType = move.element || EntityType.NORMAL;
+        const defType = defender.type;
 
-        if (attackElement !== 'normal') {
-            if (TypeChart[attackElement] === defender.type) multiplier = 1.5;
-            if (TypeChart[defender.type] === attackElement) multiplier = 0.75;
+        // Só altera se estiver explicitamente definido na tabela
+        if (TypeChart[atkType] && TypeChart[atkType][defType] !== undefined) {
+            multiplier = TypeChart[atkType][defType];
         }
 
-        let stab = (attacker.type === attackElement) ? 1.2 : 1;
+        // STAB (Bônus fixo, não stacka)
+        let stab = (attacker.type === atkType) ? 1.25 : 1;
 
         let damage = (move.power + attacker.stats.attack) - defender.stats.defense;
         if (damage < 1) damage = 1;
@@ -172,7 +138,8 @@ function processAction(attacker, defender, move, logArray) {
             damage: damage, 
             newHp: defender.hp,
             isEffective: multiplier > 1,
-            isNotEffective: multiplier < 1 && multiplier > 0,
+            isNotEffective: multiplier < 1 && multiplier > 0, // 0.5
+            isImmune: multiplier === 0, // 0
             isBlocked: blocked
         });
     }
@@ -235,7 +202,6 @@ function duelAutomatic(entityA, entityB) {
 
 app.get('/', (req, res) => { 
     const rawList = readDB();
-    // Sanitiza os dados passando pela Classe Entity
     const entities = rawList.map(data => new Entity(data));
     res.render('home', { entities: entities }); 
 });
@@ -250,11 +216,11 @@ app.post('/create', upload.single('sprite'), (req, res) => {
         return MOVES_LIBRARY[k] ? { ...MOVES_LIBRARY[k], id: k } : null;
     }).filter(Boolean);
 
-    if(finalMoves.length === 0) finalMoves.push({ ...MOVES_LIBRARY['smash'], id: 'smash' });
+    if(finalMoves.length === 0) finalMoves.push({ ...MOVES_LIBRARY['tackle'], id: 'tackle' });
 
     const newEntity = {
         id: Date.now().toString(), name, type, hp, energy, 
-        stats: { attack, defense, speed }, // Salvando na estrutura nova
+        stats: { attack, defense, speed }, 
         moves: finalMoves, sprite: req.file ? req.file.filename : null
     };
     const entities = readDB(); entities.push(newEntity); saveDB(entities);
@@ -286,7 +252,6 @@ app.post('/battle', (req, res) => {
                 battleData: JSON.stringify({ log: [{type: 'INIT'}] }) 
             });
         } else {
-            // Clones para simulação (para não zerar HP na view)
             const simP1 = new Entity(e1); simP1.id = entityA.id;
             const simP2 = new Entity(e2); simP2.id = entityB.id;
 
@@ -360,6 +325,5 @@ app.post('/api/turn', (req, res) => {
     res.json({ events, winnerId });
 });
 
-// O Render fornece a porta na variável process.env.PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
