@@ -8,18 +8,55 @@
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #000; color: white; font-family: 'Roboto', sans-serif; overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
-        .arena { flex: 1; background: radial-gradient(circle at center, #2c3e50 0%, #000000 90%); display: flex; flex-direction: column; justify-content: space-between; position: relative; padding: 10px; }
+        
+        .arena { 
+            flex: 1; 
+            background: radial-gradient(circle at center, #2c3e50 0%, #000000 90%); 
+            display: flex; 
+            flex-direction: column; 
+            /* MUDANÇA: Centraliza tudo verticalmente */
+            justify-content: center; 
+            position: relative; 
+            padding: 10px; 
+        }
+        
         .arena::before { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 35%; background: linear-gradient(to top, rgba(30, 144, 255, 0.05), transparent); pointer-events: none; }
-        .fighter { position: relative; width: 100%; height: 45%; display: flex; z-index: 5; align-items: center; }
-        .fighter.p2-side { flex-direction: row-reverse; justify-content: flex-start; padding-top: 20px; align-items: flex-start; }
-        .fighter.p1-side { flex-direction: row; justify-content: flex-start; padding-bottom: 28vh; align-items: flex-end; }
+        
+        .fighter { 
+            position: relative; 
+            width: 100%; 
+            /* MUDANÇA: Altura automática para eles ficarem perto */
+            height: auto; 
+            display: flex; 
+            z-index: 5; 
+            align-items: center; 
+        }
+        
+        .fighter.p2-side { 
+            flex-direction: row-reverse; 
+            justify-content: flex-start; 
+            align-items: flex-end; /* Alinha base do sprite */
+            /* MUDANÇA: Empurra o inimigo um pouco pra longe de você */
+            margin-bottom: 20px; 
+        }
+        
+        .fighter.p1-side { 
+            flex-direction: row; 
+            justify-content: flex-start; 
+            /* MUDANÇA: Espaço para os botões (Botões têm 25vh, damos 26vh de folga) */
+            padding-bottom: 26vh; 
+            align-items: flex-end; 
+        }
+        
         .sprite { width: 140px; height: 140px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .sprite img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8)); image-rendering: pixelated; }
         .emoji-fallback { font-size: 100px; line-height: 1; filter: drop-shadow(0 0 10px white); text-align: center; }
         .fighter.p1-side .sprite img { transform: scaleX(-1); }
+
         .stats { width: 180px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 10; margin: 0; transition: 0.3s; }
         .p2-side .stats { border-right: 4px solid #e74c3c; text-align: right; margin-right: 20px; }
         .p1-side .stats { border-left: 4px solid #3498db; text-align: left; margin-left: 20px; }
+        
         .name { font-size: 1rem; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; text-shadow: 2px 2px 0 #000; }
         .bar-wrapper { margin-bottom: 5px; }
         .bar-container { width: 100%; height: 12px; background: #222; border-radius: 4px; overflow: hidden; border: 1px solid #000; }
@@ -27,25 +64,30 @@
         .en-fill { height: 100%; background: #f1c40f; width: 100%; transition: width 0.3s; }
         .hp-danger { background: #e74c3c !important; }
         .stat-text { font-size: 0.7rem; color: #bbb; font-family: monospace; font-weight: bold; margin-top: 2px; display: flex; justify-content: space-between; }
-        .controls-panel { position: absolute; bottom: 0; left: 0; width: 100%; height: 25vh; background: #111; border-top: 2px solid #3498db; padding: 10px; display: none; grid-template-columns: 1fr 1fr; gap: 8px; z-index: 50; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); }
+
+        /* Painel Inferior */
+        .bottom-panel { width: 100%; height: 25vh; background: #111; border-top: 2px solid #333; z-index: 50; display: none; }
+        
+        .battle-log { padding: 10px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; }
+        .log-entry { margin-bottom: 5px; animation: fadeIn 0.3s forwards; line-height: 1.4; border-bottom: 1px solid #222; padding-bottom: 2px; }
+
+        .controls-panel { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border-top-color: #3498db; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
         .controls-panel.active { display: grid; }
+        .battle-log.active { display: block; }
+
         .move-btn { background: #2a2a3a; border: 1px solid #444; color: white; border-radius: 8px; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
         .move-btn:active { transform: scale(0.96); }
         .move-btn:disabled { opacity: 0.4; pointer-events: none; }
         .move-btn strong { font-size: 0.9rem; margin-bottom: 2px; }
         .move-btn small { font-size: 0.7rem; color: #f1c40f; }
         .rest-btn { grid-column: span 2; background: #2c3e50; border-color: #3498db; }
-        .battle-log { height: 25vh; width: 100%; background: #111; border-top: 2px solid #333; padding: 10px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; z-index: 40; }
-        .log-entry { margin-bottom: 5px; animation: fadeIn 0.3s forwards; line-height: 1.4; border-bottom: 1px solid #222; padding-bottom: 2px; }
+
         .anim-p1-attack { animation: lungeP1 0.2s alternate 2; } @keyframes lungeP1 { to { transform: translate(40px, -40px); } }
         .anim-p2-attack { animation: lungeP2 0.2s alternate 2; } @keyframes lungeP2 { to { transform: translate(-40px, 40px); } }
         .anim-shake { animation: shake 0.4s; } @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-10px) rotate(-5deg);} 75% {transform: translateX(10px) rotate(5deg);} }
         .floating-text { font-family: 'Press Start 2P', cursive; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; text-shadow: 3px 3px 0 #000; animation: popUp 0.8s forwards; z-index: 100; pointer-events: none; white-space: nowrap; }
         @keyframes popUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 50% { transform: translate(-50%, -100%) scale(1.5); opacity: 1; } 100% { transform: translate(-50%, -150%) scale(1); opacity: 0; } }
-        
-        .damage-text { color: #ff4757; -webkit-text-stroke: 1px #500; } 
-        .heal-text { color: #2ed573; -webkit-text-stroke: 1px #050; }
-        /* COR CINZA PARA DANO POUCO EFETIVO */
+        .damage-text { color: #ff4757; -webkit-text-stroke: 1px #500; } .heal-text { color: #2ed573; -webkit-text-stroke: 1px #050; }
         .resist-text { color: #bdc3c7; -webkit-text-stroke: 1px #2c3e50; font-size: 1.5rem !important; }
         
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
@@ -74,9 +116,10 @@
         <div id="overlay"><h1 id="winnerText">VENCEDOR</h1><a href="/" class="btn-restart">MENU</a></div>
     </div>
 
-    <div class="battle-log" id="logBox" style="display:none;"></div>
+    <!-- Painéis Inferiores (Mesma altura) -->
+    <div class="battle-log bottom-panel" id="logBox"></div>
 
-    <div class="controls-panel" id="controlsPanel">
+    <div class="controls-panel bottom-panel" id="controlsPanel">
         <% p1.moves.forEach(move => { %>
             <button class="move-btn" onclick="sendMove('<%= move.id %>')" id="btn-<%= move.id %>">
                 <strong><%= move.icon %> <%= move.name %></strong><small><%= move.cost %> Energia</small>
@@ -139,20 +182,10 @@
                     const targetEl = document.getElementById(`fighter-${evt.targetId}`);
                     targetEl.classList.add('anim-shake');
                     setTimeout(() => targetEl.classList.remove('anim-shake'), 400);
-                    
-                    let extra = ""; 
-                    let style = "damage-text";
-                    
+                    let extra = ""; let style = "damage-text";
                     if(evt.isEffective) extra = "CRIT!"; 
-                    
-                    // Lógica Visual para Pouco Efetivo
-                    if(evt.isNotEffective) {
-                        extra = "Resist...";
-                        style = "resist-text";
-                    }
-                    
+                    if(evt.isNotEffective) { extra = "Resist..."; style = "resist-text"; }
                     if(evt.isBlocked) extra = "🛡️";
-                    
                     showFloatingText(evt.targetId, `-${evt.damage} ${extra}`, style);
                     const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
                     updateBar(evt.targetId, evt.newHp, maxHp, 'hp');
@@ -185,15 +218,19 @@
 
         async function sendMove(moveId) {
             document.getElementById('controlsPanel').classList.remove('active');
+            document.getElementById('logBox').classList.add('active');
+            
             const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, moveId }) });
             const data = await res.json();
             if(data.error) { alert("Erro na batalha"); return; }
             await playEvents(data.events);
+            
             if(data.winnerId) {
                 document.getElementById('overlay').style.display = 'flex';
                 let wName = "EMPATE"; if(data.winnerId == p1Id) wName = "<%= p1.name %>"; else if(data.winnerId == p2Id) wName = "<%= p2.name %>";
                 document.getElementById('winnerText').innerHTML = `VENCEDOR<br><span style="color:white; font-size:1.5rem">${wName}</span>`;
             } else {
+                document.getElementById('logBox').classList.remove('active');
                 document.getElementById('controlsPanel').classList.add('active');
                 updateButtons();
             }
@@ -204,7 +241,7 @@
                 document.getElementById('controlsPanel').classList.add('active');
                 updateButtons();
             } else {
-                document.getElementById('logBox').style.display = 'block';
+                document.getElementById('logBox').classList.add('active');
                 await wait(1000);
                 log("BATALHA AUTO INICIADA!", "#f1c40f");
                 await playEvents(initialData.log);

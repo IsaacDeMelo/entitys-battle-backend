@@ -6,32 +6,89 @@
     <title>Arena RPG</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* --- ESTILOS GERAIS --- */
-        body { overflow-x:hidden; margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; background: #0f0c29; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        /* --- RESET GLOBAL E TRAVA DE SCROLL --- */
+        * { 
+            box-sizing: border-box; /* O padding não aumenta a largura do elemento */
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body { 
+            padding: 20px; 
+            font-family: 'Roboto', sans-serif; 
+            background: #0f0c29; 
+            color: #fff; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            
+            /* ISSO AQUI RESOLVE O PROBLEMA: */
+            width: 100%;
+            overflow-x: hidden; /* Corta qualquer coisa que tente sair pelos lados */
+        }
         
-        h1 { font-family: 'Press Start 2P', cursive; color: #f1c40f; text-align: center; margin-bottom: 20px; font-size: 1.5rem; line-height: 1.4; }
-        h2 { border-bottom: 2px solid #333; padding-bottom: 10px; width: 100%; max-width: 800px; margin-top: 40px; color: #3498db; }
+        h1 { 
+            font-family: 'Press Start 2P', cursive; 
+            color: #f1c40f; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            font-size: 1.5rem; 
+            line-height: 1.4; 
+            max-width: 100%; /* Garante que o texto não vaze */
+        }
+
+        h2 { 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+            width: 100%; 
+            max-width: 800px; 
+            margin-top: 40px; 
+            color: #3498db; 
+        }
 
         /* --- CARD DE BATALHA --- */
-        .battle-card { background: #1a1a2e; padding: 25px; border-radius: 20px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; }
+        .battle-card { 
+            background: #1a1a2e; 
+            padding: 25px; 
+            border-radius: 20px; 
+            width: 100%; 
+            max-width: 500px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            margin-bottom: 20px; 
+        }
+
         label { color: #aaa; margin-bottom: 5px; display: block; font-size: 0.9rem; }
-        select { width: 100%; padding: 15px; margin-bottom: 15px; background: #2a2a3a; border: 1px solid #444; color: white; border-radius: 10px; font-size: 16px; appearance: none; }
+        
+        select { 
+            width: 100%; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            background: #2a2a3a; 
+            border: 1px solid #444; 
+            color: white; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            appearance: none; 
+        }
+
         .vs-badge { text-align: center; font-weight: bold; color: #e74c3c; margin: 10px 0; font-size: 1.2rem; font-family: 'Press Start 2P'; }
+        
         button { width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
-        .btn-start { background: #e74c3c; color: white; box-shadow: 0 4px 0 #c0392b; transition: transform 0.1s; }
+        .btn-start { background: #e74c3c; color: white; box-shadow: 0 4px 0 #c0392b; }
         .btn-start:active { transform: translateY(4px); box-shadow: none; }
         .btn-create { background: transparent; border: 2px solid #2ecc71; color: #2ecc71; margin-top: 10px; }
         
-        .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
         .mode-opt { flex: 1; text-align: center; }
         .mode-opt input { display: none; }
-        .mode-opt label { background: #2a2a3a; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; display: block; font-weight: bold; color: #888; transition: 0.3s; font-size: 0.9rem; }
+        .mode-opt label { background: #2a2a3a; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; display: block; font-weight: bold; color: #888; transition: 0.3s; font-size: 0.9rem; width: 100%; }
         .mode-opt input:checked + label { background: #3498db; color: white; border-color: #2980b9; }
 
         /* --- GRID DE MONSTROS --- */
         .roster-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Um pouco menor para caber melhor */
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 15px;
             width: 100%;
             max-width: 800px;
@@ -55,7 +112,7 @@
         .roster-name { font-weight: bold; font-size: 0.9rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .roster-type { font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-top: 5px; display: inline-block; padding: 2px 8px; background: #333; border-radius: 4px; }
 
-        /* --- MODAL DE DETALHES (CORRIGIDO) --- */
+        /* --- MODAL (Mantido com correções de largura) --- */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85);
@@ -64,15 +121,13 @@
             display: none; 
             justify-content: center;
             align-items: center;
-            padding: 20px; /* Espaço nas bordas da tela */
-            box-sizing: border-box;
+            padding: 20px;
         }
         
         .modal-content {
             background: #1a1a2e;
             width: 100%; 
             max-width: 380px;
-            /* ALTURA MÁXIMA SEGURA */
             max-height: 85vh; 
             border-radius: 20px;
             border: 2px solid #3498db;
@@ -80,40 +135,21 @@
             position: relative;
             box-shadow: 0 0 30px rgba(52, 152, 219, 0.3);
             display: flex; 
-            flex-direction: column; /* Organiza header e body em coluna */
+            flex-direction: column;
         }
 
-        .modal-header {
-            background: linear-gradient(45deg, #16213e, #1a1a2e);
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid #333;
-            flex-shrink: 0; /* Impede que o header encolha */
-        }
-
-        .modal-img { 
-            width: 120px; height: 120px; 
-            object-fit: contain; image-rendering: pixelated; 
-            filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); 
-        }
-        
-        .modal-body { 
-            padding: 20px; 
-            overflow-y: auto; /* Rolagem SÓ AQUI dentro */
-            flex-grow: 1; /* Ocupa o espaço restante */
-        }
-        
+        .modal-header { background: linear-gradient(45deg, #16213e, #1a1a2e); padding: 20px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
+        .modal-img { width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); }
+        .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
         .modal-title { font-size: 1.4rem; font-weight: bold; margin: 0; color: #fff; text-align: center; }
         .modal-subtitle { text-align: center; color: #3498db; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
-
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
         .stat-label { color: #aaa; font-size: 0.9rem; }
         .stat-val { font-weight: bold; font-family: monospace; font-size: 1rem; }
-
         .moves-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; padding-bottom: 10px; }
         .move-tag { background: #222; padding: 10px; border-radius: 8px; font-size: 0.8rem; border: 1px solid #444; }
         .move-tag strong { display: block; font-size: 0.85rem; margin-bottom: 3px; }
-
+        
         .close-btn {
             position: absolute; top: 10px; right: 10px;
             background: #e74c3c; color: white; border: none;
@@ -121,7 +157,6 @@
             font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
             z-index: 10;
         }
-
     </style>
 </head>
 <body>
