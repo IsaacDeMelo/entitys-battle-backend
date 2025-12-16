@@ -360,4 +360,6 @@ app.post('/api/turn', (req, res) => {
     res.json({ events, winnerId });
 });
 
-app.listen(3000, () => console.log('Servidor rodando em http://localhost:3000'));
+// O Render fornece a porta na variável process.env.PORT
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
