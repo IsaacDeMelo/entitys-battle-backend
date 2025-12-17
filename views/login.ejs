@@ -11,8 +11,7 @@
         h1 { font-family: 'Press Start 2P'; color: #f1c40f; margin-bottom: 20px; font-size: 1.5rem; }
         input { padding: 15px; width: 100%; margin-bottom: 20px; background: #222; border: 1px solid #444; color: white; border-radius: 10px; font-size: 1.2rem; text-align: center; box-sizing: border-box; }
         
-        /* SELEÇÃO DE PERSONAGEM */
-        .char-select { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .char-select { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .char-wrapper { position: relative; cursor: pointer; }
         .char-wrapper input { display: none; }
         
@@ -20,21 +19,13 @@
             width: 60px; height: 60px; 
             border: 2px solid #444; border-radius: 10px; 
             display: block; 
-            background-size: 400% auto; /* Assume sprite sheet 4x4 */
+            background-size: 400% auto; 
             background-position: 0 0;
             image-rendering: pixelated;
             transition: 0.2s;
         }
         
-        /* === AQUI VOCÊ COLOCA AS IMAGENS === */
-        .opt-1 { background-image: url('/uploads/char1.png'); } /* Mude o nome do arquivo se precisar */
-        .opt-2 { background-image: url('/uploads/char2.png'); }
-        .opt-3 { background-image: url('/uploads/char3.png'); }
-        .opt-4 { background-image: url('/uploads/char4.png'); }
-        /* =================================== */
-
         input:checked + .char-view { border-color: #f1c40f; transform: scale(1.1); box-shadow: 0 0 10px #f1c40f; }
-        
         button { padding: 15px 30px; background: #2ecc71; color: white; border: none; border-radius: 50px; font-size: 1.2rem; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
         button:hover { transform: scale(1.05); background: #27ae60; }
     </style>
@@ -48,10 +39,14 @@
 
             <p style="margin-bottom:10px; color:#aaa;">Escolha seu Personagem</p>
             <div class="char-select">
-                <label class="char-wrapper"><input type="radio" name="charId" value="char1" checked><span class="char-view opt-1"></span></label>
-                <label class="char-wrapper"><input type="radio" name="charId" value="char2"><span class="char-view opt-2"></span></label>
-                <label class="char-wrapper"><input type="radio" name="charId" value="char3"><span class="char-view opt-3"></span></label>
-                <label class="char-wrapper"><input type="radio" name="charId" value="char4"><span class="char-view opt-4"></span></label>
+                <!-- GERA BOTÕES AUTOMATICAMENTE BASEADO NA QUANTIDADE -->
+                <% for(let i = 1; i <= skinCount; i++) { %>
+                    <label class="char-wrapper">
+                        <input type="radio" name="charId" value="char<%= i %>" <%= i===1 ? 'checked' : '' %>>
+                        <!-- Define imagem inline, assim funciona com qualquer número -->
+                        <span class="char-view" style="background-image: url('/uploads/char<%= i %>.png');"></span>
+                    </label>
+                <% } %>
             </div>
 
             <button type="submit">ENTRAR</button>
