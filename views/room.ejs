@@ -46,67 +46,68 @@
         /* --- EDIFÍCIOS (MÁQUINAS) --- */
         .machine { 
             position: absolute; 
-            width: 140px; height: 120px; /* Tamanho generoso */
+            width: 140px; height: 120px; 
             
             background-color: transparent; 
             border: none; 
             
             display: flex; flex-direction: column; 
-            align-items: center; justify-content: flex-end; /* Texto no pé */
+            align-items: center; justify-content: flex-end; 
             
             cursor: pointer; 
-            z-index: 5; /* Fica atrás do player se ele passar na frente da base */
+            z-index: 5; 
             
-            /* IMAGEM */
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center bottom;
             
-            /* TEXTO FLUTUANTE */
             color: #fff; 
             font-family: 'Press Start 2P'; font-size: 0.6rem; 
             text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
             padding-bottom: 5px;
 
             transition: transform 0.2s, filter 0.2s;
-            /* Sombra no chão do prédio */
             filter: drop-shadow(0 10px 5px rgba(0,0,0,0.5));
+
+            /* --- CORREÇÃO DO AZUL AO CLICAR --- */
+            -webkit-tap-highlight-color: transparent; /* Remove flash azul no mobile */
+            outline: none; /* Remove borda de foco */
+            user-select: none; /* Impede seleção */
         }
 
         .machine:hover {
-            transform: translateY(-5px) scale(1.05); /* Efeito de destaque */
+            transform: translateY(-5px) scale(1.05); 
             filter: drop-shadow(0 15px 8px rgba(0,0,0,0.6)) brightness(1.2);
         }
 
         .machine:active { transform: scale(0.95); }
         
-        /* --- CONFIGURAÇÃO DE CADA PRÉDIO --- */
-        
-        /* Galeria (Esquerda Topo) */
+        /* POSIÇÕES */
+        /* Galeria: Topo Esquerda */
         #pc-pokedex { 
             top: 5%; left: 2%; 
             background-image: url('/uploads/pokedex_building.png'); 
         }
         
-        /* Online (Direita Topo) */
+        /* Online: Topo Direita */
         #pc-online { 
             top: 5%; right: 2%; 
             background-image: url('/uploads/online_building.png'); 
         }
         
-        /* Arena (Centro) */
+        /* Arena: Centro */
         #pc-battle { 
             top: 35%; left: 50%; transform: translateX(-50%); 
-            width: 160px; height: 140px; /* Arena um pouco maior */
+            width: 160px; height: 140px; 
             background-image: url('/uploads/arena_building.png'); 
-            z-index: 4; /* Um pouco atrás para não tapar caminho */
+            z-index: 4; 
         }
         
-        /* Lab (Baixo Esquerda) */
+        /* Lab: Baixo Esquerda */
         #pc-create { 
             bottom: 15%; left: 5%; 
             background-image: url('/uploads/lab_building.png'); 
-            z-index: 6; /* Mais à frente */
+            z-index: 90; /* Z-index alto para o boneco entrar "atrás" da fachada se quiser, ou ajuste para 6 se quiser na frente */
         }
 
         /* --- PLAYER --- */
@@ -119,7 +120,6 @@
             filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4));
         }
         
-        /* SKINS */
         <% for(let i = 1; i <= skinCount; i++) { %>
             .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); }
         <% } %>
@@ -176,18 +176,22 @@
 <body>
 
     <div id="gameArea">
-        <!-- EDIFÍCIOS -->
-        <!-- O onclick passa a posição Y exata da base para o boneco "entrar" -->
-        <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(10, 10, 'pokedex')">
+        <!-- 
+           COORDENADAS RECALCULADAS PARA CENTRALIZAR O BONECO:
+           Ex: Pokedex está em left:2% (aprox 10px no 500px). Largura 140px. Centro = 10 + 70 = 80px. 
+           80px de 500px é 16%. 
+           Usei essa lógica para todas.
+        -->
+        <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(16, 18, 'pokedex')">
             GALERIA
         </div>
-        <div class="machine" id="pc-online" onclick="moveToAndInteract(90, 10, 'online')">
+        <div class="machine" id="pc-online" onclick="moveToAndInteract(84, 18, 'online')">
             ONLINE
         </div>
-        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 45, 'battle')">
+        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 48, 'battle')">
             ARENA
         </div>
-        <div class="machine" id="pc-create" onclick="moveToAndInteract(10, 88, 'create')">
+        <div class="machine" id="pc-create" onclick="moveToAndInteract(19, 88, 'create')">
             LAB
         </div>
     </div>
@@ -195,11 +199,11 @@
     <!-- TOAST & CHAT -->
     <div id="toastContainer"></div>
     <div id="chatBar">
-        <input type="text" id="chatInput" placeholder="Chat..." autocomplete="off" maxlength="30">
+        <input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30">
         <button id="chatSend" onclick="sendChat()">💬</button>
     </div>
 
-    <!-- MODAIS (MANTIDOS) -->
+    <!-- MODAIS MANTIDOS (IGUAL ANTERIOR) -->
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div style="padding:10px; background:#16213e; text-align:center; font-weight:bold; border-bottom:1px solid #333;">BANCO DE DADOS</div><div class="pokedex-container"><div class="dex-list"><% entities.forEach((e, index) => { %><div class="dex-item" onclick="selectDexMonster(<%= index %>, this)"><% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="dex-thumb"><% } else { %><span>📦</span><% } %><div class="dex-name"><%= e.name %></div></div><% }) %></div><div class="dex-details" id="dexDetailsView"><div style="margin:auto; color:#777;">Selecione um monstro.</div></div></div></div></div>
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalOnline')">X</button><h2 style="text-align:center; color:#3498db">Batalha Online</h2><p style="text-align:center">Escolha seu lutador.</p><select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button onclick="startSearch()">PROCURAR</button><div id="searchStatus" style="display:none; text-align:center; margin-top:10px;"><div class="loader"></div><small>Aguardando...</small></div></div></div>
     <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c">Treino Local</h2><form action="/battle" method="POST"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select><label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button type="submit" style="background:#e74c3c">INICIAR</button></form></div></div>
@@ -216,14 +220,13 @@
         let myId = null;
 
         socket.on('connect', () => { myId = socket.id; socket.emit('enter_lobby', { name: myName, skin: mySkin }); });
-        
         socket.on('lobby_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); Object.values(players).forEach(p => createPlayerElement(p)); });
         socket.on('player_joined', (p) => createPlayerElement(p));
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
                 el.style.left = data.x + '%'; el.style.top = data.y + '%'; 
-                // Z-index dinâmico: Se Y > objeto, fica na frente.
+                // Ajuste de Z-index para profundidade (O boneco fica na frente ou atrás dependendo do Y)
                 el.style.zIndex = Math.floor(data.y); 
                 el.setAttribute('data-dir', data.direction); el.classList.add('walking');
                 const stopWalk = () => { el.classList.remove('walking'); };
@@ -272,7 +275,7 @@
         });
 
         function moveToAndInteract(targetX, targetY, type) {
-            socket.emit('move_player', { x: targetX, y: targetY }); // Vai exatamente para a base
+            socket.emit('move_player', { x: targetX, y: targetY }); 
             setTimeout(() => {
                 if (type === 'create') {
                     window.location.href = '/create?playerName=' + encodeURIComponent(myName) + '&playerSkin=' + encodeURIComponent(mySkin);
