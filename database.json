@@ -11,10 +11,44 @@
       "speed": "2"
     },
     "moves": [
-      { "id": "smash", "name": "Smash", "type": "attack", "power": 5, "cost": 2, "icon": "👊" },
-      { "id": "hydro_pump", "name": "Hydro Pump", "type": "attack", "power": 9, "cost": 5, "icon": "💧" },
-      { "id": "iron_defense", "name": "Iron Defense", "type": "defend", "power": 0, "cost": 2, "icon": "🛡️" },
-      { "id": "poison_jab", "name": "Poison Jab", "type": "attack", "power": 3, "cost": 3, "icon": "☠️", "effect": { "name": "Poison", "type": "dot", "duration": 3, "value": 3 } }
+      {
+        "id": "smash",
+        "name": "Smash",
+        "type": "attack",
+        "power": 5,
+        "cost": 2,
+        "icon": "👊"
+      },
+      {
+        "id": "hydro_pump",
+        "name": "Hydro Pump",
+        "type": "attack",
+        "power": 9,
+        "cost": 5,
+        "icon": "💧"
+      },
+      {
+        "id": "iron_defense",
+        "name": "Iron Defense",
+        "type": "defend",
+        "power": 0,
+        "cost": 2,
+        "icon": "🛡️"
+      },
+      {
+        "id": "poison_jab",
+        "name": "Poison Jab",
+        "type": "attack",
+        "power": 3,
+        "cost": 3,
+        "icon": "☠️",
+        "effect": {
+          "name": "Poison",
+          "type": "dot",
+          "duration": 3,
+          "value": 3
+        }
+      }
     ],
     "sprite": "1765890258830.gif"
   },
@@ -30,9 +64,30 @@
       "speed": "10"
     },
     "moves": [
-      { "id": "smash", "name": "Smash", "type": "attack", "power": 5, "cost": 2, "icon": "👊" },
-      { "id": "fireball", "name": "Fireball", "type": "attack", "power": 8, "cost": 4, "icon": "🔥" },
-      { "id": "iron_defense", "name": "Iron Defense", "type": "defend", "power": 0, "cost": 2, "icon": "🛡️" }
+      {
+        "id": "smash",
+        "name": "Smash",
+        "type": "attack",
+        "power": 5,
+        "cost": 2,
+        "icon": "👊"
+      },
+      {
+        "id": "fireball",
+        "name": "Fireball",
+        "type": "attack",
+        "power": 8,
+        "cost": 4,
+        "icon": "🔥"
+      },
+      {
+        "id": "iron_defense",
+        "name": "Iron Defense",
+        "type": "defend",
+        "power": 0,
+        "cost": 2,
+        "icon": "🛡️"
+      }
     ],
     "sprite": "1765890385398.gif"
   },
@@ -48,11 +103,131 @@
       "speed": "1"
     },
     "moves": [
-      { "id": "vine_whip", "name": "Vine Whip", "type": "attack", "power": 7, "cost": 3, "icon": "🍃" },
-      { "id": "shadow_ball", "name": "Shadow Ball", "type": "attack", "power": 10, "cost": 6, "icon": "🟣" },
-      { "id": "mega_heal", "name": "Mega Heal", "type": "heal", "power": 15, "cost": 6, "icon": "🧪" },
-      { "id": "ultimate", "name": "Hyper Beam", "type": "attack", "power": 20, "cost": 10, "icon": "💥" }
+      {
+        "id": "vine_whip",
+        "name": "Vine Whip",
+        "type": "attack",
+        "power": 7,
+        "cost": 3,
+        "icon": "🍃"
+      },
+      {
+        "id": "shadow_ball",
+        "name": "Shadow Ball",
+        "type": "attack",
+        "power": 10,
+        "cost": 6,
+        "icon": "🟣"
+      },
+      {
+        "id": "mega_heal",
+        "name": "Mega Heal",
+        "type": "heal",
+        "power": 15,
+        "cost": 6,
+        "icon": "🧪"
+      },
+      {
+        "id": "ultimate",
+        "name": "Hyper Beam",
+        "type": "attack",
+        "power": 20,
+        "cost": 10,
+        "icon": "💥"
+      }
     ],
     "sprite": "1765895396589.gif"
+  },
+  {
+    "id": "1765922010145",
+    "name": "Thesloplife",
+    "type": "bug",
+    "hp": "100",
+    "energy": "35",
+    "stats": {
+      "attack": "30",
+      "defense": "12",
+      "speed": "12"
+    },
+    "moves": [
+      {
+        "id": "scratch",
+        "name": "Scratch",
+        "type": "attack",
+        "power": 6,
+        "cost": 2,
+        "icon": "💅",
+        "element": "normal"
+      },
+      {
+        "id": "ice_shard",
+        "name": "Ice Shard",
+        "type": "attack",
+        "power": 5,
+        "cost": 2,
+        "icon": "🧊",
+        "element": "ice"
+      },
+      {
+        "id": "peck",
+        "name": "Peck",
+        "type": "attack",
+        "power": 5,
+        "cost": 1,
+        "icon": "🐦",
+        "element": "flying"
+      },
+      {
+        "id": "air_slash",
+        "name": "Air Slash",
+        "type": "attack",
+        "power": 9,
+        "cost": 4,
+        "icon": "🌪️",
+        "element": "flying"
+      }
+    ],
+    "sprite": "1765922009993.gif"
+  },
+  {
+    "id": "1765925396640",
+    "name": "Ervys",
+    "type": "plant",
+    "hp": "60",
+    "energy": "23",
+    "stats": {
+      "attack": "7",
+      "defense": "5",
+      "speed": "7"
+    },
+    "moves": [
+      {
+        "id": "vine_whip",
+        "name": "Vine Whip",
+        "type": "attack",
+        "power": 7,
+        "cost": 3,
+        "icon": "🍃",
+        "element": "plant"
+      },
+      {
+        "id": "peck",
+        "name": "Peck",
+        "type": "attack",
+        "power": 5,
+        "cost": 1,
+        "icon": "🐦",
+        "element": "flying"
+      },
+      {
+        "id": "quick_heal",
+        "name": "Quick Heal",
+        "type": "heal",
+        "power": 6,
+        "cost": 3,
+        "icon": "💚"
+      }
+    ],
+    "sprite": "1765925396206.gif"
   }
 ]

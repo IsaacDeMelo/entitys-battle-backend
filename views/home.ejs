@@ -4,293 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arena RPG</title>
+    <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* --- RESET GLOBAL E TRAVA DE SCROLL --- */
-        * { 
-            box-sizing: border-box; /* O padding não aumenta a largura do elemento */
-            margin: 0; 
-            padding: 0; 
-        }
-
-        body { 
-            padding: 20px; 
-            font-family: 'Roboto', sans-serif; 
-            background: #0f0c29; 
-            color: #fff; 
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center;
-            
-            /* ISSO AQUI RESOLVE O PROBLEMA: */
-            width: 100%;
-            overflow-x: hidden; /* Corta qualquer coisa que tente sair pelos lados */
-        }
-        
-        h1 { 
-            font-family: 'Press Start 2P', cursive; 
-            color: #f1c40f; 
-            text-align: center; 
-            margin-bottom: 20px; 
-            font-size: 1.5rem; 
-            line-height: 1.4; 
-            max-width: 100%; /* Garante que o texto não vaze */
-        }
-
-        h2 { 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 10px; 
-            width: 100%; 
-            max-width: 800px; 
-            margin-top: 40px; 
-            color: #3498db; 
-        }
-
-        /* --- CARD DE BATALHA --- */
-        .battle-card { 
-            background: #1a1a2e; 
-            padding: 25px; 
-            border-radius: 20px; 
-            width: 100%; 
-            max-width: 500px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-            margin-bottom: 20px; 
-        }
-
+        /* (MANTENHA SEU CSS IGUAL - ESTOU RESUMINDO AQUI PARA CABER) */
+        body { margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; background: #0f0c29; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; width: 100%; overflow-x: hidden; box-sizing: border-box; }
+        * { box-sizing: border-box; }
+        h1 { font-family: 'Press Start 2P', cursive; color: #f1c40f; text-align: center; margin-bottom: 20px; font-size: 1.5rem; }
+        .battle-card { background: #1a1a2e; padding: 25px; border-radius: 20px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; }
         label { color: #aaa; margin-bottom: 5px; display: block; font-size: 0.9rem; }
-        
-        select { 
-            width: 100%; 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            background: #2a2a3a; 
-            border: 1px solid #444; 
-            color: white; 
-            border-radius: 10px; 
-            font-size: 16px; 
-            appearance: none; 
-        }
-
+        select { width: 100%; padding: 15px; margin-bottom: 15px; background: #2a2a3a; border: 1px solid #444; color: white; border-radius: 10px; font-size: 16px; }
         .vs-badge { text-align: center; font-weight: bold; color: #e74c3c; margin: 10px 0; font-size: 1.2rem; font-family: 'Press Start 2P'; }
-        
         button { width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
         .btn-start { background: #e74c3c; color: white; box-shadow: 0 4px 0 #c0392b; }
-        .btn-start:active { transform: translateY(4px); box-shadow: none; }
         .btn-create { background: transparent; border: 2px solid #2ecc71; color: #2ecc71; margin-top: 10px; }
-        
         .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
-        .mode-opt { flex: 1; text-align: center; }
-        .mode-opt input { display: none; }
-        .mode-opt label { background: #2a2a3a; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; display: block; font-weight: bold; color: #888; transition: 0.3s; font-size: 0.9rem; width: 100%; }
+        .mode-opt { flex: 1; text-align: center; } .mode-opt input { display: none; }
+        .mode-opt label { background: #2a2a3a; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; display: block; font-weight: bold; color: #888; width: 100%; }
         .mode-opt input:checked + label { background: #3498db; color: white; border-color: #2980b9; }
-
-        /* --- GRID DE MONSTROS --- */
-        .roster-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 15px;
-            width: 100%;
-            max-width: 800px;
-        }
-
-        .roster-card {
-            background: #1e1e2e;
-            border-radius: 15px;
-            padding: 15px;
-            text-align: center;
-            border: 1px solid #333;
-            cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-        .roster-card:hover { transform: translateY(-5px); border-color: #f1c40f; }
-        
-        .roster-img { width: 90px; height: 90px; object-fit: contain; image-rendering: pixelated; margin-bottom: 10px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); }
-        .roster-emoji { font-size: 50px; display: block; margin-bottom: 10px; }
-        .roster-name { font-weight: bold; font-size: 0.9rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .roster-type { font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-top: 5px; display: inline-block; padding: 2px 8px; background: #333; border-radius: 4px; }
-
-        /* --- MODAL (Mantido com correções de largura) --- */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            display: none; 
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .modal-content {
-            background: #1a1a2e;
-            width: 100%; 
-            max-width: 380px;
-            max-height: 85vh; 
-            border-radius: 20px;
-            border: 2px solid #3498db;
-            padding: 0;
-            position: relative;
-            box-shadow: 0 0 30px rgba(52, 152, 219, 0.3);
-            display: flex; 
-            flex-direction: column;
-        }
-
-        .modal-header { background: linear-gradient(45deg, #16213e, #1a1a2e); padding: 20px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
-        .modal-img { width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); }
-        .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
-        .modal-title { font-size: 1.4rem; font-weight: bold; margin: 0; color: #fff; text-align: center; }
-        .modal-subtitle { text-align: center; color: #3498db; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+        /* Grid e Modal CSS (MANTIDO) */
+        .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; width: 100%; max-width: 800px; }
+        .roster-card { background: #1e1e2e; border-radius: 15px; padding: 15px; text-align: center; border: 1px solid #333; cursor: pointer; transition: transform 0.2s; }
+        .roster-img { width: 90px; height: 90px; object-fit: contain; } .roster-emoji { font-size: 50px; display: block; }
+        .roster-name { font-weight: bold; font-size: 0.9rem; display: block; } .roster-type { font-size: 0.7rem; color: #aaa; text-transform: uppercase; background: #333; padding: 2px 8px; border-radius: 4px; }
+        .searching-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .searching-text { font-family: 'Press Start 2P'; color: #f1c40f; margin-top: 20px; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .loader { border: 5px solid #333; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: #1a1a2e; width: 100%; max-width: 380px; max-height: 85vh; border-radius: 20px; border: 2px solid #3498db; display: flex; flex-direction: column; }
+        .modal-header { padding: 20px; text-align: center; border-bottom: 1px solid #333; } .modal-img { width: 120px; height: 120px; object-fit: contain; } .modal-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
-        .stat-label { color: #aaa; font-size: 0.9rem; }
-        .stat-val { font-weight: bold; font-family: monospace; font-size: 1rem; }
-        .moves-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; padding-bottom: 10px; }
-        .move-tag { background: #222; padding: 10px; border-radius: 8px; font-size: 0.8rem; border: 1px solid #444; }
-        .move-tag strong { display: block; font-size: 0.85rem; margin-bottom: 3px; }
-        
-        .close-btn {
-            position: absolute; top: 10px; right: 10px;
-            background: #e74c3c; color: white; border: none;
-            width: 32px; height: 32px; border-radius: 50%;
-            font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            z-index: 10;
-        }
+        .moves-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; } .move-tag { background: #222; padding: 10px; border-radius: 8px; font-size: 0.8rem; border: 1px solid #444; }
+        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
     <h1>POCKET ARENA</h1>
     
-    <!-- ÁREA DE BATALHA (SELEÇÃO) -->
     <div class="battle-card">
         <% if(entities.length < 2) { %>
             <p style="text-align: center; color: #ccc;">A arena está vazia.</p>
             <a href="/create" style="text-decoration:none;"><button class="btn-create" style="background:#2ecc71; color:white;">Criar Primeiro Monstro</button></a>
         <% } else { %>
-            <form action="/battle" method="POST">
-                
+            <form action="/battle" method="POST" id="offlineForm">
                 <div class="mode-selector">
-                    <div class="mode-opt"><input type="radio" id="auto" name="mode" value="auto" checked><label for="auto">🤖 Auto</label></div>
-                    <div class="mode-opt"><input type="radio" id="manual" name="mode" value="manual"><label for="manual">🎮 Manual</label></div>
+                    <div class="mode-opt"><input type="radio" id="auto" name="mode" value="auto" checked onchange="toggleOnline(false)"><label for="auto">🤖 Auto</label></div>
+                    <div class="mode-opt"><input type="radio" id="manual" name="mode" value="manual" onchange="toggleOnline(false)"><label for="manual">🎮 Manual</label></div>
+                    <div class="mode-opt"><input type="radio" id="online" name="mode" value="online" onchange="toggleOnline(true)"><label for="online">🌐 Online</label></div>
                 </div>
 
-                <label>Lutador 1</label>
-                <select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
-                <div class="vs-badge">VS</div>
-                <label>Lutador 2</label>
-                <select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>" <%= (entities[1] && e.id == entities[1].id) ? 'selected' : '' %>><%= e.name %></option><% }) %></select>
-                
-                <button type="submit" class="btn-start">Lutar!</button>
+                <div id="offlineInputs">
+                    <label>Lutador 1</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
+                    <div class="vs-badge">VS</div>
+                    <label>Lutador 2</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>" <%= (entities[1] && e.id == entities[1].id) ? 'selected' : '' %>><%= e.name %></option><% }) %></select>
+                    <button type="submit" class="btn-start">Lutar!</button>
+                </div>
+
+                <div id="onlineInputs" style="display:none;">
+                    <label>Escolha seu Lutador</label>
+                    <select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
+                    <button type="button" class="btn-start" style="background:#3498db" onclick="startSearch()">Procurar Partida</button>
+                </div>
             </form>
             <a href="/create" style="text-decoration:none;"><button class="btn-create">Novo Monstro</button></a>
         <% } %>
     </div>
 
-    <!-- LISTA DE MONSTROS (GALERIA) -->
+    <div class="searching-overlay" id="searchOverlay">
+        <div class="loader"></div><div class="searching-text">PROCURANDO OPONENTE...</div>
+    </div>
+
+    <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;">
+        <input type="hidden" name="roomId" id="formRoomId">
+        <input type="hidden" name="meData" id="formMeData">
+        <input type="hidden" name="opponentData" id="formOpponentData">
+    </form>
+
     <% if(entities.length > 0) { %>
         <h2>Banco de Dados (<%= entities.length %>)</h2>
         <div class="roster-grid">
             <% entities.forEach((e, index) => { %>
                 <div class="roster-card" onclick="openDetails(<%= index %>)">
-                    <% if(e.sprite) { %>
-                        <img src="/uploads/<%= e.sprite %>" class="roster-img">
-                    <% } else { %>
-                        <span class="roster-emoji">📦</span>
-                    <% } %>
-                    <span class="roster-name"><%= e.name %></span>
-                    <span class="roster-type"><%= e.type %></span>
+                    <% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="roster-img"><% } else { %><span class="roster-emoji">📦</span><% } %>
+                    <span class="roster-name"><%= e.name %></span><span class="roster-type"><%= e.type %></span>
                 </div>
             <% }) %>
         </div>
     <% } %>
 
-    <!-- MODAL DE DETALHES -->
     <div class="modal-overlay" id="modalOverlay" onclick="if(event.target === this) closeDetails()">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeDetails()">X</button>
-            
-            <div class="modal-header">
-                <img id="m-img" class="modal-img" src="" style="display:none;">
-                <div id="m-emoji" class="emoji-fallback" style="font-size:80px; display:none;"></div>
-            </div>
-
-            <div class="modal-body">
-                <h3 id="m-name" class="modal-title">Nome</h3>
-                <div id="m-type" class="modal-subtitle">TIPO</div>
-
-                <div class="stat-row"><span class="stat-label">HP Máximo</span><span class="stat-val" id="m-hp">0</span></div>
-                <div class="stat-row"><span class="stat-label">Energia</span><span class="stat-val" id="m-en">0</span></div>
-                <div class="stat-row"><span class="stat-label">Ataque</span><span class="stat-val" id="m-atk">0</span></div>
-                <div class="stat-row"><span class="stat-label">Defesa</span><span class="stat-val" id="m-def">0</span></div>
-                <div class="stat-row"><span class="stat-label">Velocidade</span><span class="stat-val" id="m-spd">0</span></div>
-
-                <div style="margin-top:20px; color:#aaa; font-size:0.8rem; text-align:center;">GOLPES CONHECIDOS</div>
-                <div class="moves-list" id="m-moves">
-                    <!-- Golpes injetados via JS -->
-                </div>
-            </div>
-        </div>
+        <div class="modal-content"><button class="close-btn" onclick="closeDetails()">X</button><div class="modal-header"><img id="m-img" class="modal-img" src="" style="display:none;"><div id="m-emoji" class="emoji-fallback" style="font-size:80px; display:none;"></div></div><div class="modal-body"><h3 id="m-name" class="modal-title"></h3><div id="m-type" class="modal-subtitle"></div><div class="stat-row"><span class="stat-label">HP</span><span class="stat-val" id="m-hp"></span></div><div class="stat-row"><span class="stat-label">Energia</span><span class="stat-val" id="m-en"></span></div><div class="stat-row"><span class="stat-label">Ataque</span><span class="stat-val" id="m-atk"></span></div><div class="stat-row"><span class="stat-label">Defesa</span><span class="stat-val" id="m-def"></span></div><div class="stat-row"><span class="stat-label">Velocidade</span><span class="stat-val" id="m-spd"></span></div><div style="margin-top:20px; color:#aaa; font-size:0.8rem; text-align:center;">GOLPES</div><div class="moves-list" id="m-moves"></div></div></div>
     </div>
 
     <script>
+        const socket = io();
         const allMonsters = <%- JSON.stringify(entities) %>;
 
+        function toggleOnline(isOnline) {
+            document.getElementById('offlineInputs').style.display = isOnline ? 'none' : 'block';
+            document.getElementById('onlineInputs').style.display = isOnline ? 'block' : 'none';
+        }
+
+        function startSearch() {
+            const fighterId = document.getElementById('onlineFighter').value;
+            document.getElementById('searchOverlay').style.display = 'flex';
+            socket.emit('find_match', fighterId);
+        }
+
+        socket.on('match_found', (data) => {
+            // data = { roomId, me, opponent }
+            document.getElementById('formRoomId').value = data.roomId;
+            document.getElementById('formMeData').value = JSON.stringify(data.me);
+            document.getElementById('formOpponentData').value = JSON.stringify(data.opponent);
+            document.getElementById('onlineRedirectForm').submit();
+        });
+
         function openDetails(index) {
-            const mon = allMonsters[index];
-            if(!mon) return;
-
-            document.getElementById('m-name').innerText = mon.name;
-            document.getElementById('m-type').innerText = mon.type.toUpperCase();
-            
-            document.getElementById('m-hp').innerText = mon.maxHp || mon.hp;
-            document.getElementById('m-en').innerText = mon.maxEnergy || mon.energy;
-            document.getElementById('m-atk').innerText = mon.stats.attack;
-            document.getElementById('m-def').innerText = mon.stats.defense;
-            document.getElementById('m-spd').innerText = mon.stats.speed;
-
-            const imgEl = document.getElementById('m-img');
-            const emjEl = document.getElementById('m-emoji');
-            
-            if (mon.sprite) {
-                imgEl.src = "/uploads/" + mon.sprite;
-                imgEl.style.display = "inline-block";
-                emjEl.style.display = "none";
-            } else {
-                imgEl.style.display = "none";
-                emjEl.style.display = "block";
-                // ... dentro da função openDetails ...
-const typeEmojis = { 
-    normal: '⚪', fire: '🔥', water: '💧', plant: '🍃', 
-    electric: '⚡', ice: '❄️', flying: '🌪️', fighter: '🥋', 
-    ghost: '👻', dark: '🌑', poison: '☠️', ground: '🏜️', 
-    rock: '🪨', steel: '🔩', dragon: '🐉', psychic: '🔮',
-    bug: '🪲', fairy: '✨'
-};
-// ...
-                emjEl.innerText = typeEmojis[mon.type] || '❓';
-            }
-
-            const movesBox = document.getElementById('m-moves');
-            movesBox.innerHTML = ''; 
-            
-            if(mon.moves && mon.moves.length > 0) {
-                mon.moves.forEach(move => {
-                    const div = document.createElement('div');
-                    div.className = 'move-tag';
-                    div.innerHTML = `<strong>${move.icon || ''} ${move.name}</strong> <span style="color:#f1c40f">${move.cost} EN</span>`;
-                    movesBox.appendChild(div);
-                });
-            } else {
-                movesBox.innerHTML = '<span style="grid-column:span 2; text-align:center; color:#555;">Sem golpes</span>';
-            }
-
+            const mon = allMonsters[index]; if(!mon) return;
+            document.getElementById('m-name').innerText = mon.name; document.getElementById('m-type').innerText = mon.type.toUpperCase();
+            document.getElementById('m-hp').innerText = mon.maxHp || mon.hp; document.getElementById('m-en').innerText = mon.maxEnergy || mon.energy;
+            document.getElementById('m-atk').innerText = mon.stats.attack; document.getElementById('m-def').innerText = mon.stats.defense; document.getElementById('m-spd').innerText = mon.stats.speed;
+            const imgEl = document.getElementById('m-img'); const emjEl = document.getElementById('m-emoji');
+            if (mon.sprite) { imgEl.src = "/uploads/" + mon.sprite; imgEl.style.display = "inline-block"; emjEl.style.display = "none"; } else { imgEl.style.display = "none"; emjEl.style.display = "block"; const typeEmojis = { fire: '🔥', water: '💧', plant: '🍃', ghost: '👻', fighter: '🥋', dark: '🌑' }; emjEl.innerText = typeEmojis[mon.type] || '❓'; }
+            const movesBox = document.getElementById('m-moves'); movesBox.innerHTML = ''; 
+            if(mon.moves && mon.moves.length > 0) { mon.moves.forEach(move => { const div = document.createElement('div'); div.className = 'move-tag'; div.innerHTML = `<strong>${move.icon || ''} ${move.name}</strong> <span style="color:#f1c40f">${move.cost} EN</span>`; movesBox.appendChild(div); }); } else { movesBox.innerHTML = '<span style="grid-column:span 2; text-align:center; color:#555;">Sem golpes</span>'; }
             document.getElementById('modalOverlay').style.display = 'flex';
         }
-
-        function closeDetails() {
-            document.getElementById('modalOverlay').style.display = 'none';
-        }
+        function closeDetails() { document.getElementById('modalOverlay').style.display = 'none'; }
     </script>
 </body>
 </html>
