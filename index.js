@@ -70,12 +70,13 @@ class Entity {
         this.sprite = data.sprite; 
         this.isDefending = false;
         this.playerName = data.playerName || null;
+        // Garante que a skin persista nas batalhas
         this.skin = data.skin || 'char1';
 
         const movesList = data.moves || [];
         this.moves = movesList.map(m => {
             if(m && m.id && MOVES_LIBRARY[m.id]) return { ...MOVES_LIBRARY[m.id], id: m.id };
-            if(m && m.name) { // Fallback por nome
+            if(m && m.name) { 
                 const key = Object.keys(MOVES_LIBRARY).find(k => MOVES_LIBRARY[k].name === m.name);
                 if(key) return { ...MOVES_LIBRARY[key], id: key };
             }
@@ -85,7 +86,9 @@ class Entity {
     }
 }
 
-// ... (Funções processAction, processStartTurn, duelAutomatic MANTIDAS IGUAIS) ...
+// =====================
+// LÓGICA DE BATALHA
+// =====================
 function processAction(attacker, defender, move, logArray) {
     attacker.isDefending = false; 
     attacker.energy -= move.cost;
@@ -166,22 +169,26 @@ function duelAutomatic(entityA, entityB) {
 }
 
 // =====================
-// WEBSOCKET (CORRIGIDO)
+// WEBSOCKET (SOCKET.IO)
 // =====================
 io.on('connection', (socket) => {
     
     // --- LOBBY ---
-    // CORREÇÃO AQUI: Mudado de 'charId' para 'skin' para bater com o que o room.ejs envia
-    socket.on('enter_lobby', ({ name, skin }) => {
+    // CORREÇÃO: Aceita 'skin' ou 'charId' para resolver o bug da skin padrão
+    socket.on('enter_lobby', (data) => {
+        const chosenSkin = data.skin || data.charId || 'char1';
+        
         lobbyPlayers[socket.id] = {
             id: socket.id,
-            name: name || `Player ${socket.id.substr(0,4)}`,
-            skin: skin || 'char1', // Usa a skin recebida
+            name: data.name || `Player ${socket.id.substr(0,4)}`,
+            skin: chosenSkin, 
             x: 50, y: 80,
             direction: 'down',
             isMoving: false
         };
+        // Envia estado para quem conectou
         socket.emit('lobby_state', lobbyPlayers);
+        // Avisa os outros
         socket.broadcast.emit('player_joined', lobbyPlayers[socket.id]);
     });
 
@@ -192,7 +199,6 @@ io.on('connection', (socket) => {
             const dy = coords.y - p.y;
             let dir = p.direction;
             
-            // Lógica simples de direção
             if (Math.abs(dx) > Math.abs(dy)) {
                 dir = dx > 0 ? 'right' : 'left';
             } else {
@@ -220,7 +226,7 @@ io.on('connection', (socket) => {
         const playerEntity = new Entity(monsterData);
         playerEntity.id = socket.id; 
         playerEntity.playerName = playerName; 
-        playerEntity.skin = playerSkin; // Passa a skin para a batalha
+        playerEntity.skin = playerSkin; // Passa skin para o objeto de batalha
         
         matchmakingQueue.push({ socket, entity: playerEntity });
 
@@ -288,18 +294,17 @@ io.on('connection', (socket) => {
 });
 
 // =====================
-// ROTAS HTTP (CORRIGIDAS)
+// ROTAS HTTP
 // =====================
 app.get('/', (req, res) => { res.render('login'); });
 
-// ROTA DO LOBBY - TRATA OS DOIS CASOS (LOGIN E VOLTA DA BATALHA)
+// ROTA DO LOBBY (CORRIGIDA)
 app.post('/room', (req, res) => {
     const rawList = readDB();
     const entities = rawList.map(data => new Entity(data));
     const playerName = req.body.playerName || "Visitante";
     
-    // CORREÇÃO: O form de login manda 'charId', o de batalha manda 'skin'
-    // Aqui aceitamos qualquer um dos dois.
+    // CORREÇÃO: Pega 'charId' (do login) ou 'skin' (da batalha) e normaliza para 'skin'
     const playerSkin = req.body.charId || req.body.skin || "char1"; 
     
     res.render('room', { playerName, playerSkin, entities }); 
@@ -339,8 +344,7 @@ app.post('/battle', (req, res) => {
             activeBattles[battleId] = { p1: entityA, p2: entityB };
             res.render('battle', { p1: entityA, p2: entityB, battleMode: 'manual', battleId: battleId, myRoleId: entityA.id, battleData: JSON.stringify({ log: [{type: 'INIT'}] }) });
         } else {
-            const simP1 = new Entity(e1); simP1.id = entityA.id;
-            const simP2 = new Entity(e2); simP2.id = entityB.id;
+            const simP1 = new Entity(e1); simP1.id = entityA.id; const simP2 = new Entity(e2); simP2.id = entityB.id;
             const result = duelAutomatic(simP1, simP2);
             res.render('battle', { p1: entityA, p2: entityB, battleMode: 'auto', battleId: null, myRoleId: null, battleData: JSON.stringify(result) });
         }
