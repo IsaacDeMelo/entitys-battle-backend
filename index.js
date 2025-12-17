@@ -6,6 +6,11 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
 
+// === CONFIGURAÇÃO DE SKINS ===
+// Mude este número para a quantidade total de arquivos charX.png que você tem
+const SKIN_COUNT = 6; 
+// =============================
+
 // TENTA IMPORTAR GAMEDATA
 let GameData;
 try { GameData = require('./gameData'); } 
@@ -38,17 +43,13 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// =====================
 // ESTADOS
-// =====================
 const activeBattles = {}; 
 const onlineBattles = {}; 
 const lobbyPlayers = {}; 
 let matchmakingQueue = []; 
 
-// =====================
 // CLASSE ENTIDADE
-// =====================
 class Entity {
     constructor(data) {
         this.id = data.id;
@@ -70,7 +71,6 @@ class Entity {
         this.sprite = data.sprite; 
         this.isDefending = false;
         this.playerName = data.playerName || null;
-        // Garante que a skin persista nas batalhas
         this.skin = data.skin || 'char1';
 
         const movesList = data.moves || [];
@@ -86,9 +86,7 @@ class Entity {
     }
 }
 
-// =====================
 // LÓGICA DE BATALHA
-// =====================
 function processAction(attacker, defender, move, logArray) {
     attacker.isDefending = false; 
     attacker.energy -= move.cost;
@@ -168,13 +166,10 @@ function duelAutomatic(entityA, entityB) {
     return { winnerId: winner ? winner.id : null, log: events };
 }
 
-// =====================
-// WEBSOCKET (SOCKET.IO)
-// =====================
+// SOCKET.IO
 io.on('connection', (socket) => {
     
-    // --- LOBBY ---
-    // CORREÇÃO: Aceita 'skin' ou 'charId' para resolver o bug da skin padrão
+    // LOBBY
     socket.on('enter_lobby', (data) => {
         const chosenSkin = data.skin || data.charId || 'char1';
         
@@ -186,9 +181,7 @@ io.on('connection', (socket) => {
             direction: 'down',
             isMoving: false
         };
-        // Envia estado para quem conectou
         socket.emit('lobby_state', lobbyPlayers);
-        // Avisa os outros
         socket.broadcast.emit('player_joined', lobbyPlayers[socket.id]);
     });
 
@@ -215,7 +208,7 @@ io.on('connection', (socket) => {
         io.emit('chat_message', { id: socket.id, msg: sanitized });
     });
 
-    // --- BATALHA ---
+    // BATALHA
     socket.on('join_room', (roomId) => socket.join(roomId));
 
     socket.on('find_match', (monsterId, playerName, playerSkin) => {
@@ -226,7 +219,7 @@ io.on('connection', (socket) => {
         const playerEntity = new Entity(monsterData);
         playerEntity.id = socket.id; 
         playerEntity.playerName = playerName; 
-        playerEntity.skin = playerSkin; // Passa skin para o objeto de batalha
+        playerEntity.skin = playerSkin; 
         
         matchmakingQueue.push({ socket, entity: playerEntity });
 
@@ -293,20 +286,17 @@ io.on('connection', (socket) => {
     });
 });
 
-// =====================
-// ROTAS HTTP
-// =====================
-app.get('/', (req, res) => { res.render('login'); });
+// ROTAS
+app.get('/', (req, res) => { 
+    // CORREÇÃO: Passa a contagem de skins para o frontend
+    res.render('login', { skinCount: SKIN_COUNT }); 
+});
 
-// ROTA DO LOBBY (CORRIGIDA)
 app.post('/room', (req, res) => {
     const rawList = readDB();
     const entities = rawList.map(data => new Entity(data));
     const playerName = req.body.playerName || "Visitante";
-    
-    // CORREÇÃO: Pega 'charId' (do login) ou 'skin' (da batalha) e normaliza para 'skin'
     const playerSkin = req.body.charId || req.body.skin || "char1"; 
-    
     res.render('room', { playerName, playerSkin, entities }); 
 });
 
