@@ -6,16 +6,16 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
 
-// === CONFIGURAÇÃO DE SKINS ===
-// Mude este número para a quantidade total de arquivos charX.png que você tem
-const SKIN_COUNT = 6; 
-// =============================
-
 // TENTA IMPORTAR GAMEDATA
 let GameData;
 try { GameData = require('./gameData'); } 
 catch (e) { GameData = { EntityType: {}, MoveType: {}, TypeChart: {}, MOVES_LIBRARY: {} }; }
 const { EntityType, MoveType, EffectType, TypeChart, MOVES_LIBRARY } = GameData;
+
+// === CONFIGURAÇÃO DE SKINS ===
+// Defina aqui quantas skins você tem na pasta uploads (char1.png até charX.png)
+const SKIN_COUNT = 6; 
+// =============================
 
 const app = express();
 const server = http.createServer(app);
@@ -59,14 +59,12 @@ class Entity {
         this.hp = parseInt(data.hp || 100);
         this.maxEnergy = parseInt(data.maxEnergy || data.energy || 50);
         this.energy = parseInt(data.energy || 50);
-        
         const statsSource = data.stats || data; 
         this.stats = { 
             attack: parseInt(statsSource.attack || 10), 
             defense: parseInt(statsSource.defense || 5), 
             speed: parseInt(statsSource.speed || 5) 
         };
-        
         this.effects = []; 
         this.sprite = data.sprite; 
         this.isDefending = false;
@@ -86,7 +84,7 @@ class Entity {
     }
 }
 
-// LÓGICA DE BATALHA
+// ... (Funções processAction, processStartTurn, duelAutomatic MANTIDAS IGUAIS) ...
 function processAction(attacker, defender, move, logArray) {
     attacker.isDefending = false; 
     attacker.energy -= move.cost;
@@ -168,11 +166,8 @@ function duelAutomatic(entityA, entityB) {
 
 // SOCKET.IO
 io.on('connection', (socket) => {
-    
-    // LOBBY
     socket.on('enter_lobby', (data) => {
         const chosenSkin = data.skin || data.charId || 'char1';
-        
         lobbyPlayers[socket.id] = {
             id: socket.id,
             name: data.name || `Player ${socket.id.substr(0,4)}`,
@@ -208,7 +203,6 @@ io.on('connection', (socket) => {
         io.emit('chat_message', { id: socket.id, msg: sanitized });
     });
 
-    // BATALHA
     socket.on('join_room', (roomId) => socket.join(roomId));
 
     socket.on('find_match', (monsterId, playerName, playerSkin) => {
@@ -287,17 +281,16 @@ io.on('connection', (socket) => {
 });
 
 // ROTAS
-app.get('/', (req, res) => { 
-    // CORREÇÃO: Passa a contagem de skins para o frontend
-    res.render('login', { skinCount: SKIN_COUNT }); 
-});
+app.get('/', (req, res) => { res.render('login', { skinCount: SKIN_COUNT }); });
 
 app.post('/room', (req, res) => {
     const rawList = readDB();
     const entities = rawList.map(data => new Entity(data));
     const playerName = req.body.playerName || "Visitante";
     const playerSkin = req.body.charId || req.body.skin || "char1"; 
-    res.render('room', { playerName, playerSkin, entities }); 
+    
+    // Passa o SKIN_COUNT para o room.ejs também, para gerar o CSS
+    res.render('room', { playerName, playerSkin, entities, skinCount: SKIN_COUNT }); 
 });
 
 app.get('/create', (req, res) => { res.render('create', { types: EntityType, moves: MOVES_LIBRARY }); });
