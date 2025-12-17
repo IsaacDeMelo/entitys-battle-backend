@@ -22,26 +22,36 @@
         }
         
         /* WRAPPER PARA O MAPA */
+       /* CONTAINER DO MAPA */
         #gameArea { 
             position: relative; 
+            
+            /* Largura: Tenta ser 100% da tela, mas trava em 500px */
             width: 100%;
-            height: 100%;
+            max-width: 500px;
             
-            /* Trava a largura máxima para parecer um celular mesmo no PC */
-            max-width: 550px; 
+            /* Altura: Calcula automaticamente baseada na proporção da imagem */
+            /* Se sua imagem for 1080x1920, a proporção é 9/16 */
+            aspect-ratio: 9/18; 
             
-            /* A imagem de fundo que você mandou */
+            /* Se ficar muito alto, trava na altura da tela pra não gerar scroll */
+            max-height: 100vh;
+            
             background-image: url('/uploads/map_bg.png');
-            
-            /* Ajustes para Pixel Art */
             image-rendering: pixelated; 
-            background-size: 100% 100%; /* Estica para caber exato no container */
+            
+            /* Garante que a imagem cubra a área sem distorcer (corta sobras se preciso) */
+            background-size: contain; 
             background-position: center;
             background-repeat: no-repeat;
             
+            /* Se a imagem for menor que o container, preenche com cor do chão */
+            background-color: #7ab06d; 
+            
             cursor: crosshair;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); /* Sombra em volta do mapa */
-            overflow: hidden; /* Nada sai do mapa */
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); 
+            overflow: hidden; 
+            margin: auto; /* Centraliza na tela preta */
         }
 
         /* AS MÁQUINAS (Futuras Casas) - Posicionadas em % relativas ao MAPA */
