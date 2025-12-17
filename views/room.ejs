@@ -12,7 +12,7 @@
         body { 
             margin: 0; padding: 0; 
             background: #111; 
-            overflow: hidden; /* Garante que nada gere barra de rolagem */
+            overflow: hidden; 
             height: 100vh; width: 100vw; 
             font-family: 'Roboto', sans-serif; 
             user-select: none; 
@@ -24,22 +24,15 @@
         /* CONTAINER DO MAPA */
         #gameArea { 
             position: relative; 
-            
-            /* No PC: Mantém um tamanho controlado tipo celular */
             width: 100%;
             max-width: 500px; 
             height: 100%;
-            max-height: 900px; /* Limite de altura no PC */
+            max-height: 900px;
             
             background-image: url('/uploads/map_bg.png');
             image-rendering: pixelated; 
-            
-            /* O SEGREDO: COVER */
-            /* Preenche tudo mantendo a proporção. Se sobrar imagem, ela é cortada. */
             background-size: cover; 
-            
-            /* Alinha embaixo: garante que o caminho de terra comece do final da tela */
-            background-position: center bottom;
+            background-position: center top; /* CORRIGIDO: CENTER TOP */
             background-repeat: no-repeat;
             
             cursor: crosshair;
@@ -47,20 +40,12 @@
             overflow: hidden; 
         }
 
-        /* --- MOBILE FULLSCREEN --- */
         @media (max-width: 600px) {
             body { padding: 0; }
-            #gameArea {
-                max-width: none;
-                max-height: none;
-                width: 100vw;  /* Largura Total */
-                height: 100vh; /* Altura Total */
-                border-radius: 0;
-                box-shadow: none;
-            }
+            #gameArea { max-width: none; max-height: none; width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; }
         }
 
-        /* AS MÁQUINAS (Quadrados / Casas) */
+        /* AS MÁQUINAS */
         .machine { 
             position: absolute; 
             width: 80px; height: 60px; 
@@ -70,17 +55,16 @@
             display: flex; flex-direction: column; 
             align-items: center; justify-content: center; 
             color: white; font-family: 'Press Start 2P'; font-size: 0.4rem; 
-            text-align: center; cursor: pointer; z-index: 5; 
+            text-align: center; cursor: pointer; 
             transition: transform 0.1s;
             box-shadow: 0 4px 0 rgba(0,0,0,0.5);
         }
         .machine:active { transform: scale(0.95); }
         
-        /* Posições ajustadas para o layout vertical */
-        #pc-pokedex { top: 10%; left: 5%; background: #27ae60; }
-        #pc-online { top: 10%; right: 5%; background: #2980b9; }
-        #pc-battle { top: 40%; left: 50%; transform: translateX(-50%); background: #c0392b; }
-        #pc-create { bottom: 12%; left: 10%; background: #8e44ad; }
+        #pc-pokedex { top: 10%; left: 5%; background: #27ae60; z-index: 12; /* Ajuste manual ou dynamic */ }
+        #pc-online { top: 10%; right: 5%; background: #2980b9; z-index: 12; }
+        #pc-battle { top: 40%; left: 50%; transform: translateX(-50%); background: #c0392b; z-index: 42; }
+        #pc-create { bottom: 12%; left: 10%; background: #8e44ad; z-index: 88; }
 
         /* PLAYER */
         .player { 
@@ -92,11 +76,10 @@
             filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4));
         }
         
-        /* SKINS */
-        .player[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
-        .player[data-skin="char2"] { background-image: url('/uploads/char2.png'); }
-        .player[data-skin="char3"] { background-image: url('/uploads/char3.png'); }
-        .player[data-skin="char4"] { background-image: url('/uploads/char4.png'); }
+        /* SKINS DINÂMICAS - LOOP EJS */
+        <% for(let i = 1; i <= skinCount; i++) { %>
+            .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); }
+        <% } %>
         
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
@@ -111,16 +94,38 @@
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        #chatBar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; display: flex; align-items: center; gap: 10px; z-index: 100; background: rgba(20, 26, 40, 0.95); border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); backdrop-filter: blur(5px); transition: transform 0.2s, border-color 0.2s; }
-        #chatBar:focus-within { transform: translateX(-50%) translateY(-2px); border-color: #f1c40f; }
-        #chatInput { flex: 1; padding: 10px 15px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
-        #chatSend { width: 45px; height: 45px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 #c27c0e; transition: 0.1s; }
-        #chatSend:active { transform: translateY(4px); box-shadow: 0 0 0 #c27c0e; }
+        /* CHAT CLEAN */
+        #chatBar { 
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 400px;
+            display: flex; align-items: center; gap: 8px; z-index: 100; 
+            background: rgba(0, 0, 0, 0.6); /* Fundo mais sutil */
+            padding: 5px; border-radius: 8px; /* Cantos menos arredondados, mais clean */
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: 0.2s;
+        }
+        #chatBar:focus-within { background: rgba(0, 0, 0, 0.9); border-color: #3498db; }
+
+        #chatInput { 
+            flex: 1; padding: 8px 10px; border: none; 
+            background: transparent; color: white; outline: none; 
+            font-family: 'Roboto', sans-serif; font-size: 0.9rem; 
+        }
+        #chatInput::placeholder { color: rgba(255,255,255,0.5); }
+
+        #chatSend { 
+            width: 35px; height: 35px; border-radius: 6px; border: none; 
+            background: #3498db; color: white; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+        }
+        #chatSend:hover { background: #2980b9; }
+
         .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 10px; z-index: 20; animation: popIn 0.2s; }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); } to { transform: translateX(-50%) scale(1); } }
 
-        /* MODAIS */
+        /* MODAIS (Mantidos) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 2px solid #fff; color: white; position: relative; max-height: 85vh; overflow-y: auto; }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 20; }
@@ -151,22 +156,20 @@
     <div id="gameArea">
         <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(10, 10, 'pokedex')">POKEDEX<br>💾</div>
         <div class="machine" id="pc-online" onclick="moveToAndInteract(90, 10, 'online')">ONLINE<br>🌐</div>
-        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 40, 'battle')">TREINO<br>⚔️</div>
+        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 45, 'battle')">TREINO<br>⚔️</div>
         <div class="machine" id="pc-create" onclick="moveToAndInteract(90, 90, 'create')">LAB<br>🧪</div>
+
+        <div id="chatBar">
+            <input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30">
+            <button id="chatSend" onclick="sendChat()">➤</button>
+        </div>
     </div>
 
-    <!-- TOAST & CHAT -->
     <div id="toastContainer"></div>
-    <div id="chatBar">
-        <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="50">
-        <button id="chatSend" onclick="sendChat()">💬</button>
-    </div>
 
-    <!-- Modais -->
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div style="padding:10px; background:#16213e; text-align:center; font-weight:bold; border-bottom:1px solid #333;">BANCO DE DADOS</div><div class="pokedex-container"><div class="dex-list"><% entities.forEach((e, index) => { %><div class="dex-item" onclick="selectDexMonster(<%= index %>, this)"><% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="dex-thumb"><% } else { %><span>📦</span><% } %><div class="dex-name"><%= e.name %></div></div><% }) %></div><div class="dex-details" id="dexDetailsView"><div style="margin:auto; color:#777;">Selecione um monstro.</div></div></div></div></div>
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalOnline')">X</button><h2 style="text-align:center; color:#3498db">Batalha Online</h2><p style="text-align:center">Escolha seu lutador.</p><select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button onclick="startSearch()">PROCURAR</button><div id="searchStatus" style="display:none; text-align:center; margin-top:10px;"><div class="loader"></div><small>Aguardando...</small></div></div></div>
     <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c">Treino Local</h2><form action="/battle" method="POST"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select><label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button type="submit" style="background:#e74c3c">INICIAR</button></form></div></div>
-    
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
     <script>
@@ -184,7 +187,9 @@
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
-                el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y);
+                el.style.left = data.x + '%'; el.style.top = data.y + '%'; 
+                // Z-Index Update based on Y
+                el.style.zIndex = Math.floor(data.y); 
                 el.setAttribute('data-dir', data.direction); el.classList.add('walking');
                 const stopWalk = () => { el.classList.remove('walking'); };
                 el.removeEventListener('transitionend', stopWalk); el.addEventListener('transitionend', stopWalk);
@@ -216,7 +221,8 @@
         function createPlayerElement(p) {
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player';
             div.style.left = p.x + '%'; div.style.top = p.y + '%';
-            div.setAttribute('data-skin', p.skin || 'char1'); div.setAttribute('data-dir', p.direction || 'down');
+            div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`;
+            div.setAttribute('data-dir', p.direction || 'down');
             div.style.zIndex = Math.floor(p.y);
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name;
             div.appendChild(label); gameArea.appendChild(div);
@@ -231,7 +237,9 @@
         });
 
         function moveToAndInteract(targetX, targetY, type) {
-            socket.emit('move_player', { x: targetX, y: targetY + 5 });
+            // CORREÇÃO: Move para exatamente a mesma posição Y da máquina (para ficar "dentro")
+            socket.emit('move_player', { x: targetX, y: targetY }); 
+            
             setTimeout(() => {
                 if (type === 'create') window.location.href = '/create';
                 else if (type === 'pokedex') { document.getElementById('modalPokedex').style.display = 'flex'; if(allMonsters.length > 0) selectDexMonster(0, document.querySelector('.dex-item')); }
