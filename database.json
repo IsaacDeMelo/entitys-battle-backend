@@ -229,5 +229,55 @@
       }
     ],
     "sprite": "1765925396206.gif"
+  },
+  {
+    "id": "1765935146117",
+    "name": "Little Mecha Knight",
+    "type": "steel",
+    "hp": "135",
+    "energy": "100",
+    "stats": {
+      "attack": "23",
+      "defense": "30",
+      "speed": "-1"
+    },
+    "moves": [
+      {
+        "id": "thunder_shock",
+        "name": "Thunder Shock",
+        "type": "attack",
+        "power": 6,
+        "cost": 3,
+        "icon": "⚡",
+        "element": "electric"
+      },
+      {
+        "id": "thunderbolt",
+        "name": "Thunderbolt",
+        "type": "attack",
+        "power": 10,
+        "cost": 5,
+        "icon": "🌩️",
+        "element": "electric"
+      },
+      {
+        "id": "karate_chop",
+        "name": "Karate Chop",
+        "type": "attack",
+        "power": 8,
+        "cost": 3,
+        "icon": "🥋",
+        "element": "fighter"
+      },
+      {
+        "id": "iron_defense",
+        "name": "Iron Defense",
+        "type": "defend",
+        "power": 0,
+        "cost": 2,
+        "icon": "🛡️"
+      }
+    ],
+    "sprite": "1765935145822.gif"
   }
 ]
