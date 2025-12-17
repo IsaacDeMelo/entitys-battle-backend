@@ -6,7 +6,6 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
 
-// CARREGA DADOS DO JOGO
 let GameData;
 try { GameData = require('./gameData'); } 
 catch (e) { GameData = { EntityType: {}, MoveType: {}, TypeChart: {}, MOVES_LIBRARY: {} }; }
@@ -16,7 +15,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// CONFIGURAÇÃO DB
 const DB_FILE = path.join(__dirname, 'database.json');
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -39,19 +37,11 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// =====================
-// ESTADOS (MEMÓRIA)
-// =====================
 const activeBattles = {}; 
 const onlineBattles = {}; 
+const lobbyPlayers = {}; 
 let matchmakingQueue = []; 
 
-// ESTADO DO LOBBY (SALA)
-const lobbyPlayers = {}; // { socketId: { name, x, y, color } }
-
-// =====================
-// CLASSE ENTIDADE
-// =====================
 class Entity {
     constructor(data) {
         this.id = data.id;
@@ -62,15 +52,13 @@ class Entity {
         this.maxEnergy = parseInt(data.maxEnergy || data.energy || 50);
         this.energy = parseInt(data.energy || 50);
         const statsSource = data.stats || data; 
-        this.stats = { 
-            attack: parseInt(statsSource.attack || 10), 
-            defense: parseInt(statsSource.defense || 5), 
-            speed: parseInt(statsSource.speed || 5) 
-        };
+        this.stats = { attack: parseInt(statsSource.attack || 10), defense: parseInt(statsSource.defense || 5), speed: parseInt(statsSource.speed || 5) };
         this.effects = []; 
         this.sprite = data.sprite; 
         this.isDefending = false;
         this.playerName = data.playerName || null;
+        // NOVO: Guarda o ID da skin para retorno ao lobby
+        this.skin = data.skin || 'char1';
 
         const movesList = data.moves || [];
         this.moves = movesList.map(m => {
@@ -81,12 +69,9 @@ class Entity {
     }
 }
 
-// ... (Funções processAction, processStartTurn, duelAutomatic MANTIDAS IGUAIS AO ANTERIOR)
-// Vou omitir aqui para economizar espaço, mas elas devem estar no arquivo final exatamente como antes.
-// Copie as funções de lógica de batalha do código anterior para cá.
+// (Funções processAction, processStartTurn, duelAutomatic MANTIDAS IGUAIS - Omitidas para brevidade, mas devem estar aqui)
 function processAction(attacker, defender, move, logArray) {
-    attacker.isDefending = false; 
-    attacker.energy -= move.cost;
+    attacker.isDefending = false; attacker.energy -= move.cost;
     logArray.push({ type: 'USE_MOVE', actorId: attacker.id, moveName: move.name, moveIcon: move.icon || '⚡', moveType: move.type, cost: move.cost, newEnergy: attacker.energy });
     if (move.type === 'defend') { attacker.isDefending = true; logArray.push({ type: 'DEFEND', actorId: attacker.id }); } 
     else if (move.type === 'heal') { const oldHp = attacker.hp; attacker.hp = Math.min(attacker.maxHp, attacker.hp + move.power); logArray.push({ type: 'HEAL', actorId: attacker.id, amount: attacker.hp - oldHp, newHp: attacker.hp }); } 
@@ -125,38 +110,42 @@ function duelAutomatic(entityA, entityB) {
 }
 
 // =====================
-// WEBSOCKET LOGIC
+// SOCKET.IO
 // =====================
 io.on('connection', (socket) => {
     
-    // --- LÓGICA DO LOBBY ---
-    socket.on('enter_lobby', (name) => {
-        // Define posição inicial aleatória perto da entrada (embaixo)
+    // LOBBY
+    socket.on('enter_lobby', ({ name, charId }) => {
         lobbyPlayers[socket.id] = {
             id: socket.id,
-            name: name || `Treinador ${socket.id.substr(0,4)}`,
-            x: 50, // % horizontal
-            y: 80, // % vertical
-            color: `hsl(${Math.random() * 360}, 70%, 50%)` // Cor única
+            name: name || `Player ${socket.id.substr(0,4)}`,
+            skin: charId || 'char1',
+            x: 50, y: 80, direction: 'down', isMoving: false
         };
-        // Envia lista completa para quem entrou
         socket.emit('lobby_state', lobbyPlayers);
-        // Avisa outros que alguém entrou
         socket.broadcast.emit('player_joined', lobbyPlayers[socket.id]);
     });
 
     socket.on('move_player', (coords) => {
         if (lobbyPlayers[socket.id]) {
-            lobbyPlayers[socket.id].x = coords.x;
-            lobbyPlayers[socket.id].y = coords.y;
-            io.emit('player_moved', { id: socket.id, x: coords.x, y: coords.y });
+            const p = lobbyPlayers[socket.id];
+            const dx = coords.x - p.x; const dy = coords.y - p.y;
+            let dir = p.direction;
+            if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up';
+            p.x = coords.x; p.y = coords.y; p.direction = dir; p.isMoving = true;
+            io.emit('player_moved', { id: socket.id, x: coords.x, y: coords.y, direction: dir });
         }
     });
 
-    // --- LÓGICA DA BATALHA ONLINE (Mantida) ---
-    socket.on('join_room', (roomId) => { socket.join(roomId); });
+    socket.on('send_chat', (message) => {
+        const sanitized = message.substring(0, 50);
+        io.emit('chat_message', { id: socket.id, msg: sanitized });
+    });
 
-    socket.on('find_match', (monsterId, playerName) => {
+    // BATALHA ONLINE
+    socket.on('join_room', (roomId) => socket.join(roomId));
+
+    socket.on('find_match', (monsterId, playerName, playerSkin) => {
         const entities = readDB();
         const monsterData = entities.find(e => e.id == monsterId);
         if(!monsterData) return;
@@ -164,6 +153,7 @@ io.on('connection', (socket) => {
         const playerEntity = new Entity(monsterData);
         playerEntity.id = socket.id; 
         playerEntity.playerName = playerName; 
+        playerEntity.skin = playerSkin; // Salva a skin na entidade de batalha
         
         matchmakingQueue.push({ socket, entity: playerEntity });
 
@@ -174,7 +164,6 @@ io.on('connection', (socket) => {
             
             onlineBattles[roomId] = { p1: p1.entity, p2: p2.entity, turn: 1 };
 
-            // Redireciona ambos via evento de socket
             p1.socket.emit('match_found', { roomId, me: p1.entity, opponent: p2.entity });
             p2.socket.emit('match_found', { roomId, me: p2.entity, opponent: p1.entity });
         }
@@ -182,13 +171,14 @@ io.on('connection', (socket) => {
 
     socket.on('online_move', ({ roomId, moveId, playerId }) => {
         const battle = onlineBattles[roomId];
-        if (!battle) return;
+        if (!battle || battle.processing) return;
         const isP1 = (playerId === battle.p1.id);
         const attacker = isP1 ? battle.p1 : battle.p2;
-        if (battle.processing) return;
+        
         let chosenMove = null;
         if (moveId !== 'rest') chosenMove = attacker.moves.find(m => m.id === moveId);
         if (chosenMove && attacker.energy < chosenMove.cost) chosenMove = null;
+
         attacker.nextMove = chosenMove || 'rest';
         attacker.ready = true;
 
@@ -196,6 +186,7 @@ io.on('connection', (socket) => {
             battle.processing = true;
             const events = []; const p1 = battle.p1; const p2 = battle.p2;
             processStartTurn(p1, events); processStartTurn(p2, events);
+            
             if (p1.hp > 0 && p2.hp > 0) {
                 let first = p1.stats.speed >= p2.stats.speed ? p1 : p2; let second = first === p1 ? p2 : p1;
                 const runMove = (atk, def) => {
@@ -204,34 +195,44 @@ io.on('connection', (socket) => {
                 };
                 runMove(first, second); if (second.hp > 0) runMove(second, first);
             }
+
             p1.ready = false; p2.ready = false; delete p1.nextMove; delete p2.nextMove; battle.processing = false;
-            let winnerId = null; if (p1.hp <= 0 || p2.hp <= 0) { if (p1.hp > 0) winnerId = p1.id; else if (p2.hp > 0) winnerId = p2.id; else winnerId = 'draw'; delete onlineBattles[roomId]; }
+
+            let winnerId = null;
+            if (p1.hp <= 0 || p2.hp <= 0) {
+                if (p1.hp > 0) winnerId = p1.id; else if (p2.hp > 0) winnerId = p2.id; else winnerId = 'draw';
+                
+                // --- NOVO: AVISO GLOBAL DE VITÓRIA ---
+                if (winnerId !== 'draw') {
+                    const wName = (winnerId === p1.id) ? p1.playerName : p2.playerName;
+                    const lName = (winnerId === p1.id) ? p2.playerName : p1.playerName;
+                    const wMon = (winnerId === p1.id) ? p1.name : p2.name;
+                    // Envia para todo mundo no lobby
+                    io.emit('global_message', { type: 'win', msg: `🏆 ${wName} (${wMon}) venceu ${lName}!` });
+                }
+                
+                delete onlineBattles[roomId];
+            }
+
             io.to(roomId).emit('turn_result', { events, winnerId });
         } else { socket.to(roomId).emit('opponent_ready'); }
     });
 
     socket.on('disconnect', () => {
-        if (lobbyPlayers[socket.id]) {
-            delete lobbyPlayers[socket.id];
-            io.emit('player_left', socket.id);
-        }
+        if (lobbyPlayers[socket.id]) { delete lobbyPlayers[socket.id]; io.emit('player_left', socket.id); }
         matchmakingQueue = matchmakingQueue.filter(p => p.socket.id !== socket.id);
     });
 });
 
-// =====================
-// ROTAS HTTP
-// =====================
-
-// ROTA 1: Login (Tela inicial real)
+// ROTAS
 app.get('/', (req, res) => { res.render('login'); });
 
-// ROTA 2: Lobby/Sala (Recebe nome via POST ou Query)
 app.post('/room', (req, res) => {
     const rawList = readDB();
     const entities = rawList.map(data => new Entity(data));
     const playerName = req.body.playerName || "Visitante";
-    res.render('room', { playerName, entities }); 
+    const playerSkin = req.body.skin || "char1"; 
+    res.render('room', { playerName, playerSkin, entities }); 
 });
 
 app.get('/create', (req, res) => { res.render('create', { types: EntityType, moves: MOVES_LIBRARY }); });
@@ -243,7 +244,6 @@ app.post('/create', upload.single('sprite'), (req, res) => {
     if(finalMoves.length === 0) finalMoves.push({ ...MOVES_LIBRARY['tackle'], id: 'tackle' });
     const newEntity = { id: Date.now().toString(), name, type, hp, energy, stats: { attack, defense, speed }, moves: finalMoves, sprite: req.file ? req.file.filename : null };
     const entities = readDB(); entities.push(newEntity); saveDB(entities);
-    // Redireciona pro login para não quebrar fluxo
     res.redirect('/');
 });
 
@@ -254,23 +254,22 @@ app.post('/battle/online', (req, res) => {
 });
 
 app.post('/battle', (req, res) => {
-    const { fighter1, fighter2, mode, playerName } = req.body; // playerName vem do hidden input no lobby
+    const { fighter1, fighter2, mode, playerName, playerSkin } = req.body; 
     const entities = readDB();
     const e1 = entities.find(e => e.id == fighter1);
     const e2 = entities.find(e => e.id == fighter2);
     if (!e1 || !e2) return res.redirect('/');
 
     try {
-        const entityA = new Entity(e1); entityA.id = 'p1_' + entityA.id; entityA.playerName = playerName || "Você";
-        const entityB = new Entity(e2); entityB.id = 'p2_' + entityB.id; entityB.playerName = "CPU";
+        const entityA = new Entity(e1); entityA.id = 'p1_' + entityA.id; entityA.playerName = playerName || "Você"; entityA.skin = playerSkin;
+        const entityB = new Entity(e2); entityB.id = 'p2_' + entityB.id; entityB.playerName = "CPU"; 
 
         if (mode === 'manual') {
             const battleId = Date.now().toString();
             activeBattles[battleId] = { p1: entityA, p2: entityB };
             res.render('battle', { p1: entityA, p2: entityB, battleMode: 'manual', battleId: battleId, myRoleId: entityA.id, battleData: JSON.stringify({ log: [{type: 'INIT'}] }) });
         } else {
-            const simP1 = new Entity(e1); simP1.id = entityA.id;
-            const simP2 = new Entity(e2); simP2.id = entityB.id;
+            const simP1 = new Entity(e1); simP1.id = entityA.id; const simP2 = new Entity(e2); simP2.id = entityB.id;
             const result = duelAutomatic(simP1, simP2);
             res.render('battle', { p1: entityA, p2: entityB, battleMode: 'auto', battleId: null, myRoleId: null, battleData: JSON.stringify(result) });
         }
@@ -278,7 +277,6 @@ app.post('/battle', (req, res) => {
 });
 
 app.post('/api/turn', (req, res) => {
-    // Mesma lógica de batalha manual do anterior
     const { battleId, moveId } = req.body;
     const battle = activeBattles[battleId];
     if(!battle) return res.status(404).json({ error: 'Batalha expirou' });
@@ -293,14 +291,9 @@ app.post('/api/turn', (req, res) => {
     let first, second;
     if(p1.stats.speed >= p2.stats.speed) { first = { actor: p1, target: p2, move: p1Move }; second = { actor: p2, target: p1, move: p2Move }; } 
     else { first = { actor: p2, target: p1, move: p2Move }; second = { actor: p1, target: p2, move: p1Move }; }
-    const runMove = (atk, def, mv) => {
-        if (!mv) { atk.energy = Math.min(atk.maxEnergy, atk.energy + 5); atk.isDefending = false; events.push({ type: 'REST', actorId: atk.id, newEnergy: atk.energy }); } 
-        else { processAction(atk, def, mv, events); }
-    }
-    runMove(first.actor, first.target, first.move);
-    if(second.actor.hp > 0) runMove(second.actor, second.target, second.move);
-    let winnerId = null;
-    if (p1.hp <= 0 || p2.hp <= 0) { winnerId = p1.hp > 0 ? p1.id : p2.id; delete activeBattles[battleId]; }
+    const runMove = (atk, def, mv) => { if (!mv) { atk.energy = Math.min(atk.maxEnergy, atk.energy + 5); atk.isDefending = false; events.push({ type: 'REST', actorId: atk.id, newEnergy: atk.energy }); } else { processAction(atk, def, mv, events); } }
+    runMove(first.actor, first.target, first.move); if(second.actor.hp > 0) runMove(second.actor, second.target, second.move);
+    let winnerId = null; if (p1.hp <= 0 || p2.hp <= 0) { winnerId = p1.hp > 0 ? p1.id : p2.id; delete activeBattles[battleId]; }
     res.json({ events, winnerId });
 });
 

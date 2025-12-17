@@ -91,7 +91,16 @@
                 <div class="bar-wrapper"><div class="bar-container" style="height: 8px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div><div class="stat-text" style="font-size: 0.6rem; color: #f1c40f;">ENERGIA: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div></div>
             </div>
         </div>
-        <div id="overlay"><h1 id="winnerText">VENCEDOR</h1><a href="/" class="btn-restart">MENU</a></div>
+        <div id="overlay">
+    <h1 id="winnerText">VENCEDOR</h1>
+    
+    <!-- BOTÃO PARA VOLTAR PARA A SALA -->
+    <form action="/room" method="POST">
+        <input type="hidden" name="playerName" value="<%= p1.playerName %>">
+        <input type="hidden" name="skin" value="<%= p1.skin %>">
+        <button type="submit" class="btn-restart">VOLTAR AO LOBBY</button>
+    </form>
+</div>
     </div>
 
     <div class="battle-log bottom-panel" id="logBox"></div>

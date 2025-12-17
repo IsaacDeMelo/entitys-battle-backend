@@ -3,287 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Centro Pokémon</title>
+    <title>Lobby</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* ESTILO DA SALA */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #000; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; }
         
-        #gameArea {
-            position: relative; width: 100vw; height: 100vh;
-            background: #2c3e50;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            cursor: crosshair;
-        }
-
-        /* OBJETOS / MÁQUINAS */
-        .machine {
-            position: absolute; width: 120px; height: 100px;
-            background: #34495e; border: 4px solid #7f8c8d;
-            border-radius: 10px; box-shadow: 0 10px 0 #1a252f;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: white; font-family: 'Press Start 2P'; font-size: 0.6rem; text-align: center;
-            cursor: pointer; z-index: 5; transition: transform 0.1s;
-        }
+        #gameArea { position: relative; width: 100vw; height: 100vh; background: #2c3e50; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 50px 50px; cursor: crosshair; }
+        
+        .machine { position: absolute; width: 100px; height: 80px; background: #34495e; border: 4px solid #7f8c8d; border-radius: 10px; box-shadow: 0 10px 0 #1a252f; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: 'Press Start 2P'; font-size: 0.5rem; text-align: center; cursor: pointer; z-index: 5; }
         .machine:active { transform: scale(0.95); }
-        .machine::after { content: '▼'; position: absolute; top: -20px; color: #f1c40f; animation: bounce 1s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-
-        /* Posicionamento das Máquinas (Em %) */
         #pc-pokedex { top: 10%; left: 10%; background: #27ae60; border-color: #2ecc71; }
         #pc-online { top: 10%; right: 10%; background: #2980b9; border-color: #3498db; }
         #pc-battle { top: 40%; left: 50%; transform: translateX(-50%); background: #c0392b; border-color: #e74c3c; }
-        #pc-create { bottom: 10%; right: 10%; background: #8e44ad; border-color: #9b59b6; }
+        #pc-create { bottom: 15%; right: 10%; background: #8e44ad; border-color: #9b59b6; }
 
-        /* JOGADORES */
-        .player {
-            position: absolute; width: 40px; height: 40px;
-            background: #fff; border-radius: 50%;
-            transform: translate(-50%, -50%); /* Centraliza no ponto */
-            transition: top 0.5s linear, left 0.5s linear; /* Movimento suave */
-            z-index: 10; border: 2px solid #000;
-            display: flex; justify-content: center;
-        }
-        .player-name {
-            position: absolute; top: -25px;
-            background: rgba(0,0,0,0.7); color: white;
-            padding: 2px 5px; border-radius: 4px;
-            font-size: 0.7rem; white-space: nowrap;
-            pointer-events: none;
-        }
+        .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; transform: translate(-50%, -50%); transition: top 0.5s linear, left 0.5s linear; z-index: 10; }
+        .player[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
+        .player[data-skin="char2"] { background-image: url('/uploads/char2.png'); }
+        .player[data-skin="char3"] { background-image: url('/uploads/char3.png'); }
+        .player[data-skin="char4"] { background-image: url('/uploads/char4.png'); }
+        .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
+        @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
+        .player[data-dir="down"]  { background-position-y: 0%; }
+        .player[data-dir="left"]  { background-position-y: 33.33%; }
+        .player[data-dir="right"] { background-position-y: 66.66%; }
+        .player[data-dir="up"]    { background-position-y: 100%; }
+        .player-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; }
 
-        /* MODAIS (Copiados e adaptados da versão anterior) */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 1000;
-            display: none; justify-content: center; align-items: center;
+        /* --- NOTIFICAÇÃO GLOBAL (TOAST) --- */
+        #toastContainer {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 10px; z-index: 2000;
+            width: 90%; max-width: 400px; pointer-events: none;
         }
-        .modal-content {
-            background: #1a1a2e; width: 90%; max-width: 400px;
-            padding: 20px; border-radius: 15px; border: 2px solid #fff;
-            color: white; position: relative; max-height: 80vh; overflow-y: auto;
+        .toast {
+            background: rgba(0, 0, 0, 0.9);
+            color: #f1c40f;
+            border: 2px solid #f1c40f;
+            padding: 15px; border-radius: 10px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.7rem; text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            animation: slideDown 0.5s ease-out;
         }
-        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; }
-        
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* --- CHAT CÁPSULA --- */
+        #chatBar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; display: flex; align-items: center; gap: 10px; z-index: 100; background: rgba(20, 26, 40, 0.95); border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); backdrop-filter: blur(5px); transition: transform 0.2s, border-color 0.2s; }
+        #chatBar:focus-within { transform: translateX(-50%) translateY(-2px); border-color: #f1c40f; }
+        #chatInput { flex: 1; padding: 10px 15px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
+        #chatSend { width: 45px; height: 45px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 #c27c0e; transition: 0.1s; }
+        #chatSend:active { transform: translateY(4px); box-shadow: 0 0 0 #c27c0e; }
+        .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 10px; z-index: 20; animation: popIn 0.2s; }
+        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
+        @keyframes popIn { from { transform: translateX(-50%) scale(0); } to { transform: translateX(-50%) scale(1); } }
+
+        /* MODAIS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 2px solid #fff; color: white; position: relative; max-height: 85vh; overflow-y: auto; }
+        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 20; }
         select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; }
         button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
         
-        /* Grid da Pokedex */
-        .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 10px; }
-        .roster-card { background: #222; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; border: 1px solid #444; }
-        .roster-img { width: 60px; height: 60px; object-fit: contain; }
-
-        /* Loader */
-        .loader { border: 4px solid #333; border-top: 4px solid #f1c40f; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Pokédex */
+        .pokedex-container { display: flex; flex: 1; overflow: hidden; }
+        #modalPokedex .modal-content { max-width: 700px; height: 500px; padding: 0; display: flex; flex-direction: column; }
+        .dex-list { width: 40%; background: #111; border-right: 2px solid #3498db; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .dex-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: #222; border-radius: 8px; cursor: pointer; border: 1px solid #333; }
+        .dex-item:hover, .dex-item.active { background: #3498db; border-color: #fff; }
+        .dex-thumb { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+        .dex-details { width: 60%; padding: 20px; overflow-y: auto; background: radial-gradient(circle at top right, #2c3e50, #1a1a2e); display: flex; flex-direction: column; align-items: center; }
+        .detail-img { width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; }
+        .type-badge { display: inline-block; padding: 4px 10px; border-radius: 15px; font-size: 0.7rem; background: #555; margin-top: 5px; }
+        .type-fire { background: #e74c3c; } .type-water { background: #3498db; } .type-plant { background: #2ecc71; } .type-electric { background: #f1c40f; color: #000; } .type-ice { background: #74b9ff; color: #000; } .type-flying { background: #a29bfe; } .type-fighter { background: #e67e22; } .type-ghost { background: #8e44ad; } .type-normal { background: #95a5a6; }
+        .detail-stats { width: 100%; margin: 20px 0; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; }
+        .stat-row { display: flex; align-items: center; margin-bottom: 5px; font-size: 0.8rem; }
+        .stat-bar-bg { flex: 1; height: 8px; background: #333; margin: 0 10px; border-radius: 4px; }
+        .stat-bar-fill { height: 100%; background: #2ecc71; border-radius: 4px; }
+        .detail-moves { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .move-pill { background: #222; padding: 8px; border-radius: 6px; font-size: 0.7rem; border: 1px solid #444; text-align: center; }
+        .loader { border: 4px solid #333; border-top: 4px solid #f1c40f; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 600px) { .pokedex-container { flex-direction: column; } .dex-list { width: 100%; height: 35%; flex-direction: row; overflow-x: auto; } .dex-details { width: 100%; height: 65%; } }
     </style>
 </head>
 <body>
 
-    <!-- ÁREA DO JOGO -->
     <div id="gameArea">
-        <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(10, 10, 'pokedex')">
-            POKEDEX<br>💾
-        </div>
-        <div class="machine" id="pc-online" onclick="moveToAndInteract(90, 10, 'online')">
-            ONLINE<br>🌐
-        </div>
-        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 40, 'battle')">
-            TREINO<br>⚔️
-        </div>
-        <div class="machine" id="pc-create" onclick="moveToAndInteract(90, 90, 'create')">
-            LAB<br>🧪
-        </div>
+        <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(10, 10, 'pokedex')">POKEDEX<br>💾</div>
+        <div class="machine" id="pc-online" onclick="moveToAndInteract(90, 10, 'online')">ONLINE<br>🌐</div>
+        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 40, 'battle')">TREINO<br>⚔️</div>
+        <div class="machine" id="pc-create" onclick="moveToAndInteract(90, 90, 'create')">LAB<br>🧪</div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer"></div>
+
+    <!-- CHAT -->
+    <div id="chatBar">
+        <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="50">
+        <button id="chatSend" onclick="sendChat()">💬</button>
     </div>
 
     <!-- MODAL POKEDEX -->
-    <div class="modal-overlay" id="modalPokedex">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('modalPokedex')">X</button>
-            <h2 style="text-align:center">Meus Monstros</h2>
-            <div class="roster-grid">
-                <% entities.forEach(e => { %>
-                    <div class="roster-card">
-                        <% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="roster-img"><% } else { %>📦<% } %>
-                        <div style="font-size:0.8rem; margin-top:5px;"><%= e.name %></div>
-                    </div>
-                <% }) %>
-            </div>
-        </div>
-    </div>
+    <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div style="padding:10px; background:#16213e; text-align:center; font-weight:bold; border-bottom:1px solid #333;">BANCO DE DADOS</div><div class="pokedex-container"><div class="dex-list"><% entities.forEach((e, index) => { %><div class="dex-item" onclick="selectDexMonster(<%= index %>, this)"><% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="dex-thumb"><% } else { %><span>📦</span><% } %><div class="dex-name"><%= e.name %></div></div><% }) %></div><div class="dex-details" id="dexDetailsView"><div style="margin:auto; color:#777;">Selecione um monstro.</div></div></div></div></div>
 
     <!-- MODAL ONLINE -->
-    <div class="modal-overlay" id="modalOnline">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('modalOnline')">X</button>
-            <h2 style="text-align:center; color:#3498db">Batalha Online</h2>
-            <p style="text-align:center; font-size:0.8rem">Escolha seu lutador e aguarde.</p>
-            <select id="onlineFighter">
-                <% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %>
-            </select>
-            <button onclick="startSearch()">PROCURAR OPONENTE</button>
-            <div id="searchStatus" style="display:none; text-align:center; margin-top:10px;">
-                <div class="loader"></div>
-                <small>Aguardando...</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL BATALHA (AUTO/MANUAL) -->
+    <div class="modal-overlay" id="modalOnline"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalOnline')">X</button><h2 style="text-align:center; color:#3498db">Batalha Online</h2><p style="text-align:center">Escolha seu lutador.</p><select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button onclick="startSearch()">PROCURAR</button><div id="searchStatus" style="display:none; text-align:center; margin-top:10px;"><div class="loader"></div><small>Aguardando...</small></div></div></div>
+    
+    <!-- MODAL BATTLE (AUTO/MANUAL) -->
     <div class="modal-overlay" id="modalBattle">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('modalBattle')">X</button>
             <h2 style="text-align:center; color:#e74c3c">Treino Local</h2>
             <form action="/battle" method="POST">
-                <!-- Envia o nome do jogador -->
                 <input type="hidden" name="playerName" value="<%= playerName %>">
-                
-                <label>Modo</label>
-                <select name="mode">
-                    <option value="auto">Automático</option>
-                    <option value="manual">Manual</option>
-                </select>
-                <label>Seu Lutador</label>
-                <select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
-                <label>Adversário (CPU)</label>
-                <select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
-                <button type="submit" style="background:#e74c3c; margin-top:15px;">INICIAR</button>
+                <input type="hidden" name="playerSkin" value="<%= playerSkin %>"> <!-- IMPORTANTE: Envia Skin -->
+                <label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select>
+                <label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
+                <label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
+                <button type="submit" style="background:#e74c3c">INICIAR</button>
             </form>
         </div>
     </div>
-
-    <!-- FORMS OCULTOS -->
-    <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;">
-        <input type="hidden" name="roomId" id="formRoomId">
-        <input type="hidden" name="meData" id="formMeData">
-        <input type="hidden" name="opponentData" id="formOpponentData">
-    </form>
+    
+    <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
     <script>
         const socket = io();
         const myName = "<%= playerName %>";
+        const mySkin = "<%= playerSkin %>";
         const gameArea = document.getElementById('gameArea');
-        
+        const allMonsters = <%- JSON.stringify(entities) %>; 
         let myId = null;
-        let isMoving = false;
 
-        // --- SISTEMA DE MOVIMENTO E LOBBY ---
-        
-        // Entrar no lobby
-        socket.on('connect', () => {
-            myId = socket.id;
-            socket.emit('enter_lobby', myName);
-        });
-
-        // Atualização inicial
-        socket.on('lobby_state', (players) => {
-            // Limpa tudo (menos as máquinas)
-            document.querySelectorAll('.player').forEach(el => el.remove());
-            
-            Object.values(players).forEach(p => createPlayerElement(p));
-        });
-
-        // Alguém entrou
-        socket.on('player_joined', (p) => {
-            createPlayerElement(p);
-        });
-
-        // Alguém moveu
+        socket.on('connect', () => { myId = socket.id; socket.emit('enter_lobby', { name: myName, charId: mySkin }); });
+        socket.on('lobby_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); Object.values(players).forEach(p => createPlayerElement(p)); });
+        socket.on('player_joined', (p) => createPlayerElement(p));
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
-                el.style.left = data.x + '%';
-                el.style.top = data.y + '%';
-                // Ajusta z-index baseado na profundidade (Y)
-                el.style.zIndex = Math.floor(data.y);
+                el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y);
+                el.setAttribute('data-dir', data.direction); el.classList.add('walking');
+                const stopWalk = () => { el.classList.remove('walking'); };
+                el.removeEventListener('transitionend', stopWalk); el.addEventListener('transitionend', stopWalk);
+                moveBubble(data.id);
             }
         });
+        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
 
-        // Alguém saiu
-        socket.on('player_left', (id) => {
-            const el = document.getElementById(`p-${id}`);
-            if (el) el.remove();
+        // --- SISTEMA DE NOTIFICAÇÃO GLOBAL ---
+        socket.on('global_message', (data) => {
+            if(data.type === 'win') showToast(data.msg);
         });
 
-        // Renderizar Jogador
-        function createPlayerElement(p) {
-            const div = document.createElement('div');
-            div.id = `p-${p.id}`;
-            div.className = 'player';
-            div.style.left = p.x + '%';
-            div.style.top = p.y + '%';
-            div.style.backgroundColor = p.color;
-            div.style.zIndex = Math.floor(p.y); // Profundidade simples
-
-            const label = document.createElement('div');
-            label.className = 'player-name';
-            label.innerText = p.name;
-            div.appendChild(label);
-
-            gameArea.appendChild(div);
+        function showToast(msg) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
         }
 
-        // Clicar para andar
-        gameArea.addEventListener('click', (e) => {
-            // Se clicar numa máquina, ignora (o onclick da máquina resolve)
-            if (e.target.classList.contains('machine')) return;
+        // --- CHAT ---
+        const chatInput = document.getElementById('chatInput');
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); });
+        document.getElementById('chatBar').addEventListener('click', (e) => { e.stopPropagation(); });
+        function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; } }
+        socket.on('chat_message', (data) => { showBubble(data.id, data.msg); });
+        function showBubble(playerId, text) {
+            const playerEl = document.getElementById(`p-${playerId}`); if (!playerEl) return;
+            const oldBubble = playerEl.querySelector('.chat-bubble'); if (oldBubble) oldBubble.remove();
+            const bubble = document.createElement('div'); bubble.className = 'chat-bubble'; bubble.innerText = text;
+            playerEl.appendChild(bubble);
+            setTimeout(() => { bubble.style.opacity = '0'; setTimeout(() => bubble.remove(), 200); }, 4000);
+        }
+        function moveBubble(id) {}
 
+        function createPlayerElement(p) {
+            const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player';
+            div.style.left = p.x + '%'; div.style.top = p.y + '%';
+            div.setAttribute('data-skin', p.skin || 'char1'); div.setAttribute('data-dir', p.direction || 'down');
+            div.style.zIndex = Math.floor(p.y);
+            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name;
+            div.appendChild(label); gameArea.appendChild(div);
+        }
+
+        gameArea.addEventListener('click', (e) => {
+            if (e.target.classList.contains('machine')) return;
             const rect = gameArea.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-            moveMe(x, y);
+            socket.emit('move_player', { x, y });
         });
 
-        function moveMe(x, y) {
-            socket.emit('move_player', { x, y });
-        }
-
-        // --- INTERAÇÕES ---
-
         function moveToAndInteract(targetX, targetY, type) {
-            // 1. Move até perto
-            moveMe(targetX, targetY + 5); // +5 pra ficar na frente da máquina
-
-            // 2. Abre modal após delay do "andar"
+            socket.emit('move_player', { x: targetX, y: targetY + 5 });
             setTimeout(() => {
-                if (type === 'create') {
-                    window.location.href = '/create'; // Redireciona pra criar
-                } else if (type === 'pokedex') {
-                    document.getElementById('modalPokedex').style.display = 'flex';
-                } else if (type === 'online') {
-                    document.getElementById('modalOnline').style.display = 'flex';
-                } else if (type === 'battle') {
-                    document.getElementById('modalBattle').style.display = 'flex';
-                }
-            }, 500);
+                if (type === 'create') window.location.href = '/create';
+                else if (type === 'pokedex') { document.getElementById('modalPokedex').style.display = 'flex'; if(allMonsters.length > 0) selectDexMonster(0, document.querySelector('.dex-item')); }
+                else if (type === 'online') document.getElementById('modalOnline').style.display = 'flex';
+                else if (type === 'battle') document.getElementById('modalBattle').style.display = 'flex';
+            }, 600);
         }
 
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
-        }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        // --- LÓGICA ONLINE (Modal) ---
+        // POKEDEX
+        function selectDexMonster(index, element) {
+            const mon = allMonsters[index];
+            const view = document.getElementById('dexDetailsView');
+            document.querySelectorAll('.dex-item').forEach(el => el.classList.remove('active'));
+            if(element) element.classList.add('active');
+            let imgHTML = mon.sprite ? `<img src="/uploads/${mon.sprite}" class="detail-img">` : `<div style="font-size:80px">❓</div>`;
+            let movesHTML = ''; mon.moves.forEach(m => { movesHTML += `<div class="move-pill"><strong>${m.icon||''} ${m.name}</strong><small>${m.cost} EN</small></div>`; });
+            view.innerHTML = `<div class="detail-header">${imgHTML}<div class="detail-name">${mon.name}</div><span class="type-badge type-${mon.type}">${mon.type}</span></div><div class="detail-stats">${renderStatBar('HP', mon.maxHp||mon.hp, 200, '#e74c3c')} ${renderStatBar('EN', mon.maxEnergy||mon.energy, 100, '#f1c40f')} ${renderStatBar('ATK', mon.stats.attack, 50, '#e67e22')} ${renderStatBar('DEF', mon.stats.defense, 50, '#3498db')} ${renderStatBar('SPD', mon.stats.speed, 20, '#9b59b6')}</div><div class="detail-moves">${movesHTML}</div>`;
+            setTimeout(() => { document.querySelectorAll('.stat-bar-fill').forEach(bar => { bar.style.width = bar.getAttribute('data-pct') + '%'; }); }, 50);
+        }
+        function renderStatBar(l, v, m, c) { return `<div class="stat-row"><span class="stat-label">${l}</span><div class="stat-bar-bg"><div class="stat-bar-fill" data-pct="${Math.min(100,(v/m)*100)}" style="width:0%; background:${c}"></div></div><span class="stat-val">${v}</span></div>`; }
+
+        // ONLINE
         function startSearch() {
             const fighterId = document.getElementById('onlineFighter').value;
             document.getElementById('searchStatus').style.display = 'block';
-            
-            // Envia o Nome Real do jogador para a batalha
-            socket.emit('find_match', fighterId, myName);
+            // IMPORTANTE: Agora enviamos a Skin no find_match também para recuperar depois se necessário (embora battle use objeto direto)
+            socket.emit('find_match', fighterId, myName, mySkin);
         }
-
         socket.on('match_found', (data) => {
             document.getElementById('formRoomId').value = data.roomId;
             document.getElementById('formMeData').value = JSON.stringify(data.me);
             document.getElementById('formOpponentData').value = JSON.stringify(data.opponent);
             document.getElementById('onlineRedirectForm').submit();
         });
-
     </script>
 </body>
 </html>
