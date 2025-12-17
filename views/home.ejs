@@ -7,22 +7,22 @@
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* (MANTENHA SEU CSS IGUAL - ESTOU RESUMINDO AQUI PARA CABER) */
         body { margin: 0; padding: 20px; font-family: 'Roboto', sans-serif; background: #0f0c29; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; width: 100%; overflow-x: hidden; box-sizing: border-box; }
         * { box-sizing: border-box; }
-        h1 { font-family: 'Press Start 2P', cursive; color: #f1c40f; text-align: center; margin-bottom: 20px; font-size: 1.5rem; }
+        h1 { font-family: 'Press Start 2P', cursive; color: #f1c40f; text-align: center; margin-bottom: 20px; font-size: 1.5rem; line-height: 1.4; max-width: 100%; }
+        h2 { border-bottom: 2px solid #333; padding-bottom: 10px; width: 100%; max-width: 800px; margin-top: 40px; color: #3498db; }
         .battle-card { background: #1a1a2e; padding: 25px; border-radius: 20px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-bottom: 20px; }
         label { color: #aaa; margin-bottom: 5px; display: block; font-size: 0.9rem; }
-        select { width: 100%; padding: 15px; margin-bottom: 15px; background: #2a2a3a; border: 1px solid #444; color: white; border-radius: 10px; font-size: 16px; }
+        select, input[type="text"] { width: 100%; padding: 15px; margin-bottom: 15px; background: #2a2a3a; border: 1px solid #444; color: white; border-radius: 10px; font-size: 16px; appearance: none; }
         .vs-badge { text-align: center; font-weight: bold; color: #e74c3c; margin: 10px 0; font-size: 1.2rem; font-family: 'Press Start 2P'; }
         button { width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 10px; }
         .btn-start { background: #e74c3c; color: white; box-shadow: 0 4px 0 #c0392b; }
+        .btn-start:active { transform: translateY(4px); box-shadow: none; }
         .btn-create { background: transparent; border: 2px solid #2ecc71; color: #2ecc71; margin-top: 10px; }
         .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
         .mode-opt { flex: 1; text-align: center; } .mode-opt input { display: none; }
         .mode-opt label { background: #2a2a3a; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; display: block; font-weight: bold; color: #888; width: 100%; }
         .mode-opt input:checked + label { background: #3498db; color: white; border-color: #2980b9; }
-        /* Grid e Modal CSS (MANTIDO) */
         .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; width: 100%; max-width: 800px; }
         .roster-card { background: #1e1e2e; border-radius: 15px; padding: 15px; text-align: center; border: 1px solid #333; cursor: pointer; transition: transform 0.2s; }
         .roster-img { width: 90px; height: 90px; object-fit: contain; } .roster-emoji { font-size: 50px; display: block; }
@@ -63,6 +63,9 @@
                 </div>
 
                 <div id="onlineInputs" style="display:none;">
+                    <label>Seu Nome para a Partida</label>
+                    <input type="text" id="playerNameInput" placeholder="Ex: Mestre Pokémon" required>
+
                     <label>Escolha seu Lutador</label>
                     <select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
                     <button type="button" class="btn-start" style="background:#3498db" onclick="startSearch()">Procurar Partida</button>
@@ -109,12 +112,18 @@
 
         function startSearch() {
             const fighterId = document.getElementById('onlineFighter').value;
+            const playerName = document.getElementById('playerNameInput').value;
+
+            if (!playerName.trim()) {
+                alert("Por favor, digite seu nome para a partida!");
+                return;
+            }
+
             document.getElementById('searchOverlay').style.display = 'flex';
-            socket.emit('find_match', fighterId);
+            socket.emit('find_match', fighterId, playerName); // Envia nome do jogador
         }
 
         socket.on('match_found', (data) => {
-            // data = { roomId, me, opponent }
             document.getElementById('formRoomId').value = data.roomId;
             document.getElementById('formMeData').value = JSON.stringify(data.me);
             document.getElementById('formOpponentData').value = JSON.stringify(data.opponent);
@@ -127,7 +136,7 @@
             document.getElementById('m-hp').innerText = mon.maxHp || mon.hp; document.getElementById('m-en').innerText = mon.maxEnergy || mon.energy;
             document.getElementById('m-atk').innerText = mon.stats.attack; document.getElementById('m-def').innerText = mon.stats.defense; document.getElementById('m-spd').innerText = mon.stats.speed;
             const imgEl = document.getElementById('m-img'); const emjEl = document.getElementById('m-emoji');
-            if (mon.sprite) { imgEl.src = "/uploads/" + mon.sprite; imgEl.style.display = "inline-block"; emjEl.style.display = "none"; } else { imgEl.style.display = "none"; emjEl.style.display = "block"; const typeEmojis = { fire: '🔥', water: '💧', plant: '🍃', ghost: '👻', fighter: '🥋', dark: '🌑' }; emjEl.innerText = typeEmojis[mon.type] || '❓'; }
+            if (mon.sprite) { imgEl.src = "/uploads/" + mon.sprite; imgEl.style.display = "inline-block"; emjEl.style.display = "none"; } else { imgEl.style.display = "none"; emjEl.style.display = "block"; const typeEmojis = { fire: '🔥', water: '💧', plant: '🍃', electric: '⚡', ice: '❄️', flying: '🌪️', fighter: '🥋', ghost: '👻', dark: '🌑', poison: '☠️', ground: '🏜️', rock: '🪨', steel: '🔩', dragon: '🐉', psychic: '🔮', bug: '🪲', fairy: '✨' }; emjEl.innerText = typeEmojis[mon.type] || '❓'; }
             const movesBox = document.getElementById('m-moves'); movesBox.innerHTML = ''; 
             if(mon.moves && mon.moves.length > 0) { mon.moves.forEach(move => { const div = document.createElement('div'); div.className = 'move-tag'; div.innerHTML = `<strong>${move.icon || ''} ${move.name}</strong> <span style="color:#f1c40f">${move.cost} EN</span>`; movesBox.appendChild(div); }); } else { movesBox.innerHTML = '<span style="grid-column:span 2; text-align:center; color:#555;">Sem golpes</span>'; }
             document.getElementById('modalOverlay').style.display = 'flex';

@@ -6,7 +6,6 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
 
-// TENTA IMPORTAR GAMEDATA
 let GameData;
 try { GameData = require('./gameData'); } 
 catch (e) { GameData = { EntityType: {}, MoveType: {}, TypeChart: {}, MOVES_LIBRARY: {} }; }
@@ -28,6 +27,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 function readDB() {
+    if (!fs.existsSync(DB_FILE)) { fs.writeFileSync(DB_FILE, JSON.stringify([])); return []; }
     try { return JSON.parse(fs.readFileSync(DB_FILE, 'utf-8')); } catch (e) { return []; }
 }
 function saveDB(data) { fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2)); }
@@ -51,21 +51,27 @@ class Entity {
         this.hp = parseInt(data.hp || 100);
         this.maxEnergy = parseInt(data.maxEnergy || data.energy || 50);
         this.energy = parseInt(data.energy || 50);
+        
         const statsSource = data.stats || data; 
         this.stats = { 
             attack: parseInt(statsSource.attack || 10), 
             defense: parseInt(statsSource.defense || 5), 
             speed: parseInt(statsSource.speed || 5) 
         };
+        
         this.effects = []; 
         this.sprite = data.sprite; 
         this.isDefending = false;
+
+        // NOVO: Adiciona o playerName se ele existir nos dados
+        this.playerName = data.playerName || null;
+
         const movesList = data.moves || [];
         this.moves = movesList.map(m => {
             if(m && m.id && MOVES_LIBRARY[m.id]) return { ...MOVES_LIBRARY[m.id], id: m.id };
             return { ...MOVES_LIBRARY['tackle'] || { name: 'Hit', power: 5, cost: 1, type: 'attack' }, id: 'tackle' };
         });
-        if(this.moves.length === 0) this.moves.push({ ...MOVES_LIBRARY['tackle'], id: 'tackle' });
+        if(this.moves.length === 0 && MOVES_LIBRARY['tackle']) this.moves.push({ ...MOVES_LIBRARY['tackle'], id: 'tackle' });
     }
 }
 
@@ -149,26 +155,24 @@ function duelAutomatic(entityA, entityB) {
 }
 
 // =====================
-// WEBSOCKET (SOCKET.IO)
+// WEBSOCKET (ONLINE)
 // =====================
 io.on('connection', (socket) => {
     
-    // --- CORREÇÃO: RECONEXÃO NA SALA ---
-    // Quando a página de batalha carrega, o novo socket pede para entrar na sala
     socket.on('join_room', (roomId) => {
         socket.join(roomId);
-        console.log(`Socket ${socket.id} entrou na sala ${roomId}`);
+        // console.log(`Socket ${socket.id} entrou na sala ${roomId}`);
     });
 
-    socket.on('find_match', (monsterId) => {
+    // NOVO: socket.on('find_match') agora aceita playerName
+    socket.on('find_match', (monsterId, playerName) => {
         const entities = readDB();
         const monsterData = entities.find(e => e.id == monsterId);
         if(!monsterData) return;
 
         const playerEntity = new Entity(monsterData);
-        // O ID do monstro na batalha será o ID do Socket ORIGINAL da busca
-        // Isso serve como uma "Chave de Sessão"
         playerEntity.id = socket.id; 
+        playerEntity.playerName = playerName; // Guarda o nome do jogador
         
         matchmakingQueue.push({ socket, entity: playerEntity });
 
@@ -177,14 +181,9 @@ io.on('connection', (socket) => {
             const p2 = matchmakingQueue.shift();
             const roomId = `room_${Date.now()}`;
             
-            // Cria a sala
             onlineBattles[roomId] = { p1: p1.entity, p2: p2.entity, turn: 1 };
 
-            // AVISOS
-            // P1 recebe: Eu sou P1, Ele é P2
             p1.socket.emit('match_found', { roomId, me: p1.entity, opponent: p2.entity });
-            
-            // P2 recebe: Eu sou P2, Ele é P1
             p2.socket.emit('match_found', { roomId, me: p2.entity, opponent: p1.entity });
         }
     });
@@ -193,8 +192,6 @@ io.on('connection', (socket) => {
         const battle = onlineBattles[roomId];
         if (!battle) return;
 
-        // --- CORREÇÃO: IDENTIFICAÇÃO SEGURA ---
-        // Verificamos se o ID enviado pelo cliente bate com P1 ou P2 da sala
         const isP1 = (playerId === battle.p1.id);
         const attacker = isP1 ? battle.p1 : battle.p2;
         
@@ -243,7 +240,6 @@ io.on('connection', (socket) => {
                 delete onlineBattles[roomId];
             }
 
-            // Envia para a sala (os novos sockets escutam isso)
             io.to(roomId).emit('turn_result', { events, winnerId });
         } else {
             socket.to(roomId).emit('opponent_ready');
@@ -280,22 +276,18 @@ app.post('/create', upload.single('sprite'), (req, res) => {
     res.redirect('/');
 });
 
-// ROTA ONLINE
 app.post('/battle/online', (req, res) => {
     const { roomId, meData, opponentData } = req.body;
     
-    // Converte de volta para objeto
     const me = JSON.parse(meData);
     const op = JSON.parse(opponentData);
 
-    // O Player 1 da TELA é sempre VOCÊ ("me")
-    // O Player 2 da TELA é sempre o OPONENTE ("op")
     res.render('battle', { 
-        p1: me, 
-        p2: op, 
+        p1: me, // VOCÊ é sempre p1 na tela
+        p2: op, // OPONENTE é sempre p2 na tela
         battleMode: 'online', 
         battleId: roomId,
-        myRoleId: me.id, // O ID que o servidor conhece como "meu"
+        myRoleId: me.id, 
         battleData: JSON.stringify({ log: [{type: 'INIT'}] })
     });
 });
@@ -325,7 +317,6 @@ app.post('/battle', (req, res) => {
 });
 
 app.post('/api/turn', (req, res) => {
-    // API para modo Manual (Local)
     const { battleId, moveId } = req.body;
     const battle = activeBattles[battleId];
     if(!battle) return res.status(404).json({ error: 'Batalha expirou' });
