@@ -46,7 +46,10 @@
         /* --- EDIFÍCIOS (MÁQUINAS) --- */
         .machine { 
             position: absolute; 
-            width: 140px; height: 120px; 
+            
+            /* AUMENTO DE TAMANHO AQUI */
+            width: 180px;  
+            height: 160px; 
             
             background-color: transparent; 
             border: none; 
@@ -69,10 +72,9 @@
             transition: transform 0.2s, filter 0.2s;
             filter: drop-shadow(0 10px 5px rgba(0,0,0,0.5));
 
-            /* --- CORREÇÃO DO AZUL AO CLICAR --- */
-            -webkit-tap-highlight-color: transparent; /* Remove flash azul no mobile */
-            outline: none; /* Remove borda de foco */
-            user-select: none; /* Impede seleção */
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            user-select: none;
         }
 
         .machine:hover {
@@ -85,29 +87,29 @@
         /* POSIÇÕES */
         /* Galeria: Topo Esquerda */
         #pc-pokedex { 
-            top: 5%; left: 2%; 
+            top: 2%; left: -2%; /* Ajuste fino pra não cortar */
             background-image: url('/uploads/pokedex_building.png'); 
         }
         
         /* Online: Topo Direita */
         #pc-online { 
-            top: 5%; right: 2%; 
+            top: 2%; right: -2%; 
             background-image: url('/uploads/online_building.png'); 
         }
         
-        /* Arena: Centro */
+        /* Arena: Centro (GIGANTE) */
         #pc-battle { 
-            top: 35%; left: 50%; transform: translateX(-50%); 
-            width: 160px; height: 140px; 
+            top: 32%; left: 50%; transform: translateX(-50%); 
+            width: 220px; height: 200px; /* Arena maior que as outras */
             background-image: url('/uploads/arena_building.png'); 
             z-index: 4; 
         }
         
         /* Lab: Baixo Esquerda */
         #pc-create { 
-            bottom: 15%; left: 5%; 
+            bottom: 5%; left: 2%; /* Mais pra baixo e esquerda */
             background-image: url('/uploads/lab_building.png'); 
-            z-index: 90; /* Z-index alto para o boneco entrar "atrás" da fachada se quiser, ou ajuste para 6 se quiser na frente */
+            z-index: 90; 
         }
 
         /* --- PLAYER --- */
@@ -176,12 +178,6 @@
 <body>
 
     <div id="gameArea">
-        <!-- 
-           COORDENADAS RECALCULADAS PARA CENTRALIZAR O BONECO:
-           Ex: Pokedex está em left:2% (aprox 10px no 500px). Largura 140px. Centro = 10 + 70 = 80px. 
-           80px de 500px é 16%. 
-           Usei essa lógica para todas.
-        -->
         <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(16, 18, 'pokedex')">
             GALERIA
         </div>
@@ -196,18 +192,17 @@
         </div>
     </div>
 
-    <!-- TOAST & CHAT -->
     <div id="toastContainer"></div>
+
     <div id="chatBar">
         <input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30">
         <button id="chatSend" onclick="sendChat()">💬</button>
     </div>
 
-    <!-- MODAIS MANTIDOS (IGUAL ANTERIOR) -->
+    <!-- Modais (Mantidos) -->
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div style="padding:10px; background:#16213e; text-align:center; font-weight:bold; border-bottom:1px solid #333;">BANCO DE DADOS</div><div class="pokedex-container"><div class="dex-list"><% entities.forEach((e, index) => { %><div class="dex-item" onclick="selectDexMonster(<%= index %>, this)"><% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="dex-thumb"><% } else { %><span>📦</span><% } %><div class="dex-name"><%= e.name %></div></div><% }) %></div><div class="dex-details" id="dexDetailsView"><div style="margin:auto; color:#777;">Selecione um monstro.</div></div></div></div></div>
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalOnline')">X</button><h2 style="text-align:center; color:#3498db">Batalha Online</h2><p style="text-align:center">Escolha seu lutador.</p><select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button onclick="startSearch()">PROCURAR</button><div id="searchStatus" style="display:none; text-align:center; margin-top:10px;"><div class="loader"></div><small>Aguardando...</small></div></div></div>
     <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c">Treino Local</h2><form action="/battle" method="POST"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select><label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button type="submit" style="background:#e74c3c">INICIAR</button></form></div></div>
-    
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
     <script>
@@ -226,7 +221,6 @@
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
                 el.style.left = data.x + '%'; el.style.top = data.y + '%'; 
-                // Ajuste de Z-index para profundidade (O boneco fica na frente ou atrás dependendo do Y)
                 el.style.zIndex = Math.floor(data.y); 
                 el.setAttribute('data-dir', data.direction); el.classList.add('walking');
                 const stopWalk = () => { el.classList.remove('walking'); };
@@ -259,7 +253,7 @@
         function createPlayerElement(p) {
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player';
             div.style.left = p.x + '%'; div.style.top = p.y + '%';
-            div.setAttribute('data-skin', p.skin || 'char1'); 
+            div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`;
             div.setAttribute('data-dir', p.direction || 'down');
             div.style.zIndex = Math.floor(p.y);
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name;
