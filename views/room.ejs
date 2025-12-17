@@ -19,15 +19,13 @@
         #pc-battle { top: 40%; left: 50%; transform: translateX(-50%); background: #c0392b; border-color: #e74c3c; }
         #pc-create { bottom: 15%; right: 10%; background: #8e44ad; border-color: #9b59b6; }
 
-        /* PLAYER */
-        .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; transform: translate(-50%, -50%); transition: top 0.5s linear, left 0.5s linear; z-index: 10; }
-        
-        /* SKINS */
-        .player[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
-        .player[data-skin="char2"] { background-image: url('/uploads/char2.png'); }
-        .player[data-skin="char3"] { background-image: url('/uploads/char3.png'); }
-        .player[data-skin="char4"] { background-image: url('/uploads/char4.png'); }
-        
+        /* PLAYER - Agora sem backgroundImage fixo no CSS */
+        .player {
+            position: absolute; width: 48px; height: 48px; 
+            background-size: 400% auto; image-rendering: pixelated; 
+            transform: translate(-50%, -50%); transition: top 0.5s linear, left 0.5s linear; z-index: 10;
+        }
+
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         .player[data-dir="down"]  { background-position-y: 0%; }
@@ -36,7 +34,10 @@
         .player[data-dir="up"]    { background-position-y: 100%; }
         .player-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; }
 
-        /* CHAT */
+        /* ... RESTO DO CSS MANTIDO (Modais, Chat, etc) ... */
+        #toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 2000; width: 90%; max-width: 400px; pointer-events: none; }
+        .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 15px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.7rem; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); animation: slideDown 0.5s ease-out; }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         #chatBar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; display: flex; align-items: center; gap: 10px; z-index: 100; background: rgba(20, 26, 40, 0.95); border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); backdrop-filter: blur(5px); transition: transform 0.2s, border-color 0.2s; }
         #chatBar:focus-within { transform: translateX(-50%) translateY(-2px); border-color: #f1c40f; }
         #chatInput { flex: 1; padding: 10px 15px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
@@ -45,18 +46,11 @@
         .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 10px; z-index: 20; animation: popIn 0.2s; }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); } to { transform: translateX(-50%) scale(1); } }
-
-        /* NOTIFICAÇÃO GLOBAL */
-        #toastContainer { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 2000; width: 90%; max-width: 400px; pointer-events: none; }
-        .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 15px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.7rem; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); animation: slideDown 0.5s ease-out; }
-        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-        /* MODAIS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: none; justify-content: center; align-items: center; }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 2px solid #fff; color: white; position: relative; max-height: 85vh; overflow-y: auto; }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 20; }
-        
-        /* Pokédex */
+        select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; }
+        button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
         .pokedex-container { display: flex; flex: 1; overflow: hidden; }
         #modalPokedex .modal-content { max-width: 700px; height: 500px; padding: 0; display: flex; flex-direction: column; }
         .dex-list { width: 40%; background: #111; border-right: 2px solid #3498db; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -75,8 +69,6 @@
         .move-pill { background: #222; padding: 8px; border-radius: 6px; font-size: 0.7rem; border: 1px solid #444; text-align: center; }
         .loader { border: 4px solid #333; border-top: 4px solid #f1c40f; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @media (max-width: 600px) { .pokedex-container { flex-direction: column; } .dex-list { width: 100%; height: 35%; flex-direction: row; overflow-x: auto; } .dex-details { width: 100%; height: 65%; } }
-        select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; }
-        button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -88,52 +80,30 @@
         <div class="machine" id="pc-create" onclick="moveToAndInteract(90, 90, 'create')">LAB<br>🧪</div>
     </div>
 
-    <!-- TOAST CONTAINER -->
     <div id="toastContainer"></div>
 
-    <!-- CHAT BAR -->
     <div id="chatBar">
         <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="50">
         <button id="chatSend" onclick="sendChat()">💬</button>
     </div>
 
-    <!-- MODAIS -->
+    <!-- MODAIS MANTIDOS (IGUAL ANTERIOR) -->
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div style="padding:10px; background:#16213e; text-align:center; font-weight:bold; border-bottom:1px solid #333;">BANCO DE DADOS</div><div class="pokedex-container"><div class="dex-list"><% entities.forEach((e, index) => { %><div class="dex-item" onclick="selectDexMonster(<%= index %>, this)"><% if(e.sprite) { %><img src="/uploads/<%= e.sprite %>" class="dex-thumb"><% } else { %><span>📦</span><% } %><div class="dex-name"><%= e.name %></div></div><% }) %></div><div class="dex-details" id="dexDetailsView"><div style="margin:auto; color:#777;">Selecione um monstro.</div></div></div></div></div>
-    
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalOnline')">X</button><h2 style="text-align:center; color:#3498db">Batalha Online</h2><p style="text-align:center">Escolha seu lutador.</p><select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button onclick="startSearch()">PROCURAR</button><div id="searchStatus" style="display:none; text-align:center; margin-top:10px;"><div class="loader"></div><small>Aguardando...</small></div></div></div>
-    
-    <div class="modal-overlay" id="modalBattle">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('modalBattle')">X</button>
-            <h2 style="text-align:center; color:#e74c3c">Treino Local</h2>
-            <form action="/battle" method="POST">
-                <input type="hidden" name="playerName" value="<%= playerName %>">
-                <input type="hidden" name="playerSkin" value="<%= playerSkin %>">
-                <label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select>
-                <label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
-                <label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
-                <button type="submit" style="background:#e74c3c">INICIAR</button>
-            </form>
-        </div>
-    </div>
-    
+    <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c">Treino Local</h2><form action="/battle" method="POST"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select><label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button type="submit" style="background:#e74c3c">INICIAR</button></form></div></div>
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
     <script>
         const socket = io();
         const myName = "<%= playerName %>";
-        const mySkin = "<%= playerSkin %>"; // AQUI ESTÁ A CORREÇÃO NO CLIENTE
+        const mySkin = "<%= playerSkin %>";
         const gameArea = document.getElementById('gameArea');
         const allMonsters = <%- JSON.stringify(entities) %>; 
         
         let myId = null;
 
-        // ENTROU NO LOBBY - Envia Skin correta
-        socket.on('connect', () => { 
-            myId = socket.id; 
-            socket.emit('enter_lobby', { name: myName, skin: mySkin }); 
-        });
-
+        socket.on('connect', () => { myId = socket.id; socket.emit('enter_lobby', { name: myName, skin: mySkin }); });
+        
         socket.on('lobby_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); Object.values(players).forEach(p => createPlayerElement(p)); });
         socket.on('player_joined', (p) => createPlayerElement(p));
         socket.on('player_moved', (data) => {
@@ -171,8 +141,10 @@
         function createPlayerElement(p) {
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player';
             div.style.left = p.x + '%'; div.style.top = p.y + '%';
-            // APLICA SKIN
-            div.setAttribute('data-skin', p.skin || 'char1'); 
+            
+            // CORREÇÃO: Aplica a skin dinâmica via Style
+            div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`;
+            
             div.setAttribute('data-dir', p.direction || 'down');
             div.style.zIndex = Math.floor(p.y);
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name;
@@ -214,7 +186,6 @@
         function startSearch() {
             const fighterId = document.getElementById('onlineFighter').value;
             document.getElementById('searchStatus').style.display = 'block';
-            // IMPORTANTE: Envia a Skin para a batalha
             socket.emit('find_match', fighterId, myName, mySkin);
         }
         socket.on('match_found', (data) => {
