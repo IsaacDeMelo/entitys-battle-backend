@@ -10,6 +10,7 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: center; }
         
+        /* --- MAPA --- */
         #gameArea { 
             position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px;
             background-image: url('/uploads/map_bg.png'); image-rendering: pixelated; 
@@ -18,12 +19,14 @@
         }
         @media (max-width: 600px) { body { padding: 0; } #gameArea { max-width: none; max-height: none; width: 100vw; height: 100vh; border-radius: 0; box-shadow: none; } }
 
-        /* MÁQUINAS */
+        /* --- CASAS (AUMENTADAS) --- */
         .machine { 
-            position: absolute; width: 100px; height: 100px;
+            position: absolute; 
+            /* TAMANHO PADRÃO AUMENTADO */
+            width: 160px; height: 160px; 
             background-color: transparent; border: none; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
-            color: #fff; font-family: 'Press Start 2P'; font-size: 0.4rem; text-align: center; text-shadow: 2px 2px 0 #000;
+            color: #fff; font-family: 'Press Start 2P'; font-size: 0.5rem; text-align: center; text-shadow: 2px 2px 0 #000;
             cursor: pointer; z-index: 5; 
             background-size: contain; background-repeat: no-repeat; background-position: center bottom;
             transition: transform 0.1s; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
@@ -31,12 +34,33 @@
         }
         .machine:active { transform: scale(0.95); }
 
-        #pc-pokedex { top: 5%; left: 5%; background-image: url('/uploads/pokedex_building.png'); }
-        #pc-online { top: 5%; right: 5%; background-image: url('/uploads/online_building.png'); }
-        #pc-battle { top: 38%; left: 50%; transform: translateX(-50%); width: 140px; height: 120px; background-image: url('/uploads/arena_building.png'); z-index: 4; }
-        #pc-create { bottom: 25%; left: 5%; background-image: url('/uploads/lab_building.png'); z-index: 90; }
+        /* POSIÇÕES AJUSTADAS */
+        #pc-pokedex { 
+            top: 5%; left: -5%; /* Levemente para fora para aproveitar espaço */
+            background-image: url('/uploads/pokedex_building.png'); 
+        }
+        
+        #pc-online { 
+            top: 5%; right: -5%; 
+            background-image: url('/uploads/online_building.png'); 
+        }
+        
+        #pc-battle { 
+            /* ARENA MAIS ACIMA E MAIOR */
+            top: 28%; 
+            left: 50%; transform: translateX(-50%); 
+            width: 220px; height: 180px; 
+            background-image: url('/uploads/arena_building.png'); 
+            z-index: 4; 
+        }
+        
+        #pc-create { 
+            bottom: 22%; left: -2%; 
+            background-image: url('/uploads/lab_building.png'); 
+            z-index: 90; 
+        }
 
-        /* PLAYER */
+        /* --- PLAYER --- */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; transform: translate(-50%, -50%); transition: top 0.5s linear, left 0.5s linear; z-index: 10; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4)); }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
@@ -44,35 +68,20 @@
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
         .player-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; }
 
-        /* --- VISUAL DE BUSCA (PLANETA CORRIGIDO) --- */
+        /* --- VISUAL DE BUSCA --- */
         .player.searching::before {
-            content: '🌍';
-            position: absolute;
-            top: -65px; 
-            left: 0; 
-            width: 100%; /* Ocupa toda a largura do player */
-            text-align: center; /* Centraliza o texto (emoji) */
-            font-size: 24px; z-index: 20;
-            animation: bouncePlanet 2s infinite ease-in-out;
-            filter: drop-shadow(0 0 5px #3498db);
+            content: '🌍'; position: absolute; top: -65px; left: 0; width: 100%; text-align: center; font-size: 24px; z-index: 20;
+            animation: bouncePlanet 2s infinite ease-in-out; filter: drop-shadow(0 0 5px #3498db);
         }
         .player.searching::after {
-            content: '';
-            position: absolute;
-            top: -70px; 
-            left: 50%; 
-            transform: translateX(-50%); /* Garante centro geométrico */
-            width: 30px; height: 30px;
-            border: 3px solid rgba(52, 152, 219, 0.3);
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spinSearch 1s linear infinite;
-            z-index: 19;
+            content: ''; position: absolute; top: -70px; left: 50%; transform: translateX(-50%);
+            width: 30px; height: 30px; border: 3px solid rgba(52, 152, 219, 0.3); border-top: 3px solid #3498db; border-radius: 50%;
+            animation: spinSearch 1s linear infinite; z-index: 19;
         }
         @keyframes bouncePlanet { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes spinSearch { 0% { transform: translateX(-50%) rotate(0deg); } 100% { transform: translateX(-50%) rotate(360deg); } }
 
-        /* --- CHAT BAR CORRIGIDA (BOTÃO CENTRALIZADO) --- */
+        /* --- CHAT BAR --- */
         #chatBar { 
             position: fixed; 
             bottom: max(20px, env(safe-area-inset-bottom) + 15px);
@@ -87,20 +96,7 @@
         #chatBar:focus-within { transform: translateX(-50%) translateY(-5px); border-color: #f1c40f; }
 
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
-        
-        /* BOTÃO DE ENVIAR AJUSTADO */
-        #chatSend { 
-            width: 40px; height: 40px; 
-            border-radius: 50%; border: none; 
-            background: linear-gradient(135deg, #f1c40f, #f39c12); 
-            color: #1a1a2e; cursor: pointer; 
-            display: flex; align-items: center; justify-content: center; /* Flexbox para centralizar */
-            font-size: 1.2rem; 
-            box-shadow: 0 3px 0 #c27c0e; 
-            padding: 0; 
-            padding-bottom: 3px; /* Empurra levemente o emoji pra cima para compensar o Android */
-            line-height: 1;
-        }
+        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; }
         #chatSend:active { transform: translateY(3px); box-shadow: none; }
 
         .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 10px; z-index: 20; animation: popIn 0.2s; }
@@ -144,16 +140,24 @@
         @media (max-width: 650px) { #modalPokedex .modal-content { flex-direction: column; height: 80vh; } .dex-left { width: 100%; height: 30%; border-right: none; border-bottom: 4px solid #34495e; } .dex-right { width: 100%; height: 70%; } }
         select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; }
         button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
-        .loader { border: 4px solid #333; border-top: 4px solid #f1c40f; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 10px auto; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="gameArea">
-        <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(16, 18, 'pokedex')">GALERIA</div>
-        <div class="machine" id="pc-online" onclick="moveToAndInteract(84, 18, 'online')">ONLINE</div>
-        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 48, 'battle')">ARENA</div>
-        <div class="machine" id="pc-create" onclick="moveToAndInteract(19, 75, 'create')">LAB</div>
+        <!-- CASAS COM COORDENADAS RECALCULADAS PARA O NOVO TAMANHO -->
+        <div class="machine" id="pc-pokedex" onclick="moveToAndInteract(16, 25, 'pokedex')">
+            GALERIA
+        </div>
+        <div class="machine" id="pc-online" onclick="moveToAndInteract(84, 25, 'online')">
+            ONLINE
+        </div>
+        <div class="machine" id="pc-battle" onclick="moveToAndInteract(50, 48, 'battle')">
+            ARENA
+        </div>
+        <div class="machine" id="pc-create" onclick="moveToAndInteract(19, 70, 'create')">
+            LAB
+        </div>
 
         <div id="chatBar">
             <input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30">
@@ -187,12 +191,6 @@
                 el.style.left = data.x + '%'; el.style.top = data.y + '%'; 
                 el.style.zIndex = Math.floor(data.y); 
                 el.setAttribute('data-dir', data.direction); el.classList.add('walking');
-                
-                // --- LÓGICA VISUAL DO PLANETA ---
-                const myPlayer = document.getElementById(`p-${myId}`);
-                // Se o player movendo sou eu, e o modal de busca está aberto, adiciona classe
-                // (Isso é um fix rápido, o ideal seria uma variável de estado isSearching)
-                
                 const stopWalk = () => { el.classList.remove('walking'); };
                 el.removeEventListener('transitionend', stopWalk); el.addEventListener('transitionend', stopWalk);
                 moveBubble(data.id);
@@ -272,12 +270,9 @@
 
         function startSearch() {
             const fighterId = document.getElementById('onlineFighter').value;
-            // Fecha modal
             document.getElementById('modalOnline').style.display = 'none';
-            // Adiciona classe searching
             const myPlayer = document.getElementById(`p-${myId}`);
             if(myPlayer) myPlayer.classList.add('searching');
-            // Envia
             socket.emit('find_match', fighterId, myName, mySkin);
             showToast("PROCURANDO OPONENTE...");
         }
