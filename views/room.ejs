@@ -18,7 +18,7 @@
         }
         #gameArea.locked { cursor: not-allowed; }
 
-        /* CASAS */
+        /* CASAS tab-play */
         .machine { 
             position: absolute; background-color: transparent; border: none; 
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
@@ -28,36 +28,12 @@
         }
         .machine:active { transform: scale(0.95); }
 
-        /* 
-           LÓGICA DE PROFUNDIDADE (Z-INDEX):
-           O Z-Index da casa deve ser aproximadamente igual à posição Y (%) da sua BASE (onde toca o chão).
-           O Z-Index do Jogador é igual ao Y (%) dele.
-           
-           Exemplo: Casa Top tem base no Y=19%. Z-Index = 19.
-           - Jogador em Y=14 (entrando): 14 < 19 -> Fica Atrás.
-           - Jogador em Y=25 (passando na frente): 25 > 19 -> Fica na Frente.
-        */
-
-        .top-machine { 
-            width: 150px; height: 150px; 
-            z-index: 19; /* Base visual aproximada em 19% */
-        }
+        .top-machine { width: 150px; height: 150px; z-index: 20; }
         #pc-pokedex { top: 3%; left: 2%; background-image: url('/uploads/pokedex_building.png'); }
         #pc-online { top: 3%; right: 2%; background-image: url('/uploads/online_building.png'); }
 
-        .bottom-machine { 
-            width: 100px; height: 100px; 
-            z-index: 85; /* Base visual aproximada em 85% */
-        }
-        
-        /* Arena: Base visual mais ou menos no meio da tela (55%) */
-        #pc-battle { 
-            top: 40%; left: 50%; transform: translateX(-50%); 
-            width: 140px; height: 120px; 
-            background-image: url('/uploads/arena_building.png'); 
-            z-index: 55; 
-        }
-        
+        .bottom-machine { width: 100px; height: 100px; z-index: 5; }
+        #pc-battle { top: 40%; left: 50%; transform: translateX(-50%); width: 140px; height: 120px; background-image: url('/uploads/arena_building.png'); z-index: 5; }
         #pc-create { bottom: 15%; left: 5%; background-image: url('/uploads/lab_building.png'); }
         #pc-training { bottom: 15%; right: 5%; background-image: url('/uploads/training_center.png'); }
 
@@ -65,8 +41,7 @@
         .player { 
             position: absolute; width: 48px; height: 48px; 
             background-size: 400% auto; image-rendering: pixelated;
-            z-index: 10; /* Sobrescrito dinamicamente pelo JS */
-            filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4));
+            z-index: 10; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4));
             transform: translate(-50%, -50%); 
         }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
@@ -74,26 +49,38 @@
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
         
-        /* NICK: Z-index alto para flutuar acima de tudo, mesmo quando o corpo está atrás da casa */
-        .player-name { 
-            position: absolute; top: -30px; left: 50%; transform: translateX(-50%); 
-            background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; 
-            font-size: 0.7rem; white-space: nowrap; pointer-events: none; 
-            z-index: 100; /* Bem alto */
+        /* Nick */
+        .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 30; }
+
+        /* CHAT BUBBLE */
+        .chat-bubble { 
+            position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); 
+            background: white; color: black; padding: 5px 10px; border-radius: 10px; 
+            border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; 
+            margin-bottom: 15px; /* Mais alto para não cobrir o nick */
+            z-index: 40; /* Z-index alto */
+            animation: popIn 0.2s forwards; opacity: 1; pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
+        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
+        @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 
         /* UI ELEMENTS */
         .player.searching::before { content: '🌍'; position: absolute; top: -65px; left: 0; width: 100%; text-align: center; font-size: 24px; z-index: 20; animation: bouncePlanet 2s infinite ease-in-out; filter: drop-shadow(0 0 5px #3498db); }
         .player.searching::after { content: ''; position: absolute; top: -70px; left: 50%; transform: translateX(-50%); width: 30px; height: 30px; border: 3px solid rgba(52, 152, 219, 0.3); border-top: 3px solid #3498db; border-radius: 50%; animation: spinSearch 1s linear infinite; z-index: 19; }
         @keyframes bouncePlanet { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         @keyframes spinSearch { 0% { transform: translateX(-50%) rotate(0deg); } 100% { transform: translateX(-50%) rotate(360deg); } }
-        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 100; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
+        
+        #chatBar { 
+            position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 100; 
+            background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; 
+        }
         #chatBar:focus-within { transform: translateX(-50%) translateY(-5px); border-color: #f1c40f; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; }
-        .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 15px; z-index: 101; animation: popIn 0.2s forwards; opacity: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
-        @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+        
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -151,14 +138,13 @@
 
         .dex-header { display: flex; align-items: center; gap: 20px; border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
         
-        /* FOTO AUMENTADA AQUI (170px) */
         .dex-avatar-container { 
             width: 170px; height: 170px; 
             background: rgba(0,210,255,0.05); border: 1px solid #00d2ff; border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
             box-shadow: 0 0 20px rgba(0,210,255,0.1); 
             animation: float 3s ease-in-out infinite; 
-            flex-shrink: 0; /* Garante que não encolha */
+            flex-shrink: 0; 
         }
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
         .dex-avatar-img { width: 80%; height: 80%; object-fit: contain; image-rendering: pixelated; }
@@ -191,6 +177,16 @@
         .t-fire { background: #ff4757; border-color: #ff4757; } .t-water { background: #3742fa; border-color: #3742fa; color: white !important; } .t-plant { background: #2ed573; border-color: #2ed573; } .t-electric { background: #ffa502; border-color: #ffa502; } .t-ice { background: #70a1ff; border-color: #70a1ff; } .t-normal { background: #a4b0be; border-color: #a4b0be; } .t-steel { background: #747d8c; color: white !important; }
 
         @media (max-width: 768px) { #modalPokedex .modal-content { flex-direction: column; height: 90vh; } .dex-sidebar { width: 100%; height: 35%; border-right: none; border-bottom: 1px solid #333; } .dex-main { height: 65%; } .dex-name-display { font-size: 1.8rem; } .dex-avatar-container { width: 100px; height: 100px; } }
+        
+        /* Modal Tabs */
+        .tab-btn { color: #555; border-bottom: 3px solid transparent; transition: 0.2s; }
+        .tab-btn.active { color: #fff; background: #1f2533 !important; border-bottom-color: #3498db; }
+        .battle-row { display: flex; justify-content: space-between; align-items: center; background: #222; margin-bottom: 8px; padding: 10px; border-radius: 8px; border: 1px solid #333; }
+        .battle-vs { font-family: 'Press Start 2P'; font-size: 0.7rem; color: #e74c3c; margin: 0 10px; }
+        .btn-watch { background: #f1c40f; color: #000; padding: 5px 10px; font-size: 0.7rem; width: auto; margin: 0; }
+        .p-mini { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; }
+        .mini-head { width: 24px; height: 24px; border-radius: 50%; background-size: cover; background-position: top center; border: 1px solid #555; }
+
         select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; }
         button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
     </style>
@@ -200,7 +196,6 @@
     <div id="gameArea">
         <div class="machine top-machine" id="pc-pokedex" onclick="moveToAndInteract(this, 'pokedex')">GALERIA</div>
         <div class="machine top-machine" id="pc-online" onclick="moveToAndInteract(this, 'online')">ONLINE</div>
-        
         <div class="machine bottom-machine" id="pc-battle" onclick="moveToAndInteract(this, 'battle')">ARENA</div>
         <div class="machine bottom-machine" id="pc-create" onclick="moveToAndInteract(this, 'create')">LAB</div>
         <div class="machine bottom-machine" id="pc-training" onclick="moveToAndInteract(this, 'training')">TREINO</div>
@@ -213,7 +208,7 @@
 
     <div id="toastContainer"></div>
 
-    <!-- Modais -->
+    <!-- Pokedex -->
     <div class="modal-overlay" id="modalPokedex">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('modalPokedex')">X</button>
@@ -239,7 +234,35 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalOnline')">X</button><h2 style="text-align:center; color:#3498db">Batalha Online</h2><p style="text-align:center">Escolha seu lutador.</p><select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><button onclick="startSearch()">PROCURAR</button><div id="searchStatus" style="display:none; text-align:center; margin-top:10px;"><div class="loader"></div><small>Aguardando...</small></div></div></div>
+    <!-- Online Modal com Tabs -->
+    <div class="modal-overlay" id="modalOnline">
+        <div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; border-bottom:1px solid #333;">
+                <button class="tab-btn active" onclick="switchTab('tab-play')" style="border-radius:0; margin:0; background:#1a1a2e;">JOGAR</button>
+                <button class="tab-btn" onclick="switchTab('tab-watch')" style="border-radius:0; margin:0; background:#111;">ASSISTIR</button>
+                <button class="close-btn" onclick="closeModal('modalOnline')" style="top:5px; right:5px;">X</button>
+            </div>
+            <div id="tab-play" class="tab-content" style="padding:20px; flex:1;">
+                <h2 style="text-align:center; color:#3498db; margin-top:0;">Batalha Online</h2>
+                <p style="text-align:center; color:#aaa;">Escolha seu lutador.</p>
+                <select id="onlineFighter"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select>
+                <button onclick="startSearch()" style="margin-top:20px;">PROCURAR OPONENTE</button>
+                <div id="searchStatus" style="display:none; text-align:center; margin-top:15px;"><div class="loader"></div><small style="color:#f1c40f;">Aguardando...</small></div>
+            </div>
+            <div id="tab-watch" class="tab-content" style="display:none; padding:0; flex:1; flex-direction:column;">
+                <div style="padding:10px; background:#16213e; text-align:center; font-size:0.8rem; color:#aaa;">Partidas em Andamento <button onclick="refreshBattles()" style="width:auto; padding:2px 8px; font-size:0.6rem; float:right;">↻</button></div>
+                <div id="battlesList" style="flex:1; overflow-y:auto; padding:10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Espectador -->
+    <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;">
+        <input type="hidden" name="roomId" id="specRoomId">
+        <input type="hidden" name="playerName" value="<%= playerName %>">
+        <input type="hidden" name="playerSkin" value="<%= playerSkin %>">
+    </form>
+
     <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:20px; display:block;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c">Treino Local</h2><form action="/battle" method="POST"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><label>Modo</label><select name="mode"><option value="auto">Automático</option><option value="manual">Manual</option></select><label>Seu Lutador</label><select name="fighter1"><% entities.forEach(e => { %><option value="<%= e.id %>"><%= e.name %></option><% }) %></select><label>Adversário</label><select name="fighter2"><% entities.forEach(e => { %><option value="<%= e.id %>" <%= (entities[1] && e.id == entities[1].id) ? 'selected' : '' %>><%= e.name %></option><% }) %></select><button type="submit" style="background:#e74c3c">INICIAR</button></form></div></div>
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
@@ -290,6 +313,29 @@
             const bubble = document.createElement('div'); bubble.className = 'chat-bubble'; bubble.innerText = data.msg;
             playerEl.appendChild(bubble); setTimeout(() => { bubble.style.opacity = '0'; setTimeout(() => bubble.remove(), 200); }, 4000);
         });
+
+        // Tabs Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).style.display = 'block';
+            if(event) event.target.classList.add('active');
+            if(tabId === 'tab-watch') refreshBattles();
+        }
+        function refreshBattles() {
+            document.getElementById('battlesList').innerHTML = '<div style="text-align:center; padding:20px; color:#555;">Carregando...</div>';
+            socket.emit('request_active_battles');
+        }
+        socket.on('active_battles_list', (list) => {
+            const container = document.getElementById('battlesList'); container.innerHTML = '';
+            if(list.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px; color:#555;">Nenhuma batalha ativa no momento.</div>'; return; }
+            list.forEach(b => {
+                const div = document.createElement('div'); div.className = 'battle-row';
+                div.innerHTML = `<div class="p-mini" style="text-align:right;"><span>${b.p1Name}</span><div class="mini-head" style="background-image:url('/uploads/${b.p1Skin}.png')"></div></div><div class="battle-vs">VS</div><div class="p-mini"><div class="mini-head" style="background-image:url('/uploads/${b.p2Skin}.png')"></div><span>${b.p2Name}</span></div><button class="btn-watch" onclick="watchBattle('${b.id}')">👁️</button>`;
+                container.appendChild(div);
+            });
+        });
+        window.watchBattle = function(roomId) { document.getElementById('specRoomId').value = roomId; document.getElementById('spectateForm').submit(); }
 
         function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 5000); }
         function moveBubble(id) {}
@@ -345,29 +391,10 @@
             if (mon.moves && mon.moves.length > 0) {
                 mon.moves.forEach(m => {
                     let moveTypeClass = 't-' + (m.element || 'normal');
-                    movesHTML += `
-                    <div class="move-card" style="border-left-color: var(--${m.element})">
-                        <div class="move-icon">${m.icon||'⚡'}</div>
-                        <div class="move-details">
-                            <span class="move-name">${m.name}</span>
-                            <span class="move-cost">${m.cost} Energy</span>
-                        </div>
-                    </div>`;
+                    movesHTML += `<div class="move-card" style="border-left-color: var(--${m.element})"><div class="move-icon">${m.icon||'⚡'}</div><div class="move-details"><span class="move-name">${m.name}</span><span class="move-cost">${m.cost} Energy</span></div></div>`;
                 });
             } else { movesHTML = '<div style="color:#666;">Sem golpes registrados.</div>'; }
-            view.innerHTML = `
-                <div class="dex-header">
-                    <div class="dex-avatar-container">${imgHTML}</div>
-                    <div class="dex-info-text">
-                        <div class="dex-name-display">${mon.name}</div>
-                        <span class="dex-type-badge t-${mon.type}">${mon.type}</span>
-                    </div>
-                </div>
-                <div class="dex-stats-grid">
-                    <div class="stat-group"><h4>Status Vitais</h4>${renderFancyBar('HP', mon.maxHp||mon.hp, 200, 'c-hp')}${renderFancyBar('Energy', mon.maxEnergy||mon.energy, 100, 'c-en')}</div>
-                    <div class="stat-group"><h4>Atributos de Combate</h4>${renderFancyBar('ATK', mon.stats.attack, 50, 'c-atk')}${renderFancyBar('DEF', mon.stats.defense, 50, 'c-def')}${renderFancyBar('SPD', mon.stats.speed, 20, 'c-spd')}</div>
-                </div>
-                <div class="moves-section"><h4>Golpes Conhecidos</h4><div class="moves-grid">${movesHTML}</div></div>`;
+            view.innerHTML = `<div class="dex-header"><div class="dex-avatar-container">${imgHTML}</div><div class="dex-info-text"><div class="dex-name-display">${mon.name}</div><span class="dex-type-badge t-${mon.type}">${mon.type}</span></div></div><div class="dex-stats-grid"><div class="stat-group"><h4>Status Vitais</h4>${renderFancyBar('HP', mon.maxHp||mon.hp, 200, 'c-hp')}${renderFancyBar('Energy', mon.maxEnergy||mon.energy, 100, 'c-en')}</div><div class="stat-group"><h4>Atributos de Combate</h4>${renderFancyBar('ATK', mon.stats.attack, 50, 'c-atk')}${renderFancyBar('DEF', mon.stats.defense, 50, 'c-def')}${renderFancyBar('SPD', mon.stats.speed, 20, 'c-spd')}</div></div><div class="moves-section"><h4>Golpes Conhecidos</h4><div class="moves-grid">${movesHTML}</div></div>`;
             setTimeout(() => { document.querySelectorAll('.stat-fill').forEach(bar => { bar.style.width = bar.getAttribute('data-pct') + '%'; }); }, 50);
         }
         function renderFancyBar(label, value, max, colorClass) {
