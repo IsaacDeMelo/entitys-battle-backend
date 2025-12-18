@@ -8,279 +8,445 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
+        :root {
+  --safe-area-max-inset-bottom: env(safe-area-max-inset-bottom, 36px);
+  --bottom-bar-height: 50px;
+}
         body { margin: 0; padding: 0; background: #000; color: white; font-family: 'Roboto', sans-serif; overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
         
-        .arena { flex: 1; background: radial-gradient(circle at center, #2c3e50 0%, #000000 90%); display: flex; flex-direction: column; justify-content: center; position: relative; padding: 10px; }
-        .arena::before { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 35%; background: linear-gradient(to top, rgba(30, 144, 255, 0.05), transparent); pointer-events: none; }
-        
-        .fighter { position: relative; width: 100%; height: auto; display: flex; z-index: 5; align-items: center; }
-        
-        .fighter.p2-side { flex-direction: row-reverse; justify-content: flex-start; padding-top: 20px; align-items: flex-start; margin-bottom: 20px; }
-        .fighter.p1-side { flex-direction: row; justify-content: flex-start; padding-bottom: 26vh; align-items: flex-end; }
-        
-        .sprite { width: 140px; height: 140px; position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .sprite img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8)); image-rendering: pixelated; }
-        .emoji-fallback { font-size: 100px; line-height: 1; filter: drop-shadow(0 0 10px white); text-align: center; }
-        .fighter.p1-side .sprite img { transform: scaleX(-1); }
+        /* BACKGROUND DA BATALHA */
+        .arena { 
+            flex: 1; 
+            max-height: 525px;
+            background: url('/uploads/battle_bg.png') no-repeat center center; 
+            background-size: cover; 
+            position: relative; 
+            overflow: hidden;
+        }
+        .arena::before { 
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 30%; 
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: none; z-index: 0;
+        }
 
-        .stats { width: 180px; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 10; margin: 0; transition: 0.3s; }
-        .p2-side .stats { border-right: 4px solid #e74c3c; text-align: right; margin-right: 20px; }
-        .p1-side .stats { border-left: 4px solid #3498db; text-align: left; margin-left: 20px; }
+        /* --- HUD (BARRAS DE VIDA) --- */
+        .stats { 
+            position: absolute; 
+            width: 170px; 
+            background: rgba(15, 15, 20, 0.95); 
+            padding: 8px 12px; border-radius: 6px; 
+            border: 2px solid #555; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.7);
+            z-index: 30; /* Z-Index alto para ficar acima dos lutadores */
+        }
+        .p2-side-stats { top: 15px; right: 5px; border-left: 5px solid #e74c3c; text-align: left; }
+        .p1-side-stats { top: 15px; left: 5px; border-right: 5px solid #3498db; text-align: right; }
+
+        .name { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-shadow: 1px 1px 0 #000; }
+        .trainer-sub { font-size: 0.65rem; color: #bbb; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .bar-container { width: 100%; height: 10px; background: #333; border-radius: 4px; overflow: hidden; border: 1px solid #000; margin-bottom: 3px; position: relative; }
+        .hp-fill { height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 100%; transition: width 0.4s ease-out; }
+        .en-fill { height: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); width: 100%; transition: width 0.4s ease-out; }
+        .hp-danger { background: linear-gradient(90deg, #e74c3c, #c0392b) !important; }
+        .stat-text { font-size: 0.6rem; font-family: monospace; font-weight: bold; color: #ddd; display: flex; justify-content: space-between; }
+
+        /* --- LUTADORES --- */
+        /* Container que agrupa Monstro + Treinador */
+        .fighter { 
+            position: absolute; 
+            width: 280px; /* Largo o suficiente para os dois */
+            height: 200px; 
+            display: flex; 
+            /* ALINHAMENTO Y CRUCIAL: Base */
+            align-items: flex-end; 
+            z-index: 10;
+            pointer-events: none; /* Deixa clicar no cenário se precisar */
+        }
+
         
-        .name { font-size: 1rem; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; text-shadow: 2px 2px 0 #000; }
-        /* NOVO: Nome do Treinador */
-        .trainer-name { font-size: 0.8rem; color: #bbb; margin-bottom: 5px; }
+        .fighter.p2-position { 
+            bottom: 28vh; right: 10px; 
+            justify-content: flex-end; /* Alinha à direita */
+            flex-direction: row; /* Monstro ... Treinador */
+        }
 
-        .bar-wrapper { margin-bottom: 5px; }
-        .bar-container { width: 100%; height: 12px; background: #222; border-radius: 4px; overflow: hidden; border: 1px solid #000; }
-        .hp-fill { height: 100%; background: #2ecc71; width: 100%; transition: width 0.3s; }
-        .en-fill { height: 100%; background: #f1c40f; width: 100%; transition: width 0.3s; }
-        .hp-danger { background: #e74c3c !important; }
-        .stat-text { font-size: 0.7rem; color: #bbb; font-family: monospace; font-weight: bold; margin-top: 2px; display: flex; justify-content: space-between; }
+      
+        .fighter.p1-position { 
+            bottom: 28vh; left: 10px; 
+            justify-content: flex-start; /* Alinha à esquerda */
+            flex-direction: row; /* Treinador ... Monstro */
+        }
 
-        .bottom-panel { width: 100%; height: 25vh; background: #111; border-top: 2px solid #333; z-index: 50; display: none; }
+        /* --- ELEMENTOS INTERNOS (Agora RELATIVOS para alinharem na base) --- */
         
-        .battle-log { padding: 10px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; }
-        .log-entry { margin-bottom: 5px; animation: fadeIn 0.3s forwards; line-height: 1.4; border-bottom: 1px solid #222; padding-bottom: 2px; }
+        /* MONSTRO */
+        .sprite { 
+            position: relative;
+            width: 140px; height: 140px; 
+            z-index: 10; /* Atrás do Treinador */
+            margin-bottom: 15px; /* Pequeno ajuste do chão */
+        }
+        .sprite img { 
+            width: 100%; height: 100%; object-fit: contain; 
+            image-rendering: pixelated; 
+            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
+        }
 
-        .controls-panel { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border-top-color: #3498db; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+        /* TREINADOR */
+        .trainer {
+            position: relative;
+            width: 64px; height: 64px;
+            background-size: 400% auto;
+            image-rendering: pixelated;
+            z-index: 20; /* NA FRENTE DO MONSTRO */
+            margin-bottom: 10px; /* Ajuste do chão */
+            animation: idle-bob 0.8s infinite alternate ease-in-out;
+        }
+
+        /* --- AJUSTES DE POSIÇÃO E SOBREPOSIÇÃO --- */
+
+        /* P2: [Monstro] [Treinador] */
+        .fighter.p2-position .trainer {
+            order: 2;
+            margin-left: -40px; /* Puxa o treinador para cima do monstro */
+            background-position-y: 33.33%; /* Olha Esq */
+        }
+        .fighter.p2-position .sprite {
+            order: 1;
+        }
+
+        /* P1: [Treinador] [Monstro] */
+        .fighter.p1-position .trainer {
+            order: 1;
+            margin-right: -40px; /* Puxa o treinador para cima do monstro */
+            background-position-y: 66.66%; /* Olha Dir */
+        }
+        .fighter.p1-position .sprite {
+            order: 2;
+        }
+        .fighter.p1-position .sprite img { transform: scaleX(-1); } /* Monstro P1 invertido */
+
+        /* Animação Idle */
+        @keyframes idle-bob { from { height: 64px; width: 64px; } to { height: 66px; width: 66px; } }
+
+        /* SKINS DINÂMICAS */
+        <% for(let i = 1; i <= 20; i++) { %> 
+            .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } 
+        <% } %>
+        .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
+        
+        .emoji-fallback { font-size: 80px; text-align: center; }
+
+        /* --- BALÃO DE FALA (Ajustado para Visibilidade) --- */
+        .command-bubble {
+            position: absolute;
+            /* Fixa em relação ao container do fighter, acima de tudo */
+            bottom: 160px; /* Altura segura acima das cabeças */
+            left: 50%; transform: translateX(-50%) scale(0);
+            
+            background: #fff; color: #000;
+            padding: 8px 12px; border-radius: 12px; border: 3px solid #000;
+            font-family: 'Press Start 2P'; font-size: 0.55rem; 
+            white-space: nowrap; z-index: 100;
+            opacity: 0; transition: transform 0.2s, opacity 0.2s;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+        .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); }
+        .command-bubble::after {
+            content: ''; position: absolute; bottom: -8px; left: 50%; margin-left: -8px;
+            border-width: 8px 8px 0; border-style: solid; border-color: #000 transparent transparent transparent;
+        }
+
+        /* ANIMAÇÕES DE DANO */
+        .hurt { animation: shakeHit 0.4s ease-in-out; }
+        .hurt-effect { 
+            /* Vermelho Intenso */
+            filter: sepia(1) hue-rotate(-50deg) saturate(5) drop-shadow(0 0 15px red) !important; 
+        }
+        @keyframes shakeHit {
+            0% { transform: translate(0, 0); }
+            25% { transform: translate(-8px, 0); }
+            75% { transform: translate(8px, 0); }
+            100% { transform: translate(0, 0); }
+        }
+
+        /* TEXTO FLUTUANTE */
+        .floating-text { 
+            font-family: 'Press Start 2P'; position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); font-size: 1.5rem; text-shadow: 2px 2px 0 #000; 
+            animation: popUp 1s forwards; z-index: 100; pointer-events: none; 
+        }
+        @keyframes popUp { 0% { opacity: 0; margin-top: 0; } 100% { opacity: 0; margin-top: -80px; } }
+        .damage-text { color: #ff4757; } .heal-text { color: #2ed573; } .resist-text { color: #bdc3c7; font-size: 1rem !important; }
+
+        /* UI INFERIOR */
+        .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 3px solid #3498db; z-index: 50; display: none; }
+        .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; transition: 0.3s; }
+        .controls-panel.disabled { filter: grayscale(1) brightness(0.5); pointer-events: none; }
         .controls-panel.active { display: grid; }
+        .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #ecf0f1; }
         .battle-log.active { display: block; }
-
-        .move-btn { background: #2a2a3a; border: 1px solid #444; color: white; border-radius: 8px; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-        .move-btn:active { transform: scale(0.96); }
-        .move-btn:disabled { opacity: 0.4; pointer-events: none; }
-        .move-btn strong { font-size: 0.9rem; margin-bottom: 2px; }
-        .move-btn small { font-size: 0.7rem; color: #f1c40f; }
-        .rest-btn { grid-column: span 2; background: #2c3e50; border-color: #3498db; }
-
-        .anim-p1-attack { animation: lungeP1 0.2s alternate 2; } @keyframes lungeP1 { to { transform: translate(40px, -40px); } }
-        .anim-p2-attack { animation: lungeP2 0.2s alternate 2; } @keyframes lungeP2 { to { transform: translate(-40px, 40px); } }
-        .anim-shake { animation: shake 0.4s; } @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-10px) rotate(-5deg);} 75% {transform: translateX(10px) rotate(5deg);} }
-        .floating-text { font-family: 'Press Start 2P', cursive; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; text-shadow: 3px 3px 0 #000; animation: popUp 0.8s forwards; z-index: 100; pointer-events: none; white-space: nowrap; }
-        @keyframes popUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 50% { transform: translate(-50%, -100%) scale(1.5); opacity: 1; } 100% { transform: translate(-50%, -150%) scale(1); opacity: 0; } }
-        .damage-text { color: #ff4757; -webkit-text-stroke: 1px #500; } .heal-text { color: #2ed573; -webkit-text-stroke: 1px #050; } .resist-text { color: #bdc3c7; -webkit-text-stroke: 1px #2c3e50; font-size: 1.5rem !important; }
+        .log-entry { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
         
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        #overlay h1 { color: #f1c40f; font-family: 'Press Start 2P'; font-size: 2rem; text-align: center; margin-bottom: 30px; }
-        .btn-restart { background: #3498db; color: white; padding: 20px 40px; text-decoration: none; font-size: 1.2rem; font-weight: bold; border-radius: 50px; }
-        .status-msg { position: absolute; top: 10px; width: 100%; text-align: center; color: #f1c40f; font-weight: bold; text-shadow: 1px 1px 0 #000; z-index: 100; pointer-events: none; }
+        .move-btn { background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
+        .move-btn:active { transform: scale(0.96); border-color: #f1c40f; }
+        .move-btn:disabled { opacity: 0.5; pointer-events: none; }
+        .move-btn strong { font-size: 0.8rem; margin-bottom: 4px; }
+        .move-btn small { font-size: 0.6rem; color: #f1c40f; }
+        .rest-btn { grid-column: span 2; background: #27ae60; border-color: #2ecc71; }
+
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        #overlay h1 { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; margin-bottom: 20px; }
+        .btn-restart { background: #3498db; color: white; padding: 15px 30px; border-radius: 30px; border: none; font-family: 'Press Start 2P'; font-size: 0.8rem; cursor: pointer; }
+        .status-msg { position: absolute; bottom: 26vh; width: 100%; text-align: center; font-size: 0.8rem; color: #f1c40f; z-index: 100; text-shadow: 1px 1px 0 #000; font-family: 'Press Start 2P'; display: none; background: rgba(0,0,0,0.6); padding: 10px; }
     </style>
 </head>
 <body>
-    <div class="status-msg" id="statusMsg"></div>
 
-    <div class="arena">
-        <!-- PLAYER 2 (OPONENTE) -->
-        <div class="fighter p2-side" id="fighter-<%= p2.id %>">
-            <div class="sprite"><% if (p2.sprite) { %> <img src="/uploads/<%= p2.sprite %>"> <% } else { %> <div class="emoji-fallback">👿</div> <% } %></div>
-            <div class="stats">
-                <div class="name"><%= p2.name %></div>
-                <div class="trainer-name"><%= p2.playerName || 'Oponente' %></div> <!-- NOVO: Nome do Treinador -->
-                <div class="bar-wrapper"><div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p2.id %>"></div></div><div class="stat-text"><span>HP</span><span><span id="hp-val-<%= p2.id %>"><%= p2.hp %></span>/<%= p2.maxHp %></span></div></div>
-                <div class="bar-wrapper"><div class="bar-container" style="height: 6px;"><div class="en-fill" id="en-bar-<%= p2.id %>"></div></div></div>
-            </div>
-        </div>
-        <!-- PLAYER 1 (VOCÊ) -->
-        <div class="fighter p1-side" id="fighter-<%= p1.id %>">
-            <div class="sprite"><% if (p1.sprite) { %> <img src="/uploads/<%= p1.sprite %>"> <% } else { %> <div class="emoji-fallback">🦸</div> <% } %></div>
-            <div class="stats">
-                <div class="name"><%= p1.name %></div>
-                <div class="trainer-name"><%= p1.playerName || 'Você' %></div> <!-- NOVO: Nome do Treinador -->
-                <div class="bar-wrapper"><div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p1.id %>"></div></div><div class="stat-text"><span>HP</span><span id="hp-val-<%= p1.id %>"><%= p1.hp %></span></div></div>
-                <div class="bar-wrapper"><div class="bar-container" style="height: 8px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div><div class="stat-text" style="font-size: 0.6rem; color: #f1c40f;">ENERGIA: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div></div>
-            </div>
-        </div>
-        <div id="overlay">
-    <h1 id="winnerText">VENCEDOR</h1>
-    
-    <!-- BOTÃO PARA VOLTAR PARA A SALA -->
-    <form action="/room" method="POST">
-        <input type="hidden" name="playerName" value="<%= p1.playerName %>">
-        <input type="hidden" name="skin" value="<%= p1.skin %>">
-        <button type="submit" class="btn-restart">VOLTAR AO LOBBY</button>
-    </form>
-</div>
+    <div class="stats p2-side-stats">
+        <div class="name"><%= p2.name %> <span style="font-size:0.6rem;color:#ccc">Lv.50</span></div>
+        <div class="trainer-sub"><%= p2.playerName || 'CPU' %></div>
+        <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p2.id %>"></div></div>
+        <div class="stat-text"><span id="hp-val-<%= p2.id %>"><%= p2.hp %></span>/<%= p2.maxHp %></div>
     </div>
 
+    <div class="stats p1-side-stats">
+        <div class="name"><%= p1.name %> <span style="font-size:0.6rem;color:#ccc">Lv.50</span></div>
+        <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
+        <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p1.id %>"></div></div>
+        <div class="stat-text"><span id="hp-val-<%= p1.id %>"><%= p1.hp %></span> HP</div>
+        <div class="bar-container" style="height:5px; margin-top:3px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div>
+        <div class="stat-text" style="color:#f1c40f">EN: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div>
+    </div>
+
+    <div class="arena">
+        <div class="status-msg" id="statusMsg">Aguardando oponente...</div>
+
+        <!-- P2 (INIMIGO) - Longe (Direita) -->
+        <div class="fighter p2-position" id="fighter-<%= p2.id %>">
+            <div class="command-bubble" id="bubble-<%= p2.id %>"></div>
+            <!-- Treinador (Ordem 2 = Direita) -->
+            <div class="trainer" id="trainer-<%= p2.id %>" data-skin="<%= p2.skin || 'char1' %>"></div>
+            <!-- Monstro (Ordem 1 = Esquerda) -->
+            <div class="sprite" id="sprite-<%= p2.id %>">
+                <% if (p2.sprite) { %> <img src="/uploads/<%= p2.sprite %>"> <% } else { %> <div class="emoji-fallback">👿</div> <% } %>
+            </div>
+        </div>
+
+        <!-- P1 (VOCÊ) - Perto (Esquerda) -->
+        <div class="fighter p1-position" id="fighter-<%= p1.id %>">
+            <div class="command-bubble" id="bubble-<%= p1.id %>"></div>
+            <!-- Treinador (Ordem 1 = Esquerda) -->
+            <div class="trainer" id="trainer-<%= p1.id %>" data-skin="<%= p1.skin %>"></div>
+            <!-- Monstro (Ordem 2 = Direita) -->
+            <div class="sprite" id="sprite-<%= p1.id %>">
+                <% if (p1.sprite) { %> <img src="/uploads/<%= p1.sprite %>"> <% } else { %> <div class="emoji-fallback">🦸</div> <% } %>
+            </div>
+        </div>
+
+        <div id="overlay">
+            <h1 id="winnerText">VENCEDOR</h1>
+            <form action="/room" method="POST">
+                <input type="hidden" name="playerName" value="<%= p1.playerName %>">
+                <input type="hidden" name="skin" value="<%= p1.skin %>">
+                <button type="submit" class="btn-restart">VOLTAR AO LOBBY</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PAINEL INFERIOR (LOG) -->
     <div class="battle-log bottom-panel" id="logBox"></div>
 
+    <!-- PAINEL DE CONTROLES -->
     <div class="controls-panel bottom-panel" id="controlsPanel">
         <% p1.moves.forEach(move => { %>
             <button class="move-btn" onclick="sendMove('<%= move.id %>')" id="btn-<%= move.id %>">
-                <strong><%= move.icon %> <%= move.name %></strong><small><%= move.cost %> Energia</small>
+                <strong><%= move.icon %> <%= move.name %></strong>
+                <small><%= move.cost %> EN</small>
             </button>
         <% }) %>
-        <button class="move-btn rest-btn" onclick="sendMove('rest')">💤 Descansar (+5 EN)</button>
+        <button class="move-btn rest-btn" onclick="sendMove('rest')">💤 Descansar</button>
     </div>
 
     <script>
-        const socket = io(); 
-        const battleMode = "<%= battleMode %>"; 
+        const socket = io();
+        const battleMode = "<%= battleMode %>";
         const battleId = "<%= battleId %>";
         const initialData = <%- battleData %>;
         const myRoleId = "<%= typeof myRoleId !== 'undefined' ? myRoleId : '' %>";
-        
         const p1Id = "<%= p1.id %>"; const p2Id = "<%= p2.id %>";
+        const p1Mon = "<%= p1.name %>"; const p2Mon = "<%= p2.name %>";
+        
         let currentEnergy = parseInt("<%= p1.energy %>");
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        function log(msg, color='#fff') {
-            const box = document.getElementById('logBox');
-            if(battleMode === 'manual') return; 
-            const entry = document.createElement('div');
-            entry.className = 'log-entry'; entry.innerHTML = msg; entry.style.color = color;
-            box.insertBefore(entry, box.firstChild);
+        async function speak(actorId, moveName) {
+            const bubble = document.getElementById(`bubble-${actorId}`);
+            const mon = (actorId === p1Id) ? p1Mon : p2Mon;
+            bubble.innerText = (moveName === 'rest' || moveName === 'Descansou') ? `${mon}, volta!` : `${mon}, ${moveName}!`;
+            bubble.classList.add('show');
+            
+            // Animação de "Comando" no Treinador
+            const trainer = document.getElementById(`trainer-${actorId}`);
+            if(trainer) {
+                // BackgroundX move -100% (assumindo frame 2 é correndo/comando)
+                trainer.style.backgroundPositionX = "-100%"; 
+                await wait(400);
+                trainer.style.backgroundPositionX = "0%";
+            }
+            
+            await wait(1200);
+            bubble.classList.remove('show');
         }
 
-        if (battleMode === 'online') {
-            socket.emit('join_room', battleId);
-
-            socket.on('turn_result', async (data) => {
-                document.getElementById('statusMsg').innerText = "";
-                document.getElementById('controlsPanel').classList.remove('active');
-                document.getElementById('logBox').classList.add('active');
-                
-                await playEvents(data.events);
-
-                if(data.winnerId) {
-                    endGame(data.winnerId);
-                } else {
-                    document.getElementById('logBox').classList.remove('active');
-                    document.getElementById('controlsPanel').classList.add('active');
-                    updateButtons();
-                }
-            });
-
-            socket.on('opponent_ready', () => {
-                document.getElementById('statusMsg').innerText = "Oponente escolheu! Sua vez...";
-            });
-        }
-
-        function updateBar(id, current, max, type) {
-            const pct = Math.max(0, (current / max) * 100);
-            const el = document.getElementById(`${type}-bar-${id}`);
-            if(el) { el.style.width = `${pct}%`; if(type === 'hp') { document.getElementById(`hp-val-${id}`).innerText = Math.max(0, current); if(pct < 30) el.classList.add('hp-danger'); } if(type === 'en' && id === p1Id) { currentEnergy = current; document.getElementById(`en-val-${id}`).innerText = current; updateButtons(); } }
+        function updateBar(id, cur, max, type) {
+            const pct = Math.max(0, (cur / max) * 100);
+            const fill = document.getElementById(`${type}-bar-${id}`);
+            if(fill) fill.style.width = pct + '%';
+            if(type === 'hp') document.getElementById(`hp-val-${id}`).innerText = Math.max(0, cur);
+            if(type === 'en' && id === p1Id) {
+                currentEnergy = cur;
+                document.getElementById('en-val-' + id).innerText = cur;
+                updateButtons();
+            }
         }
 
         function updateButtons() {
-            const btns = document.querySelectorAll('.move-btn:not(.rest-btn)');
-            btns.forEach(btn => { const txt = btn.querySelector('small').innerText; const cost = parseInt(txt); btn.disabled = currentEnergy < cost; });
+            document.querySelectorAll('.move-btn:not(.rest-btn)').forEach(btn => {
+                const cost = parseInt(btn.querySelector('small').innerText);
+                btn.disabled = (currentEnergy < cost);
+            });
         }
 
-        function showFloatingText(targetId, text, className) {
-            const fighter = document.getElementById(`fighter-${targetId}`);
-            const el = document.createElement('div');
-            el.className = `floating-text ${className}`; el.innerText = text;
-            fighter.appendChild(el);
-            setTimeout(() => el.remove(), 1000);
+        function setControlsState(enabled) {
+            const panel = document.getElementById('controlsPanel');
+            if (enabled) {
+                panel.classList.remove('disabled');
+            } else {
+                panel.classList.add('disabled');
+            }
         }
 
         async function playEvents(events) {
             for (let evt of events) {
                 if (evt.type === 'INIT') continue;
+
                 if (evt.type === 'USE_MOVE') {
-                    const isP1 = (evt.actorId == p1Id);
-                    const fighterEl = document.getElementById(`fighter-${evt.actorId}`);
-                    if (evt.moveType === 'attack') {
-                        fighterEl.classList.add(isP1 ? 'anim-p1-attack' : 'anim-p2-attack');
-                        setTimeout(() => fighterEl.classList.remove('anim-p1-attack', 'anim-p2-attack'), 400);
+                    await speak(evt.actorId, evt.moveName);
+                    
+                    const isP1 = (evt.actorId === p1Id);
+                    const spriteContainer = document.getElementById(`sprite-${evt.actorId}`);
+                    
+                    // Animação de ataque (Container Move)
+                    const moveX = isP1 ? '40px' : '-40px';
+                    
+                    if(spriteContainer) {
+                        spriteContainer.style.transition = 'transform 0.15s ease-out';
+                        spriteContainer.style.transform = `translateX(${moveX})`;
+                        await wait(200);
+                        spriteContainer.style.transform = `translateX(0)`;
                     }
+                    
                     const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>;
                     updateBar(evt.actorId, evt.newEnergy, initialMax, 'en');
-                    log(`<b>${(evt.actorId == p1Id ? '<%= p1.playerName || p1.name %>' : '<%= p2.playerName || p2.name %>')}</b> usou ${evt.moveName}!`, "#3498db");
-                    await wait(500);
+                    await wait(300);
                 }
                 else if (evt.type === 'ATTACK_HIT') {
-                    const targetEl = document.getElementById(`fighter-${evt.targetId}`);
-                    targetEl.classList.add('anim-shake');
-                    setTimeout(() => targetEl.classList.remove('anim-shake'), 400);
-                    let extra = ""; let style = "damage-text";
-                    if(evt.isEffective) extra = "CRIT!"; 
-                    if(evt.isNotEffective) { extra = "Resist..."; style = "resist-text"; }
-                    if(evt.isBlocked) extra = "🛡️";
-                    showFloatingText(evt.targetId, `-${evt.damage} ${extra}`, style);
+                    const spriteContainer = document.getElementById(`sprite-${evt.targetId}`);
+                    const spriteImg = spriteContainer.querySelector('img');
+                    const container = document.getElementById(`fighter-${evt.targetId}`);
+                    
+                    // Flash Vermelho na IMG
+                    if(spriteImg) spriteImg.classList.add('hurt-effect');
+                    // Shake no Container
+                    spriteContainer.classList.add('hurt');
+                    
+                    const txt = document.createElement('div');
+                    txt.className = 'floating-text ' + (evt.isNotEffective ? 'resist-text' : 'damage-text');
+                    txt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`;
+                    container.appendChild(txt);
+                    
+                    await wait(500);
+
+                    if(spriteImg) spriteImg.classList.remove('hurt-effect');
+                    spriteContainer.classList.remove('hurt');
+                    txt.remove();
+                    
                     const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
                     updateBar(evt.targetId, evt.newHp, maxHp, 'hp');
-                    await wait(700);
+                    await wait(500);
                 }
                 else if (evt.type === 'HEAL') {
-                    showFloatingText(evt.actorId, `+${evt.amount}`, 'heal-text');
-                    const maxHp = (evt.actorId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
-                    updateBar(evt.actorId, evt.newHp, maxHp, 'hp');
-                    log("Curou HP!", "#2ecc71");
-                    await wait(700);
-                }
-                else if (evt.type === 'EFFECT_TICK') {
-                    const targetEl = document.getElementById(`fighter-${evt.targetId}`);
-                    targetEl.classList.add('anim-shake');
-                    setTimeout(() => targetEl.classList.remove('anim-shake'), 400);
-                    showFloatingText(evt.targetId, `-${evt.damage}`, 'damage-text');
-                    const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
-                    updateBar(evt.targetId, evt.newHp, maxHp, 'hp');
+                    updateBar(evt.actorId, evt.newHp, (evt.actorId === p1Id ? <%= p1.maxHp %> : <%= p2.maxHp %>), 'hp');
+                    const txt = document.createElement('div');
+                    txt.className = 'floating-text heal-text';
+                    txt.innerText = `+${evt.amount}`;
+                    document.getElementById(`fighter-${evt.actorId}`).appendChild(txt);
+                    setTimeout(() => txt.remove(), 1000);
                     await wait(500);
                 }
                 else if (evt.type === 'REST') {
                     const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>;
                     updateBar(evt.actorId, evt.newEnergy, initialMax, 'en');
-                    log("Descansando...", "#95a5a6");
                     await wait(500);
+                }
+                else if (evt.type === 'EFFECT_TICK') {
+                    const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>;
+                    updateBar(evt.targetId, evt.newHp, maxHp, 'hp');
+                    await wait(400);
                 }
             }
         }
 
         async function sendMove(moveId) {
-            document.getElementById('controlsPanel').classList.remove('active');
-            
+            setControlsState(false);
             if (battleMode === 'online') {
                 document.getElementById('statusMsg').innerText = "Aguardando oponente...";
+                document.getElementById('statusMsg').style.display = "block";
                 socket.emit('online_move', { roomId: battleId, moveId, playerId: myRoleId });
-            } 
-            else if (battleMode === 'manual') {
-                document.getElementById('logBox').classList.add('active');
+            } else {
                 const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, moveId }) });
                 const data = await res.json();
-                if(data.error) { alert("Erro"); return; }
                 await playEvents(data.events);
                 if(data.winnerId) endGame(data.winnerId);
-                else {
-                    document.getElementById('logBox').classList.remove('active');
-                    document.getElementById('controlsPanel').classList.add('active');
-                    updateButtons();
-                }
+                else setControlsState(true);
             }
         }
 
         function endGame(winnerId) {
             document.getElementById('overlay').style.display = 'flex';
-            let wName = "EMPATE"; 
-            if(winnerId == p1Id) wName = "<%= p1.name %>"; 
-            else if(winnerId == p2Id) wName = "<%= p2.name %>";
-            
-            let msg = "VENCEDOR";
-            if (battleMode === 'online') {
-                if (winnerId == p1Id) { msg = "VOCÊ VENCEU!"; document.getElementById('winnerText').style.color = "#2ecc71"; }
-                else { msg = "DERROTA..."; document.getElementById('winnerText').style.color = "#e74c3c"; }
-                document.getElementById('winnerText').innerHTML = `${msg}<br><span style="color:white; font-size:1rem">${wName}</span>`;
-            } else {
-                document.getElementById('winnerText').innerHTML = `VENCEDOR<br><span style="color:white; font-size:1.5rem">${wName}</span>`;
-            }
+            const winTxt = document.getElementById('winnerText');
+            if(winnerId === 'draw') winTxt.innerText = "EMPATE!";
+            else if(winnerId === p1Id) { winTxt.innerText = "VITÓRIA!"; winTxt.style.color = "#2ecc71"; }
+            else { winTxt.innerText = "DERROTA!"; winTxt.style.color = "#e74c3c"; }
         }
 
-        async function start() {
+        socket.on('turn_result', async (data) => {
+            document.getElementById('statusMsg').style.display = "none";
+            await playEvents(data.events);
+            if(data.winnerId) endGame(data.winnerId);
+            else setControlsState(true);
+        });
+
+        socket.on('opponent_ready', () => {
+             document.getElementById('statusMsg').style.display = "block";
+             document.getElementById('statusMsg').innerText = "Oponente pronto!";
+        });
+
+        window.onload = () => {
+            if(battleMode === 'online') socket.emit('join_room', battleId);
+            
+            updateBar(p1Id, <%= p1.hp %>, <%= p1.maxHp %>, 'hp');
+            updateBar(p2Id, <%= p2.hp %>, <%= p2.maxHp %>, 'hp');
+            updateBar(p1Id, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en');
+            
             if(battleMode === 'auto') {
-                document.getElementById('logBox').classList.add('active');
-                await wait(1000);
-                log("BATALHA AUTO INICIADA!", "#f1c40f");
-                await playEvents(initialData.log);
-                await wait(1000);
-                endGame(initialData.winnerId);
+                setControlsState(false);
+                playEvents(initialData.log).then(() => endGame(initialData.winnerId));
             } else {
-                document.getElementById('controlsPanel').classList.add('active');
-                updateButtons();
+                setControlsState(true);
             }
-        }
-        start();
+        };
     </script>
 </body>
 </html>
