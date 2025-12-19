@@ -23,6 +23,16 @@
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Loader overlay (fade + slide) 🔧 */
+        .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+        .loader-overlay.show { opacity: 1; pointer-events: auto; }
+        .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
+        .loader-overlay.show .loader-box { transform: translateY(0); opacity: 1; }
+        .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader-text { font-size: 0.8rem; color:#f1c40f; }
+
         .lobby-exit { position: absolute; top: 40%; right: 0; width: 40px; height: 20%; background: rgba(0, 0, 0, 0.2); border-left: 2px dashed #000; z-index: 0; display: flex; align-items: center; justify-content: flex-end; }
         .lobby-exit::after { content: 'CIDADE 🏙️'; position: absolute; right: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #fff; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; }
         .float-btn { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
@@ -55,6 +65,14 @@
     </div>
     <div id="toastContainer"></div>
 
+    <!-- Loader overlay -->
+    <div id="loader" class="loader-overlay" aria-hidden="true">
+        <div class="loader-box">
+            <div class="spinner"></div>
+            <div class="loader-text">Carregando...</div>
+        </div>
+    </div>
+
     <!-- MODAL DE EQUIPE -->
     <div class="modal-overlay" id="modalTeam">
         <div class="modal-content">
@@ -80,7 +98,16 @@
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
         
-        socket.on('connect', () => { myId = socket.id; socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest' }); });
+        const urlParams = new URLSearchParams(window.location.search);
+        const spawnFrom = urlParams.get('from');
+
+        socket.on('connect', () => {
+            myId = socket.id;
+            // Se veio do lobby, spawnar no canto direito olhando para a esquerda
+            let initialX = 50; let initialY = 50; let initialDir = 'down';
+            if (spawnFrom === 'lobby') { initialX = 90; initialY = 50; initialDir = 'left'; }
+            socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
+        });
         socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
         socket.on('player_moved', (data) => {
@@ -98,7 +125,8 @@
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
                             isPlayerMoving = false; 
-                            if (data.x > 95 && data.y > 40 && data.y < 60) { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }
+                            // Área de transição ampliada: se andar para a borda direita (x > 88) e na faixa vertical 25-75 -> volta ao lobby
+                            if (data.x > 88 && data.y > 25 && data.y < 75) { showLoading('Voltando ao lobby...', 'right'); setTimeout(() => { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }, 120); }
                         } 
                     }, duration * 1000); 
                 }
@@ -109,7 +137,8 @@
         
         socket.on('encounter_found', () => {
             isPlayerMoving = true; showToast("🌿 Um Pokémon selvagem apareceu!");
-            setTimeout(() => { fetch('/battle/wild', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>' }) }).then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; else { showToast(data.error); isPlayerMoving = false; } }); }, 1000);
+            showLoading('Iniciando batalha...', 'left');
+            setTimeout(() => { fetch('/battle/wild', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>' }) }).then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; else { hideLoading(); showToast(data.error); isPlayerMoving = false; } }); }, 1000);
         });
         function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`; const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); gameArea.appendChild(div); }
         
@@ -169,6 +198,12 @@
             const data = await res.json();
             if(data.success) { showToast("Novo líder definido!"); openBag(); }
         }
+
+        // Loading screen helpers
+        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); }
+        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); }
+        window.addEventListener('beforeunload', () => { showLoading(); });
+        window.addEventListener('load', () => { hideLoading(); });
     </script>
 </body>
 </html>

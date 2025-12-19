@@ -34,6 +34,16 @@
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Loader overlay (fade + slide) 🔧 */
+        .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+        .loader-overlay.show { opacity: 1; pointer-events: auto; }
+        .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
+        .loader-overlay.show .loader-box { transform: translateY(0); opacity: 1; }
+        .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader-text { font-size: 0.8rem; color:#f1c40f; }
+
         .forest-exit { position: absolute; top: 40%; left: 0; width: 40px; height: 20%; background: rgba(46, 204, 113, 0.2); border-right: 2px dashed #2ecc71; z-index: 0; display: flex; align-items: center; }
         .forest-exit::after { content: 'FLORESTA 🌲'; position: absolute; left: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #2ecc71; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; }
         .float-btn { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
@@ -89,6 +99,14 @@
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
     </div>
     <div id="toastContainer"></div>
+
+    <!-- Loader overlay -->
+    <div id="loader" class="loader-overlay" aria-hidden="true">
+        <div class="loader-box">
+            <div class="spinner"></div>
+            <div class="loader-text">Carregando...</div>
+        </div>
+    </div>
 
     <!-- MODAL BAG / TEAM -->
     <div class="modal-overlay" id="modalTeam">
@@ -158,9 +176,10 @@
         
         socket.on('connect', () => { 
             myId = socket.id; 
-            let initialX = 50; let initialY = 50;
-            if(spawnFrom === 'forest') { initialX = 5; initialY = 50; } 
-            socket.emit('enter_map', { name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY }); 
+            let initialX = 50; let initialY = 50; let initialDir = 'down';
+            // Se veio da floresta, spawna no lado esquerdo do lobby olhando para a direita
+            if(spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } 
+            socket.emit('enter_map', { name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); 
         });
 
         socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); });
@@ -201,7 +220,8 @@
                         if (data.id === myId) { 
                             isPlayerMoving = false; 
                             gameArea.classList.remove('locked'); 
-                            if (data.x < 5 && data.y > 40 && data.y < 60) { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }
+                            // Área de transição ampliada: se andar para a borda esquerda (x < 12) e na faixa vertical 25-75 -> entra na floresta
+                            if (data.x < 12 && data.y > 25 && data.y < 75) { showLoading('Indo para a floresta...', 'left'); setTimeout(() => { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }, 120); }
                         } 
                     }, duration * 1000); 
                 }
@@ -231,12 +251,29 @@
             if (myEl) { const currentLeft = parseFloat(myEl.style.left) || 50; const currentTop = parseFloat(myEl.style.top) || 50; const dist = Math.sqrt(Math.pow(targetX - currentLeft, 2) + Math.pow(targetY - currentTop, 2)); travelTime = (dist / MOVEMENT_SPEED) * 1000; }
             socket.emit('move_player', { x: targetX, y: targetY }); 
             setTimeout(() => {
-                if (type === 'create') window.location.href = `/create?playerName=${encodeURIComponent(myName)}&playerSkin=${encodeURIComponent(mySkin)}`;
-                else if (type === 'admin') window.location.href = '/lab?userId=<%= user._id %>';
+                if (type === 'create') { showLoading('Carregando criação...', 'left'); setTimeout(() => window.location.href = `/create?playerName=${encodeURIComponent(myName)}&playerSkin=${encodeURIComponent(mySkin)}`, 120); }
+                else if (type === 'admin') { showLoading('Carregando...', 'left'); setTimeout(() => window.location.href = '/lab?userId=<%= user._id %>', 120); }
                 else if (type === 'pokedex') openModal('modalPokedex');
                 else if (type === 'heal') healTeam();
                 else if (type === 'online' || type === 'battle') openModal('modalBattle');
             }, travelTime);
+        }
+
+        // Heal function: chama a API e mostra feedback
+        async function healTeam() {
+            try {
+                const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) });
+                const data = await res.json();
+                if (data && data.success) {
+                    showToast(data.message || 'Equipe curada!');
+                    // atualiza a UI caso a bag esteja aberta
+                    if (document.getElementById('modalTeam').style.display === 'flex') openBag();
+                } else {
+                    showToast(data.error || 'Erro ao curar');
+                }
+            } catch (e) {
+                showToast('Erro ao conectar ao servidor');
+            }
         }
 
         // BAG & LEAD SYSTEM
@@ -342,11 +379,21 @@
             document.getElementById('btnCancelSearch').style.display='none';
         }
 
-        socket.on('match_found', (data) => { document.getElementById('formRoomId').value = data.roomId; document.getElementById('formMeData').value = JSON.stringify(data.me); document.getElementById('formOpponentData').value = JSON.stringify(data.opponent); document.getElementById('onlineRedirectForm').submit(); });
+        socket.on('match_found', (data) => { document.getElementById('formRoomId').value = data.roomId; document.getElementById('formMeData').value = JSON.stringify(data.me); document.getElementById('formOpponentData').value = JSON.stringify(data.opponent); showLoading('Conectando...', 'left'); document.getElementById('onlineRedirectForm').submit(); });
         function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
         function selectDexMonster(i, el) { const m = allMonsters[i]; const safeSprite = resolveImg(m.sprite); document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); el.classList.add('active'); let movesHTML = m.movePool ? m.movePool.map(mv => `<div>Lv.${mv.level}: ${mv.moveId}</div>`).join('') : 'None'; document.getElementById('dexDetailsView').innerHTML = `<h2>${m.name}</h2><img src="${safeSprite}" style="width:100px"><p>${m.type}</p><div>${movesHTML}</div>`; }
         function validateBattleForm() { const f1 = document.getElementById('f1').value; if(!f1) { alert("Selecione seu lutador!"); return false; } return true; }
+        // Garantir loader quando submeter batalha local
+        document.addEventListener('DOMContentLoaded', () => { const localForm = document.querySelector('#modalBattle form'); if (localForm) localForm.addEventListener('submit', () => { showLoading('Iniciando batalha...'); }); });
         function getTypeColor(t) { const colors = { fire:'#e74c3c', water:'#3498db', plant:'#2ecc71', electric:'#f1c40f' }; return colors[t] || '#777'; }
+
+        // Loading screen helpers
+        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); }
+        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); }
+        // When leaving the page show loader (gives visual feedback)
+        window.addEventListener('beforeunload', () => { showLoading(); });
+        // Hide loader when the page fully loads
+        window.addEventListener('load', () => { hideLoading(); });
     </script>
 </body>
 </html>
