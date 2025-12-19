@@ -22,14 +22,10 @@
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        
         .lobby-exit { position: absolute; top: 40%; right: 0; width: 40px; height: 20%; background: rgba(0, 0, 0, 0.2); border-left: 2px dashed #000; z-index: 0; display: flex; align-items: center; justify-content: flex-end; }
         .lobby-exit::after { content: 'CIDADE 🏙️'; position: absolute; right: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #fff; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; }
-        
-        /* BOTÃO DE EQUIPE NO CANTO INFERIOR DIREITO */
         .float-btn { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
         .float-btn:active { transform: translateY(5px); box-shadow: none; }
-        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
@@ -62,7 +58,20 @@
         <div class="modal-content">
             <button class="close-btn" onclick="document.getElementById('modalTeam').style.display='none'">X</button>
             <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2>
-            <div id="teamListContent">Carregando...</div>
+            <div id="teamListContent">
+                <% if(user && user.pokemonTeam && user.pokemonTeam.length > 0) { %>
+                    <% user.pokemonTeam.forEach(p => { %>
+                        <div class="team-list-item">
+                             <div class="team-info">
+                                <div style="font-weight:bold; color:#f1c40f"><%= p.nickname %> <span style="font-size:0.8rem; color:#aaa">Lv.<%= p.level %></span></div>
+                                <div style="font-size:0.8rem; margin-top:2px;">HP: <%= p.currentHp %></div>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p style="text-align:center">Dados não disponíveis aqui.</p>
+                <% } %>
+            </div>
         </div>
     </div>
 
@@ -82,11 +91,8 @@
         
         socket.on('connect', () => { 
             myId = socket.id; 
-            // CORREÇÃO: Saindo do Lobby (Direita) entra na Direita da Floresta (x=95)
-            // Se veio do Lobby (esquerda):
             let initialX = 50; let initialY = 50;
             if(spawnFrom === 'lobby') { initialX = 95; initialY = 50; } 
-            
             socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY }); 
         });
 
@@ -107,7 +113,6 @@
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
                             isPlayerMoving = false; 
-                            // SAIDA PARA CIDADE (DIREITA) -> VAI PARA ESQUERDA DO LOBBY
                             if (data.x > 95 && data.y > 40 && data.y < 60) { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }
                         } 
                     }, duration * 1000); 
@@ -131,6 +136,9 @@
         });
         function checkIfInGrass(clientX, clientY) { const elements = document.elementsFromPoint(clientX, clientY); return elements.some(el => el.classList.contains('grass-patch')); }
 
+        // Helper para imagens
+        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+
         async function openBag() {
             document.getElementById('modalTeam').style.display='flex';
             const content = document.getElementById('teamListContent');
@@ -142,7 +150,8 @@
                 let html = '';
                 data.team.forEach(p => {
                     const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
-                    html += `<div class="team-list-item"><img src="${p.sprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.7rem; color:#aaa; margin-top:2px;">XP: ${p.xp}/${p.xpToNext}</div></div></div>`;
+                    const safeSprite = resolveImg(p.sprite);
+                    html += `<div class="team-list-item"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.7rem; color:#aaa; margin-top:2px;">XP: ${p.xp}/${p.xpToNext}</div></div></div>`;
                 });
                 content.innerHTML = html;
             } catch(e) { content.innerHTML = 'Erro.'; }
