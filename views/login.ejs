@@ -32,8 +32,18 @@
             <select name="skin"><% for(let i=1; i<=skinCount; i++) { %><option value="char<%=i%>">Personagem <%=i%></option><% } %></select>
             <p style="margin:10px 0 5px 0; color:#aaa; font-size:0.9rem;">Escolha seu Inicial</p>
             <div style="display:flex; justify-content:center;">
-                <% if(typeof starters !== 'undefined' && starters && starters.length > 0) { %>
-                    <% starters.forEach(s => { %><label class="starter-opt"><input type="radio" name="starterId" value="<%= s.id %>" required><% if(s.sprite) { %><img src="/uploads/<%= s.sprite %>" title="<%= s.name %>"><% } else { %><span><%= s.name %></span><% } %></label><% }) %>
+                <% if(starters && starters.length > 0) { %>
+                    <% starters.forEach(s => { %>
+                        <label class="starter-opt">
+                            <input type="radio" name="starterId" value="<%= s.id %>" required>
+                            <!-- VERIFICA SE O SPRITE É URL OU LOCAL -->
+                            <% if(s.sprite) { %>
+                                <img src="<%= s.sprite %>" title="<%= s.name %>">
+                            <% } else { %>
+                                <span><%= s.name %></span>
+                            <% } %>
+                        </label>
+                    <% }) %>
                 <% } else { %><small>Sem iniciais. Aguarde um Admin.</small><% } %>
             </div>
             <button style="background:#2ecc71">CRIAR CONTA</button>
