@@ -8,96 +8,30 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
-        body { 
-            margin: 0; padding: 0; background: #000; color: white; font-family: 'Roboto', sans-serif; 
-            overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; 
-        }
-        
-        /* === ARENA (CIMA) === */
-        .arena { 
-            flex: 1; 
-            background: url('/uploads/battle_bg.png') no-repeat center center; 
-            background-size: cover; position: relative; overflow: hidden; z-index: 10;
-        }
-
-        /* === ARQUIBANCADA === */
-        #bleachers {
-            width: 100%; 
-            height: 200px; 
-            background: #2c3e50; border-top: 4px solid #111;
-            position: relative; overflow: visible; 
-            background-image: linear-gradient(#34495e 1px, transparent 1px), linear-gradient(90deg, #34495e 1px, transparent 1px);
-            background-size: 20px 20px; 
-            z-index: 200; 
-            -webkit-tap-highlight-color: transparent; outline: none; user-select: none;
-        }
+        body { margin: 0; padding: 0; background: #000; color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
+        .arena { flex: 1; background: url('/uploads/battle_bg.png') no-repeat center center; background-size: cover; position: relative; overflow: hidden; z-index: 10; }
+        #bleachers { width: 100%; height: 200px; background: #2c3e50; border-top: 4px solid #111; position: relative; overflow: visible; background-image: linear-gradient(#34495e 1px, transparent 1px), linear-gradient(90deg, #34495e 1px, transparent 1px); background-size: 20px 20px; z-index: 200; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
         #bleachers.interactive { cursor: pointer; }
-        
-        /* === ÁREA DE CHAT === */
-        #chat-container {
-            width: 100%; height: 60px;
-            background: #1a1a2e; border-top: 2px solid #3498db;
-            display: flex; align-items: center; justify-content: center;
-            z-index: 300; padding-bottom: env(safe-area-inset-bottom);
-        }
-        
-        #chatBar { 
-            width: 95%; max-width: 500px; display: flex; align-items: center; gap: 8px; 
-            background: rgba(0, 0, 0, 0.3); border: 1px solid #444; padding: 5px; border-radius: 50px; 
-        }
+        #chat-container { width: 100%; height: 60px; background: #1a1a2e; border-top: 2px solid #3498db; display: flex; align-items: center; justify-content: center; z-index: 300; padding-bottom: env(safe-area-inset-bottom); }
+        #chatBar { width: 95%; max-width: 500px; display: flex; align-items: center; gap: 8px; background: rgba(0, 0, 0, 0.3); border: 1px solid #444; padding: 5px; border-radius: 50px; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 0.9rem; }
         #chatSend { width: 35px; height: 35px; border-radius: 50%; border: none; background: #3498db; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
-
-        /* SPRITE DO ESPECTADOR */
-        .spec-avatar {
-            position: absolute; width: 64px; height: 64px;
-            background-size: 400% auto; background-position: 0 100%;
-            image-rendering: pixelated; transform: translate(-50%, -50%); 
-            transition: top 0.3s linear, left 0.3s linear; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.6)); z-index: 300;
-            pointer-events: none;
-        }
+        .spec-avatar { position: absolute; width: 64px; height: 64px; background-size: 400% auto; background-position: 0 100%; image-rendering: pixelated; transform: translate(-50%, -50%); transition: top 0.3s linear, left 0.3s linear; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.6)); z-index: 300; pointer-events: none; }
         .spec-avatar.moving { animation: spec-walk-anim 0.6s steps(4) infinite; }
         @keyframes spec-walk-anim { from { background-position: 0 100%; } to { background-position: -400% 100%; } }
-        .spec-name {
-            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-            font-size: 0.6rem; background: rgba(0,0,0,0.7); padding: 2px 4px; border-radius: 4px;
-            white-space: nowrap; pointer-events: none;
-        }
-
-        /* BALÃO DE FALA */
+        .spec-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; background: rgba(0,0,0,0.7); padding: 2px 4px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
         .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 5px; z-index: 500; animation: popIn 0.2s forwards; opacity: 1; }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-
-        /* HUD - MOVIDO PARA BAIXO */
-        .stats { 
-            position: absolute; width: 170px; 
-            background: rgba(15, 15, 20, 0.95); padding: 8px 12px; 
-            border-radius: 6px; border: 2px solid #555; z-index: 30; 
-            bottom: 10px; 
-            top: auto; 
-        }
-        
-        .p2-side-stats { 
-            right: 10px; left: auto;
-            border-left: none; border-right: 5px solid #e74c3c; 
-            text-align: right; 
-        }
-        
-        .p1-side-stats { 
-            left: 10px; right: auto;
-            border-right: none; border-left: 5px solid #3498db; 
-            text-align: left; 
-        }
-        
+        .stats { position: absolute; width: 170px; background: rgba(15, 15, 20, 0.95); padding: 8px 12px; border-radius: 6px; border: 2px solid #555; z-index: 30; bottom: 10px; top: auto; }
+        .p2-side-stats { right: 10px; left: auto; border-left: none; border-right: 5px solid #e74c3c; text-align: right; }
+        .p1-side-stats { left: 10px; right: auto; border-right: none; border-left: 5px solid #3498db; text-align: left; }
         .bar-container { width: 100%; height: 10px; background: #333; border-radius: 4px; overflow: hidden; border: 1px solid #000; margin-bottom: 3px; }
         .hp-fill { height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 100%; transition: width 0.4s ease-out; }
         .en-fill { height: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); width: 100%; transition: width 0.4s ease-out; }
         .name { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-shadow: 1px 1px 0 #000; }
         .trainer-sub { font-size: 0.65rem; color: #bbb; margin-bottom: 5px; text-transform: uppercase; }
         .stat-text { font-size: 0.6rem; font-family: monospace; font-weight: bold; color: #ddd; display: flex; justify-content: space-between; }
-
-        /* JOGADOR */
         .fighter { position: absolute; width: 280px; height: 200px; display: flex; align-items: flex-end; z-index: 10; pointer-events: none; bottom: 45%; }
         .fighter.p2-position { right: 5%; justify-content: flex-end; flex-direction: row; }
         .fighter.p1-position { left: 5%; justify-content: flex-start; flex-direction: row; }
@@ -112,7 +46,6 @@
         @keyframes idle-bob { from { height: 64px; width: 64px; } to { height: 66px; width: 66px; } }
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
-
         .command-bubble { position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%) scale(0); background: #fff; color: #000; padding: 8px 12px; border-radius: 12px; border: 3px solid #000; font-family: 'Press Start 2P'; font-size: 0.55rem; white-space: nowrap; z-index: 100; opacity: 0; transition: transform 0.2s, opacity 0.2s; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); pointer-events: none; }
         .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); }
         .hurt { animation: shakeHit 0.4s ease-in-out; }
@@ -121,8 +54,6 @@
         .floating-text { font-family: 'Press Start 2P'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; text-shadow: 2px 2px 0 #000; animation: popUp 1s forwards; z-index: 100; pointer-events: none; }
         @keyframes popUp { 0% { opacity: 0; margin-top: 0; } 100% { opacity: 0; margin-top: -80px; } }
         .damage-text { color: #ff4757; } .heal-text { color: #2ed573; } .resist-text { color: #bdc3c7; font-size: 1rem !important; }
-
-        /* PAINEL INFERIOR (MODO TREINO/JOGADOR) */
         .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 3px solid #3498db; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
         .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
         .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #ecf0f1; height: 150px; background: #111; }
@@ -131,101 +62,24 @@
         .move-btn:active { transform: scale(0.96); border-color: #f1c40f; }
         .move-btn:disabled { opacity: 0.5; pointer-events: none; }
         .rest-btn { grid-column: span 2; background: #27ae60; border-color: #2ecc71; }
-
-        /* OVERLAY / PODIUM */
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        #result-content { display: flex; flex-direction: column; align-items: center; gap: 20px; animation: popIn 0.5s ease-out; }
-        
-        .podium { display: flex; align-items: flex-end; gap: 20px; margin-bottom: 30px; }
-        .winner-box { display: flex; flex-direction: column; align-items: center; transform: scale(1.2); z-index: 2; }
-        .loser-box { display: flex; flex-direction: column; align-items: center; opacity: 0.7; filter: grayscale(0.5); transform: scale(0.9); }
-        .podium-avatar-group { position: relative; width: 100px; height: 100px; }
-        .podium-trainer { width: 64px; height: 64px; background-size: 400% auto; background-position: 0 0; image-rendering: pixelated; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 2; }
-        .podium-monster { width: 80px; height: 80px; object-fit: contain; image-rendering: pixelated; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.8; }
-        .crown { font-size: 2rem; margin-bottom: -10px; z-index: 3; text-shadow: 0 0 10px gold; animation: float 2s infinite ease-in-out; }
-        .winner-box .podium-base { height: 40px; width: 120px; background: linear-gradient(to bottom, #f1c40f, #f39c12); border-radius: 5px 5px 0 0; margin-top: 5px; box-shadow: 0 0 20px rgba(241, 196, 15, 0.5); }
-        .loser-box .podium-base { height: 20px; width: 100px; background: linear-gradient(to bottom, #95a5a6, #7f8c8d); border-radius: 5px 5px 0 0; margin-top: 5px; }
-        .name-tag { font-family: 'Press Start 2P'; font-size: 0.6rem; margin-top: 10px; color: white; text-align: center; }
-        #result-title { font-family: 'Press Start 2P'; font-size: 1.5rem; color: #f1c40f; text-shadow: 0 4px 0 #c27c0e; margin: 0; }
+        #overlay h1 { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; margin-bottom: 20px; }
         .btn-restart { background: #3498db; color: white; padding: 15px 30px; border-radius: 30px; border: none; font-family: 'Press Start 2P'; font-size: 0.8rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 0 #2980b9; }
         .btn-restart:active { transform: translateY(4px); box-shadow: none; }
         .spectator-banner { position: absolute; bottom: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.7); color: #f1c40f; padding: 5px; font-family: 'Press Start 2P'; font-size: 0.7rem; pointer-events: none; z-index: 50; }
     </style>
 </head>
 <body>
-
     <div class="arena">
         <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff;">Aguardando...</div>
         <% if(isSpectator) { %> <div class="spectator-banner">MODO ESPECTADOR</div> <% } %>
-
-        <div class="stats p2-side-stats">
-            <div class="name"><%= p2.name %></div>
-            <div class="trainer-sub"><%= p2.playerName || 'CPU' %></div>
-            <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p2.id %>"></div></div>
-            <div class="stat-text"><span id="hp-val-<%= p2.id %>"><%= p2.hp %></span>/<%= p2.maxHp %></div>
-        </div>
-
-        <div class="stats p1-side-stats">
-            <div class="name"><%= p1.name %></div>
-            <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
-            <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p1.id %>"></div></div>
-            <div class="stat-text"><span id="hp-val-<%= p1.id %>"><%= p1.hp %></span> HP</div>
-            <% if(!isSpectator) { %>
-                <div class="bar-container" style="height:5px; margin-top:3px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div>
-                <div class="stat-text" style="color:#f1c40f">EN: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div>
-            <% } %>
-        </div>
-
-        <div class="fighter p2-position" id="fighter-<%= p2.id %>">
-            <div class="command-bubble" id="bubble-<%= p2.id %>"></div>
-            <!-- Oculta treinador se for Wild -->
-            <div class="trainer" id="trainer-<%= p2.id %>" data-skin="<%= p2.skin || 'char1' %>" style="<%= battleMode === 'wild' ? 'display:none' : '' %>"></div>
-            <div class="sprite" id="sprite-<%= p2.id %>"><% if (p2.sprite) { %> <img src="/uploads/<%= p2.sprite %>"> <% } else { %> <div class="emoji-fallback">👿</div> <% } %></div>
-        </div>
-        
-        <div class="fighter p1-position" id="fighter-<%= p1.id %>">
-            <div class="command-bubble" id="bubble-<%= p1.id %>"></div>
-            <div class="trainer" id="trainer-<%= p1.id %>" data-skin="<%= p1.skin %>"></div>
-            <div class="sprite" id="sprite-<%= p1.id %>"><% if (p1.sprite) { %> <img src="/uploads/<%= p1.sprite %>"> <% } else { %> <div class="emoji-fallback">🦸</div> <% } %></div>
-        </div>
-        
-        <div id="overlay">
-            <div id="result-content">
-                <h1 id="result-title">RESULTADO</h1>
-                <div class="podium">
-                    <div class="winner-box"><div class="crown">👑</div><div class="podium-avatar-group"><img id="win-mon-img" class="podium-monster" src=""><div id="win-trainer-div" class="podium-trainer"></div></div><div class="podium-base"></div><div class="name-tag" id="win-name"></div></div>
-                    <div class="loser-box"><div class="podium-avatar-group"><img id="lose-mon-img" class="podium-monster" src=""><div id="lose-trainer-div" class="podium-trainer"></div></div><div class="podium-base"></div><div class="name-tag" id="lose-name"></div></div>
-                </div>
-                <form action="/lobby" method="GET">
-                    <input type="hidden" name="userId" value="<%= isSpectator ? '' : myRoleId %>">
-                    <button type="submit" class="btn-restart">VOLTAR AO LOBBY</button>
-                </form>
-            </div>
-        </div>
+        <div class="stats p2-side-stats"><div class="name"><%= p2.name %></div><div class="trainer-sub"><%= p2.playerName || 'CPU' %></div><div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p2.id %>"></div></div><div class="stat-text"><span id="hp-val-<%= p2.id %>"><%= p2.hp %></span>/<%= p2.maxHp %></div></div>
+        <div class="stats p1-side-stats"><div class="name"><%= p1.name %></div><div class="trainer-sub"><%= p1.playerName || 'Você' %></div><div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p1.id %>"></div></div><div class="stat-text"><span id="hp-val-<%= p1.id %>"><%= p1.hp %></span> HP</div><% if(!isSpectator) { %><div class="bar-container" style="height:5px; margin-top:3px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div><div class="stat-text" style="color:#f1c40f">EN: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div><% } %></div>
+        <div class="fighter p2-position" id="fighter-<%= p2.id %>"><div class="command-bubble" id="bubble-<%= p2.id %>"></div><div class="trainer" id="trainer-<%= p2.id %>" data-skin="<%= p2.skin || 'char1' %>" style="<%= battleMode === 'wild' ? 'display:none' : '' %>"></div><div class="sprite" id="sprite-<%= p2.id %>"><% if (p2.sprite) { %> <img src="/uploads/<%= p2.sprite %>"> <% } else { %> <div class="emoji-fallback">👿</div> <% } %></div></div>
+        <div class="fighter p1-position" id="fighter-<%= p1.id %>"><div class="command-bubble" id="bubble-<%= p1.id %>"></div><div class="trainer" id="trainer-<%= p1.id %>" data-skin="<%= p1.skin %>"></div><div class="sprite" id="sprite-<%= p1.id %>"><% if (p1.sprite) { %> <img src="/uploads/<%= p1.sprite %>"> <% } else { %> <div class="emoji-fallback">🦸</div> <% } %></div></div>
+        <div id="overlay"><div id="result-content"><h1 id="result-title">RESULTADO</h1><div class="podium"><div class="winner-box"><div class="crown">👑</div><div class="podium-avatar-group"><img id="win-mon-img" class="podium-monster" src=""><div id="win-trainer-div" class="podium-trainer"></div></div><div class="podium-base"></div><div class="name-tag" id="win-name"></div></div><div class="loser-box"><div class="podium-avatar-group"><img id="lose-mon-img" class="podium-monster" src=""><div id="lose-trainer-div" class="podium-trainer"></div></div><div class="podium-base"></div><div class="name-tag" id="lose-name"></div></div></div><form action="/lobby" method="GET"><input type="hidden" name="userId" value="<%= isSpectator ? '' : myRoleId %>"><button type="submit" class="btn-restart">VOLTAR AO LOBBY</button></form></div></div>
     </div>
-
-    <% if(isSpectator) { %>
-        <div id="bleachers" class="interactive"></div>
-        <div id="chat-container"><div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div></div>
-    <% } else { %>
-        <div class="bottom-panel">
-            <% if (battleMode === 'online' || battleMode === 'manual' || battleMode === 'wild') { %>
-                <div class="controls-panel" id="controlsPanel">
-                    <% if (battleMode === 'wild') { %>
-                        <button class="move-btn" style="background:#e67e22; border-color:#d35400" onclick="sendAction('catch')"><strong>🔴 Capturar</strong></button>
-                        <button class="move-btn" style="background:#95a5a6; border-color:#7f8c8d" onclick="sendAction('run')"><strong>🏃 Fugir</strong></button>
-                    <% } %>
-                    <% p1.moves.forEach(move => { %>
-                        <button class="move-btn" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>"><strong><%= move.icon %> <%= move.name %></strong><small><%= move.cost %> EN</small></button>
-                    <% }) %>
-                    <button class="move-btn rest-btn" onclick="sendAction('move', 'rest')">💤 Descansar</button>
-                </div>
-            <% } else { %>
-                <div class="battle-log" id="logBox"></div>
-            <% } %>
-        </div>
-    <% } %>
-
+    <% if(isSpectator) { %> <div id="bleachers" class="interactive"></div><div id="chat-container"><div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div></div> <% } else { %> <div class="bottom-panel"><% if (battleMode === 'online' || battleMode === 'manual' || battleMode === 'wild') { %><div class="controls-panel" id="controlsPanel"><% if (battleMode === 'wild') { %><button class="move-btn" style="background:#e67e22; border-color:#d35400" onclick="sendAction('catch')"><strong>🔴 Capturar</strong></button><button class="move-btn" style="background:#95a5a6; border-color:#7f8c8d" onclick="sendAction('run')"><strong>🏃 Fugir</strong></button><% } %><% p1.moves.forEach(move => { %><button class="move-btn" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>"><strong><%= move.icon %> <%= move.name %></strong><small><%= move.cost %> EN</small></button><% }) %><button class="move-btn rest-btn" onclick="sendAction('move', 'rest')">💤 Descansar</button></div><% } else { %><div class="battle-log" id="logBox"></div><% } %></div> <% } %>
     <script>
         history.pushState(null, null, location.href); window.onpopstate = function () { history.go(1); }; window.onpageshow = function(event) { if (event.persisted) { window.location.reload(); } };
         const socket = io();
@@ -242,7 +96,6 @@
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const p1Data = { name: "<%= p1.playerName %>", skin: "<%= p1.skin %>", sprite: "<%= p1.sprite %>", mon: "<%= p1.name %>" };
         const p2Data = { name: "<%= p2.playerName %>", skin: "<%= p2.skin %>", sprite: "<%= p2.sprite %>", mon: "<%= p2.name %>" };
-        
         if (isSpectator) {
             const bleachers = document.getElementById('bleachers');
             socket.emit('join_spectator', { roomId: battleId, name: myName, skin: mySkin });
@@ -257,26 +110,9 @@
             socket.on('chat_message', (data) => { const playerEl = document.getElementById(`spec-${data.id}`); if (!playerEl) return; const oldBubble = playerEl.querySelector('.chat-bubble'); if (oldBubble) oldBubble.remove(); const bubble = document.createElement('div'); bubble.className = 'chat-bubble'; bubble.innerText = data.msg; playerEl.appendChild(bubble); setTimeout(() => { bubble.style.opacity = '0'; setTimeout(() => bubble.remove(), 200); }, 4000); });
             function createSpectator(s) { const div = document.createElement('div'); div.id = `spec-${s.id}`; div.className = 'spec-avatar'; div.style.left = s.x + '%'; div.style.top = s.y + '%'; div.style.backgroundImage = `url('/uploads/${s.skin || "char1"}.png')`; const name = document.createElement('div'); name.className = 'spec-name'; name.innerText = s.name; div.appendChild(name); bleachers.appendChild(div); }
         }
-        
-        async function speak(actorId, moveName) {
-             // Oculta fala se for selvagem
-             if (battleMode === 'wild' && actorId === p2Id) return;
-             const bubble = document.getElementById(`bubble-${actorId}`); if(!bubble) return; const mon = (actorId === p1Id) ? p1Mon : p2Mon; bubble.innerText = (moveName === 'rest') ? `${mon}, volta!` : `${mon}, ${moveName}!`; bubble.classList.add('show'); const trainer = document.getElementById(`trainer-${actorId}`); if(trainer) { trainer.style.backgroundPositionX = "-100%"; await wait(400); trainer.style.backgroundPositionX = "0%"; } await wait(1200); bubble.classList.remove('show'); 
-        }
+        async function speak(actorId, moveName) { if (battleMode === 'wild' && actorId === p2Id) return; const bubble = document.getElementById(`bubble-${actorId}`); if(!bubble) return; const mon = (actorId === p1Id) ? p1Mon : p2Mon; bubble.innerText = (moveName === 'rest') ? `${mon}, volta!` : `${mon}, ${moveName}!`; bubble.classList.add('show'); const trainer = document.getElementById(`trainer-${actorId}`); if(trainer) { trainer.style.backgroundPositionX = "-100%"; await wait(400); trainer.style.backgroundPositionX = "0%"; } await wait(1200); bubble.classList.remove('show'); }
         function updateBar(id, cur, max, type) { const pct = Math.max(0, (cur / max) * 100); const fill = document.getElementById(`${type}-bar-${id}`); if(fill) fill.style.width = pct + '%'; if(type === 'hp') document.getElementById(`hp-val-${id}`).innerText = Math.max(0, cur); if(type === 'en' && id === p1Id && !isSpectator) { currentEnergy = cur; document.getElementById('en-val-' + id).innerText = cur; updateButtons(); } }
-        
-        function updateButtons() { 
-            if(isSpectator) return; 
-            document.querySelectorAll('.move-btn:not(.rest-btn)').forEach(btn => { 
-                const costEl = btn.querySelector('small');
-                // CORREÇÃO: Verifica se tem custo antes de tentar ler
-                if(costEl) {
-                    const cost = parseInt(costEl.innerText); 
-                    btn.disabled = (currentEnergy < cost); 
-                }
-            }); 
-        }
-
+        function updateButtons() { if(isSpectator) return; document.querySelectorAll('.move-btn:not(.rest-btn)').forEach(btn => { const costEl = btn.querySelector('small'); if(costEl) { const cost = parseInt(costEl.innerText); btn.disabled = (currentEnergy < cost); } }); }
         function setControlsState(enabled) { if(isSpectator) return; const panel = document.getElementById('controlsPanel'); if(!panel) return; if (enabled) panel.style.opacity = "1"; else panel.style.opacity = "0.5"; }
         function addLog(msg) { const box = document.getElementById('logBox'); if(!box) return; const entry = document.createElement('div'); entry.className = 'log-entry'; entry.innerText = msg; box.appendChild(entry); box.scrollTop = box.scrollHeight; }
         async function playEvents(events) { for (let evt of events) { if (evt.type === 'INIT') continue; if (evt.type === 'USE_MOVE') { if(!isSpectator) addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} usou ${evt.moveName}`); await speak(evt.actorId, evt.moveName); const isP1Actor = (evt.actorId === p1Id); const spriteContainer = document.getElementById(`sprite-${evt.actorId}`); const moveX = isP1Actor ? '40px' : '-40px'; if(spriteContainer) { spriteContainer.style.transition = 'transform 0.15s ease-out'; spriteContainer.style.transform = `translateX(${moveX})`; await wait(200); spriteContainer.style.transform = `translateX(0)`; } if(!isSpectator) { const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>; updateBar(evt.actorId, evt.newEnergy, initialMax, 'en'); } await wait(300); } else if (evt.type === 'ATTACK_HIT') { const spriteContainer = document.getElementById(`sprite-${evt.targetId}`); const spriteImg = spriteContainer ? spriteContainer.querySelector('img') : null; const container = document.getElementById(`fighter-${evt.targetId}`); if(spriteImg) spriteImg.classList.add('hurt-effect'); if(spriteContainer) spriteContainer.classList.add('hurt'); const txt = document.createElement('div'); txt.className = 'floating-text ' + (evt.isNotEffective ? 'resist-text' : 'damage-text'); txt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`; if(container) container.appendChild(txt); await wait(500); if(spriteImg) spriteImg.classList.remove('hurt-effect'); if(spriteContainer) spriteContainer.classList.remove('hurt'); txt.remove(); const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>; updateBar(evt.targetId, evt.newHp, maxHp, 'hp'); await wait(500); } else if (evt.type === 'HEAL') { if(!isSpectator) addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} se curou!`); updateBar(evt.actorId, evt.newHp, (evt.actorId === p1Id ? <%= p1.maxHp %> : <%= p2.maxHp %>), 'hp'); const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${evt.amount}`; document.getElementById(`fighter-${evt.actorId}`).appendChild(txt); setTimeout(() => txt.remove(), 1000); await wait(500); } else if (evt.type === 'REST') { if(!isSpectator) addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} descansou.`); if(!isSpectator) { const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>; updateBar(evt.actorId, evt.newEnergy, initialMax, 'en'); } await wait(500); } } }
