@@ -255,6 +255,7 @@
                 let html = '';
                 data.team.forEach((p, index) => {
                     const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
+                    const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0;
                     const safeSprite = resolveImg(p.sprite);
                     const isLead = index === 0;
                     
@@ -266,6 +267,8 @@
                                 <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
                                 <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
                                 <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
+                                <div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div>
+                                <div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div>
                             </div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">

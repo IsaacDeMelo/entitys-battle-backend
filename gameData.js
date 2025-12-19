@@ -39,7 +39,12 @@ const MOVES_LIBRARY = {
 };
 
 function getXpForNextLevel(level) {
-    return level * 100;
+    // Nova fórmula: mais suave nos níveis iniciais e progressivamente mais íngreme.
+    // xpNext = floor(BASE * level^(EXPONENT))
+    // BASE=50, EXPONENT=1.5 -> lvl1=50, lvl2≈141, lvl3≈259, lvl10≈1581
+    const BASE = 50;
+    const EXPONENT = 1.5;
+    return Math.max(10, Math.floor(BASE * Math.pow(Math.max(1, level), EXPONENT)));
 }
 
 function getTypeEffectiveness(atkType, defType) {

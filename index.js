@@ -11,7 +11,7 @@ const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTy
 const SKIN_COUNT = 6;
 
 // CONEXÃO MONGODB
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://isaachonorato41:brasil2021@cluster0.rxemo.mongodb.net/?appName=Cluster0";
+const { MONGO_URI } = require('./config');
 mongoose.connect(MONGO_URI).then(() => console.log('✅ MongoDB Conectado')).catch(e=>console.log(e));
 
 const app = express();
@@ -33,6 +33,10 @@ const onlineBattles = {};
 const players = {}; 
 let matchmakingQueue = []; 
 const roomSpectators = {}; 
+
+// GRASS PATCH CONFIG: quais patches podem gerar encontros e suas chances
+const GRASS_PATCHES = ['grass1', 'grass2'];
+const GRASS_CHANCE = { grass1: 0.35, grass2: 0.35 };
 
 // SEED DATABASE
 async function seedDatabase() {
@@ -71,7 +75,7 @@ async function createBattleInstance(baseId, level) {
         instanceId: 'wild_' + Date.now(), baseId: base.id, name: base.name, type: base.type, level: level,
         maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy,
         stats: stats, moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id),
-        sprite: base.sprite, catchRate: base.catchRate || 0.5, xpYield: level * 20, isWild: true
+        sprite: base.sprite, catchRate: base.catchRate || 0.5, xpYield: Math.max(5, Math.floor(level * 25)), isWild: true
     };
 }
 
@@ -168,7 +172,7 @@ app.post('/api/turn', async (req, res) => {
     if (p2.hp <= 0) {
         let xpGained = 0;
         if(battle.type === 'wild') xpGained = p2.xpYield || 10;
-        else if(battle.type === 'local') xpGained = 5;
+        else if(battle.type === 'local') xpGained = 10;
         if(xpGained > 0) {
             events.push({ type: 'MSG', text: `Ganhou ${xpGained} XP!` });
             const user = await User.findById(battle.userId); 
@@ -238,7 +242,19 @@ io.on('connection', (socket) => {
     
     socket.on('move_player', (data) => { if (players[socket.id]) { const p = players[socket.id]; const dx = data.x - p.x; const dy = data.y - p.y; let dir = p.direction; if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up'; p.x = data.x; p.y = data.y; p.direction = dir; io.to(p.map).emit('player_moved', { id: socket.id, x: data.x, y: data.y, direction: dir }); } });
     socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
-    socket.on('check_encounter', (data) => { if (data.x < 20 && Math.random() < 0.2) socket.emit('encounter_found'); });
+    socket.on('check_encounter', (data) => {
+        // Agora o cliente envia o id do patch de grama (por ex. 'grass1').
+        const grassId = data && data.grassId;
+        if (!grassId || !GRASS_PATCHES.includes(grassId)) { 
+            console.log(`[encounter] ignored - invalid grassId=${grassId}`);
+            return; // só aceitamos ids conhecidos
+        }
+        const chance = GRASS_CHANCE[grassId] || 0.3;
+        const roll = Math.random();
+        const found = roll < chance;
+        console.log(`[encounter] grass=${grassId} roll=${roll.toFixed(3)} chance=${chance} => ${found}`);
+        if (found) socket.emit('encounter_found');
+    });
     socket.on('disconnect', () => { 
         matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); 
         if (players[socket.id]) { const map = players[socket.id].map; delete players[socket.id]; io.to(map).emit('player_left', socket.id); } 

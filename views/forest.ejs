@@ -117,7 +117,10 @@
             if (isPlayerMoving) return;
             const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
             isPlayerMoving = true; socket.emit('move_player', { x: targetX, y: targetY });
-            if (checkIfInGrass(e.clientX, e.clientY)) socket.emit('check_encounter', { x: targetX, y: targetY });
+            // Detecta qual patch de grama foi clicado e envia o id para o servidor
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
+            if (grassEl) socket.emit('check_encounter', { grassId: grassEl.id, x: targetX, y: targetY });
         });
         function checkIfInGrass(clientX, clientY) { const elements = document.elementsFromPoint(clientX, clientY); return elements.some(el => el.classList.contains('grass-patch')); }
 
@@ -132,6 +135,7 @@
                 let html = '';
                 data.team.forEach((p, index) => {
                     const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
+                    const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0;
                     const safeSprite = resolveImg(p.sprite);
                     const isLead = index === 0;
                     
@@ -143,6 +147,8 @@
                                 <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
                                 <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
                                 <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
+                                <div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div>
+                                <div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div>
                             </div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
