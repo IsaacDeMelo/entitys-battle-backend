@@ -275,7 +275,14 @@
             for (let evt of events) { 
                 if (evt.type === 'INIT') continue; 
                 if (evt.type === 'USE_MOVE') { 
-                    await speak(evt.actorId, evt.moveName);
+                    // CORREÇÃO: Se for selvagem (p2) e wild mode, não fala
+                    if (battleMode === 'wild' && evt.actorId === p2Id) {
+                        // Silêncio (apenas delay)
+                        await wait(500);
+                    } else {
+                        await speak(evt.actorId, evt.moveName);
+                    }
+
                     const spriteContainer = document.getElementById(`sprite-${evt.actorId}`); 
                     const isP1Actor = (evt.actorId === p1Id); 
                     const moveX = isP1Actor ? '40px' : '-40px'; 

@@ -7,6 +7,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* ... Estilos base ... */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #051405; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; }
         #gameArea { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-color: #27ae60; background-image: radial-gradient(#2ecc71 15%, transparent 16%), radial-gradient(#2ecc71 15%, transparent 16%); background-size: 20px 20px; image-rendering: pixelated; cursor: crosshair; overflow: hidden; z-index: 1; isolation: isolate; }
@@ -54,48 +55,32 @@
     </div>
     <div id="toastContainer"></div>
 
+    <!-- MODAL DE EQUIPE -->
     <div class="modal-overlay" id="modalTeam">
         <div class="modal-content">
             <button class="close-btn" onclick="document.getElementById('modalTeam').style.display='none'">X</button>
             <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2>
-            <div id="teamListContent">
-                <% if(user && user.pokemonTeam && user.pokemonTeam.length > 0) { %>
-                    <% user.pokemonTeam.forEach(p => { %>
-                        <div class="team-list-item">
-                             <div class="team-info">
-                                <div style="font-weight:bold; color:#f1c40f"><%= p.nickname %> <span style="font-size:0.8rem; color:#aaa">Lv.<%= p.level %></span></div>
-                                <div style="font-size:0.8rem; margin-top:2px;">HP: <%= p.currentHp %></div>
-                            </div>
-                        </div>
-                    <% }) %>
-                <% } else { %>
-                    <p style="text-align:center">Dados não disponíveis aqui.</p>
-                <% } %>
-            </div>
+            <div id="teamListContent">Carregando...</div>
         </div>
     </div>
 
     <script>
+        // UTILIDADES NO TOPO PARA EVITAR ERROS
+        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
+        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
         const gameArea = document.getElementById('gameArea');
         let myId = null; const MOVEMENT_SPEED = 55; let isPlayerMoving = false;
         
-        const urlParams = new URLSearchParams(window.location.search);
-        const spawnFrom = urlParams.get('from');
-
+        // CHAT
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
         
-        socket.on('connect', () => { 
-            myId = socket.id; 
-            let initialX = 50; let initialY = 50;
-            if(spawnFrom === 'lobby') { initialX = 95; initialY = 50; } 
-            socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY }); 
-        });
-
+        socket.on('connect', () => { myId = socket.id; socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest' }); });
         socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
         socket.on('player_moved', (data) => {
@@ -127,7 +112,7 @@
             setTimeout(() => { fetch('/battle/wild', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>' }) }).then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; else { showToast(data.error); isPlayerMoving = false; } }); }, 1000);
         });
         function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`; const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); gameArea.appendChild(div); }
-        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 5000); }
+        
         gameArea.addEventListener('click', (e) => {
             if (isPlayerMoving) return;
             const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -135,9 +120,6 @@
             if (checkIfInGrass(e.clientX, e.clientY)) socket.emit('check_encounter', { x: targetX, y: targetY });
         });
         function checkIfInGrass(clientX, clientY) { const elements = document.elementsFromPoint(clientX, clientY); return elements.some(el => el.classList.contains('grass-patch')); }
-
-        // Helper para imagens
-        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
         async function openBag() {
             document.getElementById('modalTeam').style.display='flex';
@@ -148,13 +130,38 @@
                 const data = await res.json();
                 if(!data.team || data.team.length === 0) { content.innerHTML = '<p style="text-align:center">Vazio.</p>'; return; }
                 let html = '';
-                data.team.forEach(p => {
+                data.team.forEach((p, index) => {
                     const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
                     const safeSprite = resolveImg(p.sprite);
-                    html += `<div class="team-list-item"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.7rem; color:#aaa; margin-top:2px;">XP: ${p.xp}/${p.xpToNext}</div></div></div>`;
+                    const isLead = index === 0;
+                    
+                    html += `
+                    <div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}">
+                        <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                            <img src="${safeSprite}" class="team-sprite">
+                            <div class="team-info">
+                                <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
+                                <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
+                                <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
+                        </div>
+                    </div>`;
                 });
                 content.innerHTML = html;
             } catch(e) { content.innerHTML = 'Erro.'; }
+        }
+
+        async function setLead(pokeId) {
+            const res = await fetch('/api/set-lead', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId })
+            });
+            const data = await res.json();
+            if(data.success) { showToast("Novo líder definido!"); openBag(); }
         }
     </script>
 </body>

@@ -7,13 +7,13 @@
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
+        /* ... (Mesmo CSS anterior) ... */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: center; }
         #gameArea { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-image: url('/uploads/map_bg.png'); image-rendering: pixelated; background-size: cover; background-position: center top; background-repeat: no-repeat; cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; z-index: 1; isolation: isolate; }
         .machine { position: absolute; background-color: transparent; border: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; color: #fff; font-family: 'Press Start 2P'; font-size: 0.5rem; text-align: center; text-shadow: 2px 2px 0 #000; cursor: pointer; background-size: contain; background-repeat: no-repeat; background-position: center bottom; transform: translate3d(0,0,0); transition: transform 0.1s; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); -webkit-tap-highlight-color: transparent; outline: none; }
         .machine:active { transform: scale(0.95); }
-        .top-machine { width: 150px; height: 150px; z-index: 5; } 
-        .bottom-machine { width: 100px; height: 100px; z-index: 5; }
+        .top-machine { width: 150px; height: 150px; z-index: 5; } .bottom-machine { width: 100px; height: 100px; z-index: 5; }
         #pc-pokedex { top: 3%; left: 2%; background-image: url('/uploads/pokedex_building.png'); }
         #pc-center { top: 3%; right: 2%; background-image: url('/uploads/online_building.png'); filter: hue-rotate(90deg); }
         #pc-battle { top: 40%; left: 50%; margin-left: -70px; width: 140px; height: 120px; background-image: url('/uploads/arena_building.png'); z-index: 5; }
@@ -90,6 +90,7 @@
     </div>
     <div id="toastContainer"></div>
 
+    <!-- MODAL BAG / TEAM -->
     <div class="modal-overlay" id="modalTeam">
         <div class="modal-content">
             <button class="close-btn" onclick="closeModal('modalTeam')">X</button>
@@ -98,12 +99,15 @@
         </div>
     </div>
 
+    <!-- MODAL POKEDEX -->
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div class="dex-sidebar"><div class="dex-search-box"><input type="text" id="dexSearch" class="dex-search-input" placeholder="🔍" onkeyup="filterDex()"></div><div class="dex-grid" id="dexGrid"><% entities.forEach((e, index) => { %><div class="dex-card" onclick="selectDexMonster(<%= index %>, this)" data-name="<%= e.name.toLowerCase() %>"><% if(e.sprite) { %> <img src="<%= e.sprite %>" class="dex-card-img"> <% } else { %> ❓ <% } %><div class="dex-card-name"><%= e.name %></div></div><% }) %></div></div><div class="dex-main"><div class="dex-content-wrapper" id="dexDetailsView">Selecione um monstro.</div></div></div></div>
     
+    <!-- MODAL ONLINE -->
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;"><div style="display:flex; border-bottom:1px solid #333;"><button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button><button class="tab-btn" onclick="switchTab('tab-watch')">ASSISTIR</button><button class="close-btn" onclick="closeModal('modalOnline')">X</button></div><div id="tab-play" class="tab-content" style="padding:20px; flex:1;"><select id="onlineFighter"><% if(team.length > 0) { team.forEach(p => { %><option value="<%= p.baseId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }); } else { %><option>Sem Pokemons</option><% } %></select><button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button><button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button><div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div></div><div id="tab-watch" class="tab-content" style="display:none; padding:10px;"><div id="battlesList"></div></div></div></div>
     
     <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;"><input type="hidden" name="roomId" id="specRoomId"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"></form>
     
+    <!-- MODAL BATALHA LOCAL -->
     <div class="modal-overlay" id="modalBattle">
         <div class="modal-content" style="padding:20px; display:block;">
             <button class="close-btn" onclick="closeModal('modalBattle')">X</button>
@@ -132,6 +136,12 @@
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
     
     <script>
+        // UTILIDADES (NO TOPO)
+        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
+        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if(id==='modalPokedex' && allMonsters.length>0) selectDexMonster(0, document.querySelector('.dex-card')); }
+
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
@@ -229,18 +239,9 @@
             }, travelTime);
         }
 
-        async function healTeam() {
-            showToast("🏥 Bem-vindo ao Centro Pokémon...");
-            const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) });
-            const data = await res.json();
-            if(data.success) { showToast("✨ " + data.message); } else showToast("❌ Erro ao curar.");
-        }
-
-        // BAG DINAMICA COM CONFIGURAÇÃO DE ATAQUES
+        // BAG & LEAD SYSTEM
         let currentMoves = [];
         let currentPokeId = null;
-
-        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
         async function openBag() {
             document.getElementById('modalTeam').style.display='flex';
@@ -250,30 +251,47 @@
                 const res = await fetch('/api/me?userId=<%= user._id %>');
                 const data = await res.json();
                 if(!data.team || data.team.length === 0) { content.innerHTML = '<p style="text-align:center">Vazio.</p>'; return; }
+                
                 let html = '';
-                data.team.forEach(p => {
+                data.team.forEach((p, index) => {
                     const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
                     const safeSprite = resolveImg(p.sprite);
+                    const isLead = index === 0;
+                    
                     html += `
-                    <div class="team-list-item" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">
-                        <img src="${safeSprite}" class="team-sprite">
-                        <div class="team-info">
-                            <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
-                            <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
-                            <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
-                            <div style="font-size:0.7rem; color:#aaa; margin-top:2px;">XP: ${p.xp}/${p.xpToNext}</div>
+                    <div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}">
+                        <div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;">
+                            <img src="${safeSprite}" class="team-sprite">
+                            <div class="team-info">
+                                <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
+                                <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
+                                <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
+                            </div>
                         </div>
-                        <div style="font-size:1.5rem;">⚙️</div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
+                            ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
+                            <div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div>
+                        </div>
                     </div>`;
                 });
                 content.innerHTML = html;
             } catch(e) { content.innerHTML = 'Erro.'; }
         }
 
+        async function setLead(pokeId) {
+            const res = await fetch('/api/set-lead', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId })
+            });
+            const data = await res.json();
+            if(data.success) { showToast("Novo líder definido!"); openBag(); }
+        }
+
         function showMoveEditor(id, name, equipped, learned) {
             currentPokeId = id;
             const pool = (learned && learned.length > 0) ? learned : equipped;
-            let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4 ataques.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`;
+            let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`;
             pool.forEach(moveId => {
                 const isEquipped = equipped.includes(moveId);
                 const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;";
@@ -325,9 +343,7 @@
         function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
         function selectDexMonster(i, el) { const m = allMonsters[i]; const safeSprite = resolveImg(m.sprite); document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); el.classList.add('active'); let movesHTML = m.movePool ? m.movePool.map(mv => `<div>Lv.${mv.level}: ${mv.moveId}</div>`).join('') : 'None'; document.getElementById('dexDetailsView').innerHTML = `<h2>${m.name}</h2><img src="${safeSprite}" style="width:100px"><p>${m.type}</p><div>${movesHTML}</div>`; }
         function validateBattleForm() { const f1 = document.getElementById('f1').value; if(!f1) { alert("Selecione seu lutador!"); return false; } return true; }
-        
-        // CORREÇÃO: Função closeModal restaurada
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function getTypeColor(t) { const colors = { fire:'#e74c3c', water:'#3498db', plant:'#2ecc71', electric:'#f1c40f' }; return colors[t] || '#777'; }
     </script>
 </body>
 </html>
