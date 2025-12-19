@@ -82,8 +82,8 @@
     <div id="tab-moves" class="content-area"><div class="moves-box"><% Object.values(moves).forEach(m => { %><div class="move-card"><div><div style="font-weight:bold; color:#fff"><%= m.name %></div><div style="font-size:0.7rem; color:#aaa">ID: <span style="color:#f1c40f"><%= m.id %></span> | Power: <%= m.power %></div></div><div class="type-badge" style="background:#ddd"><%= m.element || m.type %></div></div><% }) %></div></div>
     <div id="tab-manual" class="content-area"><div class="manual-box"><p>Guia rápido...</p></div></div>
     
+    <script src="/scripts/common.js"></script>
     <script>
-        function switchTab(id) { document.querySelectorAll('.content-area').forEach(d => d.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(id).classList.add('active'); event.target.classList.add('active'); }
         function loadData(p) {
             switchTab('tab-create');
             document.getElementById('modeTitle').innerText = "Modo: Edição (" + p.name + ")"; document.getElementById('modeTitle').style.color = "#f1c40f";

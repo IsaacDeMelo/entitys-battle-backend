@@ -83,6 +83,9 @@
         .dex-moves-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 10px; }
         .dex-move-item { font-size: 0.8rem; color: #ccc; margin-bottom: 4px; }
         .move-chip { font-family: 'Press Start 2P'; font-size: 0.6rem; text-align: center; color: white; text-shadow: 1px 1px 0 #000; flex: 1; min-width: 100px; }
+
+        /* Arena sprite helpers: show single frame from 4x4 spritesheet */
+        .arena-char { width:80px; height:80px; background-size: 400% auto; background-position: 0% 0%; image-rendering: pixelated; margin: 0 auto; }
     </style>
 </head>
 <body>
@@ -121,37 +124,74 @@
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div class="dex-sidebar"><div class="dex-search-box"><input type="text" id="dexSearch" class="dex-search-input" placeholder="🔍" onkeyup="filterDex()"></div><div class="dex-grid" id="dexGrid"><% entities.forEach((e, index) => { %><div class="dex-card" onclick="selectDexMonster(<%= index %>, this)" data-name="<%= e.name.toLowerCase() %>"><% if(e.sprite) { %> <img src="<%= e.sprite %>" class="dex-card-img"> <% } else { %> ❓ <% } %><div class="dex-card-name"><%= e.name %></div></div><% }) %></div></div><div class="dex-main"><div class="dex-content-wrapper" id="dexDetailsView">Selecione um monstro.</div></div></div></div>
     
     <!-- MODAL ONLINE -->
-    <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;"><div style="display:flex; border-bottom:1px solid #333;"><button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button><button class="tab-btn" onclick="switchTab('tab-watch')">ASSISTIR</button><button class="close-btn" onclick="closeModal('modalOnline')">X</button></div><div id="tab-play" class="tab-content" style="padding:20px; flex:1;"><select id="onlineFighter"><% if(team.length > 0) { team.forEach(p => { %><option value="<%= p.baseId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }); } else { %><option>Sem Pokemons</option><% } %></select><button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button><button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button><div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div></div><div id="tab-watch" class="tab-content" style="display:none; padding:10px;"><div id="battlesList"></div></div></div></div>
+    <div class="modal-overlay" id="modalOnline">
+        <div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; border-bottom:1px solid #333;">
+                <button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button>
+                <button class="tab-btn" onclick="switchTab('tab-watch')">ASSISTIR</button>
+                <button class="close-btn" onclick="closeModal('modalOnline')">X</button>
+            </div>
+            <div id="tab-play" class="tab-content" style="padding:20px; flex:1;">
+                <select id="onlineFighter">
+                    <% if(team.length > 0) { team.forEach(p => { %>
+                        <option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option>
+                    <% }); } else { %>
+                        <option>Sem Pokemons</option>
+                    <% } %>
+                </select>
+                <button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button>
+                <button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button>
+                <div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div>
+            </div>
+            <div id="tab-watch" class="tab-content" style="display:none; padding:10px;">
+                <div id="battlesList"></div>
+            </div>
+        </div>
+    </div>
     
     <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;"><input type="hidden" name="roomId" id="specRoomId"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"></form>
     
-    <!-- MODAL BATALHA LOCAL -->
+    <!-- MODAL BATALHA LOCAL (DESIGN ATUALIZADO) -->
     <div class="modal-overlay" id="modalBattle">
-        <div class="modal-content" style="padding:20px; display:block;">
+        <div class="modal-content" style="padding:18px; display:block; max-width:420px;">
             <button class="close-btn" onclick="closeModal('modalBattle')">X</button>
-            <h2 style="text-align:center; color:#e74c3c">Treino Local</h2>
-            <form action="/battle" method="POST" onsubmit="return validateBattleForm()">
+            <h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2>
+            <form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;">
                 <input type="hidden" name="userId" value="<%= user._id %>">
                 <input type="hidden" name="playerName" value="<%= playerName %>">
                 <input type="hidden" name="playerSkin" value="<%= playerSkin %>">
-                <label>Modo</label>
-                <select name="mode"><option value="manual">Manual</option></select>
-                <label>Seu Lutador</label>
-                <select name="fighterId" id="f1" required>
+                <input type="hidden" name="mode" value="manual">
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
+                        <div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div>
+                        <div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div>
+                        <div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div>
+                    </div>
+                    <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
+                        <div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div>
+                        <div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div>
+                        <div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div>
+                    </div>
+                </div>
+
+                <label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label>
+                <select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;">
                     <option value="" disabled selected>Escolha...</option>
                     <% if(team.length === 0) { %><option value="" disabled>Sem Pokémons</option>
                     <% } else { %><% team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }) %><% } %>
                 </select>
-                <label>Adversário</label>
-                <div style="background:#222; padding:10px; border:1px solid #444; border-radius:5px; color:#aaa; margin-bottom:10px;">Aleatório (CPU)</div>
-                <input type="hidden" name="fighter2" value="cpu_random">
-                <button type="submit" style="background:#e74c3c">INICIAR</button>
+
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button>
+                    <button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button>
+                </div>
             </form>
-            <button onclick="openModal('modalOnline'); closeModal('modalBattle');" style="background:#3498db; margin-top:10px;">ONLINE PVP</button>
         </div>
     </div>
     
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
+
+    <script src="/scripts/common.js"></script>
     
     <script>
         // UTILIDADES (NO TOPO)
@@ -236,14 +276,35 @@
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
         
-        function createPlayerElement(p) { 
-            const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`; 
-            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); 
+        function createPlayerElement(p) {
+            const div = document.createElement('div');
+            div.id = `p-${p.id}`;
+            div.className = 'player';
+            div.style.left = p.x + '%';
+            div.style.top = p.y + '%';
+            div.style.zIndex = Math.floor(p.y);
+            div.setAttribute('data-dir', p.direction || 'down');
+
+            // If this entity carries a `sprite` (pokemon or non-character image), render an <img>
+            if (p.sprite) {
+                const img = document.createElement('img');
+                img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite);
+                img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none';
+                div.appendChild(img);
+                // ensure background is clean when using img
+                div.style.backgroundImage = 'none';
+            } else {
+                // Use character skin spritesheet (4x4) when available
+                const skinName = p.skin || 'char1';
+                div.style.backgroundImage = `url('/uploads/${skinName}.png')`;
+            }
+
+            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label);
             if(p.isSearching) {
                 const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet);
             }
-            gameArea.appendChild(div); 
-            if (p.id === myId) playerElement = div; 
+            gameArea.appendChild(div);
+            if (p.id === myId) playerElement = div;
         }
         
         gameArea.addEventListener('click', (e) => { if (isPlayerMoving || e.target.classList.contains('machine')) return; const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100; isPlayerMoving = true; gameArea.classList.add('locked'); socket.emit('move_player', { x: targetX, y: targetY }); });
