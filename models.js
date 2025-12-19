@@ -5,7 +5,7 @@ const BasePokemonSchema = new mongoose.Schema({
     name: String,
     type: String,
     baseStats: { hp: Number, energy: Number, attack: Number, defense: Number, speed: Number },
-    sprite: String, // Agora guarda URL ou Base64
+    sprite: String,
     spawnLocation: { type: String, default: 'none' },
     minSpawnLevel: { type: Number, default: 1 },
     maxSpawnLevel: { type: Number, default: 5 },
@@ -26,7 +26,8 @@ const UserSchema = new mongoose.Schema({
         baseId: String, nickname: String, level: { type: Number, default: 1 },
         currentHp: Number, xp: { type: Number, default: 0 },
         stats: { hp: Number, energy: Number, attack: Number, defense: Number, speed: Number }, 
-        moves: [String]
+        moves: [String], // Active moves (Max 4)
+        learnedMoves: [String] // History of all learned moves
     }]
 });
 
