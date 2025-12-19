@@ -100,11 +100,11 @@
     </div>
     <div id="toastContainer"></div>
 
-    <!-- Loader overlay -->
-    <div id="loader" class="loader-overlay" aria-hidden="true">
+    <!-- Loader overlay (visível inicialmente) -->
+    <div id="loader" class="loader-overlay show" aria-hidden="false">
         <div class="loader-box">
             <div class="spinner"></div>
-            <div class="loader-text">Carregando...</div>
+            <div class="loader-text">Carregando mapa...</div>
         </div>
     </div>
 
@@ -179,11 +179,17 @@
             let initialX = 50; let initialY = 50; let initialDir = 'down';
             // Se veio da floresta, spawna no lado esquerdo do lobby olhando para a direita
             if(spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } 
-            socket.emit('enter_map', { name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); 
+            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); 
         });
 
-        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); });
+        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
+
+        // Notified when another session replaces this one
+        socket.on('duplicate_session', (info) => {
+            showToast('Sessão desconectada: outra entrada com esta conta.');
+            setTimeout(() => { window.location.href = '/'; }, 1800);
+        });
         
         socket.on('player_updated', (p) => {
             const el = document.getElementById(`p-${p.id}`);
@@ -388,12 +394,11 @@
         function getTypeColor(t) { const colors = { fire:'#e74c3c', water:'#3498db', plant:'#2ecc71', electric:'#f1c40f' }; return colors[t] || '#777'; }
 
         // Loading screen helpers
-        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); }
-        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); }
+        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
+        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         // When leaving the page show loader (gives visual feedback)
         window.addEventListener('beforeunload', () => { showLoading(); });
-        // Hide loader when the page fully loads
-        window.addEventListener('load', () => { hideLoading(); });
+        // Loader will be escondido quando recebermos 'map_state' (mapa renderizado).
     </script>
 </body>
 </html>

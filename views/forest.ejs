@@ -65,11 +65,11 @@
     </div>
     <div id="toastContainer"></div>
 
-    <!-- Loader overlay -->
-    <div id="loader" class="loader-overlay" aria-hidden="true">
+    <!-- Loader overlay (visível inicialmente) -->
+    <div id="loader" class="loader-overlay show" aria-hidden="false">
         <div class="loader-box">
             <div class="spinner"></div>
-            <div class="loader-text">Carregando...</div>
+            <div class="loader-text">Carregando mapa...</div>
         </div>
     </div>
 
@@ -106,10 +106,16 @@
             // Se veio do lobby, spawnar no canto direito olhando para a esquerda
             let initialX = 50; let initialY = 50; let initialDir = 'down';
             if (spawnFrom === 'lobby') { initialX = 90; initialY = 50; initialDir = 'left'; }
-            socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
+            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
         });
-        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); });
+        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
+
+        socket.on('duplicate_session', (info) => {
+            showToast('Sessão desconectada: outra entrada com esta conta.');
+            setTimeout(() => { window.location.href = '/'; }, 1800);
+        });
+
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
@@ -200,10 +206,10 @@
         }
 
         // Loading screen helpers
-        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); }
-        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); }
+        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
+        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         window.addEventListener('beforeunload', () => { showLoading(); });
-        window.addEventListener('load', () => { hideLoading(); });
+        // Loader será escondido quando recebermos 'map_state'
     </script>
 </body>
 </html>

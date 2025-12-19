@@ -231,10 +231,28 @@ function processAction(attacker, defender, move, logArray) {
 io.on('connection', (socket) => {
     socket.on('join_room', (roomId) => { socket.join(roomId); });
     socket.on('enter_map', (data) => { 
+        // Se o cliente enviar userId, removemos sessões anteriores dessa conta para evitar clones
+        if (data && data.userId) {
+            const existing = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString());
+            if (existing) {
+                const prevId = existing[0]; const prevPlayer = existing[1];
+                console.log(`[session] duplicate detected for user=${data.userId}, removing socket ${prevId}`);
+                // Notificar e desconectar socket anterior, e avisar mapa
+                try {
+                    const prevSocket = io.sockets.sockets.get(prevId);
+                    if (prevSocket) {
+                        prevSocket.emit('duplicate_session', { reason: 'another_session' });
+                        prevSocket.disconnect(true);
+                    }
+                } catch (e) { console.error('error disconnecting previous socket', e); }
+                if (prevPlayer && prevPlayer.map) io.to(prevPlayer.map).emit('player_left', prevId);
+                delete players[prevId];
+            }
+        }
         socket.join(data.map); 
         const startX = data.x !== undefined ? data.x : 50; 
         const startY = data.y !== undefined ? data.y : 50; 
-        players[socket.id] = { id: socket.id, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; 
+        players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; 
         const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
         socket.emit('map_state', mapPlayers); 
         socket.to(data.map).emit('player_joined', players[socket.id]); 
