@@ -12,7 +12,7 @@ const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel } = re
 const SKIN_COUNT = 6;
 
 // CONEXÃO MONGODB (URL CORRIGIDA)
-const MONGO_URI = "mongodb+srv://isaachonorato41:brasil2021@cluster0.rxemo.mongodb.net/goofymon?retryWrites=true&w=majority&appName=Cluster0";
+const MONGO_URI = "mongodb+srv://isaachonorato41:brasil2021@cluster0.rxemo.mongodb.net/?appName=Cluster0";
 mongoose.connect(MONGO_URI)
     .then(() => console.log('✅ MongoDB Conectado'))
     .catch(err => console.error('Erro Mongo:', err));
