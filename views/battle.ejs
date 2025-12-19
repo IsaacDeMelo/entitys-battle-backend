@@ -7,211 +7,161 @@
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
     <style>
+        :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
         * { box-sizing: border-box; }
-        body { 
-            margin: 0; padding: 0; background: #000; color: white; font-family: 'Roboto', sans-serif; 
-            overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; 
-        }
+        body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Press Start 2P', cursive; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
         
-        /* === ARENA (CIMA) === */
-        .arena { 
-            flex: 1; 
-            background: url('/uploads/battle_bg.png') no-repeat center center; 
-            background-size: cover; position: relative; overflow: hidden; z-index: 10;
-        }
-
-        /* === ARQUIBANCADA (AUMENTADA) === */
-        #bleachers {
-            width: 100%; 
-            height: 200px; /* Aumentado para dar mais espaço */
-            background: #2c3e50; border-top: 4px solid #111;
-            position: relative; overflow: visible; 
-            background-image: linear-gradient(#34495e 1px, transparent 1px), linear-gradient(90deg, #34495e 1px, transparent 1px);
-            background-size: 20px 20px; 
-            z-index: 200; 
-            
-            /* REMOVE O EFEITO AZUL AO CLICAR NO CELULAR */
-            -webkit-tap-highlight-color: transparent;
-            outline: none;
-            user-select: none;
-        }
-        #bleachers.interactive { cursor: pointer; }
+        .arena { flex: 1; background: url('/uploads/battle_bg.png') no-repeat center center; background-size: cover; position: relative; overflow: hidden; z-index: 10; image-rendering: pixelated; }
         
-        /* === ÁREA DE CHAT === */
-        #chat-container {
-            width: 100%; height: 60px;
-            background: #1a1a2e; border-top: 2px solid #3498db;
-            display: flex; align-items: center; justify-content: center;
-            z-index: 300; padding-bottom: env(safe-area-inset-bottom);
-        }
+        /* HUDs (Barras de Vida) */
+        .hud-panel { position: absolute; background: rgba(255, 255, 255, 0.9); border: 3px solid #333; border-radius: 8px 0 16px 0; padding: 10px; width: 180px; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); z-index: 50; }
+        .hud-p2 { top: 30px; left: 10px; }
+        .hud-p1 { bottom: 30%; right: 10px; }
         
-        #chatBar { 
-            width: 95%; max-width: 500px; display: flex; align-items: center; gap: 8px; 
-            background: rgba(0, 0, 0, 0.3); border: 1px solid #444; padding: 5px; border-radius: 50px; 
-        }
-        #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 0.9rem; }
-        #chatSend { width: 35px; height: 35px; border-radius: 50%; border: none; background: #3498db; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
-
-        /* SPRITE DO ESPECTADOR */
-        .spec-avatar {
-            position: absolute; width: 64px; height: 64px;
-            background-size: 400% auto; background-position: 0 100%;
-            image-rendering: pixelated; transform: translate(-50%, -50%); 
-            transition: top 0.3s linear, left 0.3s linear; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.6)); z-index: 300;
-            pointer-events: none; /* Garante que o clique passe para a arquibancada */
-        }
-        .spec-avatar.moving { animation: spec-walk-anim 0.6s steps(4) infinite; }
-        @keyframes spec-walk-anim { from { background-position: 0 100%; } to { background-position: -400% 100%; } }
-        .spec-name {
-            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-            font-size: 0.6rem; background: rgba(0,0,0,0.7); padding: 2px 4px; border-radius: 4px;
-            white-space: nowrap; pointer-events: none;
-        }
-
-        /* BALÃO DE FALA */
-        .chat-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; margin-bottom: 5px; z-index: 500; animation: popIn 0.2s forwards; opacity: 1; }
-        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
-        @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-
-        /* HUD */
-        .stats { position: absolute; width: 170px; background: rgba(15, 15, 20, 0.95); padding: 8px 12px; border-radius: 6px; border: 2px solid #555; z-index: 30; }
-        .p2-side-stats { top: 15px; right: 5px; border-left: 5px solid #e74c3c; text-align: left; }
-        .p1-side-stats { top: 15px; left: 5px; border-right: 5px solid #3498db; text-align: right; }
-        .bar-container { width: 100%; height: 10px; background: #333; border-radius: 4px; overflow: hidden; border: 1px solid #000; margin-bottom: 3px; }
-        .hp-fill { height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 100%; transition: width 0.4s ease-out; }
-        .en-fill { height: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); width: 100%; transition: width 0.4s ease-out; }
-        .name { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        .trainer-sub { font-size: 0.65rem; color: #bbb; margin-bottom: 5px; text-transform: uppercase; }
-        .stat-text { font-size: 0.6rem; font-family: monospace; font-weight: bold; color: #ddd; display: flex; justify-content: space-between; }
-
-        /* JOGADOR - POSICIONAMENTO AJUSTADO */
-        .fighter { 
-            position: absolute; width: 280px; height: 200px; 
-            display: flex; align-items: flex-end; 
-            z-index: 10; pointer-events: none; 
-            /* SUBIMOS PARA 45% PARA COMPENSAR A ARQUIBANCADA MAIOR */
-            bottom: 45%; 
-        }
-        .fighter.p2-position { right: 5%; justify-content: flex-end; flex-direction: row; }
-        .fighter.p1-position { left: 5%; justify-content: flex-start; flex-direction: row; }
+        .poke-name { font-size: 0.65rem; margin-bottom: 5px; color: #000; text-transform: uppercase; text-shadow: none; }
+        .poke-lv { font-size: 0.5rem; float: right; color: #555; }
         
-        .sprite { position: relative; width: 140px; height: 140px; z-index: 10; margin-bottom: 15px; }
-        .sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); }
-        .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; z-index: 20; margin-bottom: 10px; animation: idle-bob 0.8s infinite alternate ease-in-out; }
-        .fighter.p2-position .trainer { order: 2; margin-left: -40px; background-position-y: 33.33%; }
-        .fighter.p2-position .sprite { order: 1; }
-        .fighter.p1-position .trainer { order: 1; margin-right: -40px; background-position-y: 66.66%; }
-        .fighter.p1-position .sprite { order: 2; }
-        .fighter.p1-position .sprite img { transform: scaleX(-1); }
-        @keyframes idle-bob { from { height: 64px; width: 64px; } to { height: 66px; width: 66px; } }
-        <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
-        .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
+        .bar-container { width: 100%; height: 8px; background: #555; border-radius: 4px; border: 1px solid #000; overflow: hidden; margin-bottom: 2px; }
+        .hp-fill { height: 100%; width: 100%; background: var(--hp-high); transition: width 0.4s ease-out; }
+        .en-fill { height: 100%; width: 100%; background: #3498db; transition: width 0.4s ease-out; }
+        .stat-text { font-size: 0.5rem; text-align: right; color: #333; font-family: 'Press Start 2P'; margin-top: 2px; }
 
-        .command-bubble { position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%) scale(0); background: #fff; color: #000; padding: 8px 12px; border-radius: 12px; border: 3px solid #000; font-family: 'Press Start 2P'; font-size: 0.55rem; white-space: nowrap; z-index: 100; opacity: 0; transition: transform 0.2s, opacity 0.2s; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); pointer-events: none; }
-        .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); }
+        /* Sprites e Animações */
+        .fighter { position: absolute; width: 140px; height: 140px; display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+        .fighter.p2-position { top: 80px; right: 40px; }
+        .fighter.p1-position { bottom: 0; left: 40px; transform: scale(1.3); } /* Player maior pela perspectiva */
+        
+        .sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); animation: idle 2s infinite ease-in-out; }
+        .fighter.p1-position .sprite img { transform: scaleX(-1); --s: -1; }
+        
+        @keyframes idle { 0%, 100% { transform: translateY(0) scaleX(var(--s, 1)); } 50% { transform: translateY(-4px) scaleX(var(--s, 1)); } }
+        
+        /* Efeitos visuais */
         .hurt { animation: shakeHit 0.4s ease-in-out; }
         .hurt-effect { filter: sepia(1) hue-rotate(-50deg) saturate(5) drop-shadow(0 0 15px red) !important; }
-        @keyframes shakeHit { 0% { transform: translate(0, 0); } 25% { transform: translate(-8px, 0); } 75% { transform: translate(8px, 0); } 100% { transform: translate(0, 0); } }
-        .floating-text { font-family: 'Press Start 2P'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; text-shadow: 2px 2px 0 #000; animation: popUp 1s forwards; z-index: 100; pointer-events: none; }
-        @keyframes popUp { 0% { opacity: 0; margin-top: 0; } 100% { opacity: 0; margin-top: -80px; } }
-        .damage-text { color: #ff4757; } .heal-text { color: #2ed573; } .resist-text { color: #bdc3c7; font-size: 1rem !important; }
-
-        /* PAINEL INFERIOR (MODO TREINO/JOGADOR) */
-        .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 3px solid #3498db; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
-        .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
-        .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #ecf0f1; height: 150px; background: #111; }
-        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
-        .move-btn { background: #2c3e50; border: 2px solid #34495e; color: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; padding: 10px; }
-        .move-btn:active { transform: scale(0.96); border-color: #f1c40f; }
-        .move-btn:disabled { opacity: 0.5; pointer-events: none; }
-        .rest-btn { grid-column: span 2; background: #27ae60; border-color: #2ecc71; }
-
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
-        #overlay h1 { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; margin-bottom: 20px; }
-        .btn-restart { background: #3498db; color: white; padding: 15px 30px; border-radius: 30px; border: none; font-family: 'Press Start 2P'; font-size: 0.8rem; cursor: pointer; }
+        @keyframes shakeHit { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-8px, 0); } 75% { transform: translate(8px, 0); } }
         
-        /* BANNER DO ESPECTADOR (ACIMA DA ARQUIBANCADA) */
-        .spectator-banner { 
-            position: absolute; bottom: 0; width: 100%; text-align: center; 
-            background: rgba(0,0,0,0.7); color: #f1c40f; padding: 5px; 
-            font-family: 'Press Start 2P'; font-size: 0.7rem; pointer-events: none; 
-            z-index: 50; 
+        .floating-text { font-family: 'Press Start 2P'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.2rem; text-shadow: 2px 2px 0 #000; animation: popUp 1s forwards; z-index: 100; pointer-events: none; }
+        @keyframes popUp { 0% { opacity: 0; margin-top: 0; } 20% { opacity: 1; } 100% { opacity: 0; margin-top: -80px; } }
+        .damage-text { color: #ff4757; } .heal-text { color: #2ed573; } .resist-text { color: #bdc3c7; font-size: 0.8rem; }
+
+        /* Painel Inferior de Controle */
+        .bottom-panel { height: auto; min-height: 35%; background: #2c3e50; border-top: 4px solid #f1c40f; display: flex; flex-direction: column; z-index: 100; padding: 10px; gap: 10px; }
+        
+        .battle-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; height: 100%; }
+        
+        .battle-log { background: #000; color: #ecf0f1; padding: 10px; font-family: monospace; font-size: 0.8rem; border: 2px solid #555; border-radius: 4px; overflow-y: auto; height: 120px; line-height: 1.4; }
+        .log-entry { border-bottom: 1px solid #333; padding-bottom: 2px; margin-bottom: 2px; }
+
+        .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        
+        .move-btn { background: #ecf0f1; border: 1px solid #bdc3c7; border-bottom: 4px solid #95a5a6; border-radius: 6px; padding: 8px; font-family: 'Press Start 2P'; font-size: 0.55rem; cursor: pointer; text-align: left; color: #2c3e50; transition: 0.1s; position: relative; }
+        .move-btn:active { transform: translateY(2px); border-bottom-width: 1px; }
+        .move-btn:disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+        .move-btn strong { display: block; margin-bottom: 4px; font-size: 0.65rem; }
+        .move-btn small { float: right; color: #7f8c8d; }
+
+        /* Overlay e Modais */
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .podium { display: flex; gap: 20px; align-items: flex-end; margin-bottom: 20px; }
+        .winner-box { transform: scale(1.2); text-align: center; } .loser-box { opacity: 0.6; transform: scale(0.9); text-align: center; filter: grayscale(1); }
+        .btn-restart { background: #3498db; color: white; padding: 15px; border: none; font-family: 'Press Start 2P'; cursor: pointer; border-radius: 5px; }
+
+        @media (max-width: 600px) {
+            .battle-layout { grid-template-columns: 1fr; }
+            .battle-log { height: 60px; }
+            .hud-p1 { bottom: 42%; }
         }
     </style>
 </head>
 <body>
-
     <div class="arena">
-        <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff;">Aguardando...</div>
-        <% if(isSpectator) { %> <div class="spectator-banner">MODO ESPECTADOR</div> <% } %>
+        <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff; text-shadow: 2px 2px 0 #000; z-index:200;">Aguardando...</div>
+        <% if(isSpectator) { %> <div style="position:absolute; top:10px; width:100%; text-align:center; color:#f1c40f; font-size:0.7rem; z-index:200;">MODO ESPECTADOR</div> <% } %>
 
-        <!-- HUD P2 -->
-        <div class="stats p2-side-stats">
-            <div class="name"><%= p2.name %></div>
-            <div class="trainer-sub"><%= p2.playerName || 'CPU' %></div>
+        <!-- HUD Player 2 (Inimigo) -->
+        <div class="hud-panel hud-p2">
+            <div class="poke-name"><%= p2.name %> <span class="poke-lv">Lv.<%= p2.level %></span></div>
+            <div class="trainer-sub" style="font-size:0.5rem; color:#777;"><%= p2.playerName || 'CPU' %></div>
             <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p2.id %>"></div></div>
-            <div class="stat-text"><span id="hp-val-<%= p2.id %>"><%= p2.hp %></span>/<%= p2.maxHp %></div>
+            <div class="stat-text" style="display:none;"><span id="hp-val-<%= p2.id %>"><%= p2.hp %></span></div>
         </div>
 
-        <!-- HUD P1 -->
-        <div class="stats p1-side-stats">
-            <div class="name"><%= p1.name %></div>
-            <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
+        <!-- HUD Player 1 (Você) -->
+        <div class="hud-panel hud-p1">
+            <div class="poke-name"><%= p1.name %> <span class="poke-lv">Lv.<%= p1.level %></span></div>
             <div class="bar-container"><div class="hp-fill" id="hp-bar-<%= p1.id %>"></div></div>
-            <div class="stat-text"><span id="hp-val-<%= p1.id %>"><%= p1.hp %></span> HP</div>
+            <div class="stat-text"><span id="hp-val-<%= p1.id %>"><%= p1.hp %></span>/<%= p1.maxHp %></div>
             <% if(!isSpectator) { %>
-                <div class="bar-container" style="height:5px; margin-top:3px;"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div>
-                <div class="stat-text" style="color:#f1c40f">EN: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div>
+                <div class="bar-container" style="height:4px; margin-top:4px; border-color:#f39c12"><div class="en-fill" id="en-bar-<%= p1.id %>"></div></div>
+                <div class="stat-text" style="color:#f39c12">EN: <span id="en-val-<%= p1.id %>"><%= p1.energy %></span></div>
             <% } %>
         </div>
 
+        <!-- Lutadores -->
         <div class="fighter p2-position" id="fighter-<%= p2.id %>">
-            <div class="command-bubble" id="bubble-<%= p2.id %>"></div>
-            <div class="trainer" id="trainer-<%= p2.id %>" data-skin="<%= p2.skin || 'char1' %>"></div>
-            <div class="sprite" id="sprite-<%= p2.id %>"><% if (p2.sprite) { %> <img src="/uploads/<%= p2.sprite %>"> <% } else { %> <div class="emoji-fallback">👿</div> <% } %></div>
+            <div class="sprite" id="sprite-<%= p2.id %>"><% if (p2.sprite) { %> <img src="<%= p2.sprite %>"> <% } else { %> 👿 <% } %></div>
         </div>
-        
         <div class="fighter p1-position" id="fighter-<%= p1.id %>">
-            <div class="command-bubble" id="bubble-<%= p1.id %>"></div>
-            <div class="trainer" id="trainer-<%= p1.id %>" data-skin="<%= p1.skin %>"></div>
-            <div class="sprite" id="sprite-<%= p1.id %>"><% if (p1.sprite) { %> <img src="/uploads/<%= p1.sprite %>"> <% } else { %> <div class="emoji-fallback">🦸</div> <% } %></div>
+            <div class="sprite" id="sprite-<%= p1.id %>"><% if (p1.sprite) { %> <img src="<%= p1.sprite %>"> <% } else { %> 🦸 <% } %></div>
         </div>
-        
+
+        <!-- Tela de Resultado -->
         <div id="overlay">
-            <h1 id="winnerText">VENCEDOR</h1>
-            <form action="/room" method="POST">
-                <% if(isSpectator) { %> <input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="skin" value="<%= playerSkin %>"> <% } else { %> <input type="hidden" name="playerName" value="<%= p1.playerName %>"><input type="hidden" name="skin" value="<%= p1.skin %>"> <% } %>
+            <h1 id="result-title" style="color:#f1c40f; text-shadow: 2px 2px 0 #000;">RESULTADO</h1>
+            <div class="podium">
+                <div class="winner-box">
+                    <div style="font-size:2rem;">👑</div>
+                    <img id="win-mon-img" style="width:80px; image-rendering:pixelated;">
+                    <div id="win-name" style="color:white; margin-top:5px; font-size:0.7rem;"></div>
+                </div>
+                <div class="loser-box">
+                    <img id="lose-mon-img" style="width:60px; image-rendering:pixelated;">
+                    <div id="lose-name" style="color:white; margin-top:5px; font-size:0.6rem;"></div>
+                </div>
+            </div>
+            <form action="/lobby" method="GET">
+                <input type="hidden" name="userId" value="<%= isSpectator ? '' : myRoleId %>">
                 <button type="submit" class="btn-restart">VOLTAR AO LOBBY</button>
             </form>
         </div>
     </div>
 
-    <!-- SE ESPECTADOR: ARQUIBANCADA + CHAT (Estrutura Separada) -->
-    <% if(isSpectator) { %>
-        <div id="bleachers" class="interactive"></div>
-        <div id="chat-container">
-            <div id="chatBar">
-                <input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30">
-                <button id="chatSend">💬</button>
+    <!-- Painel de Controle -->
+    <div class="bottom-panel">
+        <div class="battle-layout">
+            <div class="battle-log" id="logBox">
+                <div class="log-entry" style="color:#f1c40f">Batalha iniciada!</div>
             </div>
-        </div>
-    <!-- SE JOGADOR: PAINEL DE CONTROLE / LOG -->
-    <% } else { %>
-        <div class="bottom-panel">
-            <% if (battleMode === 'online' || battleMode === 'manual') { %>
-                <div class="controls-panel" id="controlsPanel">
-                    <% p1.moves.forEach(move => { %>
-                        <button class="move-btn" onclick="sendMove('<%= move.id %>')" id="btn-<%= move.id %>"><strong><%= move.icon %> <%= move.name %></strong><small><%= move.cost %> EN</small></button>
-                    <% }) %>
-                    <button class="move-btn rest-btn" onclick="sendMove('rest')">💤 Descansar</button>
-                </div>
-            <% } else { %>
-                <div class="battle-log" id="logBox"></div>
+
+            <% if(!isSpectator) { %>
+                <% if (battleMode === 'online' || battleMode === 'manual' || battleMode === 'wild') { %>
+                    <div class="controls-panel" id="controlsPanel">
+                        <% if (battleMode === 'wild') { %>
+                            <button class="move-btn" style="background:#e74c3c; color:white; border-color:#c0392b;" onclick="sendAction('catch')"><strong>🔴 CAPTURAR</strong></button>
+                            <button class="move-btn" style="background:#95a5a6; color:white; border-color:#7f8c8d;" onclick="sendAction('run')"><strong>🏃 FUGIR</strong></button>
+                        <% } %>
+                        <% p1.moves.forEach(move => { %>
+                            <button class="move-btn" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
+                                <strong><%= move.name %> <%= move.icon %></strong> <small><%= move.cost %> EN</small>
+                            </button>
+                        <% }) %>
+                        <button class="move-btn" style="background:#2ecc71; border-color:#27ae60;" onclick="sendAction('move', 'rest')"><strong>💤 DESCANSAR</strong></button>
+                    </div>
+                <% } %>
             <% } %>
         </div>
-    <% } %>
+        <!-- Spectator extra UI se precisar -->
+        <% if(isSpectator) { %>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="chatInput" placeholder="Mensagem..." style="flex:1; padding:10px; border-radius:5px; border:none;">
+                <button id="chatSend" style="padding:10px;">💬</button>
+            </div>
+        <% } %>
+    </div>
 
     <script>
+        history.pushState(null, null, location.href); window.onpopstate = function () { history.go(1); }; window.onpageshow = function(event) { if (event.persisted) { window.location.reload(); } };
         const socket = io();
         const battleMode = "<%= battleMode %>";
         const battleId = "<%= battleId %>";
@@ -224,122 +174,142 @@
         const p1Mon = "<%= p1.name %>"; const p2Mon = "<%= p2.name %>";
         let currentEnergy = parseInt("<%= p1.energy %>");
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        const p1Data = { name: "<%= p1.playerName %>", skin: "<%= p1.skin %>", sprite: "<%= p1.sprite %>", mon: "<%= p1.name %>" };
+        const p2Data = { name: "<%= p2.playerName %>", skin: "<%= p2.skin %>", sprite: "<%= p2.sprite %>", mon: "<%= p2.name %>" };
 
         if (isSpectator) {
-            const bleachers = document.getElementById('bleachers');
             socket.emit('join_spectator', { roomId: battleId, name: myName, skin: mySkin });
-            
-            socket.on('spectators_update', (specs) => { bleachers.querySelectorAll('.spec-avatar').forEach(e=>e.remove()); Object.values(specs).forEach(s => createSpectator(s)); });
-            socket.on('spectator_joined', (s) => { if (!document.getElementById(`spec-${s.id}`)) createSpectator(s); });
-            
-            socket.on('spectator_moved', (data) => { 
-                const el = document.getElementById(`spec-${data.id}`); 
-                if (el) { 
-                    el.style.left = data.x + '%'; 
-                    el.style.top = data.y + '%';
-                    
-                    if(!el.classList.contains('moving')) {
-                        el.classList.add('moving');
-                        if(el.moveTimeout) clearTimeout(el.moveTimeout);
-                        el.moveTimeout = setTimeout(() => {
-                            el.classList.remove('moving');
-                        }, 500); 
-                    }
-                } 
-            });
-            
-            socket.on('spectator_left', (id) => { const el = document.getElementById(`spec-${id}`); if (el) el.remove(); });
-            
-            bleachers.addEventListener('click', (e) => {
-                const rect = bleachers.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100;
-                socket.emit('spectator_move', { roomId: battleId, x, y });
-            });
-
-            const chatInput = document.getElementById('chatInput');
-            const chatBtn = document.getElementById('chatSend');
+            const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
             const sendChat = () => { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', { msg, roomId: battleId }); chatInput.value = ''; chatInput.blur(); } };
-            chatBtn.addEventListener('click', sendChat);
-            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); });
-
-            socket.on('chat_message', (data) => {
-                const playerEl = document.getElementById(`spec-${data.id}`); if (!playerEl) return;
-                const oldBubble = playerEl.querySelector('.chat-bubble'); if (oldBubble) oldBubble.remove();
-                const bubble = document.createElement('div'); bubble.className = 'chat-bubble'; bubble.innerText = data.msg;
-                playerEl.appendChild(bubble); setTimeout(() => { bubble.style.opacity = '0'; setTimeout(() => bubble.remove(), 200); }, 4000);
-            });
-
-            function createSpectator(s) {
-                const div = document.createElement('div'); div.id = `spec-${s.id}`; div.className = 'spec-avatar';
-                div.style.left = s.x + '%'; div.style.top = s.y + '%'; div.style.backgroundImage = `url('/uploads/${s.skin || "char1"}.png')`;
-                const name = document.createElement('div'); name.className = 'spec-name'; name.innerText = s.name;
-                div.appendChild(name); bleachers.appendChild(div);
-            }
+            chatBtn.addEventListener('click', sendChat); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); });
+            socket.on('chat_message', (data) => addLog(`[CHAT] ${data.msg}`)); 
         }
-
-        async function speak(actorId, moveName) {
-            const bubble = document.getElementById(`bubble-${actorId}`); if(!bubble) return;
-            const mon = (actorId === p1Id) ? p1Mon : p2Mon; bubble.innerText = (moveName === 'rest') ? `${mon}, volta!` : `${mon}, ${moveName}!`;
-            bubble.classList.add('show');
-            const trainer = document.getElementById(`trainer-${actorId}`);
-            if(trainer) { trainer.style.backgroundPositionX = "-100%"; await wait(400); trainer.style.backgroundPositionX = "0%"; }
-            await wait(1200); bubble.classList.remove('show');
-        }
-
-        function updateBar(id, cur, max, type) {
-            const pct = Math.max(0, (cur / max) * 100);
-            const fill = document.getElementById(`${type}-bar-${id}`); if(fill) fill.style.width = pct + '%';
-            if(type === 'hp') document.getElementById(`hp-val-${id}`).innerText = Math.max(0, cur);
-            if(type === 'en' && id === p1Id && !isSpectator) { currentEnergy = cur; document.getElementById('en-val-' + id).innerText = cur; updateButtons(); }
-        }
-
-        function updateButtons() { if(isSpectator) return; document.querySelectorAll('.move-btn:not(.rest-btn)').forEach(btn => { const cost = parseInt(btn.querySelector('small').innerText); btn.disabled = (currentEnergy < cost); }); }
-        function setControlsState(enabled) { if(isSpectator) return; const panel = document.getElementById('controlsPanel'); if(!panel) return; if (enabled) panel.style.opacity = "1"; else panel.style.opacity = "0.5"; }
-        function addLog(msg) { const box = document.getElementById('logBox'); if(!box) return; const entry = document.createElement('div'); entry.className = 'log-entry'; entry.innerText = msg; box.appendChild(entry); box.scrollTop = box.scrollHeight; }
-
-        async function playEvents(events) {
-            for (let evt of events) {
-                if (evt.type === 'INIT') continue;
-                if (evt.type === 'USE_MOVE') {
-                    if(!isSpectator) addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} usou ${evt.moveName}`); await speak(evt.actorId, evt.moveName);
-                    const isP1Actor = (evt.actorId === p1Id); const spriteContainer = document.getElementById(`sprite-${evt.actorId}`); const moveX = isP1Actor ? '40px' : '-40px';
-                    if(spriteContainer) { spriteContainer.style.transition = 'transform 0.15s ease-out'; spriteContainer.style.transform = `translateX(${moveX})`; await wait(200); spriteContainer.style.transform = `translateX(0)`; }
-                    if(!isSpectator) { const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>; updateBar(evt.actorId, evt.newEnergy, initialMax, 'en'); } await wait(300);
-                } else if (evt.type === 'ATTACK_HIT') {
-                    const spriteContainer = document.getElementById(`sprite-${evt.targetId}`); const spriteImg = spriteContainer ? spriteContainer.querySelector('img') : null; const container = document.getElementById(`fighter-${evt.targetId}`);
-                    if(spriteImg) spriteImg.classList.add('hurt-effect'); if(spriteContainer) spriteContainer.classList.add('hurt');
-                    const txt = document.createElement('div'); txt.className = 'floating-text ' + (evt.isNotEffective ? 'resist-text' : 'damage-text'); txt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`; if(container) container.appendChild(txt);
-                    await wait(500); if(spriteImg) spriteImg.classList.remove('hurt-effect'); if(spriteContainer) spriteContainer.classList.remove('hurt'); txt.remove();
-                    const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>; updateBar(evt.targetId, evt.newHp, maxHp, 'hp'); await wait(500);
-                } else if (evt.type === 'HEAL') {
-                    if(!isSpectator) addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} se curou!`); updateBar(evt.actorId, evt.newHp, (evt.actorId === p1Id ? <%= p1.maxHp %> : <%= p2.maxHp %>), 'hp');
-                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${evt.amount}`; document.getElementById(`fighter-${evt.actorId}`).appendChild(txt); setTimeout(() => txt.remove(), 1000); await wait(500);
-                } else if (evt.type === 'REST') {
-                    if(!isSpectator) addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} descansou.`); if(!isSpectator) { const initialMax = (evt.actorId == p1Id) ? <%= p1.maxEnergy %> : <%= p2.maxEnergy %>; updateBar(evt.actorId, evt.newEnergy, initialMax, 'en'); } await wait(500);
+        
+        function updateBar(id, cur, max, type) { 
+            const pct = Math.max(0, (cur / max) * 100); 
+            const fill = document.getElementById(`${type}-bar-${id}`); 
+            if(fill) {
+                fill.style.width = pct + '%'; 
+                if(type === 'hp') {
+                    if(pct < 20) fill.style.background = '#e55039';
+                    else if(pct < 50) fill.style.background = '#f6b93b';
+                    else fill.style.background = '#4fd05c';
+                    const valEl = document.getElementById(`hp-val-${id}`);
+                    if(valEl) valEl.innerText = Math.max(0, cur);
                 }
             }
+            if(type === 'en' && id === p1Id && !isSpectator) { 
+                currentEnergy = cur; 
+                document.getElementById('en-val-' + id).innerText = cur; 
+                updateButtons(); 
+            } 
         }
 
-        async function sendMove(moveId) {
-            setControlsState(false);
-            if (battleMode === 'online') { document.getElementById('statusMsg').innerText = "Aguardando oponente..."; document.getElementById('statusMsg').style.display = "block"; socket.emit('online_move', { roomId: battleId, moveId, playerId: myRoleId }); } 
-            else { const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, moveId }) }); const data = await res.json(); await playEvents(data.events); if(data.winnerId) endGame(data.winnerId); else setControlsState(true); }
+        function updateButtons() { if(isSpectator) return; document.querySelectorAll('.move-btn:not([onclick*="rest"]):not([onclick*="catch"]):not([onclick*="run"])').forEach(btn => { const small = btn.querySelector('small'); if(small) { const cost = parseInt(small.innerText); btn.disabled = (currentEnergy < cost); } }); }
+        
+        function setControlsState(enabled) { if(isSpectator) return; const panel = document.getElementById('controlsPanel'); if(!panel) return; if (enabled) panel.style.opacity = "1"; else panel.style.opacity = "0.5"; const btns = panel.querySelectorAll('button'); btns.forEach(b => b.disabled = !enabled); if(enabled) updateButtons(); }
+        
+        function addLog(msg) { const box = document.getElementById('logBox'); if(!box) return; const entry = document.createElement('div'); entry.className = 'log-entry'; entry.innerText = msg; box.appendChild(entry); box.scrollTop = box.scrollHeight; }
+        
+        async function playEvents(events) { 
+            for (let evt of events) { 
+                if (evt.type === 'INIT') continue; 
+                if (evt.type === 'USE_MOVE') { 
+                    addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} usou ${evt.moveName}!`); 
+                    const spriteContainer = document.getElementById(`sprite-${evt.actorId}`); 
+                    const moveX = (evt.actorId === p1Id) ? '20px' : '-20px'; 
+                    if(spriteContainer) { spriteContainer.style.transition = 'transform 0.1s'; spriteContainer.style.transform = `translateX(${moveX}) ${evt.actorId === p1Id ? 'scaleX(-1)' : ''}`; await wait(100); spriteContainer.style.transform = `${evt.actorId === p1Id ? 'scaleX(-1)' : ''}`; }
+                    if(!isSpectator && evt.actorId == p1Id) updateBar(evt.actorId, evt.newEnergy, <%= p1.maxEnergy %>, 'en'); 
+                    await wait(300); 
+                } else if (evt.type === 'ATTACK_HIT') { 
+                    const spriteImg = document.querySelector(`#sprite-${evt.targetId} img`); 
+                    const container = document.getElementById(`fighter-${evt.targetId}`); 
+                    if(spriteImg) spriteImg.classList.add('hurt-effect'); 
+                    if(container) container.classList.add('hurt'); 
+                    const txt = document.createElement('div'); 
+                    txt.className = 'floating-text ' + (evt.isNotEffective ? 'resist-text' : 'damage-text'); 
+                    txt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`; 
+                    if(container) container.appendChild(txt); 
+                    await wait(400); 
+                    if(spriteImg) spriteImg.classList.remove('hurt-effect'); 
+                    if(container) container.classList.remove('hurt'); 
+                    txt.remove(); 
+                    const maxHp = (evt.targetId == p1Id) ? <%= p1.maxHp %> : <%= p2.maxHp %>; 
+                    updateBar(evt.targetId, evt.newHp, maxHp, 'hp'); 
+                    if(evt.isEffective) addLog("Foi super efetivo!");
+                    if(evt.isNotEffective) addLog("Não foi muito efetivo...");
+                    await wait(400); 
+                } else if (evt.type === 'HEAL') { 
+                    addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} se curou!`); 
+                    updateBar(evt.actorId, evt.newHp, (evt.actorId === p1Id ? <%= p1.maxHp %> : <%= p2.maxHp %>), 'hp'); 
+                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${evt.amount}`; 
+                    document.getElementById(`fighter-${evt.actorId}`).appendChild(txt); 
+                    setTimeout(() => txt.remove(), 1000); await wait(500); 
+                } else if (evt.type === 'REST') { 
+                    addLog(`${evt.actorId === p1Id ? p1Mon : p2Mon} descansou.`); 
+                    if(!isSpectator && evt.actorId == p1Id) updateBar(evt.actorId, evt.newEnergy, <%= p1.maxEnergy %>, 'en'); 
+                    await wait(500); 
+                } else if (evt.type === 'MSG') {
+                    addLog(evt.text); await wait(500);
+                }
+            } 
         }
 
-        function endGame(winnerId) {
-            document.getElementById('overlay').style.display = 'flex'; const winTxt = document.getElementById('winnerText');
-            if (isSpectator) { const wName = (winnerId === p1Id) ? "<%= p1.playerName %>" : "<%= p2.playerName %>"; winTxt.innerText = `${wName} VENCEU!`; winTxt.style.color = "#f1c40f"; } 
-            else { if(winnerId === 'draw') winTxt.innerText = "EMPATE!"; else if(winnerId === p1Id) { winTxt.innerText = "VITÓRIA!"; winTxt.style.color = "#2ecc71"; } else { winTxt.innerText = "DERROTA!"; winTxt.style.color = "#e74c3c"; } }
+        async function sendAction(type, moveId) { 
+            setControlsState(false); 
+            if (battleMode === 'online') { 
+                if (type === 'move') { 
+                    document.getElementById('statusMsg').innerText = "Aguardando oponente..."; 
+                    document.getElementById('statusMsg').style.display = "block"; 
+                    socket.emit('online_move', { roomId: battleId, moveId, playerId: myRoleId }); 
+                } 
+            } else { 
+                const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
+                const data = await res.json(); 
+                if (data.events) await playEvents(data.events); 
+                if(data.captured) { alert("Capturado com sucesso!"); window.location.href = '/lobby?userId=<%= myRoleId %>'; } 
+                else if (data.fled) { alert("Você fugiu!"); window.location.href = '/lobby?userId=<%= myRoleId %>'; } 
+                else if(data.finished) { endGame(data.winnerId); } 
+                else { 
+                    if (data.p1State) { updateBar(p1Id, data.p1State.hp, <%= p1.maxHp %>, 'hp'); if(data.p1State.energy) updateBar(p1Id, data.p1State.energy, <%= p1.maxEnergy %>, 'en'); }
+                    if (data.p2State) updateBar(p2Id, data.p2State.hp, <%= p2.maxHp %>, 'hp'); 
+                    setControlsState(true); 
+                } 
+            } 
         }
 
-        socket.on('turn_result', async (data) => { document.getElementById('statusMsg').style.display = "none"; await playEvents(data.events); if(data.winnerId) endGame(data.winnerId); else if(!isSpectator) setControlsState(true); });
-        socket.on('opponent_ready', () => { if(isSpectator) { /* Sem log */ } else { document.getElementById('statusMsg').style.display = "block"; document.getElementById('statusMsg').innerText = "Oponente pronto!"; } });
+        function endGame(winnerId) { 
+            const overlay = document.getElementById('overlay'); 
+            const title = document.getElementById('result-title'); 
+            const winName = document.getElementById('win-name'); 
+            const loseName = document.getElementById('lose-name'); 
+            const winMon = document.getElementById('win-mon-img'); 
+            const loseMon = document.getElementById('lose-mon-img'); 
+            const isP1Win = (winnerId === p1Id); 
+            const winner = isP1Win ? p1Data : p2Data; 
+            const loser = isP1Win ? p2Data : p1Data; 
+            winName.innerText = winner.name; loseName.innerText = loser.name; 
+            winMon.src = winner.sprite ? winner.sprite : ''; 
+            loseMon.src = loser.sprite ? loser.sprite : ''; 
+            if (isSpectator) { title.innerText = `VENCEDOR: ${winner.name}`; } 
+            else { if (winnerId === 'draw') title.innerText = "EMPATE!"; else if (winnerId === p1Id) title.innerText = "VITÓRIA!"; else title.innerText = "DERROTA..."; } 
+            overlay.style.display = 'flex'; 
+        }
 
-        window.onload = () => {
-            if(battleMode === 'online') { if(!isSpectator) socket.emit('join_room', battleId); }
-            updateBar(p1Id, <%= p1.hp %>, <%= p1.maxHp %>, 'hp'); updateBar(p2Id, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
-            if(!isSpectator) updateBar(p1Id, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en');
-            if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId)); } else if (!isSpectator) { setControlsState(true); }
+        socket.on('turn_result', async (data) => { 
+            document.getElementById('statusMsg').style.display = "none"; 
+            await playEvents(data.events); 
+            if(data.winnerId) endGame(data.winnerId); else if(!isSpectator) setControlsState(true); 
+        });
+        socket.on('opponent_ready', () => { if(!isSpectator) { document.getElementById('statusMsg').style.display = "block"; document.getElementById('statusMsg').innerText = "Oponente pronto!"; } });
+        
+        window.onload = () => { 
+            if(battleMode === 'online' && !isSpectator) socket.emit('join_room', battleId); 
+            updateBar(p1Id, <%= p1.hp %>, <%= p1.maxHp %>, 'hp'); 
+            updateBar(p2Id, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
+            if(!isSpectator) updateBar(p1Id, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
+            if(battleMode === 'auto') playEvents(initialData.log).then(() => endGame(initialData.winnerId)); 
+            else if (!isSpectator) setControlsState(true); 
         };
     </script>
 </body>

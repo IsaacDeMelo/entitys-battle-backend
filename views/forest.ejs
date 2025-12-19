@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Floresta</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #051405; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; }
+        #gameArea { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-color: #27ae60; background-image: radial-gradient(#2ecc71 15%, transparent 16%), radial-gradient(#2ecc71 15%, transparent 16%); background-size: 20px 20px; image-rendering: pixelated; cursor: crosshair; overflow: hidden; z-index: 1; isolation: isolate; }
+        .tree { position: absolute; width: 60px; height: 80px; font-size: 40px; text-align: center; line-height: 80px; pointer-events: none; z-index: 90; text-shadow: 0 5px 5px rgba(0,0,0,0.5); }
+        .grass-patch { position: absolute; background-color: rgba(0, 100, 0, 0.3); border: 2px dashed #006400; z-index: 0; }
+        .grass-patch::after { content: '🌿'; color: #004d00; font-size: 12px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4)); margin-left: -24px; margin-top: -40px; z-index: 10; transition: top 0s linear, left 0s linear; }
+        <% for(let i = 1; i <= 6; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
+        .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
+        @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
+        .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
+        .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 999; }
+        
+        #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
+        .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .lobby-exit { position: absolute; top: 40%; right: 0; width: 40px; height: 20%; background: rgba(0, 0, 0, 0.2); border-left: 2px dashed #000; z-index: 0; display: flex; align-items: center; justify-content: flex-end; }
+        .lobby-exit::after { content: 'CIDADE 🏙️'; position: absolute; right: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #fff; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; }
+
+        /* Botão Redondo */
+        .float-btn { position: fixed; top: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .float-btn:active { transform: translateY(5px); box-shadow: none; }
+
+        /* Estilos do Modal de Equipe (Copiado do Lobby) */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
+        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
+        .team-list-item { background: #222; border: 1px solid #444; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 15px; }
+        .team-sprite { width: 50px; height: 50px; image-rendering: pixelated; background: #333; border-radius: 50%; }
+        .team-info { flex: 1; font-family: monospace; }
+        .team-bar { width: 100%; height: 6px; background: #444; margin-top: 5px; border-radius: 3px; overflow: hidden; }
+        .team-fill { height: 100%; background: #2ecc71; }
+
+        /* CHAT STYLES */
+        .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
+        @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+        
+        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
+        #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
+        #chatSend { 
+            width: 40px; height: 40px; border-radius: 50%; border: none; 
+            background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; 
+            margin-top: 0 !important; /* CORREÇÃO DO MARGIN */
+        }
+    </style>
+</head>
+<body>
+    <button class="float-btn" onclick="document.getElementById('modalTeam').style.display='flex'">🎒</button>
+
+    <div id="gameArea">
+        <div class="lobby-exit"></div>
+        <div class="grass-patch" id="grass1" style="top: 20%; left: 10%; width: 30%; height: 30%;"></div>
+        <div class="grass-patch" id="grass2" style="top: 60%; left: 50%; width: 40%; height: 25%;"></div>
+        <div class="tree" style="top:5%; left:5%">🌲</div><div class="tree" style="top:50%; left:5%">🌲</div><div class="tree" style="top:15%; left:80%">🌲</div>
+        
+        <!-- BARRA DE CHAT -->
+        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
+    </div>
+    <div id="toastContainer"></div>
+
+    <!-- MODAL DE EQUIPE -->
+    <div class="modal-overlay" id="modalTeam">
+        <div class="modal-content">
+            <button class="close-btn" onclick="document.getElementById('modalTeam').style.display='none'">X</button>
+            <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2>
+            <div id="teamListContent">
+                <% if(user && user.pokemonTeam && user.pokemonTeam.length > 0) { %>
+                    <% user.pokemonTeam.forEach(p => { %>
+                        <div class="team-list-item">
+                            <!-- Nota: Aqui precisariamos buscar a imagem na BasePokemon se não estiver no user.pokemonTeam, mas deixamos sem img por enquanto no forest para simplificar -->
+                             <div class="team-info">
+                                <div style="font-weight:bold; color:#f1c40f"><%= p.nickname %> <span style="font-size:0.8rem; color:#aaa">Lv.<%= p.level %></span></div>
+                                <div style="font-size:0.8rem; margin-top:2px;">HP: <%= p.currentHp %></div>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <p style="text-align:center">Dados não disponíveis aqui.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const myName = "<%= playerName %>";
+        const mySkin = "<%= playerSkin %>";
+        const gameArea = document.getElementById('gameArea');
+        let myId = null; const MOVEMENT_SPEED = 55; let isPlayerMoving = false;
+        
+        // CHAT LOGIC
+        const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
+        function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
+        chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
+        
+        socket.on('connect', () => { myId = socket.id; socket.emit('enter_map', { name: myName, skin: mySkin, map: 'forest' }); });
+        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); });
+        socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
+        socket.on('player_moved', (data) => {
+            const el = document.getElementById(`p-${data.id}`);
+            if (el) {
+                const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
+                const dx = data.x - currentLeft; const dy = data.y - currentTop;
+                const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
+                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; void el.offsetWidth; 
+                el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
+                if (duration > 0) { 
+                    if (!el.classList.contains('walking')) el.classList.add('walking'); 
+                    if (el.walkTimeout) clearTimeout(el.walkTimeout); 
+                    el.walkTimeout = setTimeout(() => { 
+                        el.classList.remove('walking'); 
+                        if (data.id === myId) { 
+                            isPlayerMoving = false; 
+                            if (data.x > 95 && data.y > 40 && data.y < 60) { window.location.href = '/lobby?userId=<%= user._id %>'; }
+                        } 
+                    }, duration * 1000); 
+                }
+            }
+        });
+        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
+        socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
+        
+        socket.on('encounter_found', () => {
+            isPlayerMoving = true; showToast("🌿 Um Pokémon selvagem apareceu!");
+            setTimeout(() => { fetch('/battle/wild', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>' }) }).then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; else { showToast(data.error); isPlayerMoving = false; } }); }, 1000);
+        });
+        function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`; const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); gameArea.appendChild(div); }
+        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 5000); }
+        gameArea.addEventListener('click', (e) => {
+            if (isPlayerMoving) return;
+            const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
+            isPlayerMoving = true; socket.emit('move_player', { x: targetX, y: targetY });
+            if (checkIfInGrass(e.clientX, e.clientY)) socket.emit('check_encounter', { x: targetX, y: targetY });
+        });
+        function checkIfInGrass(clientX, clientY) { const elements = document.elementsFromPoint(clientX, clientY); return elements.some(el => el.classList.contains('grass-patch')); }
+    </script>
+</body>
+</html>
