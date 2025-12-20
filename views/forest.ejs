@@ -24,7 +24,7 @@
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        /* Loader overlay (fade + slide) 🔧 */
+        /* Loader overlay */
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -40,7 +40,7 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
-        .team-list-item { background: #222; border: 1px solid #444; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 15px; }
+        .team-list-item { background: #222; border: 1px solid #444; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
         .team-sprite { width: 50px; height: 50px; image-rendering: pixelated; background: #333; border-radius: 50%; }
         .team-info { flex: 1; font-family: monospace; }
         .team-bar { width: 100%; height: 6px; background: #444; margin-top: 5px; border-radius: 3px; overflow: hidden; }
@@ -65,7 +65,6 @@
     </div>
     <div id="toastContainer"></div>
 
-    <!-- Loader overlay (visível inicialmente) -->
     <div id="loader" class="loader-overlay show" aria-hidden="false">
         <div class="loader-box">
             <div class="spinner"></div>
@@ -73,7 +72,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE EQUIPE -->
+    <!-- MODAL DE EQUIPE (BAG) -->
     <div class="modal-overlay" id="modalTeam">
         <div class="modal-content">
             <button class="close-btn" onclick="document.getElementById('modalTeam').style.display='none'">X</button>
@@ -83,7 +82,6 @@
     </div>
 
     <script>
-        // UTILIDADES NO TOPO PARA EVITAR ERROS
         function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
@@ -93,7 +91,6 @@
         const gameArea = document.getElementById('gameArea');
         let myId = null; const MOVEMENT_SPEED = 55; let isPlayerMoving = false;
         
-        // CHAT
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
@@ -103,7 +100,6 @@
 
         socket.on('connect', () => {
             myId = socket.id;
-            // Se veio do lobby, spawnar no canto direito olhando para a esquerda
             let initialX = 50; let initialY = 50; let initialDir = 'down';
             if (spawnFrom === 'lobby') { initialX = 90; initialY = 50; initialDir = 'left'; }
             socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
@@ -131,7 +127,6 @@
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
                             isPlayerMoving = false; 
-                            // Área de transição ampliada: se andar para a borda direita (x > 88) e na faixa vertical 25-75 -> volta ao lobby
                             if (data.x > 88 && data.y > 25 && data.y < 75) { showLoading('Voltando ao lobby...', 'right'); setTimeout(() => { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }, 120); }
                         } 
                     }, duration * 1000); 
@@ -152,12 +147,10 @@
             if (isPlayerMoving) return;
             const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
             isPlayerMoving = true; socket.emit('move_player', { x: targetX, y: targetY });
-            // Detecta qual patch de grama foi clicado e envia o id para o servidor
             const elements = document.elementsFromPoint(e.clientX, e.clientY);
             const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
             if (grassEl) socket.emit('check_encounter', { grassId: grassEl.id, x: targetX, y: targetY });
         });
-        function checkIfInGrass(clientX, clientY) { const elements = document.elementsFromPoint(clientX, clientY); return elements.some(el => el.classList.contains('grass-patch')); }
 
         async function openBag() {
             document.getElementById('modalTeam').style.display='flex';
@@ -188,6 +181,9 @@
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
                             ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
+                            <div style="display:flex; gap:6px;">
+                                <div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div>
+                            </div>
                         </div>
                     </div>`;
                 });
@@ -205,11 +201,20 @@
             if(data.success) { showToast("Novo líder definido!"); openBag(); }
         }
 
-        // Loading screen helpers
+        async function abandonPokemon(instanceId) {
+            if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return;
+            showLoading('Libertando...', 'left');
+            try {
+                const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) });
+                const data = await res.json();
+                hideLoading();
+                if(data.success) { showToast('Pokémon libertado.'); setTimeout(() => openBag(), 100); } else { showToast(data.error || 'Erro.'); }
+            } catch(e) { hideLoading(); alert('Erro ao conectar.'); }
+        }
+
         function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         window.addEventListener('beforeunload', () => { showLoading(); });
-        // Loader será escondido quando recebermos 'map_state'
     </script>
 </body>
 </html>

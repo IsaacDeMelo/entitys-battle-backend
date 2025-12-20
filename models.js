@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const BasePokemonSchema = new mongoose.Schema({
@@ -15,6 +16,18 @@ const BasePokemonSchema = new mongoose.Schema({
     movePool: [{ level: Number, moveId: String }]
 });
 
+// Estrutura do Pokemon salva no User (reutilizável)
+const UserPokemonSchema = new mongoose.Schema({
+    baseId: String, 
+    nickname: String, 
+    level: { type: Number, default: 1 },
+    currentHp: Number, 
+    xp: { type: Number, default: 0 },
+    stats: { hp: Number, energy: Number, attack: Number, defense: Number, speed: Number }, 
+    moves: [String], 
+    learnedMoves: [String] 
+});
+
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
@@ -25,13 +38,10 @@ const UserSchema = new mongoose.Schema({
     money: { type: Number, default: 100 },
     pokeballs: { type: Number, default: 5 },
     rareCandy: { type: Number, default: 0 },
-    pokemonTeam: [{
-        baseId: String, nickname: String, level: { type: Number, default: 1 },
-        currentHp: Number, xp: { type: Number, default: 0 },
-        stats: { hp: Number, energy: Number, attack: Number, defense: Number, speed: Number }, 
-        moves: [String], // Active moves (Max 4)
-        learnedMoves: [String] // History of all learned moves
-    }]
+    // PARTY (Máx 6 logicamente)
+    pokemonTeam: [UserPokemonSchema],
+    // PC (Armazenamento)
+    pc: [UserPokemonSchema]
 });
 
 const BasePokemon = mongoose.model('BasePokemon', BasePokemonSchema);

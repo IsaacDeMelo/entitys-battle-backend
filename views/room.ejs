@@ -7,16 +7,24 @@
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        /* ... (Mesmo CSS anterior) ... */
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: center; }
+        div:focus {
+    outline: none; /* Remove o contorno azul padrão */
+    /* Se quiser um contorno diferente no foco: */
+    /* outline: 2px solid #007bff; */
+}
         #gameArea { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-image: url('/uploads/map_bg.png'); image-rendering: pixelated; background-size: cover; background-position: center top; background-repeat: no-repeat; cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; z-index: 1; isolation: isolate; }
-        .machine { position: absolute; background-color: transparent; border: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; color: #fff; font-family: 'Press Start 2P'; font-size: 0.5rem; text-align: center; text-shadow: 2px 2px 0 #000; cursor: pointer; background-size: contain; background-repeat: no-repeat; background-position: center bottom; transform: translate3d(0,0,0); transition: transform 0.1s; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        /* CIDADES E OBJETOS */
+        .machine { position: absolute; background-color: transparent; border: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; color: #fff; font-family: 'Press Start 2P'; font-size: 0.5rem; text-align: center; text-shadow: 2px 2px 0 #000; cursor: pointer; background-size: contain; background-repeat: no-repeat; background-position: center bottom; transform: translate3d(0,0,0); transition: transform 0.1s; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); outline: none; }
         .machine:active { transform: scale(0.95); }
         .top-machine { width: 150px; height: 150px; z-index: 5; } .bottom-machine { width: 100px; height: 100px; z-index: 5; }
         #pc-pokedex { top: 3%; left: 2%; background-image: url('/uploads/pokedex_building.png'); }
         #pc-center { top: 3%; right: 2%; background-image: url('/uploads/online_building.png'); filter: hue-rotate(90deg); }
         #pc-battle { top: 40%; left: 50%; margin-left: -70px; width: 140px; height: 120px; background-image: url('/uploads/arena_building.png'); z-index: 5; }
+        
+        /* JOGADOR */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4)); margin-left: -24px; margin-top: -40px; z-index: 10; transition: top 0s linear, left 0s linear; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
@@ -25,17 +33,20 @@
         .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 500; }
         .searching-planet { position: absolute; top: -60px; left: 50%; margin-left: -10px; width: 20px; height: 20px; font-size: 1.2rem; animation: spin-planet 2s linear infinite; z-index: 600; pointer-events: none; }
         @keyframes spin-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        /* CHAT */
         .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; }
+        
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        /* Loader overlay (fade + slide) 🔧 */
+        /* LOADER */
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -46,11 +57,42 @@
 
         .forest-exit { position: absolute; top: 40%; left: 0; width: 40px; height: 20%; background: rgba(46, 204, 113, 0.2); border-right: 2px dashed #2ecc71; z-index: 0; display: flex; align-items: center; }
         .forest-exit::after { content: 'FLORESTA 🌲'; position: absolute; left: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #2ecc71; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; }
-        .float-btn { position: fixed; bottom: 80px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
+        
+        /* BOTÕES FLUTUANTES */
+        .float-btn { position: fixed; bottom: 80px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
         .float-btn:active { transform: translateY(5px); box-shadow: none; }
+        
+        /* MODAIS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
+        
+        /* ESTILO DO PC (Retro Aesthetic) */
+        #modalPC .modal-content { max-width: 700px; background: #001100; border: 4px solid #004400; border-radius: 10px; font-family: 'Press Start 2P', monospace; box-shadow: 0 0 30px rgba(0,255,0,0.2); }
+        #modalPC .close-btn { background: #003300; border: 2px solid #00ff00; color: #00ff00; border-radius: 4px; }
+        .pc-screen { background: repeating-linear-gradient(0deg, rgba(0, 20, 0, 0.2), rgba(0, 20, 0, 0.2) 1px, transparent 1px, transparent 2px); }
+        .pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 400px; padding: 10px; }
+        .pc-column { background: rgba(0, 50, 0, 0.3); border: 2px solid #008800; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; border-radius: 4px; }
+        .pc-column h3 { margin: 0 0 10px 0; text-align: center; color: #00ff00; font-size: 0.7rem; border-bottom: 2px dashed #008800; padding-bottom: 8px; text-transform: uppercase; }
+        .pc-item { display: flex; align-items: center; gap: 10px; padding: 8px; background: #002200; border: 1px solid #006600; cursor: pointer; transition: 0.1s; }
+        .pc-item:hover { background: #004400; border-color: #00ff00; }
+        .pc-item img { width: 32px; height: 32px; image-rendering: pixelated; filter: grayscale(0.2) sepia(1) hue-rotate(80deg) saturate(3); } /* Green tint */
+        .pc-info { flex: 1; }
+        .pc-name { color: #ccffcc; font-size: 0.65rem; margin-bottom: 4px; }
+        .pc-sub { color: #00aa00; font-size: 0.5rem; }
+
+        /* Generic Team/Bag Styles */
+        .team-list-item { background: #222; border: 1px solid #444; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
+        .team-list-item:active { background: #333; transform: scale(0.98); }
+        .team-sprite { width: 50px; height: 50px; image-rendering: pixelated; background: #333; border-radius: 50%; }
+        .team-info { flex: 1; font-family: monospace; }
+        .team-bar { width: 100%; height: 6px; background: #444; margin-top: 5px; border-radius: 3px; overflow: hidden; }
+        .team-fill { height: 100%; background: #2ecc71; }
+        select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; } button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
+        .tab-btn { color: #555; border-bottom: 3px solid transparent; width:auto; margin:0; border-radius:0; background:none; padding: 8px 10px; border-radius: 8px; } .tab-btn.active { color: #fff; background: #1f2533; border-bottom-color: #3498db; }
+        .arena-char { width:80px; height:80px; background-size: 400% auto; background-position: 0% 0%; image-rendering: pixelated; margin: 0 auto; }
+        
+        /* Dex Styles */
         #modalPokedex .modal-content { width: 95%; max-width: 900px; height: 600px; padding: 0; border: 2px solid #00d2ff; border-radius: 15px; background: #0b0f19; overflow: hidden; display: flex; flex-direction: row; font-family: 'Rajdhani', sans-serif; }
         .dex-sidebar { width: 320px; background: rgba(255,255,255,0.03); border-right: 1px solid #333; display: flex; flex-direction: column; }
         .dex-search-box { padding: 15px; border-bottom: 1px solid #333; }
@@ -61,36 +103,23 @@
         .dex-card-img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
         .dex-main { flex: 1; background: radial-gradient(circle at center, #131926 0%, #0b0f19 100%); display: flex; flex-direction: column; }
         .dex-content-wrapper { padding: 30px; flex: 1; overflow-y: auto; }
-        .battle-row { display: flex; justify-content: space-between; align-items: center; background: #222; margin-bottom: 8px; padding: 10px; border-radius: 8px; }
-        select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; } button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
-        .tab-btn { color: #555; border-bottom: 3px solid transparent; width:auto; margin:0; border-radius:0; background:none; } .tab-btn.active { color: #fff; background: #1f2533; border-bottom-color: #3498db; }
-        .team-list-item { background: #222; border: 1px solid #444; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; }
-        .team-list-item:active { background: #333; transform: scale(0.98); }
-        .team-sprite { width: 50px; height: 50px; image-rendering: pixelated; background: #333; border-radius: 50%; }
-        .team-info { flex: 1; font-family: monospace; }
-        .team-bar { width: 100%; height: 6px; background: #444; margin-top: 5px; border-radius: 3px; overflow: hidden; }
-        .team-fill { height: 100%; background: #2ecc71; }
         .dex-stats-row { display: flex; align-items: center; margin-bottom: 5px; font-size: 0.8rem; }
         .dex-stat-label { width: 40px; font-weight: bold; color: #aaa; }
         .dex-stat-bar-bg { flex: 1; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-left: 10px; }
         .dex-stat-bar-fill { height: 100%; border-radius: 4px; }
-        .stat-hp { background: #2ecc71; }
-        .stat-atk { background: #e74c3c; }
-        .stat-def { background: #f1c40f; }
-        .stat-spd { background: #3498db; }
+        .stat-hp { background: #2ecc71; } .stat-atk { background: #e74c3c; } .stat-def { background: #f1c40f; } .stat-spd { background: #3498db; }
         .dex-stat-val { width: 30px; text-align: right; color: #fff; margin-left: 5px; font-family: monospace; }
         .dex-type-tag { display: inline-block; padding: 4px 10px; background: #444; border-radius: 15px; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 15px; color: #fff; border: 1px solid #777; }
         .dex-moves-list { margin-top: 20px; border-top: 1px solid #333; padding-top: 10px; }
         .dex-move-item { font-size: 0.8rem; color: #ccc; margin-bottom: 4px; }
         .move-chip { font-family: 'Press Start 2P'; font-size: 0.6rem; text-align: center; color: white; text-shadow: 1px 1px 0 #000; flex: 1; min-width: 100px; }
-
-        /* Arena sprite helpers: show single frame from 4x4 spritesheet */
-        .arena-char { width:80px; height:80px; background-size: 400% auto; background-position: 0% 0%; image-rendering: pixelated; margin: 0 auto; }
     </style>
 </head>
 <body>
-    <button class="float-btn" onclick="openBag()">🎒</button>
-    <button class="float-btn" style="right:90px;" onclick="openShop()">🏪</button>
+    <!-- Botões Flutuantes -->
+    <button class="float-btn" style="right: 160px; border-color: #00ff00; color: #00ff00;" onclick="openPC()">💻</button>
+    <button class="float-btn" style="right: 20px;" onclick="openBag()">🎒</button>
+    <button class="float-btn" style="right: 90px;" onclick="openShop()">🏪</button>
 
     <div id="gameArea">
         <div class="forest-exit"></div>
@@ -104,138 +133,41 @@
     </div>
     <div id="toastContainer"></div>
 
-    <!-- Loader overlay (visível inicialmente) -->
-    <div id="loader" class="loader-overlay show" aria-hidden="false">
-        <div class="loader-box">
-            <div class="spinner"></div>
-            <div class="loader-text">Carregando mapa...</div>
-        </div>
-    </div>
+    <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
-    <!-- MODAL SHOP -->
-    <div class="modal-overlay" id="modalShop">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('modalShop')">X</button>
-            <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:10px;">LOJA</h2>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;">
-                    <div>
-                        <div style="font-weight:bold">Pokébola</div>
-                        <div style="font-size:0.8rem; color:#aaa">Usada para capturar pokémons</div>
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <input id="buyPokeballQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;">
-                        <button onclick="buyItem('pokeball')" style="background:#2ecc71; border:none; padding:8px; border-radius:6px;">COMPRAR (50)</button>
-                    </div>
+    <!-- MODAL PC STORAGE (THEMED) -->
+    <div class="modal-overlay" id="modalPC">
+        <div class="modal-content pc-screen">
+            <button class="close-btn" onclick="closeModal('modalPC')">X</button>
+            <h2 style="text-align:center; color:#00ff00; margin-bottom:15px; text-shadow: 0 0 5px #00ff00;">PC STORAGE SYSTEM</h2>
+            <div class="pc-grid">
+                <div class="pc-column">
+                    <h3>PARTY (max 6)</h3>
+                    <div id="pcTeamList">Carregando...</div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;">
-                    <div>
-                        <div style="font-weight:bold">Rare Candy</div>
-                        <div style="font-size:0.8rem; color:#aaa">Aumenta 1 nível instantaneamente (muito caro)</div>
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <input id="buyRareQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;">
-                        <button onclick="buyItem('rareCandy')" style="background:#f1c40f; border:none; padding:8px; border-radius:6px;">COMPRAR (2000)</button>
-                    </div>
+                <div class="pc-column">
+                    <h3>STORAGE BOX 1</h3>
+                    <div id="pcStorageList">Carregando...</div>
                 </div>
-                <div style="text-align:center; color:#aaa; font-size:0.85rem;">Seu saldo: <span id="shopBalance">0</span></div>
             </div>
+            <div style="margin-top:10px; text-align:center; font-size:0.6rem; color:#00aa00;">:: SYSTEM READY ::</div>
         </div>
     </div>
 
-    <!-- MODAL BAG / TEAM -->
-    <div class="modal-overlay" id="modalTeam">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeModal('modalTeam')">X</button>
-            <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2>
-            <div id="teamListContent">Carregando...</div>
-        </div>
-    </div>
-
-    <!-- MODAL POKEDEX -->
+    <!-- OUTROS MODAIS -->
+    <div class="modal-overlay" id="modalShop"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalShop')">X</button><h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:10px;">LOJA</h2><div style="display:flex; flex-direction:column; gap:10px;"><div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;"><div><div style="font-weight:bold">Pokébola</div><div style="font-size:0.8rem; color:#aaa">Captura pokémons</div></div><div style="display:flex; gap:8px; align-items:center;"><input id="buyPokeballQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;"><button onclick="buyItem('pokeball')" style="background:#2ecc71; border:none; padding:8px; border-radius:6px;">COMPRAR (50)</button></div></div><div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;"><div><div style="font-weight:bold">Rare Candy</div><div style="font-size:0.8rem; color:#aaa">+1 Nível (instantâneo)</div></div><div style="display:flex; gap:8px; align-items:center;"><input id="buyRareQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;"><button onclick="buyItem('rareCandy')" style="background:#f1c40f; border:none; padding:8px; border-radius:6px;">COMPRAR (2000)</button></div></div><div style="text-align:center; color:#aaa; font-size:0.85rem;">Seu saldo: <span id="shopBalance">0</span></div></div></div></div>
+    <div class="modal-overlay" id="modalTeam"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalTeam')">X</button><h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2><div id="teamListContent">Carregando...</div></div></div>
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div class="dex-sidebar"><div class="dex-search-box"><input type="text" id="dexSearch" class="dex-search-input" placeholder="🔍" onkeyup="filterDex()"></div><div class="dex-grid" id="dexGrid"><% entities.forEach((e, index) => { %><div class="dex-card" onclick="selectDexMonster(<%= index %>, this)" data-name="<%= e.name.toLowerCase() %>"><% if(e.sprite) { %> <img src="<%= e.sprite %>" class="dex-card-img"> <% } else { %> ❓ <% } %><div class="dex-card-name"><%= e.name %></div></div><% }) %></div></div><div class="dex-main"><div class="dex-content-wrapper" id="dexDetailsView">Selecione um monstro.</div></div></div></div>
     
-    <!-- MODAL ONLINE -->
-    <div class="modal-overlay" id="modalOnline">
-        <div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
-            <div style="display:flex; border-bottom:1px solid #333;">
-                <button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button>
-                <button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button>
-                <button class="close-btn" onclick="closeModal('modalOnline')">X</button>
-            </div>
-            <div id="tab-play" class="tab-content" style="padding:20px; flex:1;">
-                <select id="onlineFighter">
-                    <% if(team.length > 0) { team.forEach(p => { %>
-                        <option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option>
-                    <% }); } else { %>
-                        <option>Sem Pokemons</option>
-                    <% } %>
-                </select>
-                <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-                    <label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label>
-                    <input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;">
-                </div>
-                <button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button>
-                <button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button>
-                <div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div>
-            </div>
-            <div id="tab-watch" class="tab-content" style="display:none; padding:10px;">
-                <div id="battlesList"></div>
-            </div>
-        </div>
-    </div>
+    <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;"><div style="display:flex; border-bottom:1px solid #333;"><button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button><button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button><button class="close-btn" onclick="closeModal('modalOnline')">X</button></div><div id="tab-play" class="tab-content" style="padding:20px; flex:1;"><select id="onlineFighter"><% if(team.length > 0) { team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }); } else { %><option>Sem Pokemons</option><% } %></select><div style="margin-top:10px; display:flex; gap:8px; align-items:center;"><label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label><input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;"></div><button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button><button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button><div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div></div><div id="tab-watch" class="tab-content" style="display:none; padding:10px;"><div id="battlesList"></div></div></div></div>
     
+    <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:18px; display:block; max-width:420px;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2><form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;"><input type="hidden" name="userId" value="<%= user._id %>"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><input type="hidden" name="mode" value="manual"><div style="display:flex; gap:12px; align-items:center;"><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div><div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div><div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div></div><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div><div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div><div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div></div></div><label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label><select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;"><option value="" disabled selected>Escolha...</option><% if(team.length === 0) { %><option value="" disabled>Sem Pokémons</option><% } else { %><% team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }) %><% } %></select><div style="display:flex; gap:8px;"><button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button><button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button></div></form></div></div>
+
     <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;"><input type="hidden" name="roomId" id="specRoomId"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"></form>
-    
-    <!-- MODAL BATALHA LOCAL (DESIGN ATUALIZADO) -->
-    <div class="modal-overlay" id="modalBattle">
-        <div class="modal-content" style="padding:18px; display:block; max-width:420px;">
-            <button class="close-btn" onclick="closeModal('modalBattle')">X</button>
-            <h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2>
-            <form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;">
-                <input type="hidden" name="userId" value="<%= user._id %>">
-                <input type="hidden" name="playerName" value="<%= playerName %>">
-                <input type="hidden" name="playerSkin" value="<%= playerSkin %>">
-                <input type="hidden" name="mode" value="manual">
-                <div style="display:flex; gap:12px; align-items:center;">
-                    <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
-                        <div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div>
-                        <div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div>
-                        <div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div>
-                    </div>
-                    <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
-                        <div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div>
-                        <div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div>
-                        <div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div>
-                    </div>
-                </div>
-
-                <label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label>
-                <select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;">
-                    <option value="" disabled selected>Escolha...</option>
-                    <% if(team.length === 0) { %><option value="" disabled>Sem Pokémons</option>
-                    <% } else { %><% team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }) %><% } %>
-                </select>
-
-                <div style="display:flex; gap:8px;">
-                    <button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button>
-                    <button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
     <script src="/scripts/common.js"></script>
-    
     <script>
-        // UTILIDADES (NO TOPO)
-        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
-        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; if(id==='modalPokedex' && allMonsters.length>0) selectDexMonster(0, document.querySelector('.dex-card')); }
-
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
@@ -243,451 +175,148 @@
         const allMonsters = <%- JSON.stringify(entities) %>;
         let myId = null; const MOVEMENT_SPEED = 55; let isPlayerMoving = false;
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
-        
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from');
 
+        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
+        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if(id==='modalPokedex' && allMonsters.length>0) selectDexMonster(0, document.querySelector('.dex-card')); }
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
-        
-        socket.on('connect', () => { 
-            myId = socket.id; 
-            let initialX = 50; let initialY = 50; let initialDir = 'down';
-            // Se veio da floresta, spawna no lado esquerdo do lobby olhando para a direita
-            if(spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } 
-            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); 
-        });
 
+        socket.on('connect', () => { myId = socket.id; let initialX = 50; let initialY = 50; let initialDir = 'down'; if(spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); });
         socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
-
-        // Notified when another session replaces this one
-        socket.on('duplicate_session', (info) => {
-            showToast('Sessão desconectada: outra entrada com esta conta.');
-            setTimeout(() => { window.location.href = '/'; }, 1800);
-        });
-        
-        socket.on('player_updated', (p) => {
-            const el = document.getElementById(`p-${p.id}`);
-            if(el) {
-                const existingPlanet = el.querySelector('.searching-planet');
-                if(p.isSearching) {
-                    if(!existingPlanet) {
-                        const planet = document.createElement('div');
-                        planet.className = 'searching-planet';
-                        planet.innerText = '🌎';
-                        el.appendChild(planet);
-                    }
-                } else {
-                    if(existingPlanet) existingPlanet.remove();
-                }
-            }
-        });
-
+        socket.on('duplicate_session', (info) => { showToast('Sessão desconectada: outra entrada com esta conta.'); setTimeout(() => { window.location.href = '/'; }, 1800); });
+        socket.on('player_updated', (p) => { const el = document.getElementById(`p-${p.id}`); if(el) { const existingPlanet = el.querySelector('.searching-planet'); if(p.isSearching) { if(!existingPlanet) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; el.appendChild(planet); } } else { if(existingPlanet) existingPlanet.remove(); } } });
         socket.on('search_error', (msg) => { showToast(msg); cancelSearch(); });
-
-        socket.on('player_moved', (data) => {
-            const el = document.getElementById(`p-${data.id}`);
-            if (el) {
-                const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
-                const dx = data.x - currentLeft; const dy = data.y - currentTop;
-                const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
-                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; void el.offsetWidth; 
-                el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
-                if (duration > 0) { 
-                    if (!el.classList.contains('walking')) el.classList.add('walking'); 
-                    if (el.walkTimeout) clearTimeout(el.walkTimeout); 
-                    el.walkTimeout = setTimeout(() => { 
-                        el.classList.remove('walking'); 
-                        if (data.id === myId) { 
-                            isPlayerMoving = false; 
-                            gameArea.classList.remove('locked'); 
-                            // Área de transição ampliada: se andar para a borda esquerda (x < 12) e na faixa vertical 25-75 -> entra na floresta
-                            if (data.x < 12 && data.y > 25 && data.y < 75) { showLoading('Indo para a floresta...', 'left'); setTimeout(() => { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }, 120); }
-                        } 
-                    }, duration * 1000); 
-                }
-            }
-        });
+        socket.on('player_moved', (data) => { const el = document.getElementById(`p-${data.id}`); if (el) { const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50; const dx = data.x - currentLeft; const dy = data.y - currentTop; const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0; el.style.transition = `top ${duration}s linear, left ${duration}s linear`; void el.offsetWidth; el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction); if (duration > 0) { if (!el.classList.contains('walking')) el.classList.add('walking'); if (el.walkTimeout) clearTimeout(el.walkTimeout); el.walkTimeout = setTimeout(() => { el.classList.remove('walking'); if (data.id === myId) { isPlayerMoving = false; gameArea.classList.remove('locked'); if (data.x < 12 && data.y > 25 && data.y < 75) { showLoading('Indo para a floresta...', 'left'); setTimeout(() => { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }, 120); } } }, duration * 1000); } } });
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
-        
-        function createPlayerElement(p) {
-            const div = document.createElement('div');
-            div.id = `p-${p.id}`;
-            div.className = 'player';
-            div.style.left = p.x + '%';
-            div.style.top = p.y + '%';
-            div.style.zIndex = Math.floor(p.y);
-            div.setAttribute('data-dir', p.direction || 'down');
-
-            // If this entity carries a `sprite` (pokemon or non-character image), render an <img>
-            if (p.sprite) {
-                const img = document.createElement('img');
-                img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite);
-                img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none';
-                div.appendChild(img);
-                // ensure background is clean when using img
-                div.style.backgroundImage = 'none';
-            } else {
-                // Use character skin spritesheet (4x4) when available
-                const skinName = p.skin || 'char1';
-                div.style.backgroundImage = `url('/uploads/${skinName}.png')`;
-            }
-
-            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label);
-            if(p.isSearching) {
-                const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet);
-            }
-            gameArea.appendChild(div);
-            if (p.id === myId) playerElement = div;
-        }
-        
+        function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); if(p.isSearching) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet); } gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
         gameArea.addEventListener('click', (e) => { if (isPlayerMoving || e.target.classList.contains('machine')) return; const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100; isPlayerMoving = true; gameArea.classList.add('locked'); socket.emit('move_player', { x: targetX, y: targetY }); });
         
-        function moveToAndInteract(event, element, type) {
-            event.stopPropagation(); if (isPlayerMoving) return;
-            const rect = gameArea.getBoundingClientRect(); const targetRect = element.getBoundingClientRect();
-            const centerXpx = (targetRect.left - rect.left) + (targetRect.width / 2); const targetYpx = (targetRect.bottom - rect.top) - 25; 
-            const targetX = (centerXpx / rect.width) * 100; const targetY = (targetYpx / rect.height) * 100;
-            const myEl = document.getElementById(`p-${myId}`); let travelTime = 0; isPlayerMoving = true; gameArea.classList.add('locked');
-            if (myEl) { const currentLeft = parseFloat(myEl.style.left) || 50; const currentTop = parseFloat(myEl.style.top) || 50; const dist = Math.sqrt(Math.pow(targetX - currentLeft, 2) + Math.pow(targetY - currentTop, 2)); travelTime = (dist / MOVEMENT_SPEED) * 1000; }
+        function moveToAndInteract(event, element, type) { 
+            event.stopPropagation(); 
+            if (isPlayerMoving) return; 
+            const rect = gameArea.getBoundingClientRect(); 
+            const targetRect = element.getBoundingClientRect(); 
+            const centerXpx = (targetRect.left - rect.left) + (targetRect.width / 2); 
+            const targetYpx = (targetRect.bottom - rect.top) - 25; 
+            const targetX = (centerXpx / rect.width) * 100; 
+            const targetY = (targetYpx / rect.height) * 100; 
+            const myEl = document.getElementById(`p-${myId}`); 
+            let travelTime = 0; 
+            isPlayerMoving = true; 
+            gameArea.classList.add('locked'); 
+            if (myEl) { 
+                const currentLeft = parseFloat(myEl.style.left) || 50; 
+                const currentTop = parseFloat(myEl.style.top) || 50; 
+                const dist = Math.sqrt(Math.pow(targetX - currentLeft, 2) + Math.pow(targetY - currentTop, 2)); 
+                travelTime = (dist / MOVEMENT_SPEED) * 1000; 
+            } 
             socket.emit('move_player', { x: targetX, y: targetY }); 
-            setTimeout(() => {
-                if (type === 'create') { showLoading('Carregando criação...', 'left'); setTimeout(() => window.location.href = `/create?playerName=${encodeURIComponent(myName)}&playerSkin=${encodeURIComponent(mySkin)}`, 120); }
-                else if (type === 'admin') { showLoading('Carregando...', 'left'); setTimeout(() => window.location.href = '/lab?userId=<%= user._id %>', 120); }
-                else if (type === 'pokedex') openModal('modalPokedex');
-                else if (type === 'heal') healTeam();
-                else if (type === 'online' || type === 'battle') openModal('modalBattle');
-            }, travelTime);
+            setTimeout(() => { 
+                if (type === 'create') { showLoading('Carregando criação...', 'left'); setTimeout(() => window.location.href = `/create?playerName=${encodeURIComponent(myName)}&playerSkin=${encodeURIComponent(mySkin)}`, 120); } 
+                else if (type === 'admin') { showLoading('Carregando...', 'left'); setTimeout(() => window.location.href = '/lab?userId=<%= user._id %>', 120); } 
+                else if (type === 'pokedex') openModal('modalPokedex'); 
+                else if (type === 'heal') healTeam(); 
+                else if (type === 'online' || type === 'battle') {
+                    // Update Fighter List before showing modal to ensure PC moves are reflected
+                    updateBattleSelect();
+                    openModal('modalBattle'); 
+                }
+            }, travelTime); 
         }
 
-        // Heal function: chama a API e mostra feedback
-        async function healTeam() {
-            try {
-                const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) });
-                const data = await res.json();
-                if (data && data.success) {
-                    showToast(data.message || 'Equipe curada!');
-                    // atualiza a UI caso a bag esteja aberta
-                    if (document.getElementById('modalTeam').style.display === 'flex') openBag();
-                } else {
-                    showToast(data.error || 'Erro ao curar');
-                }
-            } catch (e) {
-                showToast('Erro ao conectar ao servidor');
-            }
+        async function healTeam() { try { const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) }); const data = await res.json(); if (data && data.success) { showToast(data.message || 'Equipe curada!'); if (document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro ao curar'); } } catch (e) { showToast('Erro ao conectar ao servidor'); } }
+        
+        // --- SISTEMA DE PC ---
+        async function openPC() {
+            document.getElementById('modalPC').style.display='flex';
+            loadPCData();
         }
-
-        // BAG & LEAD SYSTEM
-        let currentMoves = [];
-        let currentPokeId = null;
-
-        async function openBag() {
-            document.getElementById('modalTeam').style.display='flex';
-            const content = document.getElementById('teamListContent');
-            content.innerHTML = 'Carregando...';
+        
+        async function loadPCData() {
+            const tDiv = document.getElementById('pcTeamList');
+            const pDiv = document.getElementById('pcStorageList');
+            tDiv.innerHTML = 'Carregando...'; pDiv.innerHTML = 'Carregando...';
             try {
-                const res = await fetch('/api/me?userId=<%= user._id %>');
+                const res = await fetch('/api/pc?userId=<%= user._id %>');
                 const data = await res.json();
-                // Build tabbed view: Pokémons | Itens
-                const pokemons = data.team || [];
-                const money = data.money || 0;
-                const pokeballs = data.pokeballs || 0;
-                const rareCandy = data.rareCandy || 0;
-
-                let html = `
-                    <div style="display:flex; gap:8px; margin-bottom:12px;">
-                        <button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button>
-                        <button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button>
-                        <div style="flex:1"></div>
-                        <button onclick="openShop()" style="background:#2ecc71; border:none; padding:6px 8px; border-radius:6px; color:#000;">Abrir Loja</button>
-                    </div>
-                    <div id="bagContentPoke">
-                `;
-
-                if (pokemons.length === 0) {
-                    html += '<p style="text-align:center">Vazio.</p>';
-                } else {
-                    pokemons.forEach((p, index) => {
-                        const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
-                        const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0;
-                        const safeSprite = resolveImg(p.sprite);
-                        const isLead = index === 0;
-                        html += `
-                        <div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}">
-                            <div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;">
-                                <img src="${safeSprite}" class="team-sprite">
-                                <div class="team-info">
-                                    <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
-                                    <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
-                                    <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
-                                    <div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div>
-                                    <div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div>
-                                </div>
-                            </div>
-                            <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-                                ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
-                                <div style="display:flex; gap:6px;">
-                                    <div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div>
-                                    <div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div>
-                                </div>
-                            </div>
-                        </div>`;
-                    });
-                }
-
-                html += `</div><div id="bagContentItems" style="display:none;">
-                    <div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;">
-                        <div style="font-weight:bold; color:#f1c40f;">Saldo: ${money}</div>
-                        <div style="margin-top:6px; color:#ccc;">Pokébolas: ${pokeballs}</div>
-                        <div style="margin-top:6px; color:#ccc;">RareCandy: ${rareCandy}</div>
-                    </div>
-                    <div style="display:flex; gap:8px;">
-                        <button onclick="openShop()" style="flex:1; background:#2ecc71; border:none; padding:10px; border-radius:6px;">Comprar</button>
-                        <button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button>
+                renderPC(data.team, data.pc);
+            } catch(e) { console.error(e); tDiv.innerText='Erro'; pDiv.innerText='Erro'; }
+        }
+        
+        function renderPC(team, pc) {
+            const createItem = (p, from) => `
+                <div class="pc-item" onclick="movePokemon('${p.instanceId}', '${from}')">
+                    <img src="${resolveImg(p.sprite)}">
+                    <div class="pc-info">
+                        <div class="pc-name">${p.name} <span style="color:#00ff00">Lv.${p.level}</span></div>
+                        <div class="pc-sub">HP: ${p.hp}/${p.maxHp}</div>
                     </div>
                 </div>`;
 
-                content.innerHTML = html;
-                // ensure default tab
-                switchBagTab('poke');
-            } catch(e) { content.innerHTML = 'Erro.'; }
+            document.getElementById('pcTeamList').innerHTML = team.length ? team.map(p => createItem(p, 'team')).join('') : '<div style="text-align:center;color:#004400; font-size:0.6rem;">Vazio</div>';
+            document.getElementById('pcStorageList').innerHTML = pc.length ? pc.map(p => createItem(p, 'pc')).join('') : '<div style="text-align:center;color:#004400; font-size:0.6rem;">Vazio</div>';
         }
-
-        function switchBagTab(tab) {
-            const poke = document.getElementById('bagContentPoke');
-            const items = document.getElementById('bagContentItems');
-            const tP = document.getElementById('bagTabPoke');
-            const tI = document.getElementById('bagTabItems');
-            if(!poke || !items) return;
-            if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); }
-            else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); }
-        }
-
-        // Small style polish for bag/items
-        (function injectBagStyles(){
-            const css = `
-                .team-list-item { box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
-                #modalTeam .modal-content { max-width: 520px; }
-                #modalShop .modal-content { max-width: 520px; }
-                .tab-btn { padding: 8px 10px; border-radius: 8px; }
-            `;
-            const s = document.createElement('style'); s.innerText = css; document.head.appendChild(s);
-        })();
-
-        // Open shop and populate balance
-        async function openShop() {
+        
+        async function movePokemon(pokemonId, currentLoc) {
+            const target = currentLoc === 'team' ? 'pc' : 'team';
             try {
-                const res = await fetch('/api/me?userId=<%= user._id %>');
-                const data = await res.json();
-                document.getElementById('shopBalance').innerText = data.money || 0;
-            } catch (e) {
-                document.getElementById('shopBalance').innerText = '—';
-            }
-            document.getElementById('modalShop').style.display = 'flex';
-        }
-
-        // Buy item from shop
-        async function buyItem(item) {
-            const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1;
-            try {
-                const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) });
-                const data = await res.json();
-                if(data.success) {
-                        showToast('Compra bem sucedida!');
-                        document.getElementById('shopBalance').innerText = data.money || '0';
-                        if(document.getElementById('modalTeam').style.display === 'flex') openBag();
-                    } else {
-                        showToast(data.error || 'Erro na compra');
-                    }
-            } catch(e) { alert('Erro ao conectar'); }
-        }
-
-        async function abandonPokemon(instanceId) {
-            if(!await showConfirm('Tem certeza que deseja abandonar este pokémon?')) return;
-            try {
-                const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) });
-                const data = await res.json();
-                if(data.success) { showToast('Pokémon abandonado.'); openBag(); } else { showToast(data.error || 'Erro'); }
-            } catch(e) { alert('Erro ao conectar'); }
-        }
-
-        async function setLead(pokeId) {
-            const res = await fetch('/api/set-lead', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId })
-            });
-            const data = await res.json();
-            if(data.success) { showToast("Novo líder definido!"); openBag(); }
-        }
-
-        function showMoveEditor(id, name, equipped, learned) {
-            currentPokeId = id;
-            const pool = (learned && learned.length > 0) ? learned : equipped;
-            let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`;
-            pool.forEach(moveId => {
-                const isEquipped = equipped.includes(moveId);
-                const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;";
-                html += `<div onclick="toggleMove('${moveId}', this)" class="move-chip" style="padding:8px; border:2px solid; border-radius:5px; cursor:pointer; ${style}" data-id="${moveId}">${moveId}</div>`;
-            });
-            html += `</div><button onclick="saveMoves()" style="width:100%; padding:10px; margin-top:20px; background:#f1c40f; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SALVAR</button><button onclick="openBag()" style="width:100%; padding:10px; margin-top:5px; background:#555; border:none; border-radius:5px; cursor:pointer; color:white;">VOLTAR</button>`;
-            document.getElementById('teamListContent').innerHTML = html;
-        }
-
-        // Show item usage modal when user wants to use RareCandy
-        async function openUseItemModal() {
-            // fetch current team and items
-            try {
-                const res = await fetch('/api/me?userId=<%= user._id %>');
-                const data = await res.json();
-                if(!data.team || data.team.length === 0) { showToast('Sem pokémons para usar.'); return; }
-                // build modal HTML
-                let html = `<h3 style="text-align:center; color:#f1c40f;">Usar Item</h3>`;
-                html += `<div style="margin-top:8px; color:#ccc;">RareCandy: ${data.rareCandy || 0}</div>`;
-                html += `<div style="margin-top:10px;">Escolha o Pokémon alvo:</div>`;
-                html += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">`;
-                data.team.forEach(p => {
-                    html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; background:#0b1220; border-radius:6px;"><img src="${resolveImg(p.sprite)}" style="width:44px; height:44px; image-rendering:pixelated; border-radius:8px;"><div style="flex:1;"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="color:#aaa; font-size:0.8rem">Lv.${p.level}</span></div><div style="font-size:0.8rem; color:#ccc">HP: ${p.hp}/${p.maxHp}</div></div><button onclick="useRareCandy('${p.instanceId}')" style="background:#f1c40f; border:none; padding:8px 10px; border-radius:6px;">Usar</button></div>`;
+                const res = await fetch('/api/pc/move', { 
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ userId: '<%= user._id %>', pokemonId, from: currentLoc, to: target })
                 });
-                html += `</div><div style="margin-top:12px;"><button onclick="openBag()" style="width:100%; padding:8px; background:#555; color:#fff; border:none; border-radius:6px;">Voltar</button></div>`;
-                document.getElementById('teamListContent').innerHTML = html;
-            } catch(e) { showToast('Erro ao carregar itens.'); }
-        }
-
-        async function useRareCandy(pokemonInstanceId) {
-            if(!await showConfirm('Usar 1 RareCandy neste Pokémon?')) return;
-            try {
-                const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: 'rareCandy', pokemonId: pokemonInstanceId, qty: 1 }) });
                 const data = await res.json();
-                if(data.success) {
-                    showToast('RareCandy usada!');
-                    openBag();
-                } else {
-                    showToast(data.error || 'Falha ao usar item');
-                }
-            } catch(e) { alert('Erro ao conectar'); }
+                if(data.success) { loadPCData(); } else { showToast(data.error); }
+            } catch(e) { showToast("Erro ao mover."); }
         }
 
-        function toggleMove(moveId, el) {
-            const chips = document.querySelectorAll('.move-chip');
-            let selected = [];
-            chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); });
-            if(el.style.background.includes('2ecc71')) {
-                if(selected.length <= 1) { showToast("Precisa de pelo menos 1 ataque!"); return; }
-                el.style.background = '#444'; el.style.borderColor = '#555';
-            } else {
-                if(selected.length >= 4) { showToast("Máximo de 4 ataques!"); return; }
-                el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60';
-            }
+        // NOVO: Atualiza a lista de batalha para remover pokemons do PC (sem recarregar pagina)
+        async function updateBattleSelect() {
+            try {
+                const res = await fetch('/api/me?userId=<%= user._id %>');
+                const data = await res.json();
+                const team = data.team || [];
+                const select1 = document.getElementById('f1');
+                const selectOnline = document.getElementById('onlineFighter');
+                
+                let html = '<option value="" disabled selected>Escolha...</option>';
+                if(team.length === 0) html = '<option value="" disabled>Sem Pokémons</option>';
+                else team.forEach(p => { html += `<option value="${p.instanceId}">${p.name} (Lv.${p.level})</option>`; });
+                
+                if(select1) select1.innerHTML = html;
+                if(selectOnline) selectOnline.innerHTML = html;
+            } catch(e) { console.error("Erro ao atualizar select de batalha", e); }
         }
 
-        async function saveMoves() {
-            const chips = document.querySelectorAll('.move-chip');
-            let finalMoves = [];
-            chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); });
-            const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) });
-            const data = await res.json();
-            if(data.success) { showToast("Golpes salvos!"); openBag(); } else { showToast(data.error); }
-        }
-
-        function startSearch() { 
-            const fid = document.getElementById('onlineFighter').value; 
-            if(!fid) { showToast("Escolha um Pokémon!"); return; }
-            const bet = Number(document.getElementById('betAmount') ? document.getElementById('betAmount').value : 0) || 0;
-            socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin, bet); 
-            document.getElementById('searchStatus').style.display='block'; 
-            document.getElementById('btnSearch').style.display='none';
-            document.getElementById('btnCancelSearch').style.display='block';
-        }
-
-        function openWatchTab() {
-            switchTab('tab-watch');
-            socket.emit('request_active_battles');
-        }
-
-        socket.on('active_battles_list', (list) => {
-            const container = document.getElementById('battlesList');
-            if(!container) return;
-            if(!list || list.length === 0) { container.innerHTML = '<div style="text-align:center; color:#aaa;">Sem lutas ativas</div>'; return; }
-            let html = '';
-            list.forEach(b => {
-                html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #222;">
-                    <div style="flex:1;">
-                        <div style="font-weight:bold; color:#f1c40f">${b.p1Name} vs ${b.p2Name}</div>
-                        <div style="font-size:0.8rem; color:#aaa">Sala: ${b.id}</div>
-                    </div>
-                    <div>
-                        <button onclick="spectate('${b.id}')" style="padding:8px; background:#2ecc71; border:none; border-radius:6px; color:#000">ESPECTAR</button>
-                    </div>
-                </div>`;
-            });
-            container.innerHTML = html;
-        });
-
-        function spectate(roomId) {
-            document.getElementById('specRoomId').value = roomId;
-            document.getElementById('spectateForm').submit();
-        }
-
-        function cancelSearch() {
-            socket.emit('cancel_match');
-            document.getElementById('searchStatus').style.display='none'; 
-            document.getElementById('btnSearch').style.display='block';
-            document.getElementById('btnCancelSearch').style.display='none';
-        }
-
+        let currentMoves = []; let currentPokeId = null;
+        async function openBag() { document.getElementById('modalTeam').style.display='flex'; const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; let html = `<div style="display:flex; gap:8px; margin-bottom:12px;"><button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button><button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button><div style="flex:1"></div><button onclick="openShop()" style="background:#2ecc71; border:none; padding:6px 8px; border-radius:6px; color:#000;">Abrir Loja</button></div><div id="bagContentPoke">`; if (pokemons.length === 0) { html += '<p style="text-align:center">Vazio.</p>'; } else { pokemons.forEach((p, index) => { const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100)); const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0; const safeSprite = resolveImg(p.sprite); const isLead = index === 0; html += `<div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}"><div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div><div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div></div></div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}<div style="display:flex; gap:6px;"><div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div><div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div></div></div></div>`; }); } html += `</div><div id="bagContentItems" style="display:none;"><div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;"><div style="font-weight:bold; color:#f1c40f;">Saldo: ${money}</div><div style="margin-top:6px; color:#ccc;">Pokébolas: ${pokeballs}</div><div style="margin-top:6px; color:#ccc;">RareCandy: ${rareCandy}</div></div><div style="display:flex; gap:8px;"><button onclick="openShop()" style="flex:1; background:#2ecc71; border:none; padding:10px; border-radius:6px;">Comprar</button><button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button></div></div>`; content.innerHTML = html; switchBagTab('poke'); } catch(e) { content.innerHTML = 'Erro.'; } }
+        function switchBagTab(tab) { const poke = document.getElementById('bagContentPoke'); const items = document.getElementById('bagContentItems'); const tP = document.getElementById('bagTabPoke'); const tI = document.getElementById('bagTabItems'); if(!poke || !items) return; if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); } else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); } }
+        async function openShop() { try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); document.getElementById('shopBalance').innerText = data.money || 0; } catch (e) { document.getElementById('shopBalance').innerText = '—'; } document.getElementById('modalShop').style.display = 'flex'; }
+        async function buyItem(item) { const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1; try { const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) }); const data = await res.json(); if(data.success) { showToast('Compra bem sucedida!'); document.getElementById('shopBalance').innerText = data.money || '0'; if(document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro na compra'); } } catch(e) { alert('Erro ao conectar'); } }
+        async function abandonPokemon(instanceId) { if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return; showLoading('Libertando...', 'left'); try { const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast('Pokémon libertado.'); setTimeout(() => openBag(), 100); } else { showToast(data.error || 'Erro ao libertar.'); } } catch(e) { hideLoading(); alert('Erro de conexão.'); } }
+        async function setLead(pokeId) { const res = await fetch('/api/set-lead', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId }) }); const data = await res.json(); if(data.success) { showToast("Novo líder definido!"); openBag(); } }
+        function showMoveEditor(id, name, equipped, learned) { currentPokeId = id; const pool = (learned && learned.length > 0) ? learned : equipped; let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`; pool.forEach(moveId => { const isEquipped = equipped.includes(moveId); const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;"; html += `<div onclick="toggleMove('${moveId}', this)" class="move-chip" style="padding:8px; border:2px solid; border-radius:5px; cursor:pointer; ${style}" data-id="${moveId}">${moveId}</div>`; }); html += `</div><button onclick="saveMoves()" style="width:100%; padding:10px; margin-top:20px; background:#f1c40f; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SALVAR</button><button onclick="openBag()" style="width:100%; padding:10px; margin-top:5px; background:#555; border:none; border-radius:5px; cursor:pointer; color:white;">VOLTAR</button>`; document.getElementById('teamListContent').innerHTML = html; }
+        function toggleMove(moveId, el) { const chips = document.querySelectorAll('.move-chip'); let selected = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); }); if(el.style.background.includes('2ecc71')) { if(selected.length <= 1) { showToast("Precisa de pelo menos 1 ataque!"); return; } el.style.background = '#444'; el.style.borderColor = '#555'; } else { if(selected.length >= 4) { showToast("Máximo de 4 ataques!"); return; } el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60'; } }
+        async function saveMoves() { const chips = document.querySelectorAll('.move-chip'); let finalMoves = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); }); const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) }); const data = await res.json(); if(data.success) { showToast("Golpes salvos!"); openBag(); } else { showToast(data.error); } }
+        function startSearch() { const fid = document.getElementById('onlineFighter').value; if(!fid) { showToast("Escolha um Pokémon!"); return; } const bet = Number(document.getElementById('betAmount') ? document.getElementById('betAmount').value : 0) || 0; socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin, bet); document.getElementById('searchStatus').style.display='block'; document.getElementById('btnSearch').style.display='none'; document.getElementById('btnCancelSearch').style.display='block'; }
+        function openWatchTab() { switchTab('tab-watch'); socket.emit('request_active_battles'); }
+        socket.on('active_battles_list', (list) => { const container = document.getElementById('battlesList'); if(!container) return; if(!list || list.length === 0) { container.innerHTML = '<div style="text-align:center; color:#aaa;">Sem lutas ativas</div>'; return; } let html = ''; list.forEach(b => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #222;"><div style="flex:1;"><div style="font-weight:bold; color:#f1c40f">${b.p1Name} vs ${b.p2Name}</div><div style="font-size:0.8rem; color:#aaa">Sala: ${b.id}</div></div><div><button onclick="spectate('${b.id}')" style="padding:8px; background:#2ecc71; border:none; border-radius:6px; color:#000">ESPECTAR</button></div></div>`; }); container.innerHTML = html; });
+        function spectate(roomId) { document.getElementById('specRoomId').value = roomId; document.getElementById('spectateForm').submit(); }
+        function cancelSearch() { socket.emit('cancel_match'); document.getElementById('searchStatus').style.display='none'; document.getElementById('btnSearch').style.display='block'; document.getElementById('btnCancelSearch').style.display='none'; }
         socket.on('match_found', (data) => { document.getElementById('formRoomId').value = data.roomId; document.getElementById('formMeData').value = JSON.stringify(data.me); document.getElementById('formOpponentData').value = JSON.stringify(data.opponent); showLoading('Conectando...', 'left'); document.getElementById('onlineRedirectForm').submit(); });
         function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
-        function selectDexMonster(i, el) {
-            const m = allMonsters[i];
-            const safeSprite = resolveImg(m.sprite || '');
-            document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active'));
-            if(el) el.classList.add('active');
-
-            const left = `
-                <div style="padding:20px; text-align:center;">
-                    <div style="width:160px; height:160px; margin:0 auto; background:#081018; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-                        <img src="${safeSprite}" style="width:120px; height:120px; image-rendering:pixelated;" />
-                    </div>
-                    <h2 style="margin-top:12px;">${m.name}</h2>
-                    <div style="margin-top:6px;"> <span class="dex-type-tag">${m.type}</span> </div>
-                    <div style="margin-top:8px; color:#aaa; font-size:0.9rem;">Catch Rate: ${m.catchRate || 0.5}</div>
-                </div>`;
-
-            // Stats
-            const stats = m.baseStats || {};
-            const statRow = (label, key, color) => {
-                const val = stats[key] || 0;
-                const pct = Math.max(2, Math.min(100, Math.round((val / 100) * 100)));
-                return `<div class="dex-stats-row"><div class="dex-stat-label">${label}</div><div class="dex-stat-bar-bg"><div class="dex-stat-bar-fill ${key === 'hp' ? 'stat-hp' : key === 'attack' ? 'stat-atk' : key === 'defense' ? 'stat-def' : 'stat-spd'}" style="width:${pct}%"></div></div><div class="dex-stat-val">${val}</div></div>`;
-            };
-
-            const right = `
-                <div style="padding:20px;">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px;">Base Stats</div>
-                    ${statRow('HP','hp')}
-                    ${statRow('ATK','attack')}
-                    ${statRow('DEF','defense')}
-                    ${statRow('SPD','speed')}
-                    <div style="margin-top:12px;"><strong style="color:#fff">Moves</strong><div class="dex-moves-list">${(m.movePool && m.movePool.length>0) ? m.movePool.map(mp => `<div class="dex-move-item">Lv.${mp.level}: ${mp.moveId}</div>`).join('') : '<div style="color:#777">Nenhum</div>'}</div></div>
-                    ${m.evolution && m.evolution.targetId ? `<div style="margin-top:12px; color:#aaa">Evolui para: ${m.evolution.targetId} no nível ${m.evolution.level || '—'}</div>` : ''}
-                </div>`;
-
-            document.getElementById('dexDetailsView').innerHTML = `<div style="display:flex; gap:10px; flex-direction:row;"> <div style="width:320px;">${left}</div> <div style="flex:1;">${right}</div> </div>`;
-        }
+        function selectDexMonster(i, el) { const m = allMonsters[i]; const safeSprite = resolveImg(m.sprite || ''); document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); if(el) el.classList.add('active'); const left = `<div style="padding:20px; text-align:center;"><div style="width:160px; height:160px; margin:0 auto; background:#081018; border-radius:12px; display:flex; align-items:center; justify-content:center;"><img src="${safeSprite}" style="width:120px; height:120px; image-rendering:pixelated;" /></div><h2 style="margin-top:12px;">${m.name}</h2><div style="margin-top:6px;"> <span class="dex-type-tag">${m.type}</span> </div><div style="margin-top:8px; color:#aaa; font-size:0.9rem;">Catch Rate: ${m.catchRate || 0.5}</div></div>`; const stats = m.baseStats || {}; const statRow = (label, key, color) => { const val = stats[key] || 0; const pct = Math.max(2, Math.min(100, Math.round((val / 100) * 100))); return `<div class="dex-stats-row"><div class="dex-stat-label">${label}</div><div class="dex-stat-bar-bg"><div class="dex-stat-bar-fill ${key === 'hp' ? 'stat-hp' : key === 'attack' ? 'stat-atk' : key === 'defense' ? 'stat-def' : 'stat-spd'}" style="width:${pct}%"></div></div><div class="dex-stat-val">${val}</div></div>`; }; const right = `<div style="padding:20px;"><div style="font-weight:bold; color:#fff; margin-bottom:8px;">Base Stats</div>${statRow('HP','hp')}${statRow('ATK','attack')}${statRow('DEF','defense')}${statRow('SPD','speed')}<div style="margin-top:12px;"><strong style="color:#fff">Moves</strong><div class="dex-moves-list">${(m.movePool && m.movePool.length>0) ? m.movePool.map(mp => `<div class="dex-move-item">Lv.${mp.level}: ${mp.moveId}</div>`).join('') : '<div style="color:#777">Nenhum</div>'}</div></div>${m.evolution && m.evolution.targetId ? `<div style="margin-top:12px; color:#aaa">Evolui para: ${m.evolution.targetId} no nível ${m.evolution.level || '—'}</div>` : ''}</div>`; document.getElementById('dexDetailsView').innerHTML = `<div style="display:flex; gap:10px; flex-direction:row;"> <div style="width:320px;">${left}</div> <div style="flex:1;">${right}</div> </div>`; }
         function validateBattleForm() { const f1 = document.getElementById('f1').value; if(!f1) { alert("Selecione seu lutador!"); return false; } return true; }
-        // Garantir loader quando submeter batalha local
         document.addEventListener('DOMContentLoaded', () => { const localForm = document.querySelector('#modalBattle form'); if (localForm) localForm.addEventListener('submit', () => { showLoading('Iniciando batalha...'); }); });
-        function getTypeColor(t) { const colors = { fire:'#e74c3c', water:'#3498db', plant:'#2ecc71', electric:'#f1c40f' }; return colors[t] || '#777'; }
-
-        // Loading screen helpers
         function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
-        // When leaving the page show loader (gives visual feedback)
         window.addEventListener('beforeunload', () => { showLoading(); });
-        // Loader will be escondido quando recebermos 'map_state' (mapa renderizado).
     </script>
 </body>
 </html>
