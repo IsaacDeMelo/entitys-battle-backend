@@ -41,9 +41,10 @@ const MOVES_LIBRARY = {
 function getXpForNextLevel(level) {
     // Nova fórmula: mais suave nos níveis iniciais e progressivamente mais íngreme.
     // xpNext = floor(BASE * level^(EXPONENT))
-    // BASE=50, EXPONENT=1.5 -> lvl1=50, lvl2≈141, lvl3≈259, lvl10≈1581
-    const BASE = 50;
-    const EXPONENT = 1.5;
+    // TORNANDO MAIS ACESSÍVEL: reduzir base e expoente para facilitar up
+    // BASE=30, EXPONENT=1.4 -> lvl1=30, lvl2≈80, lvl3≈143, lvl10≈540
+    const BASE = 30;
+    const EXPONENT = 1.4;
     return Math.max(10, Math.floor(BASE * Math.pow(Math.max(1, level), EXPONENT)));
 }
 

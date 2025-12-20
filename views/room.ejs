@@ -90,6 +90,7 @@
 </head>
 <body>
     <button class="float-btn" onclick="openBag()">🎒</button>
+    <button class="float-btn" style="right:90px;" onclick="openShop()">🏪</button>
 
     <div id="gameArea">
         <div class="forest-exit"></div>
@@ -111,6 +112,37 @@
         </div>
     </div>
 
+    <!-- MODAL SHOP -->
+    <div class="modal-overlay" id="modalShop">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('modalShop')">X</button>
+            <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:10px;">LOJA</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;">
+                    <div>
+                        <div style="font-weight:bold">Pokébola</div>
+                        <div style="font-size:0.8rem; color:#aaa">Usada para capturar pokémons</div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="buyPokeballQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;">
+                        <button onclick="buyItem('pokeball')" style="background:#2ecc71; border:none; padding:8px; border-radius:6px;">COMPRAR (50)</button>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;">
+                    <div>
+                        <div style="font-weight:bold">Rare Candy</div>
+                        <div style="font-size:0.8rem; color:#aaa">Aumenta 1 nível instantaneamente (muito caro)</div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="buyRareQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;">
+                        <button onclick="buyItem('rareCandy')" style="background:#f1c40f; border:none; padding:8px; border-radius:6px;">COMPRAR (2000)</button>
+                    </div>
+                </div>
+                <div style="text-align:center; color:#aaa; font-size:0.85rem;">Seu saldo: <span id="shopBalance">0</span></div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL BAG / TEAM -->
     <div class="modal-overlay" id="modalTeam">
         <div class="modal-content">
@@ -128,7 +160,7 @@
         <div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
             <div style="display:flex; border-bottom:1px solid #333;">
                 <button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button>
-                <button class="tab-btn" onclick="switchTab('tab-watch')">ASSISTIR</button>
+                <button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button>
                 <button class="close-btn" onclick="closeModal('modalOnline')">X</button>
             </div>
             <div id="tab-play" class="tab-content" style="padding:20px; flex:1;">
@@ -139,6 +171,10 @@
                         <option>Sem Pokemons</option>
                     <% } %>
                 </select>
+                <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label>
+                    <input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;">
+                </div>
                 <button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button>
                 <button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button>
                 <div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div>
@@ -248,7 +284,7 @@
             }
         });
 
-        socket.on('search_error', (msg) => { alert(msg); cancelSearch(); });
+        socket.on('search_error', (msg) => { showToast(msg); cancelSearch(); });
 
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
@@ -354,35 +390,127 @@
             try {
                 const res = await fetch('/api/me?userId=<%= user._id %>');
                 const data = await res.json();
-                if(!data.team || data.team.length === 0) { content.innerHTML = '<p style="text-align:center">Vazio.</p>'; return; }
-                
-                let html = '';
-                data.team.forEach((p, index) => {
-                    const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
-                    const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0;
-                    const safeSprite = resolveImg(p.sprite);
-                    const isLead = index === 0;
-                    
-                    html += `
-                    <div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}">
-                        <div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;">
-                            <img src="${safeSprite}" class="team-sprite">
-                            <div class="team-info">
-                                <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
-                                <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
-                                <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
-                                <div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div>
-                                <div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div>
+                // Build tabbed view: Pokémons | Itens
+                const pokemons = data.team || [];
+                const money = data.money || 0;
+                const pokeballs = data.pokeballs || 0;
+                const rareCandy = data.rareCandy || 0;
+
+                let html = `
+                    <div style="display:flex; gap:8px; margin-bottom:12px;">
+                        <button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button>
+                        <button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button>
+                        <div style="flex:1"></div>
+                        <button onclick="openShop()" style="background:#2ecc71; border:none; padding:6px 8px; border-radius:6px; color:#000;">Abrir Loja</button>
+                    </div>
+                    <div id="bagContentPoke">
+                `;
+
+                if (pokemons.length === 0) {
+                    html += '<p style="text-align:center">Vazio.</p>';
+                } else {
+                    pokemons.forEach((p, index) => {
+                        const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100));
+                        const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0;
+                        const safeSprite = resolveImg(p.sprite);
+                        const isLead = index === 0;
+                        html += `
+                        <div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}">
+                            <div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;">
+                                <img src="${safeSprite}" class="team-sprite">
+                                <div class="team-info">
+                                    <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
+                                    <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
+                                    <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
+                                    <div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div>
+                                    <div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div>
+                                </div>
                             </div>
-                        </div>
-                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-                            ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
-                            <div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div>
-                        </div>
-                    </div>`;
-                });
+                            <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                                ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
+                                <div style="display:flex; gap:6px;">
+                                    <div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div>
+                                    <div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+                }
+
+                html += `</div><div id="bagContentItems" style="display:none;">
+                    <div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;">
+                        <div style="font-weight:bold; color:#f1c40f;">Saldo: ${money}</div>
+                        <div style="margin-top:6px; color:#ccc;">Pokébolas: ${pokeballs}</div>
+                        <div style="margin-top:6px; color:#ccc;">RareCandy: ${rareCandy}</div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="openShop()" style="flex:1; background:#2ecc71; border:none; padding:10px; border-radius:6px;">Comprar</button>
+                        <button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button>
+                    </div>
+                </div>`;
+
                 content.innerHTML = html;
+                // ensure default tab
+                switchBagTab('poke');
             } catch(e) { content.innerHTML = 'Erro.'; }
+        }
+
+        function switchBagTab(tab) {
+            const poke = document.getElementById('bagContentPoke');
+            const items = document.getElementById('bagContentItems');
+            const tP = document.getElementById('bagTabPoke');
+            const tI = document.getElementById('bagTabItems');
+            if(!poke || !items) return;
+            if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); }
+            else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); }
+        }
+
+        // Small style polish for bag/items
+        (function injectBagStyles(){
+            const css = `
+                .team-list-item { box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
+                #modalTeam .modal-content { max-width: 520px; }
+                #modalShop .modal-content { max-width: 520px; }
+                .tab-btn { padding: 8px 10px; border-radius: 8px; }
+            `;
+            const s = document.createElement('style'); s.innerText = css; document.head.appendChild(s);
+        })();
+
+        // Open shop and populate balance
+        async function openShop() {
+            try {
+                const res = await fetch('/api/me?userId=<%= user._id %>');
+                const data = await res.json();
+                document.getElementById('shopBalance').innerText = data.money || 0;
+            } catch (e) {
+                document.getElementById('shopBalance').innerText = '—';
+            }
+            document.getElementById('modalShop').style.display = 'flex';
+        }
+
+        // Buy item from shop
+        async function buyItem(item) {
+            const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1;
+            try {
+                const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) });
+                const data = await res.json();
+                if(data.success) {
+                        showToast('Compra bem sucedida!');
+                        document.getElementById('shopBalance').innerText = data.money || '0';
+                        if(document.getElementById('modalTeam').style.display === 'flex') openBag();
+                    } else {
+                        showToast(data.error || 'Erro na compra');
+                    }
+            } catch(e) { alert('Erro ao conectar'); }
+        }
+
+        async function abandonPokemon(instanceId) {
+            if(!await showConfirm('Tem certeza que deseja abandonar este pokémon?')) return;
+            try {
+                const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) });
+                const data = await res.json();
+                if(data.success) { showToast('Pokémon abandonado.'); openBag(); } else { showToast(data.error || 'Erro'); }
+            } catch(e) { alert('Erro ao conectar'); }
         }
 
         async function setLead(pokeId) {
@@ -408,15 +536,49 @@
             document.getElementById('teamListContent').innerHTML = html;
         }
 
+        // Show item usage modal when user wants to use RareCandy
+        async function openUseItemModal() {
+            // fetch current team and items
+            try {
+                const res = await fetch('/api/me?userId=<%= user._id %>');
+                const data = await res.json();
+                if(!data.team || data.team.length === 0) { showToast('Sem pokémons para usar.'); return; }
+                // build modal HTML
+                let html = `<h3 style="text-align:center; color:#f1c40f;">Usar Item</h3>`;
+                html += `<div style="margin-top:8px; color:#ccc;">RareCandy: ${data.rareCandy || 0}</div>`;
+                html += `<div style="margin-top:10px;">Escolha o Pokémon alvo:</div>`;
+                html += `<div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">`;
+                data.team.forEach(p => {
+                    html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; background:#0b1220; border-radius:6px;"><img src="${resolveImg(p.sprite)}" style="width:44px; height:44px; image-rendering:pixelated; border-radius:8px;"><div style="flex:1;"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="color:#aaa; font-size:0.8rem">Lv.${p.level}</span></div><div style="font-size:0.8rem; color:#ccc">HP: ${p.hp}/${p.maxHp}</div></div><button onclick="useRareCandy('${p.instanceId}')" style="background:#f1c40f; border:none; padding:8px 10px; border-radius:6px;">Usar</button></div>`;
+                });
+                html += `</div><div style="margin-top:12px;"><button onclick="openBag()" style="width:100%; padding:8px; background:#555; color:#fff; border:none; border-radius:6px;">Voltar</button></div>`;
+                document.getElementById('teamListContent').innerHTML = html;
+            } catch(e) { showToast('Erro ao carregar itens.'); }
+        }
+
+        async function useRareCandy(pokemonInstanceId) {
+            if(!await showConfirm('Usar 1 RareCandy neste Pokémon?')) return;
+            try {
+                const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: 'rareCandy', pokemonId: pokemonInstanceId, qty: 1 }) });
+                const data = await res.json();
+                if(data.success) {
+                    showToast('RareCandy usada!');
+                    openBag();
+                } else {
+                    showToast(data.error || 'Falha ao usar item');
+                }
+            } catch(e) { alert('Erro ao conectar'); }
+        }
+
         function toggleMove(moveId, el) {
             const chips = document.querySelectorAll('.move-chip');
             let selected = [];
             chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); });
             if(el.style.background.includes('2ecc71')) {
-                if(selected.length <= 1) return alert("Precisa de pelo menos 1 ataque!");
+                if(selected.length <= 1) { showToast("Precisa de pelo menos 1 ataque!"); return; }
                 el.style.background = '#444'; el.style.borderColor = '#555';
             } else {
-                if(selected.length >= 4) return alert("Máximo de 4 ataques!");
+                if(selected.length >= 4) { showToast("Máximo de 4 ataques!"); return; }
                 el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60';
             }
         }
@@ -427,16 +589,46 @@
             chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); });
             const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) });
             const data = await res.json();
-            if(data.success) { showToast("Golpes salvos!"); openBag(); } else { alert(data.error); }
+            if(data.success) { showToast("Golpes salvos!"); openBag(); } else { showToast(data.error); }
         }
 
         function startSearch() { 
             const fid = document.getElementById('onlineFighter').value; 
-            if(!fid) return alert("Escolha um Pokémon!");
-            socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin); 
+            if(!fid) { showToast("Escolha um Pokémon!"); return; }
+            const bet = Number(document.getElementById('betAmount') ? document.getElementById('betAmount').value : 0) || 0;
+            socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin, bet); 
             document.getElementById('searchStatus').style.display='block'; 
             document.getElementById('btnSearch').style.display='none';
             document.getElementById('btnCancelSearch').style.display='block';
+        }
+
+        function openWatchTab() {
+            switchTab('tab-watch');
+            socket.emit('request_active_battles');
+        }
+
+        socket.on('active_battles_list', (list) => {
+            const container = document.getElementById('battlesList');
+            if(!container) return;
+            if(!list || list.length === 0) { container.innerHTML = '<div style="text-align:center; color:#aaa;">Sem lutas ativas</div>'; return; }
+            let html = '';
+            list.forEach(b => {
+                html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #222;">
+                    <div style="flex:1;">
+                        <div style="font-weight:bold; color:#f1c40f">${b.p1Name} vs ${b.p2Name}</div>
+                        <div style="font-size:0.8rem; color:#aaa">Sala: ${b.id}</div>
+                    </div>
+                    <div>
+                        <button onclick="spectate('${b.id}')" style="padding:8px; background:#2ecc71; border:none; border-radius:6px; color:#000">ESPECTAR</button>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        });
+
+        function spectate(roomId) {
+            document.getElementById('specRoomId').value = roomId;
+            document.getElementById('spectateForm').submit();
         }
 
         function cancelSearch() {
@@ -448,7 +640,43 @@
 
         socket.on('match_found', (data) => { document.getElementById('formRoomId').value = data.roomId; document.getElementById('formMeData').value = JSON.stringify(data.me); document.getElementById('formOpponentData').value = JSON.stringify(data.opponent); showLoading('Conectando...', 'left'); document.getElementById('onlineRedirectForm').submit(); });
         function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
-        function selectDexMonster(i, el) { const m = allMonsters[i]; const safeSprite = resolveImg(m.sprite); document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); el.classList.add('active'); let movesHTML = m.movePool ? m.movePool.map(mv => `<div>Lv.${mv.level}: ${mv.moveId}</div>`).join('') : 'None'; document.getElementById('dexDetailsView').innerHTML = `<h2>${m.name}</h2><img src="${safeSprite}" style="width:100px"><p>${m.type}</p><div>${movesHTML}</div>`; }
+        function selectDexMonster(i, el) {
+            const m = allMonsters[i];
+            const safeSprite = resolveImg(m.sprite || '');
+            document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active'));
+            if(el) el.classList.add('active');
+
+            const left = `
+                <div style="padding:20px; text-align:center;">
+                    <div style="width:160px; height:160px; margin:0 auto; background:#081018; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <img src="${safeSprite}" style="width:120px; height:120px; image-rendering:pixelated;" />
+                    </div>
+                    <h2 style="margin-top:12px;">${m.name}</h2>
+                    <div style="margin-top:6px;"> <span class="dex-type-tag">${m.type}</span> </div>
+                    <div style="margin-top:8px; color:#aaa; font-size:0.9rem;">Catch Rate: ${m.catchRate || 0.5}</div>
+                </div>`;
+
+            // Stats
+            const stats = m.baseStats || {};
+            const statRow = (label, key, color) => {
+                const val = stats[key] || 0;
+                const pct = Math.max(2, Math.min(100, Math.round((val / 100) * 100)));
+                return `<div class="dex-stats-row"><div class="dex-stat-label">${label}</div><div class="dex-stat-bar-bg"><div class="dex-stat-bar-fill ${key === 'hp' ? 'stat-hp' : key === 'attack' ? 'stat-atk' : key === 'defense' ? 'stat-def' : 'stat-spd'}" style="width:${pct}%"></div></div><div class="dex-stat-val">${val}</div></div>`;
+            };
+
+            const right = `
+                <div style="padding:20px;">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px;">Base Stats</div>
+                    ${statRow('HP','hp')}
+                    ${statRow('ATK','attack')}
+                    ${statRow('DEF','defense')}
+                    ${statRow('SPD','speed')}
+                    <div style="margin-top:12px;"><strong style="color:#fff">Moves</strong><div class="dex-moves-list">${(m.movePool && m.movePool.length>0) ? m.movePool.map(mp => `<div class="dex-move-item">Lv.${mp.level}: ${mp.moveId}</div>`).join('') : '<div style="color:#777">Nenhum</div>'}</div></div>
+                    ${m.evolution && m.evolution.targetId ? `<div style="margin-top:12px; color:#aaa">Evolui para: ${m.evolution.targetId} no nível ${m.evolution.level || '—'}</div>` : ''}
+                </div>`;
+
+            document.getElementById('dexDetailsView').innerHTML = `<div style="display:flex; gap:10px; flex-direction:row;"> <div style="width:320px;">${left}</div> <div style="flex:1;">${right}</div> </div>`;
+        }
         function validateBattleForm() { const f1 = document.getElementById('f1').value; if(!f1) { alert("Selecione seu lutador!"); return false; } return true; }
         // Garantir loader quando submeter batalha local
         document.addEventListener('DOMContentLoaded', () => { const localForm = document.querySelector('#modalBattle form'); if (localForm) localForm.addEventListener('submit', () => { showLoading('Iniciando batalha...'); }); });

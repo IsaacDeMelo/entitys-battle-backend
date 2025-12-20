@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Batalha</title>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/scripts/common.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
     <style>
         :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
@@ -46,8 +47,9 @@
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
 
-        .trainer.commanding { animation: command-walk 0.8s steps(4); }
+        /* replaced continuous commanding animation with single-frame flashes handled in JS */
         @keyframes command-walk { from { background-position-x: 0; } to { background-position-x: -400%; } }
+        .trainer.frame-1 { background-position-x: -100%; }
 
         .hurt-effect { filter: sepia(1) hue-rotate(-50deg) saturate(5) drop-shadow(0 0 15px red) !important; }
         .hurt-p2 { animation: shakeHitP2 0.4s ease-in-out; }
@@ -93,6 +95,23 @@
         #bleachers { width: 100%; height: 200px; background: #2c3e50; border-top: 4px solid #111; position: relative; }
         #chat-container { width: 100%; height: 60px; background: #1a1a2e; border-top: 2px solid #3498db; display: flex; align-items: center; justify-content: center; }
         @media (max-width: 600px) { .battle-layout { grid-template-columns: 1fr; } .battle-log { height: 60px; } }
+        /* Capture animation elements */
+        .pokeball { position: absolute; width: 48px; height: 48px; background-image: url('/uploads/pokeball.png'); background-size: contain; background-repeat: no-repeat; z-index: 200; transform-origin: center; pointer-events: none; }
+        .pokeball.shake { animation: shakePokeball 0.9s ease-in-out; }
+        @keyframes shakePokeball { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-6px) rotate(-8deg); } 50% { transform: translateY(0) rotate(8deg); } 75% { transform: translateY(-4px) rotate(-6deg); } 100% { transform: translateY(0) rotate(0); } }
+
+        /* Floating minimal bag panel */
+        #floatingBagPanel { position: fixed; right: 12px; bottom: 200px; width: 260px; background: rgba(10,12,16,0.95); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; z-index: 80; box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; color: #ddd; }
+        #floatingBagPanel h4 { margin: 0 0 8px 0; font-size: 0.7rem; color: #f1c40f; font-family: 'Press Start 2P'; }
+        #floatingBagPanel .bag-row { display:flex; gap:8px; align-items:center; }
+        #floatingBagPanel .bag-item { flex:1; background: rgba(255,255,255,0.02); padding:8px; border-radius:6px; font-size:0.8rem; text-align:center; }
+        #floatingBagPanel .bag-actions { display:flex; gap:8px; margin-top:8px; }
+        #floatingBagPanel .btn-small { flex:1; padding:8px; border-radius:6px; border:none; cursor:pointer; font-weight:700; }
+        #floatingBagPanel .btn-small.use { background:#e67e22; color:#fff; }
+        #floatingBagPanel .btn-small.item { background:#f1c40f; color:#111; }
+        #floatingBagPanel .close-x { position:absolute; right:8px; top:6px; background:transparent; border:none; color:#999; font-weight:700; cursor:pointer; }
+        .floating-bag-button { position: fixed; right: 12px; bottom: 90px; z-index: 75; width:44px; height:44px; border-radius:50%; background:#f39c12; border:2px solid #d35400; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 6px 18px rgba(0,0,0,0.4); cursor:pointer; }
+        .floating-hud-money { position: fixed; right: 12px; bottom: 140px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:11px; text-align:center; }
     </style>
 </head>
 <body>
@@ -139,6 +158,12 @@
             <div class="sprite" id="sprite-<%= p1.instanceId %>">
                 <img src="<%= (p1.sprite.startsWith('http') || p1.sprite.startsWith('data:')) ? p1.sprite : '/uploads/' + p1.sprite %>">
             </div>
+        </div>
+
+        <!-- floating bag / money HUD -->
+        <div id="floatingBagBtn">
+            <div id="floatingBagIcon" class="floating-bag-button" onclick="openBattleBag()">🎒</div>
+            <div id="hud-money" class="floating-hud-money">0</div>
         </div>
 
         <div id="overlay">
@@ -199,6 +224,13 @@
         </div>
     <% } %>
 
+    <!-- Minimal floating BAG panel for battle -->
+    <div id="floatingBagPanel" aria-hidden="true">
+        <button class="close-x" aria-label="Fechar" onclick="closeBattleBag()">✕</button>
+        <h4>BAG</h4>
+        <div id="battleBagContent">Carregando...</div>
+    </div>
+
     <script>
         history.pushState(null, null, location.href); window.onpopstate = function () { history.go(1); }; window.onpageshow = function(event) { if (event.persisted) { window.location.reload(); } };
         const socket = io();
@@ -211,6 +243,8 @@
         const p1Id = "<%= p1.instanceId %>"; const p2Id = "<%= p2.instanceId %>";
         const p1Mon = "<%= p1.name %>"; const p2Mon = "<%= p2.name %>";
         
+        // current HP trackers (kept in sync with bars)
+        let p1CurHp = Number(<%= p1.hp %>); let p2CurHp = Number(<%= p2.hp %>);
         let currentEnergy = parseInt("<%= p1.energy %>");
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         
@@ -232,11 +266,23 @@
                 bubble.classList.add('show');
             }
             if(trainer) {
-                trainer.classList.add('commanding');
-                setTimeout(() => trainer.classList.remove('commanding'), 800);
+                animateTrainerCommand(trainer).catch(()=>{});
             }
             await wait(1000); 
             if(bubble) bubble.classList.remove('show');
+        }
+
+        // Play frame-1, back to idle, then repeat once (short flash sequence)
+        async function animateTrainerCommand(trainerEl) {
+            try {
+                trainerEl.classList.add('frame-1');
+                await wait(180);
+                trainerEl.classList.remove('frame-1');
+                await wait(120);
+                trainerEl.classList.add('frame-1');
+                await wait(180);
+                trainerEl.classList.remove('frame-1');
+            } catch (e) {}
         }
 
         function updateBar(id, cur, max, type) { 
@@ -248,6 +294,11 @@
                     const txt = document.getElementById(`hp-val-${id}`);
                     if(txt) txt.innerText = Math.max(0, cur);
                 }
+            }
+            // keep local HP state for client-side checks
+            if(type === 'hp') {
+                if(id === p1Id) p1CurHp = Number(cur);
+                else if(id === p2Id) p2CurHp = Number(cur);
             }
             if(type === 'en' && id === p1Id && !isSpectator) { 
                 currentEnergy = cur; 
@@ -274,6 +325,13 @@
         async function playEvents(events) { 
             for (let evt of events) { 
                 if (evt.type === 'INIT') continue; 
+                if (evt.type === 'MSG') {
+                    // show simple toast and append to log if present
+                    try { if(evt.text) showToast(evt.text); } catch(e) {}
+                    const lb = document.getElementById('logBox'); if(lb) { const div = document.createElement('div'); div.className = 'log-entry'; div.innerText = evt.text; lb.appendChild(div); lb.scrollTop = lb.scrollHeight; }
+                    await wait(200);
+                    continue;
+                }
                 if (evt.type === 'USE_MOVE') { 
                     // CORREÇÃO: Se for selvagem (p2) e wild mode, não fala
                     if (battleMode === 'wild' && evt.actorId === p2Id) {
@@ -314,6 +372,47 @@
                     setTimeout(() => txt.remove(), 1000); await wait(500); 
                 } 
             } 
+            // After processing events, if either HP reached zero but server didn't signal finished, end locally
+            if(!isSpectator) {
+                if (p1CurHp <= 0 && p2CurHp > 0) { endGame(p2Id); return; }
+                if (p2CurHp <= 0 && p1CurHp > 0) { endGame(p1Id); return; }
+                if (p1CurHp <= 0 && p2CurHp <= 0) { endGame('draw'); return; }
+            }
+        }
+
+        // Capture animation: throw pokeball to target and shake
+        function playCaptureAnimation(targetId) {
+            return new Promise(async (resolve) => {
+                try {
+                    const targetSprite = document.getElementById(`sprite-${targetId}`);
+                    if(!targetSprite) { resolve(); return; }
+                    const rect = targetSprite.getBoundingClientRect();
+                    // create pokeball element
+                    const ball = document.createElement('div'); ball.className = 'pokeball';
+                    // fallback emoji in case image asset is missing
+                    ball.style.display = 'flex'; ball.style.alignItems = 'center'; ball.style.justifyContent = 'center'; ball.style.fontSize = '28px'; ball.style.color = '#000'; ball.innerText = '🔴';
+                    document.body.appendChild(ball);
+                    // start from bottom center (approx player area)
+                    const startX = window.innerWidth * 0.5; const startY = window.innerHeight - 120;
+                    ball.style.left = (startX - 24) + 'px'; ball.style.top = (startY - 24) + 'px';
+                    // play sound if available
+                    try { const s = new Audio('/uploads/pokeball.wav'); s.volume = 0.9; s.play().catch(()=>{}); } catch(e) {}
+                    // target center
+                    const tx = rect.left + rect.width/2 - 24; const ty = rect.top + rect.height/2 - 24;
+                    // animate to target
+                    ball.animate([
+                        { transform: `translate(0px,0px) scale(1)` , opacity:1 },
+                        { transform: `translate(${tx - startX + 24}px, ${ty - startY + 24}px) scale(0.9)` , opacity:1 }
+                    ], { duration: 600, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards' });
+                    await wait(620);
+                    // shake effect on pokeball a few times
+                    ball.classList.add('shake');
+                    await wait(900);
+                    // success effect: small pop and remove
+                    ball.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.2)', opacity:0 }], { duration: 250, easing: 'ease-out', fill: 'forwards' });
+                    setTimeout(() => { ball.remove(); resolve(); }, 260);
+                } catch (e) { resolve(); }
+            });
         }
 
         async function sendAction(type, moveId) { 
@@ -324,16 +423,25 @@
                 const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
                 const data = await res.json(); 
                 if (data.events) await playEvents(data.events); 
-                if(data.captured) { alert("Capturado!"); window.location.href = '/forest?userId=<%= realUserId %>'; } 
-                else if (data.fled) { alert("Fugiu!"); window.location.href = '/forest?userId=<%= realUserId %>'; } 
+                if(data.captured) { 
+                    await playCaptureAnimation('<%= p2.instanceId %>');
+                    showToast('Capturado!');
+                    setTimeout(() => { window.location.href = '/forest?userId=<%= realUserId %>'; }, 800);
+                    return;
+                }
+                else if (data.fled) { showToast("Fugiu!"); window.location.href = '/forest?userId=<%= realUserId %>'; } 
                 else if(data.finished) { endGame(data.winnerId); } 
                 else { if (data.p1State) updateBar(p1Id, data.p1State.hp, <%= p1.maxHp %>, 'hp'); if (data.p2State) updateBar(p2Id, data.p2State.hp, <%= p2.maxHp %>, 'hp'); setControlsState(true); } 
             } 
         }
 
+        let __battleEnded = false;
+
         function endGame(winnerId) { 
+            if (__battleEnded) return;
+            __battleEnded = true;
             if (battleMode === 'wild') {
-                alert("Batalha finalizada!");
+                showToast("Batalha finalizada!");
                 window.location.href = '/forest?userId=<%= realUserId %>';
                 return;
             }
@@ -361,6 +469,66 @@
             if(!isSpectator) updateBar(p1Id, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
             if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId)); } else if (!isSpectator) { setControlsState(true); } 
         };
+        // fetch initial money for HUD so balance is shown immediately
+        (async function fetchInitialHud() {
+            try {
+                const res = await fetch('/api/me?userId=<%= realUserId %>');
+                const data = await res.json();
+                const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = data.money || 0;
+            } catch(e) {}
+        })();
+
+        // Battle bag functions
+        let __battleBagOutsideListener = null;
+        function closeBattleBag() {
+            const panel = document.getElementById('floatingBagPanel');
+            if(panel) panel.style.display = 'none';
+            if(__battleBagOutsideListener) { document.removeEventListener('click', __battleBagOutsideListener); __battleBagOutsideListener = null; }
+        }
+
+        async function openBattleBag() {
+            const panel = document.getElementById('floatingBagPanel');
+            const btn = document.getElementById('floatingBagBtn');
+            if(!panel) return;
+            // toggle
+            if(panel.style.display === 'block') { closeBattleBag(); return; }
+            panel.style.display = 'block';
+            const cont = document.getElementById('battleBagContent'); cont.innerHTML = 'Carregando...';
+            try {
+                const res = await fetch('/api/me?userId=<%= realUserId %>');
+                const data = await res.json();
+                const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0;
+                // update floating HUD money
+                const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = money;
+                let html = `<div class="bag-row"><div class="bag-item">Pokébolas<br><strong>${pokeballs}</strong></div><div class="bag-item">RareCandy<br><strong>${rareCandy}</strong></div></div>`;
+                html += `<div class="bag-actions"><button class="btn-small use" onclick="usePokeballFromBag()">Usar Pokébola</button><button class="btn-small item" onclick="openUseItemModal()">Usar RareCandy</button></div>`;
+                cont.innerHTML = html;
+            } catch(e) { cont.innerHTML = 'Erro.'; }
+
+            // close when clicking outside (but not when clicking the bag button)
+            __battleBagOutsideListener = function(ev) {
+                const panelEl = document.getElementById('floatingBagPanel');
+                const btnEl = document.getElementById('floatingBagBtn');
+                if(!panelEl) return;
+                if(panelEl.contains(ev.target) || (btnEl && btnEl.contains(ev.target))) return;
+                closeBattleBag();
+            };
+            // delay attach to avoid immediate close from the click that opened
+            setTimeout(() => document.addEventListener('click', __battleBagOutsideListener), 50);
+        }
+
+        async function usePokeballFromBag() {
+            if (battleMode !== 'wild') { showToast('Não é possível usar Pokébolas nesta batalha.'); return; }
+            if(!await showConfirm('Usar uma Pokébola agora?')) return;
+            try {
+                const res = await fetch('/api/turn', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ battleId, action: 'catch' }) });
+                const data = await res.json();
+                if(data.events) await playEvents(data.events);
+                if(data.captured) { await playCaptureAnimation('<%= p2.instanceId %>'); showToast('Capturado!'); setTimeout(()=>{ window.location.href = '/forest?userId=<%= realUserId %>'; }, 800); return; }
+                // refresh bag UI (close then reopen)
+                closeBattleBag(); setTimeout(() => openBattleBag(), 220);
+            } catch(e) { showToast('Erro ao usar Pokébola'); }
+        }
     </script>
 </body>
 </html>

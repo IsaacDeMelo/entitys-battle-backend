@@ -22,6 +22,9 @@ const UserSchema = new mongoose.Schema({
     isAdmin: { type: Boolean, default: false },
     x: { type: Number, default: 50 },
     y: { type: Number, default: 80 },
+    money: { type: Number, default: 100 },
+    pokeballs: { type: Number, default: 5 },
+    rareCandy: { type: Number, default: 0 },
     pokemonTeam: [{
         baseId: String, nickname: String, level: { type: Number, default: 1 },
         currentHp: Number, xp: { type: Number, default: 0 },
