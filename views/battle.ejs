@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,6 @@
     <script src="/scripts/common.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
     <style>
-        /* ... Estilos anteriores ... */
         :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
@@ -33,20 +32,29 @@
         .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 21; background-position-y: 66.66%; }
         .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
 
-        .sprite { position: relative; width: 120px; height: 120px; transition: transform 0.2s, filter 0.2s, opacity 0.5s; }
+        /* --- CORREÇÃO DO BRILHO (Início) --- */
+        /* Removido 'filter' da lista de transitions para evitar o brilho residual no ataque */
+        .sprite { position: relative; width: 120px; height: 120px; transition: transform 0.2s, opacity 0.5s; }
+        
         .sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); animation: breathe 3s infinite ease-in-out; }
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+        /* Hurt agora é instantâneo (sem transition) */
+        .sprite img.hurt { filter: brightness(1.6) saturate(1.1) sepia(0.15) hue-rotate(-10deg); }
+        /* --- CORREÇÃO DO BRILHO (Fim) --- */
 
         .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; }
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
         .trainer.frame-1 { background-position-x: -100%; }
 
-        .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; border-radius: 50%; }
+        /* EFEITOS VISUAIS ATIVADOS */
+        .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 20px; height: 20px; border-radius: 50%; }
         @keyframes particleFly { 0% { transform: translate(0,0) scale(0.5); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; } }
         
-        .impact-effect { position: absolute; width: 60px; height: 60px; z-index: 2000; animation: impactPop 0.3s forwards; pointer-events: none; border-radius: 50%; pointer-events: none; }
-        @keyframes impactPop { 0% { transform: scale(0); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.8; } 100% { transform: scale(2); opacity: 0; } }
+        .impact-effect { position: absolute; width: 80px; height: 80px; z-index: 2000; pointer-events: none; border-radius: 50%; opacity: 0; }
+        .impact-pop { animation: impactPop 0.4s forwards; }
+        @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
         .shield-effect { position: absolute; top: -10px; left: -10px; width: 140px; height: 140px; border-radius: 50%; border: 4px solid #3498db; background: rgba(52, 152, 219, 0.3); z-index: 1200; animation: shieldPulse 0.8s ease-out; pointer-events: none; box-shadow: 0 0 20px #3498db; opacity: 0; }
         @keyframes shieldPulse { 0% { opacity: 0; transform: scale(0.8); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1); } }
@@ -126,6 +134,12 @@
         .switch-item:hover { background: #333; border-color: #3498db; }
         .switch-sprite { width: 40px; height: 40px; image-rendering: pixelated; }
 
+        /* Hurt / shake simple effects for sprites */
+        @keyframes spriteShake { 0% { transform: translateX(0); } 20% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 80% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
+        .sprite img.shake { animation: spriteShake 420ms ease-in-out; }
+        @keyframes spriteAttack { 0% { transform: translateX(0); } 50% { transform: translateX(12px); } 100% { transform: translateX(0); } }
+        .sprite img.attack { animation: spriteAttack 320ms ease-in-out; }
+
         #floatingBagPanel { position: fixed; right: 12px; bottom: 200px; width: 260px; background: rgba(10,12,16,0.95); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; z-index: 80; box-shadow: 0 8px 24px rgba(0,0,0,0.6); display: none; color: #ddd; }
         #floatingBagPanel h4 { margin: 0 0 8px 0; font-size: 0.7rem; color: #f1c40f; font-family: 'Press Start 2P'; }
         #floatingBagPanel .bag-row { display:flex; gap:8px; align-items:center; }
@@ -137,12 +151,6 @@
         #floatingBagPanel .close-x { position:absolute; right:8px; top:6px; background:transparent; border:none; color:#999; font-weight:700; cursor:pointer; }
         .floating-bag-button { position: fixed; right: 12px; bottom: 90px; z-index: 75; width:44px; height:44px; border-radius:50%; background:#f39c12; border:2px solid #d35400; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 6px 18px rgba(0,0,0,0.4); cursor:pointer; }
         .floating-hud-money { position: fixed; right: 12px; bottom: 140px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:11px; text-align:center; }
-                /* Hurt / shake simple effects for sprites */
-                .sprite img.hurt { filter: brightness(1.6) saturate(1.1) sepia(0.15) hue-rotate(-10deg); transition: filter 200ms ease-in-out; }
-                @keyframes spriteShake { 0% { transform: translateX(0); } 20% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 80% { transform: translateX(-4px); } 100% { transform: translateX(0); } }
-                .sprite img.shake { animation: spriteShake 420ms ease-in-out; }
-                @keyframes spriteAttack { 0% { transform: translateX(0); } 50% { transform: translateX(12px); } 100% { transform: translateX(0); } }
-                .sprite img.attack { animation: spriteAttack 320ms ease-in-out; }
     </style>
 </head>
 <body>
@@ -293,7 +301,7 @@
         let p1CurHp = Number(<%= p1.hp %>); 
         let p2CurHp = Number(<%= p2.hp %>);
         let currentEnergy = parseInt("<%= p1.energy %>");
-        let canAct = true; // client-side guard to prevent multiple attacks before turn resolves
+        let canAct = true; 
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
@@ -341,45 +349,94 @@
             trainerEl.classList.remove('frame-1'); 
         }
 
-        // NOTE: removed complex sprite nudge helper — using simple classes instead
+        // --- SISTEMA DE PARTÍCULAS ELEMENTAIS ---
+        function createProjectile(fromSide, toSide, cssClass) {
+            const fromEl = document.getElementById(`sprite-${fromSide}`);
+            const toEl = document.getElementById(`sprite-${toSide}`);
+            if(!fromEl || !toEl) return;
 
-        // --- Simplified and reliable attack animation system (fallback to CSS transitions) ---
+            const rectFrom = fromEl.getBoundingClientRect();
+            const rectTo = toEl.getBoundingClientRect();
+
+            // Ponto de saída (centro do atacante)
+            const startX = rectFrom.left + rectFrom.width / 2;
+            const startY = rectFrom.top + rectFrom.height / 2;
+            // Ponto de destino (centro do defensor)
+            const endX = rectTo.left + rectTo.width / 2;
+            const endY = rectTo.top + rectTo.height / 2;
+
+            const part = document.createElement('div');
+            part.className = `atk-particle ${cssClass}`;
+            part.style.left = startX + 'px';
+            part.style.top = startY + 'px';
+            
+            // Variáveis CSS para a animação particleFly
+            part.style.setProperty('--tx', (endX - startX) + 'px');
+            part.style.setProperty('--ty', (endY - startY) + 'px');
+            
+            document.body.appendChild(part);
+
+            setTimeout(() => part.remove(), 500); // Tempo da animação no CSS
+        }
+
+        function createImpact(targetSide, cssClass) {
+            const toEl = document.getElementById(`sprite-${targetSide}`);
+            if(!toEl) return;
+            const rect = toEl.getBoundingClientRect();
+            
+            const impact = document.createElement('div');
+            impact.className = `impact-effect impact-pop ${cssClass}`; // Reusa a cor do elemento
+            // Centraliza no alvo
+            impact.style.left = (rect.left + rect.width/2 - 40) + 'px'; // 40 é metade do width 80px
+            impact.style.top = (rect.top + rect.height/2 - 40) + 'px';
+            
+            document.body.appendChild(impact);
+            setTimeout(() => impact.remove(), 400);
+        }
+
         function playMoveAnimation(attackerSide, defenderSide, type, category, moveType) {
-            // Simplified: attacker sprite briefly swaps to attack frame or uses CSS attack class
-                try { console.debug('[playMoveAnimation] args=', { attackerSide, defenderSide, type, category, moveType }); } catch(e) {}
-                const atkSprite = document.getElementById(`sprite-${attackerSide}`);
-                const defSprite = document.getElementById(`sprite-${defenderSide}`);
-                if(!atkSprite) return;
+            try { console.debug('[playMoveAnimation]', { attackerSide, defenderSide, type, category }); } catch(e) {}
+            
+            const atkSprite = document.getElementById(`sprite-${attackerSide}`);
+            const defSprite = document.getElementById(`sprite-${defenderSide}`);
+            if(!atkSprite) return;
 
-                const atkImg = atkSprite.querySelector('img');
-                const defImg = defSprite ? defSprite.querySelector('img') : null;
-                if(atkImg) {
-                    // if an alternate attack frame was discovered at load, swap src; else use CSS attack class
-                    const alt = atkImg.dataset.altSrc;
-                    if (alt) {
-                        if(!atkImg.dataset.origSrc) atkImg.dataset.origSrc = atkImg.src;
-                        atkImg.src = alt;
-                        setTimeout(() => { try { if(atkImg) atkImg.src = atkImg.dataset.origSrc; } catch(e){} }, 360);
-                    } else {
-                        atkImg.classList.remove('attack','hurt','shake');
-                        atkImg.classList.add('attack');
-                        setTimeout(() => { try { if(atkImg) atkImg.classList.remove('attack'); } catch(e){} }, 360);
-                    }
+            const atkImg = atkSprite.querySelector('img');
+            const defImg = defSprite ? defSprite.querySelector('img') : null;
+            
+            // 1. Animação do Atacante (Sempre acontece o Lunge)
+            if(atkImg) {
+                const alt = atkImg.dataset.altSrc;
+                if (alt) {
+                    if(!atkImg.dataset.origSrc) atkImg.dataset.origSrc = atkImg.src;
+                    atkImg.src = alt;
+                    setTimeout(() => { try { if(atkImg) atkImg.src = atkImg.dataset.origSrc; } catch(e){} }, 360);
+                } else {
+                    atkImg.classList.remove('attack','hurt','shake');
+                    atkImg.classList.add('attack');
+                    setTimeout(() => { try { if(atkImg) atkImg.classList.remove('attack'); } catch(e){} }, 360);
                 }
+            }
 
-                // brief defender feedback to signal incoming hit (won't replace ATTACK_HIT visuals)
-                if(defImg) {
+            // 2. Disparar Projétil (SOMENTE SE FOR SPECIAL)
+            if (category === 'special') {
+                const elemClass = `effect-${(type || 'normal').toLowerCase()}`;
+                setTimeout(() => {
+                    createProjectile(attackerSide, defenderSide, elemClass);
+                }, 100);
+            }
+
+            // 3. Feedback antecipado no defensor
+            if(defImg) {
+                setTimeout(() => {
                     try {
-                        setTimeout(() => {
-                            try {
-                                if(!defImg) return;
-                                defImg.classList.remove('hurt','shake');
-                                defImg.classList.add('hurt','shake');
-                                setTimeout(() => { try { if(defImg) { defImg.classList.remove('hurt'); defImg.classList.remove('shake'); } } catch(e){} }, 420);
-                            } catch(e) {}
-                        }, 220);
+                        if(!defImg) return;
+                        defImg.classList.remove('hurt','shake');
+                        defImg.classList.add('shake'); // Apenas shake antes do hit real
+                        setTimeout(() => { try { if(defImg) { defImg.classList.remove('shake'); } } catch(e){} }, 420);
                     } catch(e) {}
-                }
+                }, 220);
+            }
         }
 
         function updateBar(actorId, cur, max, type) { 
@@ -423,15 +480,16 @@
             const panel = document.getElementById('controlsPanel'); if(!panel) return; 
             panel.style.opacity = enabled ? "1" : "0.5"; 
             const btns = panel.querySelectorAll('button'); btns.forEach(b => b.disabled = !enabled); 
-            // update action guard
             canAct = !!enabled;
             if(enabled) updateButtons(); 
         }
         
         async function playEvents(events) { 
+            // Guarda o elemento do último golpe para usar na explosão (Impact)
+            let lastMoveElement = 'normal';
+
             for (let evt of events) { 
                 if (evt.type === 'INIT') continue; 
-                // normalize actor/target id fields (server uses different names in places)
                 const actorIdRaw = evt.actorId || evt.attackerId || evt.attacker || evt.actor || null;
                 const targetIdRaw = evt.targetId || evt.target || evt.defenderId || evt.defender || null;
 
@@ -443,14 +501,13 @@
                 }
                 const actorSide = getSide(actorIdRaw);
                 const targetSide = getSide(targetIdRaw);
-                // Debug mapping to help trace misattributed effects
-                try { console.debug('[playEvents] evt=', evt.type, 'actorRaw=', actorIdRaw, 'targetRaw=', targetIdRaw, 'actorSide=', actorSide, 'targetSide=', targetSide); } catch(e) {}
 
                 if (evt.type === 'USE_MOVE') { 
+                    lastMoveElement = evt.moveElement || 'normal'; // Atualiza o elemento
                     if (battleMode === 'wild' && actorSide === 'p2') { await wait(500); } 
                     else { await speak(actorIdRaw, evt.moveName); }
 
-                    // Trigger Visuals using new data
+                    // Passa a categoria correta para a animação
                     playMoveAnimation(actorSide, targetSide, evt.moveElement || 'normal', evt.moveCategory, evt.moveType);
                     
                     if(!isSpectator && actorSide === 'p1') updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en'); 
@@ -461,13 +518,26 @@
                     const spriteImg = spriteContainer ? spriteContainer.querySelector('img') : null;
                     const fighterDiv = document.getElementById(`fighter-${targetSide}`);
 
-                    // Simple hurt: tint red + shake
+                    // 1. Dano Visual (Hurt + Shake) - Agora sem brilho fantasma
                     if(spriteImg) {
                         spriteImg.classList.remove('hurt','shake');
+                        void spriteImg.offsetWidth; // Força repaint
                         spriteImg.classList.add('hurt','shake');
                     }
 
-                    const damageTxt = document.createElement('div'); damageTxt.className = 'floating-text damage-text'; damageTxt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`; if(fighterDiv) fighterDiv.appendChild(damageTxt);
+                    // 2. Cria Explosão de Impacto com a cor do último golpe
+                    createImpact(targetSide, `effect-${lastMoveElement.toLowerCase()}`);
+
+                    // 3. Texto de Dano com offset aleatório
+                    const damageTxt = document.createElement('div'); 
+                    damageTxt.className = 'floating-text damage-text'; 
+                    damageTxt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`;
+                    // Random offset
+                    const rX = (Math.random() * 40 - 20) + '%';
+                    const rY = (Math.random() * 20 - 10) + '%';
+                    damageTxt.style.transform = `translate(calc(-50% + ${rX}), calc(-50% + ${rY}))`;
+                    
+                    if(fighterDiv) fighterDiv.appendChild(damageTxt);
 
                     if(evt.isEffective) { const t = document.createElement('div'); t.className = 'floating-text super-text'; t.innerText = "SUPER EFETIVO!"; t.style.marginTop = "30px"; fighterDiv.appendChild(t); setTimeout(() => t.remove(), 1200); } 
                     else if(evt.isNotEffective) { const t = document.createElement('div'); t.className = 'floating-text resist-text'; t.innerText = "POUCO EFETIVO..."; t.style.marginTop = "30px"; fighterDiv.appendChild(t); setTimeout(() => t.remove(), 1200); }
@@ -491,7 +561,6 @@
             } 
         }
 
-        // --- ANIMAÇÃO DE CAPTURA V5 ---
         function playCaptureAnimation(targetId, isSuccessful) {
             return new Promise(async (resolve) => {
                 try {
@@ -539,7 +608,7 @@
         }
 
         async function sendAction(type, moveId) { 
-            if (!canAct) return; // prevent multiple clicks
+            if (!canAct) return; 
             setControlsState(false); 
             if (battleMode === 'online') { 
                 if (type === 'move') { document.getElementById('statusMsg').innerText = "Aguardando oponente..."; document.getElementById('statusMsg').style.display = "block"; socket.emit('online_move', { roomId: battleId, moveId, playerId: myRoleId }); } 
@@ -547,7 +616,6 @@
                 const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
                 const data = await res.json(); 
                 
-                // --- TRATAMENTO DE SWITCH ---
                 if (data.switched) {
                     await wait(500);
                     p1RawId = data.newP1Id;
@@ -555,7 +623,6 @@
                     p1CurHp = data.p1State.hp;
                     currentEnergy = data.p1State.energy;
                     
-                    // Atualiza UI sem recarregar a página
                     document.getElementById('p1-name').innerText = p1Mon;
                     document.getElementById('p1-lv').innerText = data.p1State.level;
                     document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
@@ -563,7 +630,6 @@
                     updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp');
                     updateBar(p1RawId, currentEnergy, 100, 'en'); 
                     
-                    // Recria botões de ataque
                     const movesContainer = document.getElementById('moves-container');
                     movesContainer.innerHTML = '';
                     data.p1State.moves.forEach(move => {
@@ -575,9 +641,7 @@
                         movesContainer.appendChild(btn);
                     });
 
-                    // IMPORTANTE: Toca eventos do turno (ataque inimigo se houver)
                     if (data.events) await playEvents(data.events); 
-                    
                     setControlsState(true);
                     return; 
                 }
@@ -606,7 +670,6 @@
             } 
         }
 
-        // SWITCH MODAL LOGIC
         function showSwitchModal(list) {
             const modal = document.getElementById('switchModal');
             const listDiv = document.getElementById('switchList');
@@ -616,7 +679,6 @@
                 const item = document.createElement('div');
                 item.className = 'switch-item';
                 item.innerHTML = `<img src="${resolveImg(p.sprite)}" class="switch-sprite"> <div><div style="color:#f1c40f;font-weight:bold;">${p.name} <span style="font-size:0.7rem;color:#ccc">Lv.${p.level}</span></div><div style="font-size:0.7rem;">HP: ${p.hp}/${p.maxHp}</div></div>`;
-                // Passa 'true' para indicar switch forçado (morte)
                 item.onclick = () => performSwitch(p.instanceId, true);
                 listDiv.appendChild(item);
             });
@@ -632,8 +694,6 @@
             }); 
             const data = await res.json();
             
-            // Reutiliza a lógica de switch do sendAction, mas chamando explicitamente porque
-            // aqui estamos fora do fluxo normal do sendAction
             if (data.switched) {
                 await wait(500);
                 p1RawId = data.newP1Id;
@@ -718,7 +778,6 @@
         };
         (async function fetchInitialHud() { try { const res = await fetch('/api/me?userId=<%= realUserId %>'); const data = await res.json(); const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = data.money || 0; } catch(e) {} })();
 
-        // Try to detect per-sprite alternate attack frame files by probing common suffixes.
         async function probeAlternate(src) {
             try {
                 const url = new URL(src, window.location.origin);
@@ -751,7 +810,6 @@
         }
         window.addEventListener('load', () => { setTimeout(discoverSpriteAlts, 300); });
 
-        // Battle bag
         let __battleBagOutsideListener = null;
         function closeBattleBag() { const panel = document.getElementById('floatingBagPanel'); if(panel) panel.style.display = 'none'; if(__battleBagOutsideListener) { document.removeEventListener('click', __battleBagOutsideListener); __battleBagOutsideListener = null; } }
         async function openBattleBag() {
@@ -784,4 +842,4 @@
         }
     </script>
 </body>
-</html>
+</html>                   
