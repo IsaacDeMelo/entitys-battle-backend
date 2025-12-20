@@ -51,19 +51,93 @@
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
+        /* Pokedex & PC floating buttons */
+        .float-secondary { position: fixed; bottom: 150px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: #1b2830; color: white; border: 2px solid rgba(255,255,255,0.06); font-size: 1.1rem; cursor: pointer; z-index: 9999; box-shadow: 0 6px 18px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+            /* standardized via earlier .float-btn rule */
+        .float-secondary.pokedex { right: 20px; bottom: 220px; background: linear-gradient(135deg,#8e44ad,#6f1e9d); }
+            .float-secondary { position: fixed; right: 16px; bottom: 86px; background: #fff; color: #222; border-radius: 10px; padding: 8px 10px; border: 1px solid #e6e6e6; box-shadow: 0 6px 12px rgba(0,0,0,.08); }
+            .float-secondary.pokedex { right: 16px; bottom: 86px; }
+            .float-secondary.pc { right: 16px; bottom: 136px; }
+            .app-modal { position: fixed; inset: 0; display: none; align-items: flex-end; justify-content: center; background: linear-gradient(rgba(0,0,0,0.2),rgba(0,0,0,0.2)); }
+            .app-modal[aria-hidden="false"] { display: flex; }
+            .app-modal .sheet { width: 100%; max-width: 720px; background: #fff; border-radius: 12px 12px 0 0; padding: 14px; box-shadow: 0 -6px 30px rgba(0,0,0,.18); }
+            .app-modal .header { display: flex; align-items: center; margin-bottom: 8px; }
+            .app-modal .title { font-weight: 700; }
+            .close-btn { background: transparent; border: none; font-size: 18px; }
+            .pokedex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; }
+            .pokedex-grid .entry { padding: 8px; border-radius: 8px; background: #fafafa; text-align: center; }
+            .pc-list { display: block; }
+        .app-modal { position: fixed; inset: 0; display: none; align-items: flex-end; justify-content: center; z-index: 12000 !important; transition: opacity .28s ease; opacity: 0; pointer-events: none; }
+        .app-modal[aria-hidden="false"] { display: flex; opacity: 1; pointer-events: auto; }
+        .app-modal .sheet { width: 100%; max-width: 520px; height: 92vh; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.35)); border-top-left-radius: 18px; border-top-right-radius: 18px; border: 1px solid rgba(255,255,255,0.04); backdrop-filter: blur(6px); box-shadow: 0 -20px 60px rgba(0,0,0,0.6); padding: 14px; overflow: auto; transform: translateY(18%); transition: transform .34s cubic-bezier(.2,.9,.2,1), opacity .28s; }
+        .app-modal[aria-hidden="false"] .sheet { transform: translateY(0); }
+        .pokedex-entry { background: linear-gradient(180deg,#111,#0f0f12); border-radius:8px; padding:8px; text-align:center; color:#fff; border:1px solid rgba(255,255,255,0.03); }
+        .sheet .header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+        .sheet .title { font-family:'Press Start 2P'; color:#f1c40f; font-size:0.9rem; }
+        .sheet .search { flex:1; margin-left:8px; }
+        .sheet .search input { width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); color:#fff; }
+        .pokedex-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+        .dex-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12)); border-radius:10px; padding:8px; display:flex; flex-direction:column; align-items:center; gap:6px; border:1px solid rgba(255,255,255,0.03); }
+        .dex-card img { width:64px; height:64px; image-rendering: pixelated; }
+        .dex-name { font-size:0.7rem; color:#fff; text-align:center; }
+        .dex-sub { font-size:0.6rem; color:#cfcfcf; }
+
+        .pc-list { display:flex; flex-direction:column; gap:8px; }
+        .pc-item { background: linear-gradient(180deg,#0f1720,#081018); border-radius:10px; padding:10px; display:flex; gap:12px; align-items:center; border:1px solid rgba(255,255,255,0.03); }
+        .pc-item img { width:56px; height:56px; border-radius:8px; image-rendering: pixelated; }
+        .pc-meta { flex:1; color:#ddd; font-family:monospace; }
+        /* Ensure float buttons inside our menu are positioned relative to the menu container */
+        #floatMenu .float-btn { position: relative; right: auto; bottom: auto; margin: 0; width:48px; height:48px; border-radius:50%; }
+        /* Ensure modals are always above the retractable menu */
+        .modal-overlay, .app-modal { z-index: 11000 !important; }
     </style>
 </head>
 <body>
-    <button class="float-btn" onclick="openBag()">🎒</button>
+    <!-- Retractable menu toggle and floating buttons -->
+    <div id="floatMenu" style="position:fixed; right:16px; bottom:120px; z-index:9999; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:12px;">
+        <button id="menuToggle" class="float-btn menu-toggle" aria-label="Menu" onclick="toggleFloatMenu()">☰</button>
+        <div id="menuItems" style="display:none; flex-direction:column-reverse; align-items:flex-end; gap:10px;">
+            <button class="float-btn" data-role="pokedex" onclick="openPokedex()" aria-label="Pokedex">📚</button>
+            <button class="float-btn" data-role="pc" style="border-color:#00ff00; color:#00ff00;" onclick="openPC()" aria-label="PC">💻</button>
+            <button class="float-btn" data-role="shop" onclick="openShop()" aria-label="Shop">🏪</button>
+            <button class="float-btn" data-role="bag" onclick="openBag()" aria-label="Bag">🎒</button>
+        </div>
+    </div>
 
     <div id="gameArea">
         <div class="lobby-exit"></div>
         <div class="grass-patch" id="grass1" style="top: 20%; left: 10%; width: 30%; height: 30%;"></div>
         <div class="grass-patch" id="grass2" style="top: 60%; left: 50%; width: 40%; height: 25%;"></div>
-        <div class="tree" style="top:5%; left:5%">🌲</div><div class="tree" style="top:50%; left:5%">🌲</div><div class="tree" style="top:15%; left:80%">🌲</div>
+        <div class="tree" style="top:5%; left:5%">🌲</div><div class="tree" style="top:50%; left:5%">🌲</div>
+        <!-- Restored proper tree/house placement -->
+        <div class="tree" style="top:15%; left:80%">🌲</div>
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
     </div>
     <div id="toastContainer"></div>
+
+    <!-- Pokedex/PC removed from forest (use room lobby) -->
+
+    <!-- Pokédex / PC / Shop Modals (open in-place instead of redirecting) -->
+    <div id="pokedexModal" class="app-modal" aria-hidden="true">
+        <div class="sheet">
+            <div class="header"><div class="title">Pokédex</div><div class="close-btn" onclick="closeModal('pokedexModal')">✕</div></div>
+            <div id="pokedexContent" class="pokedex-grid"><div style="text-align:center; width:100%">Carregando...</div></div>
+        </div>
+    </div>
+
+    <div id="pcModal" class="app-modal" aria-hidden="true">
+        <div class="sheet">
+            <div class="header"><div class="title">PC</div><div class="close-btn" onclick="closeModal('pcModal')">✕</div></div>
+            <div id="pcContent"><div style="text-align:center">Carregando...</div></div>
+        </div>
+    </div>
+
+    <div id="shopModal" class="app-modal" aria-hidden="true">
+        <div class="sheet">
+            <div class="header"><div class="title">Loja</div><div class="close-btn" onclick="closeModal('shopModal')">✕</div></div>
+            <div id="shopContent"><p style="text-align:center">Em breve: poções, berries e itens.</p></div>
+        </div>
+    </div>
 
     <div id="loader" class="loader-overlay show" aria-hidden="false">
         <div class="loader-box">
@@ -75,7 +149,7 @@
     <!-- MODAL DE EQUIPE (BAG) -->
     <div class="modal-overlay" id="modalTeam">
         <div class="modal-content">
-            <button class="close-btn" onclick="document.getElementById('modalTeam').style.display='none'">X</button>
+            <button class="close-btn" onclick="closeModal('modalTeam')">X</button>
             <h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2>
             <div id="teamListContent">Carregando...</div>
         </div>
@@ -153,7 +227,8 @@
         });
 
         async function openBag() {
-            document.getElementById('modalTeam').style.display='flex';
+            const teamModal = document.getElementById('modalTeam'); if(teamModal) { teamModal.style.display='flex'; }
+            showModal('modalTeam');
             const content = document.getElementById('teamListContent');
             content.innerHTML = 'Carregando...';
             try {
@@ -201,6 +276,8 @@
             if(data.success) { showToast("Novo líder definido!"); openBag(); }
         }
 
+        // Pokedex/PC removed from forest - handlers are available in lobby/room
+
         async function abandonPokemon(instanceId) {
             if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return;
             showLoading('Libertando...', 'left');
@@ -215,6 +292,81 @@
         function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         window.addEventListener('beforeunload', () => { showLoading(); });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (ev) => {
+            try {
+                const menu = document.getElementById('floatMenu');
+                if (!menu) return;
+                if (!menu.contains(ev.target)) {
+                    const items = document.getElementById('menuItems'); if (items) items.style.display = 'none';
+                }
+            } catch(e) {}
+        });
+
+        // Modal helpers
+        function showModal(id) {
+            const el = document.getElementById(id);
+            if(!el) return;
+            el.setAttribute('aria-hidden', 'false');
+            el.classList.add('show');
+        }
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if(!el) return;
+            el.setAttribute('aria-hidden', 'true');
+            el.classList.remove('show');
+            // fallback for older modal overlay used by modalTeam
+            if(id === 'modalTeam') el.style.display = 'none';
+        }
+
+        // Retractable menu helpers
+        function toggleFloatMenu() {
+            const items = document.getElementById('menuItems');
+            if(!items) return;
+            if(items.style.display === 'flex') { items.style.display = 'none'; }
+            else { items.style.display = 'flex'; }
+        }
+        async function openPokedex() {
+            showLoading('Abrindo Pokédex...', 'left');
+            try {
+                const res = await fetch('/api/pokedex?userId=<%= user._id %>');
+                const json = await res.json();
+                const container = document.getElementById('pokedexContent');
+                container.innerHTML = '';
+                if(!json.list || json.list.length === 0) {
+                    container.innerHTML = '<div style="grid-column:1/-1; text-align:center">Nenhum Pokémon capturado.</div>';
+                } else {
+                    json.list.forEach(id => {
+                        const entry = document.createElement('div'); entry.className = 'pokedex-entry';
+                        entry.innerHTML = `<div style="font-size:0.9rem; color:#f1c40f;">${id}</div>`;
+                        container.appendChild(entry);
+                    });
+                }
+            } catch(e) {
+                document.getElementById('pokedexContent').innerHTML = '<div style="grid-column:1/-1; text-align:center">Erro ao carregar.</div>';
+            } finally { hideLoading(); showModal('pokedexModal'); }
+        }
+
+        async function openPC() {
+            showLoading('Abrindo PC...', 'left');
+            try {
+                const res = await fetch('/api/pc?userId=<%= user._id %>');
+                const data = await res.json();
+                const container = document.getElementById('pcContent'); container.innerHTML = '';
+                if(!data || !data.pc || data.pc.length === 0) container.innerHTML = '<p style="text-align:center">PC vazio.</p>';
+                else {
+                    data.pc.forEach(p => {
+                        const el = document.createElement('div'); el.className='pc-item';
+                        el.innerHTML = `<img src="${resolveImg(p.sprite || '')}"><div class="pc-meta">${p.name || p.baseId || '—'}<div style="font-size:0.8rem; color:#999">Lv.${p.level||0}</div></div>`;
+                        container.appendChild(el);
+                    });
+                }
+            } catch(e) { document.getElementById('pcContent').innerHTML = '<p style="text-align:center">Erro.</p>'; }
+            finally { hideLoading(); showModal('pcModal'); }
+        }
+
+        function openShop() { document.getElementById('shopContent').innerHTML = '<p style="text-align:center">Loja em breve.</p>'; showModal('shopModal'); }
     </script>
 </body>
 </html>

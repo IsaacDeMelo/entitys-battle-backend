@@ -54,6 +54,25 @@ app.get('/forest', async (req, res) => { const { userId } = req.query; const use
 app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, user }); });
 app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, movesJson, evoTarget, evoLevel, existingId } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool }; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } res.redirect(req.header('Referer') || '/'); });
 app.get('/api/pc', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if (!user) return res.json({ error: 'User not found' }); const formatList = async (list) => { const output = []; for (let p of list) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) output.push(userPokemonToEntity(p, base)); } return output; }; const pcList = user.pc || []; const team = await formatList(user.pokemonTeam); const pc = await formatList(pcList); res.json({ team, pc }); });
+
+// POKEDEX: retorna os IDs/baseIds dos pokémons que o usuário já capturou
+app.get('/api/pokedex', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        const seen = new Set();
+        const addFromList = (list) => { if (!list) return; for (const p of list) { if (p && p.baseId) seen.add(String(p.baseId).toLowerCase()); } };
+        addFromList(user.pokemonTeam);
+        addFromList(user.pc);
+        // retornar array de ids
+        return res.json({ list: Array.from(seen) });
+    } catch (e) {
+        console.error('api/pokedex error', e);
+        return res.status(500).json({ error: 'internal' });
+    }
+});
 app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, to } = req.body; const user = await User.findById(userId); if (!user) return res.json({ error: 'Usuário não encontrado.' }); if (!user.pc) user.pc = []; const sourceList = from === 'team' ? user.pokemonTeam : user.pc; const destList = to === 'team' ? user.pokemonTeam : user.pc; if (from === to) return res.json({ success: true }); if (to === 'team' && destList.length >= 6) return res.json({ error: 'Sua equipe já tem 6 Pokémons!' }); if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Você não pode ficar sem Pokémons na equipe!' }); const index = sourceList.findIndex(p => p._id.toString() === pokemonId); if (index === -1) return res.json({ error: 'Pokémon não encontrado.' }); const [poke] = sourceList.splice(index, 1); destList.push(poke); await user.save(); res.json({ success: true }); });
 app.get('/api/me', async (req, res) => { const { userId } = req.query; if(!userId) return res.status(400).json({ error: 'No ID' }); const user = await User.findById(userId); if(!user) return res.status(404).json({ error: 'User not found' }); const teamWithSprites = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); const nextXp = getXpForNextLevel(p.level); const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves; teamWithSprites.push({ instanceId: p._id, name: p.nickname, level: p.level, hp: p.currentHp, maxHp: p.stats.hp, xp: p.xp, xpToNext: nextXp, sprite: base ? base.sprite : '', moves: p.moves, learnedMoves: allLearned }); } res.json({ team: teamWithSprites, allMoves: MOVES_LIBRARY, money: user.money || 0, pokeballs: user.pokeballs || 0, rareCandy: user.rareCandy || 0 }); });
 app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Pokémons curados!` }); });
@@ -79,6 +98,7 @@ app.post('/api/turn', async (req, res) => {
     
     try {
         let p1 = battle.p1; const p2 = battle.p2; const events = [];
+        let threwPokeball = false;
 
         // --- AÇÃO: TROCA (SWITCH) ---
         if (action === 'switch') {
@@ -131,6 +151,7 @@ app.post('/api/turn', async (req, res) => {
                     if(!user) { events.push({ type: 'MSG', text: 'Erro de usuário.' }); return res.json({ events }); }
                     if((user.pokeballs || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem Pokébolas!' }); return res.json({ events }); }
                     user.pokeballs = (user.pokeballs || 0) - 1;
+                    threwPokeball = true;
                     
                     const hpPercent = p2.hp / p2.maxHp; 
                     const chance = (p2.catchRate * (1 - hpPercent)) + 0.15; 
@@ -159,7 +180,7 @@ app.post('/api/turn', async (req, res) => {
                         
                         await user.save();
                         delete activeBattles[battleId];
-                        return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId });
+                        return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwPokeball });
                     } else { 
                         await user.save(); 
                         events.push({ type: 'MSG', text: `${p2.name} escapou!` }); 
@@ -201,7 +222,7 @@ app.post('/api/turn', async (req, res) => {
                 }
             }
             delete activeBattles[battleId]; 
-            return res.json({ events, finished: true, win: false, winnerId: p2.instanceId }); 
+            return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwPokeball }); 
         }
 
         // --- CHECA VITÓRIA (P2 MORREU) ---
@@ -243,10 +264,10 @@ app.post('/api/turn', async (req, res) => {
             if (battle.type === 'local') {
                 try { const user = await User.findById(battle.userId); if (user) { const reward = Math.max(5, (p2.level || 1) * 5); user.money = (user.money || 0) + reward; await user.save(); events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); } } catch (e) {}
             }
-            delete activeBattles[battleId]; return res.json({ events, finished: true, win: true, winnerId: p1.instanceId });
+            delete activeBattles[battleId]; return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwPokeball });
         }
         
-        return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp } });
+            return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp }, threw: threwPokeball });
     } catch (err) {
         console.error('api/turn error', err);
         return res.json({ events: [{ type: 'MSG', text: 'Erro interno da batalha.' }], finished: true });

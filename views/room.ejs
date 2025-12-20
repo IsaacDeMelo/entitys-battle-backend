@@ -20,7 +20,7 @@
         .machine { position: absolute; background-color: transparent; border: none; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; color: #fff; font-family: 'Press Start 2P'; font-size: 0.5rem; text-align: center; text-shadow: 2px 2px 0 #000; cursor: pointer; background-size: contain; background-repeat: no-repeat; background-position: center bottom; transform: translate3d(0,0,0); transition: transform 0.1s; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); outline: none; }
         .machine:active { transform: scale(0.95); }
         .top-machine { width: 150px; height: 150px; z-index: 5; } .bottom-machine { width: 100px; height: 100px; z-index: 5; }
-        #pc-pokedex { top: 3%; left: 2%; background-image: url('/uploads/pokedex_building.png'); }
+        #market { top: 3%; left: 2%; background-image: url('/uploads/market_building.png'); }
         #pc-center { top: 3%; right: 2%; background-image: url('/uploads/online_building.png'); filter: hue-rotate(90deg); }
         #pc-battle { top: 40%; left: 50%; margin-left: -70px; width: 140px; height: 120px; background-image: url('/uploads/arena_building.png'); z-index: 5; }
         
@@ -40,7 +40,7 @@
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
-        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; }
+        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
         
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
@@ -61,6 +61,10 @@
         /* BOTÕES FLUTUANTES */
         .float-btn { position: fixed; bottom: 80px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
         .float-btn:active { transform: translateY(5px); box-shadow: none; }
+        /* Ensure menu buttons inside #floatMenu stack relative to the menu container */
+        #floatMenu .float-btn { position: relative; right: auto; bottom: auto; margin: 0; width:48px; height:48px; border-radius:50%; }
+        /* Ensure modals are always above the retractable menu */
+        .modal-overlay, .app-modal { z-index: 11000 !important; }
         
         /* MODAIS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
@@ -116,14 +120,20 @@
     </style>
 </head>
 <body>
-    <!-- Botões Flutuantes -->
-    <button class="float-btn" style="right: 160px; border-color: #00ff00; color: #00ff00;" onclick="openPC()">💻</button>
-    <button class="float-btn" style="right: 20px;" onclick="openBag()">🎒</button>
-    <button class="float-btn" style="right: 90px;" onclick="openShop()">🏪</button>
+    <!-- Retractable menu toggle and floating buttons -->
+    <div id="floatMenu" style="position:fixed; right:16px; bottom:120px; z-index:9999; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:12px;">
+        <button id="menuToggle" class="float-btn menu-toggle" aria-label="Menu" onclick="toggleFloatMenu()">☰</button>
+        <div id="menuItems" style="display:none; flex-direction:column-reverse; align-items:flex-end; gap:10px;">
+            <button class="float-btn" data-role="pokedex" onclick="openPokedex()" aria-label="Pokedex">📚</button>
+            <button class="float-btn" data-role="pc" style="border-color:#00ff00; color:#00ff00;" onclick="openPC()" aria-label="PC">💻</button>
+            <button class="float-btn" data-role="shop" onclick="openShop()" aria-label="Shop">🏪</button>
+            <button class="float-btn" data-role="bag" onclick="openBag()" aria-label="Bag">🎒</button>
+        </div>
+    </div>
 
     <div id="gameArea">
         <div class="forest-exit"></div>
-        <div class="machine top-machine" id="pc-pokedex" onclick="moveToAndInteract(event, this, 'pokedex')">GALERIA</div>
+        <div class="machine top-machine" id="market" onclick="moveToAndInteract(event, this, 'market')">LOJA</div>
         <div class="machine top-machine" id="pc-center" onclick="moveToAndInteract(event, this, 'heal')">CENTRO PKM</div>
         <div class="machine bottom-machine" id="pc-battle" onclick="moveToAndInteract(event, this, 'battle')">ARENA</div>
         <% if(isAdmin) { %>
@@ -181,7 +191,13 @@
         function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; if(id==='modalPokedex' && allMonsters.length>0) selectDexMonster(0, document.querySelector('.dex-card')); }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; if(id==='modalPokedex' && allMonsters.length>0) { const first = document.querySelectorAll('.dex-card')[0]; if(first) selectDexMonster(0, first); } }
+        // Retractable menu helpers (room)
+        function toggleFloatMenu() {
+            const items = document.getElementById('menuItems'); if(!items) return; items.style.display = items.style.display === 'flex' ? 'none' : 'flex';
+        }
+        // close menu when clicking outside
+        document.addEventListener('click', (ev) => { try { const menu = document.getElementById('floatMenu'); if(!menu) return; if(!menu.contains(ev.target)) { const items = document.getElementById('menuItems'); if(items) items.style.display = 'none'; } } catch(e) {} });
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
 
@@ -220,7 +236,8 @@
             setTimeout(() => { 
                 if (type === 'create') { showLoading('Carregando criação...', 'left'); setTimeout(() => window.location.href = `/create?playerName=${encodeURIComponent(myName)}&playerSkin=${encodeURIComponent(mySkin)}`, 120); } 
                 else if (type === 'admin') { showLoading('Carregando...', 'left'); setTimeout(() => window.location.href = '/lab?userId=<%= user._id %>', 120); } 
-                else if (type === 'pokedex') openModal('modalPokedex'); 
+                else if (type === 'market') { showLoading('Entrando na Loja...', 'left'); setTimeout(() => { openShop(); }, 120); }
+                else if (type === 'pokedex') openPokedex(); 
                 else if (type === 'heal') healTeam(); 
                 else if (type === 'online' || type === 'battle') {
                     // Update Fighter List before showing modal to ensure PC moves are reflected
@@ -228,6 +245,34 @@
                     openModal('modalBattle'); 
                 }
             }, travelTime); 
+        }
+
+        // Open a user-aware Pokedex: shows only monsters the user has captured
+        async function openPokedex() {
+            const modal = document.getElementById('modalPokedex');
+            if(!modal) return;
+            modal.style.display = 'flex';
+            const grid = document.getElementById('dexGrid');
+            const details = document.getElementById('dexDetailsView');
+            if(grid) grid.innerHTML = '<div style="padding:16px; color:#aaa">Carregando seu registro...</div>';
+            try {
+                const res = await fetch(`/api/pokedex?userId=<%= user._id %>`);
+                if(!res.ok) { grid.innerHTML = '<div style="padding:16px; color:#aaa">Sem dados.</div>'; return; }
+                const data = await res.json();
+                const captured = (data.list || []).map(x => (typeof x === 'string') ? x.toLowerCase() : (x.name || '').toLowerCase());
+                const entries = allMonsters.filter(m => captured.includes((m.name || '').toLowerCase() ) || captured.includes((m.id || '').toString()));
+                if(!entries || entries.length === 0) { grid.innerHTML = '<div style="padding:16px; color:#aaa">Nenhum registro. Capture pokémons para ver aqui.</div>'; details.innerHTML = 'Selecione um monstro.'; return; }
+                grid.innerHTML = '';
+                entries.forEach((e, idx) => {
+                    const card = document.createElement('div'); card.className = 'dex-card'; card.setAttribute('data-name', (e.name || '').toLowerCase());
+                    const img = e.sprite ? `<img src="${e.sprite}" class="dex-card-img">` : '❓';
+                    card.innerHTML = `${img}<div class="dex-card-name">${e.name}</div>`;
+                    card.onclick = () => selectDexMonster(allMonsters.findIndex(a => a.name === e.name), card);
+                    grid.appendChild(card);
+                });
+                // select first
+                const first = grid.querySelector('.dex-card'); if(first) first.click();
+            } catch (err) { grid.innerHTML = '<div style="padding:16px; color:#aaa">Erro ao carregar.</div>'; console.error(err); }
         }
 
         async function healTeam() { try { const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) }); const data = await res.json(); if (data && data.success) { showToast(data.message || 'Equipe curada!'); if (document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro ao curar'); } } catch (e) { showToast('Erro ao conectar ao servidor'); } }
@@ -246,6 +291,13 @@
                 const res = await fetch('/api/pc?userId=<%= user._id %>');
                 const data = await res.json();
                 renderPC(data.team, data.pc);
+                // focus first item for convenience
+                setTimeout(() => {
+                    const firstTeam = document.querySelector('#pcTeamList .pc-item');
+                    const firstStorage = document.querySelector('#pcStorageList .pc-item');
+                    const el = firstTeam || firstStorage;
+                    if(el) el.scrollIntoView({ block: 'nearest' });
+                }, 40);
             } catch(e) { console.error(e); tDiv.innerText='Erro'; pDiv.innerText='Erro'; }
         }
         
@@ -266,6 +318,11 @@
         async function movePokemon(pokemonId, currentLoc) {
             const target = currentLoc === 'team' ? 'pc' : 'team';
             try {
+                // prevent moving into team if party full
+                if(target === 'team') {
+                    const teamCount = (document.getElementById('pcTeamList') || {}).querySelectorAll ? document.getElementById('pcTeamList').querySelectorAll('.pc-item').length : 0;
+                    if(teamCount >= 6) { showToast('Equipe cheia (6). Remova um antes.'); return; }
+                }
                 const res = await fetch('/api/pc/move', { 
                     method: 'POST', 
                     headers: {'Content-Type':'application/json'},
@@ -275,6 +332,28 @@
                 if(data.success) { loadPCData(); } else { showToast(data.error); }
             } catch(e) { showToast("Erro ao mover."); }
         }
+
+        // Accessibility & UX: close modals with ESC and navigate Pokedex with arrow keys
+        document.addEventListener('keydown', (ev) => {
+            try {
+                if(ev.key === 'Escape') {
+                    document.querySelectorAll('.modal-overlay').forEach(m => { if(m.style.display === 'flex' || m.style.display === 'block') m.style.display = 'none'; });
+                }
+                const pd = document.getElementById('modalPokedex');
+                if(pd && (pd.style.display === 'flex' || pd.style.display === 'block')) {
+                    if(ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+                        ev.preventDefault();
+                        const cards = Array.from(document.querySelectorAll('.dex-card'));
+                        if(cards.length === 0) return;
+                        const activeIndex = cards.findIndex(c => c.classList.contains('active'));
+                        let next = 0;
+                        if(activeIndex === -1) next = 0;
+                        else next = ev.key === 'ArrowLeft' ? Math.max(0, activeIndex - 1) : Math.min(cards.length - 1, activeIndex + 1);
+                        const el = cards[next]; if(el) { el.scrollIntoView({block:'nearest', inline:'nearest'}); el.click(); }
+                    }
+                }
+            } catch(e) {}
+        });
 
         // NOVO: Atualiza a lista de batalha para remover pokemons do PC (sem recarregar pagina)
         async function updateBattleSelect() {
