@@ -61,7 +61,7 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* LISTA COMPLETA DE EFEITOS */
+        /* EFEITOS */
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
@@ -407,9 +407,10 @@
             let startX = (side === 'p1') ? 85 : 205; 
             let startY = 120; // Chão
 
-            // Coordenadas FINAIS (Mão do treinador - 20/260) - Altura 60 (Mão)
+            // Coordenadas FINAIS (Mão do treinador - 20/260)
             let endX = (side === 'p1') ? 20 : 260;
-            let endY = 60; // Mão (CORRIGIDO)
+            // AJUSTADO: 115 para ficar na altura correta (baixo/cintura)
+            let endY = 115; 
 
             // Posiciona a bola inicialmente
             ball.style.left = startX + 'px';
