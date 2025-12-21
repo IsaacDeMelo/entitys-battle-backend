@@ -23,11 +23,9 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
-        /* --- UI SUPERIOR (HUD INIMIGO) --- */
+        /* --- HUDs --- */
         .hud-opponent { position: absolute; top: 40px; left: 20px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; color: white; border-left: 4px solid #e74c3c; z-index: 20; min-width: 140px; }
-        
-        /* --- UI INFERIOR (HUD JOGADOR) --- */
-        .hud-player { position: absolute; bottom: 190px; right: 20px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; color: white; border-right: 4px solid #3498db; z-index: 20; min-width: 140px; text-align: right; }
+        .hud-player { position: absolute; bottom: 200px; right: 20px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; color: white; border-right: 4px solid #3498db; z-index: 20; min-width: 140px; text-align: right; }
 
         .hp-bar-bg { width: 100%; height: 8px; background: #555; margin-top: 5px; border-radius: 4px; overflow: hidden; }
         .hp-bar-fill { height: 100%; background: #2ecc71; transition: width 0.5s ease-out, background 0.3s; }
@@ -35,11 +33,13 @@
         .energy-bar-fill { height: 100%; background: #f1c40f; transition: width 0.5s ease-out; }
         
         /* --- SPRITES --- */
-        /* Ajuste de altura para ficarem mais para cima */
         .sprite-container { position: absolute; width: 140px; height: 140px; display: flex; justify-content: center; align-items: flex-end; }
         
-        #p2-sprite-box { top: 15%; right: 10%; z-index: 5; } /* Inimigo */
-        #p1-sprite-box { bottom: 35%; left: 10%; z-index: 10; } /* Jogador (Mais alto que antes) */
+        /* INIMIGO: Mais alto e à direita */
+        #p2-sprite-box { top: 18%; right: 10%; z-index: 5; } 
+        
+        /* JOGADOR: Mais baixo e à esquerda (Levantei um pouco aqui: bottom 35%) */
+        #p1-sprite-box { bottom: 38%; left: 10%; z-index: 10; } 
 
         .pokemon-sprite { 
             width: 100%; 
@@ -47,65 +47,56 @@
             object-fit: contain; 
             image-rendering: pixelated; 
             filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
-            transition: opacity 0.2s, transform 0.3s;
+            opacity: 0; /* Começa invisível para animação */
         }
 
         /* --- ANIMAÇÕES DE ENTRADA --- */
-        /* Oculto inicialmente */
-        .hidden-start { opacity: 0; }
-
-        /* Selvagem: Desliza da direita */
-        @keyframes slideInRight {
+        
+        /* 1. Deslizar (Wild Enemy) */
+        @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-        .anim-slide-in { animation: slideInRight 1s ease-out forwards; }
+        .anim-slide { animation: slideIn 0.8s ease-out forwards; }
 
-        /* Pokébola sendo jogada e abrindo */
-        @keyframes popOut {
-            0% { transform: scale(0); opacity: 0; }
-            60% { transform: scale(1.2); opacity: 1; filter: brightness(100); }
+        /* 2. Sair da Pokébola (Player / Trainer) */
+        @keyframes pokeballPop {
+            0% { transform: scale(0); opacity: 0; filter: brightness(5); }
+            70% { transform: scale(1.1); opacity: 1; filter: brightness(2); }
             100% { transform: scale(1); opacity: 1; filter: brightness(1); }
         }
-        .anim-pop-out { animation: popOut 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-
-        /* Efeito de flash branco ao sair da bola */
-        .flash-white { animation: flash 0.5s linear; }
-        @keyframes flash { 0% { filter: brightness(10); } 100% { filter: brightness(1); } }
+        .anim-pop { animation: pokeballPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
         /* --- CONTROLES --- */
-        #controls { position: absolute; bottom: 0; width: 100%; height: 160px; background: #1a1a2e; border-top: 4px solid #34495e; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; z-index: 100; }
+        #controls { position: absolute; bottom: 0; width: 100%; height: 170px; background: #1a1a2e; border-top: 4px solid #34495e; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; z-index: 100; }
         
         .move-btn { background: #2c3e50; color: white; border: 2px solid #34495e; border-radius: 8px; padding: 10px; font-family: 'Press Start 2P'; font-size: 0.6rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; position: relative; }
         .move-btn:active { background: #34495e; transform: translateY(2px); }
         .move-type { font-size: 0.5rem; color: #aaa; margin-top: 4px; text-transform: uppercase; }
         .move-energy { position: absolute; top: 2px; right: 4px; font-size: 0.5rem; color: #f1c40f; }
 
-        /* BOTÕES DE AÇÃO EXTRA */
         .action-row { grid-column: 1 / -1; display: flex; gap: 10px; height: 35px; }
         .act-btn { flex: 1; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-family: 'Roboto'; font-size: 0.9rem; }
         .btn-run { background: #e74c3c; }
-        .btn-bag { background: #f39c12; }
         .btn-switch { background: #3498db; }
         .btn-catch { background: #27ae60; }
 
-        /* --- MODAL DE TROCA (Z-INDEX CORRIGIDO) --- */
+        /* --- MODAL DE TROCA (CORRIGIDO Z-INDEX) --- */
         .modal-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.85); 
-            z-index: 2000; /* BEM ALTO PARA FICAR EM CIMA DE TUDO */
+            z-index: 5000; /* Z-INDEX ALTÍSSIMO */
             display: none; justify-content: center; align-items: center; 
         }
         .switch-card { background: #222; border: 2px solid #555; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
         .switch-card:hover { border-color: #3498db; background: #333; }
         .switch-img { width: 40px; height: 40px; image-rendering: pixelated; }
 
-        /* LOG DE BATALHA */
+        /* LOG E EFEITOS */
         #battleLog { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 90%; text-align: center; pointer-events: none; z-index: 50; display: flex; flex-direction: column; gap: 5px; }
         .log-msg { background: rgba(0,0,0,0.7); color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; animation: fadeUp 2s forwards; }
         @keyframes fadeUp { 0% { opacity: 0; transform: translateY(10px); } 10% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* ANIMAÇÃO DE DANO */
         .shake { animation: shake 0.5s; }
         @keyframes shake { 0% { transform: translate(0, 0); filter: hue-rotate(0deg); } 20% { transform: translate(-10px, 0); filter: hue-rotate(90deg) saturate(5); } 40% { transform: translate(10px, 0); } 60% { transform: translate(-10px, 0); } 80% { transform: translate(10px, 0); } 100% { transform: translate(0, 0); filter: none; } }
         .attack-anim { position: absolute; font-size: 3rem; z-index: 100; animation: popFade 0.5s forwards; pointer-events: none; }
@@ -126,12 +117,12 @@
 
         <!-- SPRITE INIMIGO -->
         <div id="p2-sprite-box" class="sprite-container">
-            <img id="p2Sprite" src="<%= p2.sprite %>" class="pokemon-sprite hidden-start">
+            <img id="p2Sprite" src="<%= p2.sprite %>" class="pokemon-sprite">
         </div>
 
         <!-- SPRITE JOGADOR -->
         <div id="p1-sprite-box" class="sprite-container">
-            <img id="p1Sprite" src="<%= p1.sprite %>" class="pokemon-sprite hidden-start">
+            <img id="p1Sprite" src="<%= p1.sprite %>" class="pokemon-sprite">
         </div>
 
         <!-- HUD JOGADOR -->
@@ -153,7 +144,6 @@
                     <% } %>
                     <button class="act-btn btn-switch" onclick="openSwitchModal()">TROCAR</button>
                 </div>
-                <!-- MOVES -->
                 <% for(let i=0; i<4; i++) { 
                     const move = p1.moves[i]; 
                     if(move) { %>
@@ -172,7 +162,7 @@
         </div>
     </div>
 
-    <!-- MODAL TROCA (Z-INDEX 2000) -->
+    <!-- MODAL DE TROCA -->
     <div id="switchModal" class="modal-overlay">
         <div style="background:#1a1a2e; padding:20px; border-radius:10px; width:90%; max-width:350px; border:2px solid #3498db;">
             <h3 style="color:#f1c40f; text-align:center; margin-top:0; font-family:'Press Start 2P'; font-size:0.8rem;">TROCAR POKÉMON</h3>
@@ -195,37 +185,29 @@
         const socket = io();
         const battleId = "<%= battleId %>";
         const battleMode = "<%= battleMode %>";
-        const myRoleId = "<%= myRoleId %>"; // P1 instance ID
+        const myRoleId = "<%= myRoleId %>"; // P1 ID
         let p1MaxHp = <%= p1.maxHp %>;
         let p2MaxHp = <%= p2.maxHp %>;
         
-        // --- ANIMAÇÕES DE ENTRADA ---
-        window.onload = () => {
-            const p1El = document.getElementById('p1Sprite');
-            const p2El = document.getElementById('p2Sprite');
+        // --- INICIALIZAÇÃO E ANIMAÇÃO DE ENTRADA ---
+        window.addEventListener('load', () => {
+            const p1Img = document.getElementById('p1Sprite');
+            const p2Img = document.getElementById('p2Sprite');
 
             if (battleMode === 'wild') {
-                // Selvagem: Oponente desliza, Player joga bola
-                p2El.classList.remove('hidden-start');
-                p2El.classList.add('anim-slide-in');
+                // SELVAGEM: Oponente já está lá (desliza), Jogador joga bola (pop)
+                p2Img.classList.add('anim-slide'); // Desliza da direita
                 
+                // Jogador entra com atraso (jogando bola)
                 setTimeout(() => {
-                    p1El.classList.remove('hidden-start');
-                    p1El.classList.add('anim-pop-out');
-                    p1El.classList.add('flash-white');
-                }, 500); // Player sai depois
+                    p1Img.classList.add('anim-pop');
+                }, 500);
             } else {
-                // Treinador: Os dois saem da bola
-                setTimeout(() => {
-                    p1El.classList.remove('hidden-start');
-                    p2El.classList.remove('hidden-start');
-                    p1El.classList.add('anim-pop-out');
-                    p2El.classList.add('anim-pop-out');
-                    p1El.classList.add('flash-white');
-                    p2El.classList.add('flash-white');
-                }, 300);
+                // TREINADOR: Os dois jogam bola ao mesmo tempo
+                p1Img.classList.add('anim-pop');
+                p2Img.classList.add('anim-pop');
             }
-        };
+        });
 
         function addLog(msg) {
             const div = document.createElement('div');
@@ -253,18 +235,15 @@
             }
         }
 
-        // --- AÇÕES ---
         async function sendAction(act, val) {
             if (document.getElementById('switchModal').style.display === 'flex') {
                 document.getElementById('switchModal').style.display = 'none';
             }
 
             if (battleMode === 'online') {
-                // SOCKET MODE
-                addLog("Aguardando oponente...");
-                socket.emit('online_move', { roomId: battleId, moveId: (act==='move' ? val : 'rest'), playerId: myRoleId }); // Simplificado para move/rest por enquanto no online, switch precisa de ajuste no backend online
+                addLog("Aguardando...");
+                socket.emit('online_move', { roomId: battleId, moveId: (act==='move' ? val : 'rest'), playerId: myRoleId });
             } else {
-                // LOCAL/WILD FETCH MODE
                 try {
                     const res = await fetch('/api/turn', {
                         method: 'POST',
@@ -287,36 +266,34 @@
             }
         }
 
-        // --- PROCESSA O TURNO ---
         function handleTurnResult(data) {
-            // 1. SE HOUVE TROCA, ATUALIZA O P1 IMEDIATAMENTE (CORREÇÃO DO BUG)
+            // CORREÇÃO: SE TROCOU, ATUALIZA O POKÉMON E O MAXHP
             if (data.switched && data.p1State) {
                 const s = data.p1State;
-                // Atualiza variáveis globais vitais
-                p1MaxHp = s.maxHp; 
                 
-                // Atualiza visual
+                // 1. Atualiza Status Base
+                p1MaxHp = s.maxHp; // ESSENCIAL: Atualiza o máximo global
+                
+                // 2. Atualiza Textos
                 document.getElementById('p1Name').innerText = s.name;
                 document.getElementById('p1Level').innerText = s.level;
                 
-                // Atualiza sprite com animação
+                // 3. Reseta e Toca Animação de Entrada
                 const img = document.getElementById('p1Sprite');
                 img.src = s.sprite;
-                img.classList.remove('anim-pop-out');
+                img.classList.remove('anim-pop');
                 void img.offsetWidth; // Trigger reflow
-                img.classList.add('anim-pop-out');
+                img.classList.add('anim-pop'); // Toca animação da bola saindo
 
-                // Atualiza botões
-                const container = document.getElementById('controls');
+                // 4. Se quiser recarregar os botões de ataque:
                 if(s.moves) {
-                    // Reconstruir botões de ataque (simplificado: recarrega pag ou manipula DOM. Aqui vamos só atualizar HP por enquanto)
-                    // Num app completo, reconstruiria os botões.
-                    location.reload(); // Maneira mais segura de atualizar os botões de golpe do novo pokemon
+                    // Simplificado: Recarrega a página para remontar os botões do EJS
+                    // Se preferir não recarregar, teria que reconstruir o HTML dos botões via JS aqui.
+                    location.reload();
                     return; 
                 }
             }
 
-            // 2. PROCESSA EVENTOS (Dano, Mensagens)
             if (data.events) {
                 let delay = 0;
                 data.events.forEach(ev => {
@@ -328,7 +305,6 @@
                             sprite.classList.add('shake');
                             setTimeout(() => sprite.classList.remove('shake'), 500);
                             
-                            // Cria efeito visual de hit
                             const hit = document.createElement('div');
                             hit.innerText = '💥';
                             hit.className = 'attack-anim';
@@ -342,10 +318,9 @@
                 });
             }
 
-            // 3. ATUALIZA BARRAS DE VIDA (No final, para refletir o dano)
+            // ATUALIZAÇÃO FINAL DAS BARRAS
+            // Se houve troca, p1MaxHp já está atualizado. Se não, usa o antigo.
             if (data.p1State) {
-                // Se trocou, p1MaxHp já foi atualizado no passo 1. Se não, usa o antigo.
-                if(data.p1State.maxHp) p1MaxHp = data.p1State.maxHp;
                 updateHp('p1', data.p1State.hp, p1MaxHp);
                 document.getElementById('p1EnergyBar').style.width = (data.p1State.energy / (data.p1State.maxEnergy || 100) * 100) + '%';
             }
@@ -353,7 +328,6 @@
                 updateHp('p2', data.p2State.hp, p2MaxHp);
             }
 
-            // 4. SWITCH FORÇADO (MORTE)
             if (data.forceSwitch) {
                 setTimeout(() => {
                     document.getElementById('switchList').innerHTML = data.switchable.map(p => 
@@ -367,7 +341,6 @@
             }
         }
 
-        // Online Socket Listeners
         socket.on('opponent_ready', () => { addLog("Oponente escolheu!"); });
         socket.on('turn_result', (data) => {
             handleTurnResult(data);
