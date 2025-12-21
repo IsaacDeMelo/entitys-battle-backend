@@ -10,13 +10,13 @@ const BasePokemonSchema = new mongoose.Schema({
     minSpawnLevel: { type: Number, default: 1 },
     maxSpawnLevel: { type: Number, default: 5 },
     catchRate: { type: Number, default: 0.5 },
-    // AQUI: O peso para o sorteio (ex: 100 = comum, 1 = raro)
-    spawnChance: { type: Number, default: 10 }, 
+    spawnChance: { type: Number, default: 50 }, 
+    // NOVO CAMPO: Define se aparece na tela de registro
+    isStarter: { type: Boolean, default: false },
     evolution: { targetId: String, level: Number },
     movePool: [{ level: Number, moveId: String }]
 });
 
-// Estrutura do Pokemon salva no User (reutilizável)
 const UserPokemonSchema = new mongoose.Schema({
     baseId: String, 
     nickname: String, 
@@ -38,9 +38,7 @@ const UserSchema = new mongoose.Schema({
     money: { type: Number, default: 100 },
     pokeballs: { type: Number, default: 5 },
     rareCandy: { type: Number, default: 0 },
-    // PARTY (Máx 6 logicamente)
     pokemonTeam: [UserPokemonSchema],
-    // PC (Armazenamento)
     pc: [UserPokemonSchema]
 });
 
