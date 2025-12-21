@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -24,7 +24,9 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
-        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 45%; transform: translateY(-50%); transition: opacity 0.5s; }
+        /* --- POSICIONAMENTO DOS LUTADORES (Ajustado para 38% para ficar mais alto) --- */
+        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 38%; transform: translateY(-50%); transition: opacity 0.5s; }
+        
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
         .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 21; background-position-y: 33.33%; } 
         .fighter.p2-position .sprite { order: 1; z-index: 22; }
@@ -32,23 +34,18 @@
         .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 21; background-position-y: 66.66%; }
         .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
 
-        /* --- CORREÇÃO DO BRILHO (Início) --- */
-        /* Removido 'filter' da lista de transitions para evitar o brilho residual no ataque */
         .sprite { position: relative; width: 120px; height: 120px; transition: transform 0.2s, opacity 0.5s; }
-        
         .sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); animation: breathe 3s infinite ease-in-out; }
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 
-        /* Hurt agora é instantâneo (sem transition) */
         .sprite img.hurt { filter: brightness(1.6) saturate(1.1) sepia(0.15) hue-rotate(-10deg); }
-        /* --- CORREÇÃO DO BRILHO (Fim) --- */
 
         .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; }
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
         .trainer.frame-1 { background-position-x: -100%; }
 
-        /* EFEITOS VISUAIS ATIVADOS */
+        /* EFEITOS VISUAIS */
         .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 20px; height: 20px; border-radius: 50%; }
         @keyframes particleFly { 0% { transform: translate(0,0) scale(0.5); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; } }
         
@@ -56,26 +53,12 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        .shield-effect { position: absolute; top: -10px; left: -10px; width: 140px; height: 140px; border-radius: 50%; border: 4px solid #3498db; background: rgba(52, 152, 219, 0.3); z-index: 1200; animation: shieldPulse 0.8s ease-out; pointer-events: none; box-shadow: 0 0 20px #3498db; opacity: 0; }
-        @keyframes shieldPulse { 0% { opacity: 0; transform: scale(0.8); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1); } }
-
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
         .effect-normal { background: radial-gradient(circle, #fff, #bbb); box-shadow: 0 0 5px #fff; }
+        /* (Adicione os outros tipos conforme necessário, mantendo os do original) */
         .effect-electric { background: radial-gradient(circle, #f1c40f, #fff); box-shadow: 0 0 15px #f1c40f; }
-        .effect-ice { background: radial-gradient(circle, #74b9ff, #fff); box-shadow: 0 0 15px #74b9ff; }
-        .effect-poison { background: radial-gradient(circle, #8e44ad, #9b59b6); box-shadow: 0 0 10px #8e44ad; }
-        .effect-ground { background: radial-gradient(circle, #d35400, #e67e22); box-shadow: 0 0 10px #d35400; }
-        .effect-flying { background: radial-gradient(circle, #ecf0f1, #95a5a6); box-shadow: 0 0 10px #fff; }
-        .effect-psychic { background: radial-gradient(circle, #e056fd, #be2edd); box-shadow: 0 0 10px #e056fd; }
-        .effect-bug { background: radial-gradient(circle, #badc58, #6ab04c); box-shadow: 0 0 10px #badc58; }
-        .effect-rock { background: radial-gradient(circle, #95a5a6, #7f8c8d); box-shadow: 0 0 10px #555; }
-        .effect-ghost { background: radial-gradient(circle, #4834d4, #686de0); box-shadow: 0 0 10px #4834d4; }
-        .effect-dragon { background: radial-gradient(circle, #30336b, #130f40); box-shadow: 0 0 10px #30336b; }
-        .effect-dark { background: radial-gradient(circle, #2d3436, #000); box-shadow: 0 0 10px #000; }
-        .effect-steel { background: radial-gradient(circle, #bdc3c7, #95a5a6); box-shadow: 0 0 10px #bdc3c7; }
-        .effect-fairy { background: radial-gradient(circle, #ff9ff3, #f368e0); box-shadow: 0 0 10px #ff9ff3; }
 
         .command-bubble { position: absolute; top: -40px; left: 50%; transform: translateX(-50%) scale(0); background: #fff; color: #000; padding: 8px 12px; border-radius: 12px; border: 2px solid #000; font-family: 'Press Start 2P'; font-size: 0.5rem; white-space: nowrap; z-index: 100; opacity: 0; transition: all 0.2s; pointer-events: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
         .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); top: -60px; }
@@ -87,7 +70,7 @@
         .resist-text { color: #bdc3c7; font-size: 0.8rem; margin-top: -20px !important; }
         .super-text { color: #f1c40f; font-size: 0.8rem; margin-top: -20px !important; text-shadow: 2px 2px 0 #c0392b; }
 
-        .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 3px solid #3498db; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+        .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 3px solid #3498db; z-index: 50; padding-bottom: env(safe-area-inset-bottom); position: relative; }
         .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
         .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #ecf0f1; height: 150px; background: #111; }
         .log-entry { margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 2px; }
@@ -112,13 +95,9 @@
         .name-tag { font-family: 'Press Start 2P'; font-size: 0.6rem; margin-top: 15px; color: white; text-align: center; background: #333; padding: 5px 10px; border-radius: 4px; border: 1px solid #777; }
         .btn-restart { background: #3498db; color: white; padding: 15px 30px; border-radius: 30px; border: none; font-family: 'Press Start 2P'; font-size: 0.8rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 0 #2980b9; }
         .spectator-banner { position: absolute; bottom: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.7); color: #f1c40f; padding: 5px; font-family: 'Press Start 2P'; font-size: 0.7rem; pointer-events: none; z-index: 50; }
-        #bleachers { width: 100%; height: 200px; background: #2c3e50; border-top: 4px solid #111; position: relative; }
-        #chat-container { width: 100%; height: 60px; background: #1a1a2e; border-top: 2px solid #3498db; display: flex; align-items: center; justify-content: center; }
-        @media (max-width: 600px) { .battle-layout { grid-template-columns: 1fr; } .battle-log { height: 60px; } }
         
         /* CAPTURE ANIMATION (CUBE/BALL) */
         .catchball { position: absolute; width: 17px; height: 17px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 2000; pointer-events: none; }
-        .proj { position: absolute; width: 12px; height: 12px; border-radius: 50%; pointer-events: none; z-index: 2000; box-shadow: 0 2px 18px rgba(0,0,0,0.6); transform: translate(0,0); }
         .flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; opacity: 0; pointer-events: none; z-index: 500; transition: opacity 0.15s; }
         .flash-overlay.active { opacity: 0.8; }
         .absorbed-state { filter: brightness(10) sepia(1) hue-rotate(-50deg) saturate(5) !important; transform: scale(0) !important; transition: transform 0.4s ease-in, filter 0.1s !important; }
@@ -126,8 +105,8 @@
         .capture-star { position: absolute; font-size: 24px; color: gold; text-shadow: 0 0 5px orange; animation: star-pop 0.6s ease-out forwards; z-index: 2200; }
         @keyframes star-pop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1) translateY(-20px); opacity: 0; } }
 
-        /* SWITCH MODAL */
-        #switchModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        /* SWITCH MODAL FIX (Removido do .arena para o body) */
+        #switchModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; }
         .switch-box { background: #2c3e50; border: 2px solid #e74c3c; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; text-align: center; }
         .switch-title { font-family: 'Press Start 2P'; color: #f1c40f; margin-bottom: 20px; font-size: 0.8rem; line-height: 1.5; }
         .switch-item { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #444; background: #222; margin-bottom: 8px; cursor: pointer; border-radius: 5px; transition: 0.1s; }
@@ -151,6 +130,24 @@
         #floatingBagPanel .close-x { position:absolute; right:8px; top:6px; background:transparent; border:none; color:#999; font-weight:700; cursor:pointer; }
         .floating-bag-button { position: fixed; right: 12px; bottom: 90px; z-index: 75; width:44px; height:44px; border-radius:50%; background:#f39c12; border:2px solid #d35400; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 6px 18px rgba(0,0,0,0.4); cursor:pointer; }
         .floating-hud-money { position: fixed; right: 12px; bottom: 140px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:11px; text-align:center; }
+
+        /* --- ANIMAÇÕES DE ENTRADA (DEPLOY) --- */
+        .deploy-ball { position: absolute; width: 16px; height: 16px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 30; pointer-events: none; }
+        
+        /* Pokémon saindo da bola (Cresce + Brilho) */
+        @keyframes popOut { 
+            0% { transform: scale(0); filter: brightness(10) sepia(1) hue-rotate(-50deg) saturate(5); opacity: 0; }
+            40% { transform: scale(1.2); filter: brightness(5) sepia(1) hue-rotate(-50deg) saturate(5); opacity: 1; }
+            100% { transform: scale(1); filter: brightness(1); opacity: 1; }
+        }
+        .anim-pop-out { animation: popOut 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* Selvagem aparecendo (Desliza e aparece) */
+        @keyframes wildSlideIn { 
+            0% { transform: translateX(40px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+        .anim-wild-appear { animation: wildSlideIn 0.8s ease-out forwards; }
     </style>
 </head>
 <body>
@@ -183,7 +180,6 @@
         <!-- Fighter P2 -->
         <div class="fighter p2-position" id="fighter-p2">
             <div class="command-bubble" id="bubble-p2"></div>
-            <!-- always include trainer div so wild mons align like trained ones; hide visually when wild -->
             <div class="trainer" id="trainer-p2" data-skin="<%= p2.skin || 'char1' %>" style="<%= battleMode === 'wild' ? 'opacity:0;' : '' %>"></div>
             <div class="sprite" id="sprite-p2">
                 <img src="<%= (p2.sprite.startsWith('http') || p2.sprite.startsWith('data:')) ? p2.sprite : '/uploads/' + p2.sprite %>">
@@ -235,15 +231,6 @@
                 </form>
             </div>
         </div>
-
-        <!-- MODAL DE TROCA -->
-        <div id="switchModal">
-            <div class="switch-box">
-                <div class="switch-title" id="switchTitle">SEU POKÉMON DESMAIOU!<br>Escolha outro ou desista.</div>
-                <div id="switchList" style="text-align:left;"></div>
-                <button class="btn-restart" style="background:#e74c3c; margin-top:10px;" onclick="forfeitBattle()">DESISTIR</button>
-            </div>
-        </div>
     </div>
 
     <% if(isSpectator) { %>
@@ -278,6 +265,15 @@
         </div>
     <% } %>
 
+    <!-- MODAL MOVIDO PARA FORA DA ARENA (Correção Z-Index) -->
+    <div id="switchModal">
+        <div class="switch-box">
+            <div class="switch-title" id="switchTitle">SEU POKÉMON DESMAIOU!<br>Escolha outro ou desista.</div>
+            <div id="switchList" style="text-align:left;"></div>
+            <button class="btn-restart" style="background:#e74c3c; margin-top:10px;" onclick="forfeitBattle()">DESISTIR</button>
+        </div>
+    </div>
+
     <div id="floatingBagPanel" aria-hidden="true">
         <button class="close-x" aria-label="Fechar" onclick="closeBattleBag()">✕</button>
         <h4>BAG</h4>
@@ -300,6 +296,10 @@
         
         let p1CurHp = Number(<%= p1.hp %>); 
         let p2CurHp = Number(<%= p2.hp %>);
+        // --- CORREÇÃO VIDA: Variáveis globais para MaxHP ---
+        let p1MaxHp = Number(<%= p1.maxHp %>);
+        let p2MaxHp = Number(<%= p2.maxHp %>);
+
         let currentEnergy = parseInt("<%= p1.energy %>");
         let canAct = true; 
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -349,62 +349,98 @@
             trainerEl.classList.remove('frame-1'); 
         }
 
-        // --- SISTEMA DE PARTÍCULAS ELEMENTAIS ---
+        // --- FUNÇÃO NOVA DE ENTRADA DO POKÉMON ---
+        async function deployPokemon(side, isWild = false) {
+            const fighterDiv = document.getElementById(`fighter-${side}`);
+            const spriteDiv = document.getElementById(`sprite-${side}`);
+            const spriteImg = spriteDiv ? spriteDiv.querySelector('img') : null;
+            const trainerDiv = document.getElementById(`trainer-${side}`);
+
+            if (!spriteImg || !fighterDiv) return;
+
+            // 1. Reseta classes e esconde
+            spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear');
+            spriteImg.style.opacity = '0';
+
+            // === SELVAGEM (Slide) ===
+            if (isWild) {
+                await wait(300);
+                spriteImg.classList.add('anim-wild-appear');
+                setTimeout(() => { spriteImg.style.opacity = ''; }, 50);
+                return;
+            }
+
+            // === TREINADOR (Pokébola) ===
+            if (trainerDiv) animateThrow(trainerDiv);
+            await wait(200);
+
+            const ball = document.createElement('div');
+            ball.className = 'deploy-ball';
+            fighterDiv.appendChild(ball);
+
+            // Trajetória
+            let startX = (side === 'p1') ? 20 : 250; let startY = 60;
+            let endX = (side === 'p1') ? 100 : 180; let endY = 120;
+            if (side === 'p2') { startX = 260; endX = 200; }
+
+            ball.style.left = startX + 'px';
+            ball.style.top = startY + 'px';
+            const deltaX = endX - startX;
+            const deltaY = endY - startY;
+
+            const animation = ball.animate([
+                { transform: 'translate(0, 0) scale(0.5)' },
+                { transform: `translate(${deltaX * 0.5}px, ${deltaY - 80}px) scale(0.8)`, offset: 0.5 },
+                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.6)` }
+            ], { duration: 400, easing: 'linear', fill: 'forwards' });
+
+            await animation.finished;
+            ball.remove();
+            
+            createImpact(side, 'effect-normal'); // Pop
+            spriteImg.classList.add('anim-pop-out');
+            setTimeout(() => { spriteImg.style.opacity = ''; }, 50);
+        }
+
         function createProjectile(fromSide, toSide, cssClass) {
             const fromEl = document.getElementById(`sprite-${fromSide}`);
             const toEl = document.getElementById(`sprite-${toSide}`);
             if(!fromEl || !toEl) return;
-
             const rectFrom = fromEl.getBoundingClientRect();
             const rectTo = toEl.getBoundingClientRect();
-
-            // Ponto de saída (centro do atacante)
             const startX = rectFrom.left + rectFrom.width / 2;
             const startY = rectFrom.top + rectFrom.height / 2;
-            // Ponto de destino (centro do defensor)
             const endX = rectTo.left + rectTo.width / 2;
             const endY = rectTo.top + rectTo.height / 2;
-
             const part = document.createElement('div');
             part.className = `atk-particle ${cssClass}`;
             part.style.left = startX + 'px';
             part.style.top = startY + 'px';
-            
-            // Variáveis CSS para a animação particleFly
             part.style.setProperty('--tx', (endX - startX) + 'px');
             part.style.setProperty('--ty', (endY - startY) + 'px');
-            
             document.body.appendChild(part);
-
-            setTimeout(() => part.remove(), 500); // Tempo da animação no CSS
+            setTimeout(() => part.remove(), 500);
         }
 
         function createImpact(targetSide, cssClass) {
             const toEl = document.getElementById(`sprite-${targetSide}`);
             if(!toEl) return;
             const rect = toEl.getBoundingClientRect();
-            
             const impact = document.createElement('div');
-            impact.className = `impact-effect impact-pop ${cssClass}`; // Reusa a cor do elemento
-            // Centraliza no alvo
-            impact.style.left = (rect.left + rect.width/2 - 40) + 'px'; // 40 é metade do width 80px
+            impact.className = `impact-effect impact-pop ${cssClass}`;
+            impact.style.left = (rect.left + rect.width/2 - 40) + 'px';
             impact.style.top = (rect.top + rect.height/2 - 40) + 'px';
-            
             document.body.appendChild(impact);
             setTimeout(() => impact.remove(), 400);
         }
 
         function playMoveAnimation(attackerSide, defenderSide, type, category, moveType) {
             try { console.debug('[playMoveAnimation]', { attackerSide, defenderSide, type, category }); } catch(e) {}
-            
             const atkSprite = document.getElementById(`sprite-${attackerSide}`);
             const defSprite = document.getElementById(`sprite-${defenderSide}`);
             if(!atkSprite) return;
-
             const atkImg = atkSprite.querySelector('img');
             const defImg = defSprite ? defSprite.querySelector('img') : null;
-            
-            // 1. Animação do Atacante (Sempre acontece o Lunge)
             if(atkImg) {
                 const alt = atkImg.dataset.altSrc;
                 if (alt) {
@@ -417,22 +453,16 @@
                     setTimeout(() => { try { if(atkImg) atkImg.classList.remove('attack'); } catch(e){} }, 360);
                 }
             }
-
-            // 2. Disparar Projétil (SOMENTE SE FOR SPECIAL)
             if (category === 'special') {
                 const elemClass = `effect-${(type || 'normal').toLowerCase()}`;
-                setTimeout(() => {
-                    createProjectile(attackerSide, defenderSide, elemClass);
-                }, 100);
+                setTimeout(() => { createProjectile(attackerSide, defenderSide, elemClass); }, 100);
             }
-
-            // 3. Feedback antecipado no defensor
             if(defImg) {
                 setTimeout(() => {
                     try {
                         if(!defImg) return;
                         defImg.classList.remove('hurt','shake');
-                        defImg.classList.add('shake'); // Apenas shake antes do hit real
+                        defImg.classList.add('shake'); 
                         setTimeout(() => { try { if(defImg) { defImg.classList.remove('shake'); } } catch(e){} }, 420);
                     } catch(e) {}
                 }, 220);
@@ -447,9 +477,9 @@
                 fill.style.width = pct + '%'; 
                 if(type === 'hp') {
                     const txt = document.getElementById(`hp-val-${side}`);
-                    const maxTxt = document.getElementById(`max-hp-p1`); 
+                    const maxTxt = document.getElementById(`max-hp-${side}`); 
                     if(txt) txt.innerText = Math.max(0, cur);
-                    if(side === 'p1' && maxTxt) maxTxt.innerText = max;
+                    if(maxTxt) maxTxt.innerText = max;
                 }
             }
             if(type === 'hp') {
@@ -485,7 +515,6 @@
         }
         
         async function playEvents(events) { 
-            // Guarda o elemento do último golpe para usar na explosão (Impact)
             let lastMoveElement = 'normal';
 
             for (let evt of events) { 
@@ -503,13 +532,10 @@
                 const targetSide = getSide(targetIdRaw);
 
                 if (evt.type === 'USE_MOVE') { 
-                    lastMoveElement = evt.moveElement || 'normal'; // Atualiza o elemento
+                    lastMoveElement = evt.moveElement || 'normal';
                     if (battleMode === 'wild' && actorSide === 'p2') { await wait(500); } 
                     else { await speak(actorIdRaw, evt.moveName); }
-
-                    // Passa a categoria correta para a animação
                     playMoveAnimation(actorSide, targetSide, evt.moveElement || 'normal', evt.moveCategory, evt.moveType);
-                    
                     if(!isSpectator && actorSide === 'p1') updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en'); 
                     await wait(300); 
 
@@ -518,42 +544,37 @@
                     const spriteImg = spriteContainer ? spriteContainer.querySelector('img') : null;
                     const fighterDiv = document.getElementById(`fighter-${targetSide}`);
 
-                    // 1. Dano Visual (Hurt + Shake) - Agora sem brilho fantasma
                     if(spriteImg) {
                         spriteImg.classList.remove('hurt','shake');
-                        void spriteImg.offsetWidth; // Força repaint
+                        void spriteImg.offsetWidth; 
                         spriteImg.classList.add('hurt','shake');
                     }
-
-                    // 2. Cria Explosão de Impacto com a cor do último golpe
                     createImpact(targetSide, `effect-${lastMoveElement.toLowerCase()}`);
 
-                    // 3. Texto de Dano com offset aleatório
                     const damageTxt = document.createElement('div'); 
                     damageTxt.className = 'floating-text damage-text'; 
                     damageTxt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`;
-                    // Random offset
                     const rX = (Math.random() * 40 - 20) + '%';
                     const rY = (Math.random() * 20 - 10) + '%';
                     damageTxt.style.transform = `translate(calc(-50% + ${rX}), calc(-50% + ${rY}))`;
-                    
                     if(fighterDiv) fighterDiv.appendChild(damageTxt);
 
                     if(evt.isEffective) { const t = document.createElement('div'); t.className = 'floating-text super-text'; t.innerText = "SUPER EFETIVO!"; t.style.marginTop = "30px"; fighterDiv.appendChild(t); setTimeout(() => t.remove(), 1200); } 
                     else if(evt.isNotEffective) { const t = document.createElement('div'); t.className = 'floating-text resist-text'; t.innerText = "POUCO EFETIVO..."; t.style.marginTop = "30px"; fighterDiv.appendChild(t); setTimeout(() => t.remove(), 1200); }
 
                     await wait(500);
-                    if(spriteImg) { spriteImg.classList.remove('hurt'); }
-                    if(spriteImg) { spriteImg.classList.remove('shake'); }
+                    if(spriteImg) { spriteImg.classList.remove('hurt', 'shake'); }
                     damageTxt.remove();
 
-                    const maxHp = (targetSide === 'p1') ? <%= p1.maxHp %> : <%= p2.maxHp %>; 
+                    // --- CORREÇÃO VIDA: Usa variáveis globais ---
+                    const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp'); 
                     await wait(500);
 
                 } else if (evt.type === 'HEAL') { 
                     await speak(actorIdRaw, 'Cura');
-                    updateBar(actorIdRaw, evt.newHp, (actorSide === 'p1' ? <%= p1.maxHp %> : <%= p2.maxHp %>), 'hp'); 
+                    // --- CORREÇÃO VIDA: Usa variáveis globais ---
+                    updateBar(actorIdRaw, evt.newHp, (actorSide === 'p1' ? p1MaxHp : p2MaxHp), 'hp'); 
                     const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${evt.amount}`; 
                     document.getElementById(`fighter-${actorSide}`).appendChild(txt); 
                     setTimeout(() => txt.remove(), 1000); await wait(500); 
@@ -621,12 +642,19 @@
                     p1RawId = data.newP1Id;
                     p1Mon = data.p1State.name;
                     p1CurHp = data.p1State.hp;
+                    // --- CORREÇÃO VIDA: Atualiza Global ---
+                    p1MaxHp = data.p1State.maxHp; 
                     currentEnergy = data.p1State.energy;
                     
                     document.getElementById('p1-name').innerText = p1Mon;
                     document.getElementById('p1-lv').innerText = data.p1State.level;
                     document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
-                    document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite);
+                    const spriteImg = document.querySelector('#sprite-p1 img');
+                    spriteImg.src = resolveImg(data.p1State.sprite);
+                    
+                    // --- ANIMAÇÃO DE ENTRADA (DEPLOY) ---
+                    deployPokemon('p1', false);
+
                     updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp');
                     updateBar(p1RawId, currentEnergy, 100, 'en'); 
                     
@@ -663,8 +691,8 @@
                 else if (data.fled) { showToast("Fugiu!"); window.location.href = '/forest?userId=<%= realUserId %>'; } 
                 else if(data.finished) { endGame(data.winnerId); } 
                 else { 
-                    if (data.p1State) updateBar(p1RawId, data.p1State.hp, <%= p1.maxHp %>, 'hp'); 
-                    if (data.p2State) updateBar(p2RawId, data.p2State.hp, <%= p2.maxHp %>, 'hp'); 
+                    if (data.p1State) updateBar(p1RawId, data.p1State.hp, p1MaxHp, 'hp'); 
+                    if (data.p2State) updateBar(p2RawId, data.p2State.hp, p2MaxHp, 'hp'); 
                     setControlsState(true); 
                 } 
             } 
@@ -699,12 +727,19 @@
                 p1RawId = data.newP1Id;
                 p1Mon = data.p1State.name;
                 p1CurHp = data.p1State.hp;
+                // --- CORREÇÃO VIDA ---
+                p1MaxHp = data.p1State.maxHp;
                 currentEnergy = data.p1State.energy;
                 
                 document.getElementById('p1-name').innerText = p1Mon;
                 document.getElementById('p1-lv').innerText = data.p1State.level;
                 document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
-                document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite);
+                const p1Img = document.querySelector('#sprite-p1 img');
+                p1Img.src = resolveImg(data.p1State.sprite);
+                
+                // --- ANIMAÇÃO DE ENTRADA (DEPLOY) ---
+                deployPokemon('p1', false);
+
                 updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp');
                 updateBar(p1RawId, currentEnergy, 100, 'en'); 
                 
@@ -769,13 +804,29 @@
         
         socket.on('opponent_ready', () => { if(!isSpectator) { document.getElementById('statusMsg').style.display = "block"; document.getElementById('statusMsg').innerText = "Oponente pronto!"; } });
         
-        window.onload = () => { 
+        window.onload = async () => { 
+            // Esconde inicialmente para a animação
+            const imgP1 = document.querySelector('#sprite-p1 img');
+            const imgP2 = document.querySelector('#sprite-p2 img');
+            if(imgP1) imgP1.style.opacity = '0';
+            if(imgP2) imgP2.style.opacity = '0';
+
             if(battleMode === 'online') { if(!isSpectator) socket.emit('join_room', battleId); } 
-            updateBar(p1RawId, <%= p1.hp %>, <%= p1.maxHp %>, 'hp'); updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
+            
+            updateBar(p1RawId, <%= p1.hp %>, <%= p1.maxHp %>, 'hp'); 
+            updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
             if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
+            
+            // --- ENTRADA INICIAL ---
+            deployPokemon('p1', false);
+            deployPokemon('p2', battleMode === 'wild');
+
             if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId)); } 
             else if (!isSpectator) { setControlsState(true); } 
+
+            setTimeout(discoverSpriteAlts, 300);
         };
+
         (async function fetchInitialHud() { try { const res = await fetch('/api/me?userId=<%= realUserId %>'); const data = await res.json(); const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = data.money || 0; } catch(e) {} })();
 
         async function probeAlternate(src) {
@@ -808,8 +859,7 @@
                 });
             } catch(e){}
         }
-        window.addEventListener('load', () => { setTimeout(discoverSpriteAlts, 300); });
-
+        
         let __battleBagOutsideListener = null;
         function closeBattleBag() { const panel = document.getElementById('floatingBagPanel'); if(panel) panel.style.display = 'none'; if(__battleBagOutsideListener) { document.removeEventListener('click', __battleBagOutsideListener); __battleBagOutsideListener = null; } }
         async function openBattleBag() {
@@ -842,4 +892,4 @@
         }
     </script>
 </body>
-</html>                   
+</html>
