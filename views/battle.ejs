@@ -14,21 +14,8 @@
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
         
-        /* --- LOADING SCREEN --- */
-        #global-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: var(--bg-color);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s ease-out;
-        }
+        /* --- LOADER --- */
+        #global-loader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out; }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.1); border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
         .loading-text { font-family: 'Press Start 2P', cursive; font-size: 0.8rem; color: #f1c40f; animation: pulse 1.5s infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -66,6 +53,7 @@
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
         .trainer.frame-1 { background-position-x: -100%; }
 
+        /* PARTICULAS E EFEITOS VISUAIS */
         .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 20px; height: 20px; border-radius: 50%; }
         @keyframes particleFly { 0% { transform: translate(0,0) scale(0.5); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; } }
         
@@ -73,11 +61,24 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
+        /* LISTA COMPLETA DE EFEITOS PARA NÃO SUMIR MAIS */
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
         .effect-normal { background: radial-gradient(circle, #fff, #bbb); box-shadow: 0 0 5px #fff; }
         .effect-electric { background: radial-gradient(circle, #f1c40f, #fff); box-shadow: 0 0 15px #f1c40f; }
+        .effect-ice { background: radial-gradient(circle, #74b9ff, #fff); box-shadow: 0 0 15px #74b9ff; }
+        .effect-poison { background: radial-gradient(circle, #8e44ad, #9b59b6); box-shadow: 0 0 10px #8e44ad; }
+        .effect-ground { background: radial-gradient(circle, #d35400, #e67e22); box-shadow: 0 0 10px #d35400; }
+        .effect-flying { background: radial-gradient(circle, #ecf0f1, #95a5a6); box-shadow: 0 0 10px #fff; }
+        .effect-psychic { background: radial-gradient(circle, #e056fd, #be2edd); box-shadow: 0 0 10px #e056fd; }
+        .effect-bug { background: radial-gradient(circle, #badc58, #6ab04c); box-shadow: 0 0 10px #badc58; }
+        .effect-rock { background: radial-gradient(circle, #95a5a6, #7f8c8d); box-shadow: 0 0 10px #555; }
+        .effect-ghost { background: radial-gradient(circle, #4834d4, #686de0); box-shadow: 0 0 10px #4834d4; }
+        .effect-dragon { background: radial-gradient(circle, #30336b, #130f40); box-shadow: 0 0 10px #30336b; }
+        .effect-dark { background: radial-gradient(circle, #2d3436, #000); box-shadow: 0 0 10px #000; }
+        .effect-steel { background: radial-gradient(circle, #bdc3c7, #95a5a6); box-shadow: 0 0 10px #bdc3c7; }
+        .effect-fairy { background: radial-gradient(circle, #ff9ff3, #f368e0); box-shadow: 0 0 10px #ff9ff3; }
 
         .command-bubble { position: absolute; top: -40px; left: 50%; transform: translateX(-50%) scale(0); background: #fff; color: #000; padding: 8px 12px; border-radius: 12px; border: 2px solid #000; font-family: 'Press Start 2P'; font-size: 0.5rem; white-space: nowrap; z-index: 100; opacity: 0; transition: all 0.2s; pointer-events: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
         .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); top: -60px; }
@@ -163,22 +164,22 @@
         }
         .anim-wild-appear { animation: wildSlideIn 0.8s ease-out forwards; }
 
-        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) --- */
+        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) - CORRIGIDO --- */
         @keyframes returnAnim {
             0% { transform: scale(1); filter: none; opacity: 1; }
             100% { transform: scale(0); filter: sepia(1) hue-rotate(-50deg) saturate(5) brightness(2); opacity: 0; }
         }
-        .anim-return { animation: returnAnim 0.8s forwards; }
+        /* Importante: transition: none para não brigar com a animação */
+        .anim-return { animation: returnAnim 0.8s forwards !important; transition: none !important; }
 
         @keyframes wildFaint {
             0% { transform: translateY(0); opacity: 1; }
             100% { transform: translateY(30px); opacity: 0; filter: grayscale(1); }
         }
-        .anim-faint-wild { animation: wildFaint 1s forwards; }
+        .anim-faint-wild { animation: wildFaint 1s forwards !important; transition: none !important; }
     </style>
 </head>
 <body>
-    <!-- LOADER SCREEN -->
     <div id="global-loader">
         <div class="spinner"></div>
         <div class="loading-text">CARREGANDO...</div>
@@ -189,7 +190,6 @@
         <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff;">Aguardando...</div>
         <% if(isSpectator) { %> <div class="spectator-banner">MODO ESPECTADOR</div> <% } %>
 
-        <!-- P1 HUD -->
         <div class="hud-panel hud-p1">
             <div class="poke-name"><span id="p1-name"><%= p1.name %></span> <span class="poke-lv">Lv.<span id="p1-lv"><%= p1.level %></span></span></div>
             <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
@@ -201,7 +201,6 @@
             <% } %>
         </div>
 
-        <!-- P2 HUD -->
         <div class="hud-panel hud-p2">
             <div class="poke-name"><span id="p2-name"><%= p2.name %></span> <span class="poke-lv">Lv.<span id="p2-lv"><%= p2.level %></span></span></div>
             <% if(battleMode !== 'wild') { %> <div class="trainer-sub"><%= p2.playerName || 'CPU' %></div>
@@ -210,7 +209,6 @@
             <div class="stat-text" style="text-align:right"><span id="hp-val-p2"><%= p2.hp %></span>/<span id="max-hp-p2"><%= p2.maxHp %></span></div>
         </div>
 
-        <!-- Fighter P2 -->
         <div class="fighter p2-position" id="fighter-p2">
             <div class="command-bubble" id="bubble-p2"></div>
             <div class="trainer" id="trainer-p2" data-skin="<%= p2.skin || 'char1' %>" style="<%= battleMode === 'wild' ? 'opacity:0;' : '' %>"></div>
@@ -219,7 +217,6 @@
             </div>
         </div>
 
-        <!-- Fighter P1 -->
         <div class="fighter p1-position" id="fighter-p1">
             <div class="command-bubble" id="bubble-p1"></div>
             <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>"></div>
@@ -379,19 +376,23 @@
             trainerEl.classList.remove('frame-1'); 
         }
 
-        // --- FUNÇÃO NOVA: Retorno à Pokébola (Derrota) ---
+        // --- RETORNO À POKÉBOLA (MORTE) ---
         async function returnPokemon(side) {
             const spriteImg = document.querySelector(`#sprite-${side} img`);
             if(!spriteImg) return;
 
-            // Se for selvagem, animação de desmaio simples
             if (side === 'p2' && battleMode === 'wild') {
                 spriteImg.classList.add('anim-faint-wild');
                 await wait(1000);
                 return;
             }
 
-            // Treinadores: Retorno vermelho para a bola
+            // Garante que o CSS possa agir removendo estilos inline
+            spriteImg.style.opacity = ''; 
+            spriteImg.style.transform = '';
+            
+            // Adiciona classe de animação com force-reflow
+            void spriteImg.offsetWidth;
             spriteImg.classList.add('anim-return');
             await wait(800);
         }
@@ -404,12 +405,10 @@
 
             if (!spriteImg || !fighterDiv) return;
 
-            // Remove classes anteriores (inclusive a de retorno/morte)
             spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear', 'anim-return', 'anim-faint-wild');
             spriteImg.style.opacity = '0';
-            // Reseta filtros caso venha do retorno
-            spriteImg.style.transform = 'scale(1)';
-            spriteImg.style.filter = 'none';
+            spriteImg.style.filter = '';
+            spriteImg.style.transform = '';
 
             if (isWild) {
                 await wait(300);
@@ -427,12 +426,7 @@
 
             let startX = (side === 'p1') ? 60 : 220; 
             let startY = 60;
-            
-            // --- ATUALIZAÇÃO: Bola caindo MAIS PARA TRÁS ---
-            // P1: Trazendo de 110 para 85 (mais perto do treinador em 60)
             let endX = (side === 'p1') ? 85 : 205; 
-            // P2: Trazendo de 190 para 205 (mais perto do treinador em 230)
-            
             let endY = 120;
             
             if (side === 'p2') { 
@@ -628,7 +622,6 @@
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp'); 
                     
-                    // --- DETECÇÃO DE MORTE PARA ANIMAÇÃO DE RETORNO ---
                     if (evt.newHp <= 0) {
                         await wait(200);
                         await returnPokemon(targetSide);
@@ -738,11 +731,9 @@
 
                 if (type === 'catch' && data && data.threw) await playCaptureAnimation(p2RawId, data.captured);
                 
-                // Os eventos rodam aqui. Se alguém morreu, a animação de retorno acontece dentro do playEvents
                 if (data.events) await playEvents(data.events); 
                 
                 if (data.forceSwitch) {
-                    // O modal só aparecerá depois que playEvents terminar todas as animações
                     showSwitchModal(data.switchable);
                     return;
                 }
