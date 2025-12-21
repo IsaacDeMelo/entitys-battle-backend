@@ -61,7 +61,7 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* EFEITOS */
+        /* LISTA COMPLETA DE EFEITOS */
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
@@ -407,9 +407,9 @@
             let startX = (side === 'p1') ? 85 : 205; 
             let startY = 120; // Chão
 
-            // Coordenadas FINAIS (Mão do treinador - 20/260) - Altura 95 (Cintura/Mão)
+            // Coordenadas FINAIS (Mão do treinador - 20/260) - Altura 60 (Mão)
             let endX = (side === 'p1') ? 20 : 260;
-            let endY = 95; 
+            let endY = 60; // Mão (CORRIGIDO)
 
             // Posiciona a bola inicialmente
             ball.style.left = startX + 'px';
@@ -637,9 +637,9 @@
                     const fighterDiv = document.getElementById(`fighter-${targetSide}`);
 
                     if(spriteImg) {
-                        spriteImg.classList.remove('hurt','shake');
+                        spriteImg.classList.remove('hurt', 'shake');
                         void spriteImg.offsetWidth; 
-                        spriteImg.classList.add('hurt','shake');
+                        spriteImg.classList.add('hurt', 'shake');
                     }
                     createImpact(targetSide, `effect-${lastMoveElement.toLowerCase()}`);
 
@@ -907,11 +907,15 @@
             updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
             if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
             
-            await wait(500);
-            loader.style.display = 'none';
-
+            // AGORA A ENTRADA ACONTECE ENQUANTO O LOADER FICA TRANSPARENTE
+            await wait(100); 
+            
             deployPokemon('p1', false);
             deployPokemon('p2', battleMode === 'wild');
+
+            // TERMINA DE ESPERAR O LOADER SUMIR
+            await wait(400);
+            loader.style.display = 'none';
 
             if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId)); } 
             else if (!isSpectator) { setControlsState(true); } 
