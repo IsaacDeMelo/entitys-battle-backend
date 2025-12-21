@@ -7,94 +7,31 @@
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        * { 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent; 
-            outline: none; 
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { margin: 0; padding: 0; background: #051405; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; }
-        
         div:focus { outline: none; }
 
-        /* AREA DO JOGO - BACKGROUND */
-        #gameArea { 
-            position: relative; 
-            width: 100%; 
-            max-width: 500px; 
-            height: 100%; 
-            max-height: 900px; 
-            background-color: #27ae60; 
-            /* AQUI ESTÁ O NOME CORRIGIDO: */
-            background-image: url('/uploads/forest_background.png'); 
-            
-            background-size: 100% 100%; 
-            image-rendering: pixelated; 
-            cursor: crosshair; 
-            overflow: hidden; 
-            z-index: 1; 
-            isolation: isolate; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); 
-        }
-        
-        /* Matinhos Invisíveis */
-        .grass-patch { 
-            position: absolute; 
-            z-index: 5; 
-            cursor: pointer;
-            background-color: transparent; /* Invisível */
-            border: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* Posicionamento dos matinhos */
+        #gameArea { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-color: #27ae60; background-image: url('/uploads/forest_background.png'); background-size: 100% 100%; image-rendering: pixelated; cursor: crosshair; overflow: hidden; z-index: 1; isolation: isolate; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        .grass-patch { position: absolute; z-index: 5; cursor: pointer; background-color: transparent; border: none; -webkit-tap-highlight-color: transparent; }
         #grass1 { top: 17%; left: 7%; width: 34%; height: 27%; }
         #grass2 { top: 51%; left: 50%; width: 41%; height: 24%; }
-
-        /* SAÍDA PARA A CIDADE (AGORA NA DIREITA) */
-        .lobby-exit { 
-            position: absolute; 
-            top: 40%; 
-            right: 0; 
-            width: 20px; 
-            height: 20%; 
-            z-index: 0; 
-            display: flex; 
-            align-items: center;
-            justify-content: flex-end;
-        }
-        .lobby-exit::after { 
-            content: 'CIDADE 🏙️'; 
-            position: absolute;
-            right: 5px;
-            font-family: 'Press Start 2P'; 
-            font-size: 0.5rem; 
-            color: #fff; 
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            text-shadow: 1px 1px 0 #000;
-            opacity: 0.8; 
-        }
-
-        /* Jogador */
+        .lobby-exit { position: absolute; top: 40%; right: 0; width: 20px; height: 20%; z-index: 0; display: flex; align-items: center; justify-content: flex-end; }
+        .lobby-exit::after { content: 'CIDADE 🏙️'; position: absolute; right: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #fff; writing-mode: vertical-rl; text-orientation: upright; text-shadow: 1px 1px 0 #000; opacity: 0.8; }
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4)); margin-left: -24px; margin-top: -40px; z-index: 10; transition: top 0s linear, left 0s linear; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
         .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 500; }
-        
-        /* Chat e UI */
         .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
-
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -102,7 +39,6 @@
         .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loader-text { font-size: 0.8rem; color:#f1c40f; }
-        
         .float-btn { position: fixed; bottom: 80px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
         .float-btn:active { transform: translateY(5px); box-shadow: none; }
         #floatMenu .float-btn { position: relative; right: auto; bottom: auto; margin: 0; width:48px; height:48px; border-radius:50%; }
@@ -113,11 +49,9 @@
     </style>
 </head>
 <body>
-    <!-- INCLUDE DO MENU (MODAIS E BOTÕES) -->
     <%- include('partials/menu') %>
 
     <div id="gameArea">
-        <!-- SAÍDA NA DIREITA -->
         <div class="lobby-exit"></div>
         <div class="grass-patch" id="grass1"></div>
         <div class="grass-patch" id="grass2"></div>
@@ -149,14 +83,11 @@
         // Socket Logic
         socket.on('connect', () => {
             myId = socket.id;
-            // SPAWN NA DIREITA (Centro vertical)
+            // Spawn na direita (entrada da cidade)
             let initialX = 92; 
             let initialY = 50; 
             let initialDir = 'left';
-            
-            // Se vier do lobby, garante essa posição
             if (spawnFrom === 'lobby') { initialX = 92; initialY = 50; initialDir = 'left'; }
-            
             socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
         });
         socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
@@ -168,10 +99,8 @@
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
                 const dx = data.x - currentLeft; const dy = data.y - currentTop;
                 const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
-                
                 el.style.transition = `top ${duration}s linear, left ${duration}s linear`; void el.offsetWidth; 
                 el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
-                
                 if (duration > 0) { 
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
@@ -179,7 +108,7 @@
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
                             isPlayerMoving = false; 
-                            // SAÍDA PARA CIDADE (Direita > 95)
+                            // SAÍDA PARA CIDADE
                             if (data.x > 95) { 
                                 showLoading('Voltando para a cidade...', 'right'); 
                                 setTimeout(() => { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }, 120); 
@@ -209,48 +138,6 @@
             const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
             if (grassEl) socket.emit('check_encounter', { grassId: grassEl.id, x: targetX, y: targetY });
         });
-
-        async function openPokedex() {
-            const modal = document.getElementById('modalPokedex'); if(!modal) return; modal.style.display = 'flex';
-            const grid = document.getElementById('dexGrid'); 
-            const first = document.querySelectorAll('.dex-card')[0]; 
-            if(first && !document.querySelector('.dex-card.active')) selectDexMonster(0, first); 
-            try { await fetch(`/api/pokedex?userId=<%= user._id %>`); } catch(e) {}
-        }
-        function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
-        function selectDexMonster(i, el) { 
-            const m = allMonsters[i]; 
-            const safeSprite = resolveImg(m.sprite || ''); 
-            document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); 
-            if(el) el.classList.add('active'); 
-            let evoText = '';
-            if (m.evolution && m.evolution.targetId) {
-                const targetMon = allMonsters.find(x => x.id === m.evolution.targetId);
-                const targetName = targetMon ? targetMon.name : m.evolution.targetId;
-                evoText = `<div style="margin-top:12px; color:#aaa">Evolui para: <strong>${targetName}</strong> no nível ${m.evolution.level || '—'}</div>`;
-            }
-            const left = `<div style="padding:20px; text-align:center;"><div style="width:160px; height:160px; margin:0 auto; background:#081018; border-radius:12px; display:flex; align-items:center; justify-content:center;"><img src="${safeSprite}" style="width:120px; height:120px; image-rendering:pixelated;" /></div><h2 style="margin-top:12px;">${m.name}</h2><div style="margin-top:6px;"> <span class="dex-type-tag">${m.type}</span> </div><div style="margin-top:8px; color:#aaa; font-size:0.9rem;">Catch Rate: ${m.catchRate || 0.5}</div></div>`; 
-            const stats = m.baseStats || {}; 
-            const statRow = (label, key, color) => { const val = stats[key] || 0; const pct = Math.max(2, Math.min(100, Math.round((val / 100) * 100))); return `<div class="dex-stats-row"><div class="dex-stat-label">${label}</div><div class="dex-stat-bar-bg"><div class="dex-stat-bar-fill ${key === 'hp' ? 'stat-hp' : key === 'attack' ? 'stat-atk' : key === 'defense' ? 'stat-def' : 'stat-spd'}" style="width:${pct}%"></div></div><div class="dex-stat-val">${val}</div></div>`; }; 
-            const right = `<div style="padding:20px;"><div style="font-weight:bold; color:#fff; margin-bottom:8px;">Base Stats</div>${statRow('HP','hp')}${statRow('ATK','attack')}${statRow('DEF','defense')}${statRow('SPD','speed')}<div style="margin-top:12px;"><strong style="color:#fff">Moves</strong><div class="dex-moves-list">${(m.movePool && m.movePool.length>0) ? m.movePool.map(mp => `<div class="dex-move-item">Lv.${mp.level}: ${mp.moveId}</div>`).join('') : '<div style="color:#777">Nenhum</div>'}</div></div>${evoText}</div>`; 
-            document.getElementById('dexDetailsView').innerHTML = `<div style="display:flex; gap:10px; flex-direction:row;"> <div style="width:320px;">${left}</div> <div style="flex:1;">${right}</div> </div>`; 
-        }
-        async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
-        async function loadPCData() { const tDiv = document.getElementById('pcTeamList'); const pDiv = document.getElementById('pcStorageList'); tDiv.innerHTML = 'Carregando...'; pDiv.innerHTML = 'Carregando...'; try { const res = await fetch('/api/pc?userId=<%= user._id %>'); const data = await res.json(); renderPC(data.team, data.pc); } catch(e) { tDiv.innerText='Erro'; pDiv.innerText='Erro'; } }
-        function renderPC(team, pc) { const createItem = (p, from) => `<div class="pc-item" onclick="movePokemon('${p.instanceId}', '${from}')"><img src="${resolveImg(p.sprite)}"><div class="pc-info"><div class="pc-name">${p.name} <span style="color:#00ff00">Lv.${p.level}</span></div><div class="pc-sub">HP: ${p.hp}/${p.maxHp}</div></div></div>`; document.getElementById('pcTeamList').innerHTML = team.length ? team.map(p => createItem(p, 'team')).join('') : '<div style="text-align:center;color:#004400; font-size:0.6rem;">Vazio</div>'; document.getElementById('pcStorageList').innerHTML = pc.length ? pc.map(p => createItem(p, 'pc')).join('') : '<div style="text-align:center;color:#004400; font-size:0.6rem;">Vazio</div>'; }
-        async function movePokemon(pokemonId, currentLoc) { const target = currentLoc === 'team' ? 'pc' : 'team'; try { if(target === 'team') { const teamCount = (document.getElementById('pcTeamList') || {}).querySelectorAll ? document.getElementById('pcTeamList').querySelectorAll('.pc-item') || [] : []; if(teamCount.length >= 6) { showToast('Equipe cheia (6). Remova um antes.'); return; } } const res = await fetch('/api/pc/move', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId, from: currentLoc, to: target }) }); const data = await res.json(); if(data.success) { loadPCData(); } else { showToast(data.error); } } catch(e) { showToast("Erro ao mover."); } }
-        let currentPokeId = null;
-        async function openBag() { document.getElementById('modalTeam').style.display='flex'; const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; let html = `<div style="display:flex; gap:8px; margin-bottom:12px;"><button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button><button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button><div style="flex:1"></div></div><div id="bagContentPoke">`; if (pokemons.length === 0) { html += '<p style="text-align:center">Vazio.</p>'; } else { pokemons.forEach((p, index) => { const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100)); const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0; const safeSprite = resolveImg(p.sprite); const isLead = index === 0; html += `<div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}"><div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div><div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div></div></div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}<div style="display:flex; gap:6px;"><div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div><div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div></div></div></div>`; }); } html += `</div><div id="bagContentItems" style="display:none;"><div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;"><div style="font-weight:bold; color:#f1c40f; margin-bottom:8px;">Inventário</div><div style="margin-top:6px; color:#ccc;">🔴 Pokébolas: ${pokeballs}</div><div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#ccc; background:#111; padding:8px; border-radius:4px;"><span>🍬 Rare Candy: <strong>${rareCandy}</strong></span>${rareCandy > 0 ? `<button onclick="startRareCandySelection()" style="background:#f1c40f; color:#000; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">USAR</button>` : ''}</div><div style="margin-top:10px; font-size:0.8rem; color:#aaa;">💰 Saldo: ${money}</div></div><div style="display:flex; gap:8px;"><button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button></div></div>`; content.innerHTML = html; switchBagTab('poke'); } catch(e) { content.innerHTML = 'Erro.'; } }
-        async function startRareCandySelection() { const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando equipe...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const rareCandy = data.rareCandy || 0; if(rareCandy <= 0) { openBag(); return; } let html = `<div style="text-align:center; margin-bottom:10px; color:#f1c40f;">🍬 Doces Restantes: ${rareCandy}</div><p style="text-align:center; font-size:0.8rem; color:#ccc; margin-bottom:15px;">Escolha quem vai subir de nível:</p>`; pokemons.forEach(p => { const safeSprite = resolveImg(p.sprite); html += `<div style="background:#222; padding:8px; margin-bottom:8px; border-radius:8px; display:flex; align-items:center; gap:10px;"><img src="${safeSprite}" style="width:40px; height:40px; image-rendering:pixelated;"><div style="flex:1;"><div style="font-weight:bold;">${p.name}</div><div style="font-size:0.8rem; color:#aaa;">Lv.${p.level}</div></div><button onclick="applyRareCandy('${p.instanceId}')" style="background:#f39c12; color:#000; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">DAR DOCE</button></div>`; }); html += `<button onclick="openBag()" style="width:100%; margin-top:10px; background:#555; padding:10px; border-radius:6px; color:#fff;">VOLTAR</button>`; content.innerHTML = html; } catch(e) { content.innerHTML = "Erro ao carregar."; } }
-        async function applyRareCandy(pokeId) { showLoading('Usando doce...'); try { const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast(`Nível subiu!`); startRareCandySelection(); } else { showToast(data.error || "Erro ao usar."); } } catch(e) { hideLoading(); showToast("Erro de conexão."); } }
-        function switchBagTab(tab) { const poke = document.getElementById('bagContentPoke'); const items = document.getElementById('bagContentItems'); const tP = document.getElementById('bagTabPoke'); const tI = document.getElementById('bagTabItems'); if(!poke || !items) return; if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); } else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); } }
-        async function openShop() { try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); document.getElementById('shopBalance').innerText = data.money || 0; } catch (e) { document.getElementById('shopBalance').innerText = '—'; } hideLoading(); document.getElementById('modalShop').style.display = 'flex'; }
-        async function buyItem(item) { const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1; try { const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) }); const data = await res.json(); if(data.success) { showToast('Compra bem sucedida!'); document.getElementById('shopBalance').innerText = data.money || '0'; if(document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro na compra'); } } catch(e) { alert('Erro ao conectar'); } }
-        async function abandonPokemon(instanceId) { if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return; showLoading('Libertando...', 'left'); try { const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast('Pokémon libertado.'); setTimeout(() => openBag(), 100); } else { showToast(data.error || 'Erro ao libertar.'); } } catch(e) { hideLoading(); alert('Erro de conexão.'); } }
-        async function setLead(pokeId) { const res = await fetch('/api/set-lead', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId }) }); const data = await res.json(); if(data.success) { showToast("Novo líder definido!"); openBag(); } }
-        function showMoveEditor(id, name, equipped, learned) { currentPokeId = id; const pool = (learned && learned.length > 0) ? learned : equipped; let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`; pool.forEach(moveId => { const isEquipped = equipped.includes(moveId); const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;"; html += `<div onclick="toggleMove('${moveId}', this)" class="move-chip" style="padding:8px; border:2px solid; border-radius:5px; cursor:pointer; ${style}" data-id="${moveId}">${moveId}</div>`; }); html += `</div><button onclick="saveMoves()" style="width:100%; padding:10px; margin-top:20px; background:#f1c40f; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SALVAR</button><button onclick="openBag()" style="width:100%; padding:10px; margin-top:5px; background:#555; border:none; border-radius:5px; cursor:pointer; color:white;">VOLTAR</button>`; document.getElementById('teamListContent').innerHTML = html; }
-        function toggleMove(moveId, el) { const chips = document.querySelectorAll('.move-chip'); let selected = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); }); if(el.style.background.includes('2ecc71')) { if(selected.length <= 1) { showToast("Precisa de pelo menos 1 ataque!"); return; } el.style.background = '#444'; el.style.borderColor = '#555'; } else { if(selected.length >= 4) { showToast("Máximo de 4 ataques!"); return; } el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60'; } }
-        async function saveMoves() { const chips = document.querySelectorAll('.move-chip'); let finalMoves = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); }); const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) }); const data = await res.json(); if(data.success) { showToast("Golpes salvos!"); openBag(); } else { showToast(data.error); } }
 
         function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }

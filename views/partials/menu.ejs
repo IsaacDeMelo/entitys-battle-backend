@@ -1,4 +1,4 @@
-<!-- ESTILOS DO MENU E MODAIS -->
+<!-- ESTILOS DO MENU E DOS SISTEMAS -->
 <style>
     /* BOTÕES FLUTUANTES */
     .float-btn { position: fixed; bottom: 80px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
@@ -10,7 +10,7 @@
     .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
     .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
     
-    /* PC THEME */
+    /* PC THEME (Retro) */
     #modalPC .modal-content { max-width: 700px; background: #001100; border: 4px solid #004400; border-radius: 10px; font-family: 'Press Start 2P', monospace; box-shadow: 0 0 30px rgba(0,255,0,0.2); }
     #modalPC .close-btn { background: #003300; border: 2px solid #00ff00; color: #00ff00; border-radius: 4px; }
     .pc-screen { background: repeating-linear-gradient(0deg, rgba(0, 20, 0, 0.2), rgba(0, 20, 0, 0.2) 1px, transparent 1px, transparent 2px); }
@@ -24,7 +24,7 @@
     .pc-name { color: #ccffcc; font-size: 0.65rem; margin-bottom: 4px; }
     .pc-sub { color: #00aa00; font-size: 0.5rem; }
 
-    /* TEAM/BAG */
+    /* TEAM/BAG STYLES */
     .team-list-item { background: #222; border: 1px solid #444; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
     .team-list-item:active { background: #333; transform: scale(0.98); }
     .team-sprite { width: 50px; height: 50px; image-rendering: pixelated; background: #333; border-radius: 50%; }
@@ -35,7 +35,7 @@
     .tab-btn.active { color: #fff; background: #1f2533; border-bottom-color: #3498db; }
     .move-chip { font-family: 'Press Start 2P'; font-size: 0.6rem; text-align: center; color: white; text-shadow: 1px 1px 0 #000; flex: 1; min-width: 100px; }
 
-    /* DEX STYLES - RESPONSIVO */
+    /* DEX STYLES (Responsivo) */
     #modalPokedex .modal-content { width: 95%; max-width: 900px; height: 600px; padding: 0; border: 2px solid #00d2ff; border-radius: 15px; background: #0b0f19; overflow: hidden; display: flex; flex-direction: row; font-family: 'Rajdhani', sans-serif; }
     .dex-sidebar { width: 320px; background: rgba(255,255,255,0.03); border-right: 1px solid #333; display: flex; flex-direction: column; }
     .dex-search-box { padding: 15px; border-bottom: 1px solid #333; }
@@ -66,7 +66,7 @@
     }
 </style>
 
-<!-- HTML DO MENU E MODAIS -->
+<!-- BOTÃO FLUTUANTE (MENU) -->
 <div id="floatMenu" style="position:fixed; right:16px; bottom:120px; z-index:9999; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:12px;">
     <button id="menuToggle" class="float-btn menu-toggle" aria-label="Menu" onclick="toggleFloatMenu()">☰</button>
     <div id="menuItems" style="display:none; flex-direction:column-reverse; align-items:flex-end; gap:10px;">
@@ -76,7 +76,7 @@
     </div>
 </div>
 
-<!-- Modal PC -->
+<!-- MODAL PC -->
 <div class="modal-overlay" id="modalPC">
     <div class="modal-content pc-screen">
         <button class="close-btn" onclick="closeModal('modalPC')">X</button>
@@ -89,44 +89,63 @@
     </div>
 </div>
 
-<!-- Modal Loja (Físico apenas, mas o código precisa estar aqui para ser chamado) -->
+<!-- MODAL LOJA (Sem botão no menu, apenas via prédio) -->
 <div class="modal-overlay" id="modalShop"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalShop')">X</button><h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:10px;">LOJA</h2><div style="display:flex; flex-direction:column; gap:10px;"><div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;"><div><div style="font-weight:bold">Pokébola</div><div style="font-size:0.8rem; color:#aaa">Captura pokémons</div></div><div style="display:flex; gap:8px; align-items:center;"><input id="buyPokeballQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;"><button onclick="buyItem('pokeball')" style="background:#2ecc71; border:none; padding:8px; border-radius:6px;">COMPRAR (50)</button></div></div><div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;"><div><div style="font-weight:bold">Rare Candy</div><div style="font-size:0.8rem; color:#aaa">+1 Nível (instantâneo)</div></div><div style="display:flex; gap:8px; align-items:center;"><input id="buyRareQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;"><button onclick="buyItem('rareCandy')" style="background:#f1c40f; border:none; padding:8px; border-radius:6px;">COMPRAR (2000)</button></div></div><div style="text-align:center; color:#aaa; font-size:0.85rem;">Seu saldo: <span id="shopBalance">0</span></div></div></div></div>
 
-<!-- Modal Bag -->
+<!-- MODAL TEAM/BAG -->
 <div class="modal-overlay" id="modalTeam"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalTeam')">X</button><h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2><div id="teamListContent">Carregando...</div></div></div>
 
-<!-- Modal Pokedex -->
+<!-- MODAL POKEDEX -->
 <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div class="dex-sidebar"><div class="dex-search-box"><input type="text" id="dexSearch" class="dex-search-input" placeholder="🔍" onkeyup="filterDex()"></div><div class="dex-grid" id="dexGrid"><% if(typeof entities !== 'undefined') { entities.forEach((e, index) => { %><div class="dex-card" onclick="selectDexMonster(<%= index %>, this)" data-name="<%= e.name.toLowerCase() %>"><% if(e.sprite) { %> <img src="<%= e.sprite %>" class="dex-card-img"> <% } else { %> ❓ <% } %><div class="dex-card-name"><%= e.name %></div></div><% }) } %></div></div><div class="dex-main"><div class="dex-content-wrapper" id="dexDetailsView">Selecione um monstro.</div></div></div></div>
 
-<!-- SCRIPTS GERAIS DO MENU -->
+<!-- LÓGICA JAVASCRIPT DOS SISTEMAS -->
 <script>
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-    function toggleFloatMenu() { const items = document.getElementById('menuItems'); if(!items) return; items.style.display = items.style.display === 'flex' ? 'none' : 'flex'; }
-    document.addEventListener('click', (ev) => { try { const menu = document.getElementById('floatMenu'); if(!menu) return; if(!menu.contains(ev.target)) { const items = document.getElementById('menuItems'); if(items) items.style.display = 'none'; } } catch(e) {} });
+    // Variáveis globais para o menu
+    let currentPokeId = null;
 
-    // POKEDEX LOGIC
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    
+    function toggleFloatMenu() { 
+        const items = document.getElementById('menuItems'); 
+        if(!items) return; 
+        items.style.display = items.style.display === 'flex' ? 'none' : 'flex'; 
+    }
+    
+    // Fechar menu ao clicar fora
+    document.addEventListener('click', (ev) => { 
+        try { 
+            const menu = document.getElementById('floatMenu'); 
+            if(!menu) return; 
+            if(!menu.contains(ev.target)) { 
+                const items = document.getElementById('menuItems'); 
+                if(items) items.style.display = 'none'; 
+            } 
+        } catch(e) {} 
+    });
+
+    // --- POKEDEX ---
     async function openPokedex() {
         const modal = document.getElementById('modalPokedex'); if(!modal) return; modal.style.display = 'flex';
-        const grid = document.getElementById('dexGrid'); const details = document.getElementById('dexDetailsView');
-        // Select first item if nothing selected
+        const grid = document.getElementById('dexGrid'); 
+        
+        // Seleciona o primeiro se nenhum estiver ativo
         const first = document.querySelectorAll('.dex-card')[0]; 
         if(first && !document.querySelector('.dex-card.active')) selectDexMonster(0, first); 
         
-        try {
-            const res = await fetch(`/api/pokedex?userId=<%= user._id %>`);
-            if(res.ok) {
-                const data = await res.json();
-                const captured = (data.list || []).map(x => (typeof x === 'string') ? x.toLowerCase() : (x.name || '').toLowerCase());
-                // Lógica de "pintar" ou marcar capturados poderia vir aqui, 
-                // mas atualmente mostramos todos e só carregamos a lista do usuário para saber (se quisesse esconder os não pegos)
-            }
-        } catch(e) {}
+        // Carrega lista capturada (apenas para atualizar status se quiser implementar depois)
+        try { await fetch(`/api/pokedex?userId=<%= user._id %>`); } catch(e) {}
     }
-    function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
+
+    function filterDex() { 
+        const v = document.getElementById('dexSearch').value.toLowerCase(); 
+        document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); 
+    }
+
     function selectDexMonster(i, el) { 
-        // Usamos allMonsters que deve ser definido no arquivo principal
+        // allMonsters deve ser passado pela view principal (room ou forest)
         const m = allMonsters[i]; 
-        const safeSprite = resolveImg(m.sprite || ''); 
+        const safeSprite = (typeof resolveImg === 'function') ? resolveImg(m.sprite || '') : (m.sprite || ''); 
+        
         document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); 
         if(el) el.classList.add('active'); 
         
@@ -148,8 +167,9 @@
         document.getElementById('dexDetailsView').innerHTML = `<div style="display:flex; gap:10px; flex-direction:row;"> <div style="width:320px;">${left}</div> <div style="flex:1;">${right}</div> </div>`; 
     }
 
-    // PC LOGIC
+    // --- PC ---
     async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
+    
     async function loadPCData() {
         const tDiv = document.getElementById('pcTeamList'); const pDiv = document.getElementById('pcStorageList');
         tDiv.innerHTML = 'Carregando...'; pDiv.innerHTML = 'Carregando...';
@@ -157,37 +177,232 @@
             const res = await fetch('/api/pc?userId=<%= user._id %>'); const data = await res.json(); renderPC(data.team, data.pc);
         } catch(e) { tDiv.innerText='Erro'; pDiv.innerText='Erro'; }
     }
+    
     function renderPC(team, pc) {
-        const createItem = (p, from) => `<div class="pc-item" onclick="movePokemon('${p.instanceId}', '${from}')"><img src="${resolveImg(p.sprite)}"><div class="pc-info"><div class="pc-name">${p.name} <span style="color:#00ff00">Lv.${p.level}</span></div><div class="pc-sub">HP: ${p.hp}/${p.maxHp}</div></div></div>`;
+        const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+        const createItem = (p, from) => `<div class="pc-item" onclick="movePokemon('${p.instanceId}', '${from}')"><img src="${_resImg(p.sprite)}"><div class="pc-info"><div class="pc-name">${p.name} <span style="color:#00ff00">Lv.${p.level}</span></div><div class="pc-sub">HP: ${p.hp}/${p.maxHp}</div></div></div>`;
         document.getElementById('pcTeamList').innerHTML = team.length ? team.map(p => createItem(p, 'team')).join('') : '<div style="text-align:center;color:#004400; font-size:0.6rem;">Vazio</div>';
         document.getElementById('pcStorageList').innerHTML = pc.length ? pc.map(p => createItem(p, 'pc')).join('') : '<div style="text-align:center;color:#004400; font-size:0.6rem;">Vazio</div>';
     }
+    
     async function movePokemon(pokemonId, currentLoc) {
         const target = currentLoc === 'team' ? 'pc' : 'team';
         try {
-            if(target === 'team') { const teamCount = (document.getElementById('pcTeamList') || {}).querySelectorAll ? document.getElementById('pcTeamList').querySelectorAll('.pc-item') || [] : []; if(teamCount.length >= 6) { showToast('Equipe cheia (6). Remova um antes.'); return; } }
+            if(target === 'team') { 
+                const teamCount = (document.getElementById('pcTeamList').querySelectorAll('.pc-item') || []).length; 
+                if(teamCount >= 6) { 
+                    if(typeof showToast === 'function') showToast('Equipe cheia (6). Remova um antes.');
+                    else alert('Equipe cheia (6). Remova um antes.');
+                    return; 
+                } 
+            }
             const res = await fetch('/api/pc/move', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId, from: currentLoc, to: target }) });
             const data = await res.json();
-            if(data.success) { loadPCData(); } else { showToast(data.error); }
-        } catch(e) { showToast("Erro ao mover."); }
+            if(data.success) { loadPCData(); } else { alert(data.error); }
+        } catch(e) { alert("Erro ao mover."); }
     }
 
-    // BAG LOGIC
-    let currentPokeId = null;
-    async function openBag() { document.getElementById('modalTeam').style.display='flex'; const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; let html = `<div style="display:flex; gap:8px; margin-bottom:12px;"><button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button><button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button><div style="flex:1"></div></div><div id="bagContentPoke">`; if (pokemons.length === 0) { html += '<p style="text-align:center">Vazio.</p>'; } else { pokemons.forEach((p, index) => { const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100)); const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0; const safeSprite = resolveImg(p.sprite); const isLead = index === 0; html += `<div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}"><div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div><div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div></div></div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}<div style="display:flex; gap:6px;"><div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div><div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div></div></div></div>`; }); } html += `</div><div id="bagContentItems" style="display:none;"><div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;"><div style="font-weight:bold; color:#f1c40f; margin-bottom:8px;">Inventário</div><div style="margin-top:6px; color:#ccc;">🔴 Pokébolas: ${pokeballs}</div><div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#ccc; background:#111; padding:8px; border-radius:4px;"><span>🍬 Rare Candy: <strong>${rareCandy}</strong></span>${rareCandy > 0 ? `<button onclick="startRareCandySelection()" style="background:#f1c40f; color:#000; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">USAR</button>` : ''}</div><div style="margin-top:10px; font-size:0.8rem; color:#aaa;">💰 Saldo: ${money}</div></div><div style="display:flex; gap:8px;"><button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button></div></div>`; content.innerHTML = html; switchBagTab('poke'); } catch(e) { content.innerHTML = 'Erro.'; } }
-    async function startRareCandySelection() { const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando equipe...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const rareCandy = data.rareCandy || 0; if(rareCandy <= 0) { openBag(); return; } let html = `<div style="text-align:center; margin-bottom:10px; color:#f1c40f;">🍬 Doces Restantes: ${rareCandy}</div><p style="text-align:center; font-size:0.8rem; color:#ccc; margin-bottom:15px;">Escolha quem vai subir de nível:</p>`; pokemons.forEach(p => { const safeSprite = resolveImg(p.sprite); html += `<div style="background:#222; padding:8px; margin-bottom:8px; border-radius:8px; display:flex; align-items:center; gap:10px;"><img src="${safeSprite}" style="width:40px; height:40px; image-rendering:pixelated;"><div style="flex:1;"><div style="font-weight:bold;">${p.name}</div><div style="font-size:0.8rem; color:#aaa;">Lv.${p.level}</div></div><button onclick="applyRareCandy('${p.instanceId}')" style="background:#f39c12; color:#000; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">DAR DOCE</button></div>`; }); html += `<button onclick="openBag()" style="width:100%; margin-top:10px; background:#555; padding:10px; border-radius:6px; color:#fff;">VOLTAR</button>`; content.innerHTML = html; } catch(e) { content.innerHTML = "Erro ao carregar."; } }
-    async function applyRareCandy(pokeId) { showLoading('Usando doce...'); try { const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast(`Nível subiu!`); startRareCandySelection(); } else { showToast(data.error || "Erro ao usar."); } } catch(e) { hideLoading(); showToast("Erro de conexão."); } }
-    function switchBagTab(tab) { const poke = document.getElementById('bagContentPoke'); const items = document.getElementById('bagContentItems'); const tP = document.getElementById('bagTabPoke'); const tI = document.getElementById('bagTabItems'); if(!poke || !items) return; if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); } else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); } }
+    // --- BAG & SHOP ---
+    async function openBag() { 
+        document.getElementById('modalTeam').style.display='flex'; 
+        const content = document.getElementById('teamListContent'); 
+        content.innerHTML = 'Carregando...'; 
+        try { 
+            const res = await fetch('/api/me?userId=<%= user._id %>'); 
+            const data = await res.json(); 
+            const pokemons = data.team || []; 
+            const money = data.money || 0; 
+            const pokeballs = data.pokeballs || 0; 
+            const rareCandy = data.rareCandy || 0; 
+            const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+
+            let html = `<div style="display:flex; gap:8px; margin-bottom:12px;"><button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button><button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button><div style="flex:1"></div></div><div id="bagContentPoke">`; 
+            
+            if (pokemons.length === 0) { html += '<p style="text-align:center">Vazio.</p>'; } 
+            else { 
+                pokemons.forEach((p, index) => { 
+                    const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100)); 
+                    const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0; 
+                    const safeSprite = _resImg(p.sprite); 
+                    const isLead = index === 0; 
+                    
+                    html += `<div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}">
+                        <div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;">
+                            <img src="${safeSprite}" class="team-sprite">
+                            <div class="team-info">
+                                <div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div>
+                                <div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
+                                <div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div>
+                                <div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div>
+                                <div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+                            ${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}
+                            <div style="display:flex; gap:6px;">
+                                <div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div>
+                                <div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div>
+                            </div>
+                        </div>
+                    </div>`; 
+                }); 
+            } 
+            html += `</div><div id="bagContentItems" style="display:none;"><div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;"><div style="font-weight:bold; color:#f1c40f; margin-bottom:8px;">Inventário</div><div style="margin-top:6px; color:#ccc;">🔴 Pokébolas: ${pokeballs}</div><div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#ccc; background:#111; padding:8px; border-radius:4px;"><span>🍬 Rare Candy: <strong>${rareCandy}</strong></span>${rareCandy > 0 ? `<button onclick="startRareCandySelection()" style="background:#f1c40f; color:#000; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">USAR</button>` : ''}</div><div style="margin-top:10px; font-size:0.8rem; color:#aaa;">💰 Saldo: ${money}</div></div><div style="display:flex; gap:8px;"><button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button></div></div>`; 
+            content.innerHTML = html; 
+            switchBagTab('poke'); 
+        } catch(e) { content.innerHTML = 'Erro.'; } 
+    }
+
+    async function startRareCandySelection() { 
+        const content = document.getElementById('teamListContent'); 
+        content.innerHTML = 'Carregando equipe...'; 
+        try { 
+            const res = await fetch('/api/me?userId=<%= user._id %>'); 
+            const data = await res.json(); 
+            const pokemons = data.team || []; 
+            const rareCandy = data.rareCandy || 0; 
+            const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+
+            if(rareCandy <= 0) { openBag(); return; } 
+            
+            let html = `<div style="text-align:center; margin-bottom:10px; color:#f1c40f;">🍬 Doces Restantes: ${rareCandy}</div><p style="text-align:center; font-size:0.8rem; color:#ccc; margin-bottom:15px;">Escolha quem vai subir de nível:</p>`; 
+            pokemons.forEach(p => { 
+                const safeSprite = _resImg(p.sprite); 
+                html += `<div style="background:#222; padding:8px; margin-bottom:8px; border-radius:8px; display:flex; align-items:center; gap:10px;"><img src="${safeSprite}" style="width:40px; height:40px; image-rendering:pixelated;"><div style="flex:1;"><div style="font-weight:bold;">${p.name}</div><div style="font-size:0.8rem; color:#aaa;">Lv.${p.level}</div></div><button onclick="applyRareCandy('${p.instanceId}')" style="background:#f39c12; color:#000; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">DAR DOCE</button></div>`; 
+            }); 
+            html += `<button onclick="openBag()" style="width:100%; margin-top:10px; background:#555; padding:10px; border-radius:6px; color:#fff;">VOLTAR</button>`; 
+            content.innerHTML = html; 
+        } catch(e) { content.innerHTML = "Erro ao carregar."; } 
+    }
+
+    async function applyRareCandy(pokeId) { 
+        if(typeof showLoading === 'function') showLoading('Usando doce...'); 
+        try { 
+            const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) }); 
+            const data = await res.json(); 
+            if(typeof hideLoading === 'function') hideLoading(); 
+            if(data.success) { 
+                if(typeof showToast === 'function') showToast(`Nível subiu!`); 
+                else alert('Nível subiu!');
+                startRareCandySelection(); 
+            } else { 
+                if(typeof showToast === 'function') showToast(data.error || "Erro ao usar."); 
+                else alert(data.error);
+            } 
+        } catch(e) { 
+            if(typeof hideLoading === 'function') hideLoading(); 
+            alert("Erro de conexão."); 
+        } 
+    }
+
+    function switchBagTab(tab) { 
+        const poke = document.getElementById('bagContentPoke'); 
+        const items = document.getElementById('bagContentItems'); 
+        const tP = document.getElementById('bagTabPoke'); 
+        const tI = document.getElementById('bagTabItems'); 
+        if(!poke || !items) return; 
+        if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); } 
+        else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); } 
+    }
+
     async function openShop() { 
-        try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); document.getElementById('shopBalance').innerText = data.money || 0; } catch (e) { document.getElementById('shopBalance').innerText = '—'; } 
-        // Importante: A função showLoading deve estar no arquivo pai, mas aqui chamamos hideLoading
+        try { 
+            const res = await fetch('/api/me?userId=<%= user._id %>'); 
+            const data = await res.json(); 
+            document.getElementById('shopBalance').innerText = data.money || 0; 
+        } catch (e) { document.getElementById('shopBalance').innerText = '—'; } 
         if(typeof hideLoading === 'function') hideLoading(); 
         document.getElementById('modalShop').style.display = 'flex'; 
     }
-    async function buyItem(item) { const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1; try { const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) }); const data = await res.json(); if(data.success) { showToast('Compra bem sucedida!'); document.getElementById('shopBalance').innerText = data.money || '0'; if(document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro na compra'); } } catch(e) { alert('Erro ao conectar'); } }
-    async function abandonPokemon(instanceId) { if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return; showLoading('Libertando...', 'left'); try { const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast('Pokémon libertado.'); setTimeout(() => openBag(), 100); } else { showToast(data.error || 'Erro ao libertar.'); } } catch(e) { hideLoading(); alert('Erro de conexão.'); } }
-    async function setLead(pokeId) { const res = await fetch('/api/set-lead', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId }) }); const data = await res.json(); if(data.success) { showToast("Novo líder definido!"); openBag(); } }
-    function showMoveEditor(id, name, equipped, learned) { currentPokeId = id; const pool = (learned && learned.length > 0) ? learned : equipped; let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`; pool.forEach(moveId => { const isEquipped = equipped.includes(moveId); const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;"; html += `<div onclick="toggleMove('${moveId}', this)" class="move-chip" style="padding:8px; border:2px solid; border-radius:5px; cursor:pointer; ${style}" data-id="${moveId}">${moveId}</div>`; }); html += `</div><button onclick="saveMoves()" style="width:100%; padding:10px; margin-top:20px; background:#f1c40f; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SALVAR</button><button onclick="openBag()" style="width:100%; padding:10px; margin-top:5px; background:#555; border:none; border-radius:5px; cursor:pointer; color:white;">VOLTAR</button>`; document.getElementById('teamListContent').innerHTML = html; }
-    function toggleMove(moveId, el) { const chips = document.querySelectorAll('.move-chip'); let selected = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); }); if(el.style.background.includes('2ecc71')) { if(selected.length <= 1) { showToast("Precisa de pelo menos 1 ataque!"); return; } el.style.background = '#444'; el.style.borderColor = '#555'; } else { if(selected.length >= 4) { showToast("Máximo de 4 ataques!"); return; } el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60'; } }
-    async function saveMoves() { const chips = document.querySelectorAll('.move-chip'); let finalMoves = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); }); const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) }); const data = await res.json(); if(data.success) { showToast("Golpes salvos!"); openBag(); } else { showToast(data.error); } }
+
+    async function buyItem(item) { 
+        const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1; 
+        try { 
+            const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) }); 
+            const data = await res.json(); 
+            if(data.success) { 
+                if(typeof showToast === 'function') showToast('Compra bem sucedida!'); else alert('Compra bem sucedida!');
+                document.getElementById('shopBalance').innerText = data.money || '0'; 
+                if(document.getElementById('modalTeam').style.display === 'flex') openBag(); 
+            } else { 
+                if(typeof showToast === 'function') showToast(data.error || 'Erro na compra'); else alert(data.error);
+            } 
+        } catch(e) { alert('Erro ao conectar'); } 
+    }
+
+    async function abandonPokemon(instanceId) { 
+        if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return; 
+        if(typeof showLoading === 'function') showLoading('Libertando...', 'left'); 
+        try { 
+            const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) }); 
+            const data = await res.json(); 
+            if(typeof hideLoading === 'function') hideLoading(); 
+            if(data.success) { 
+                if(typeof showToast === 'function') showToast('Pokémon libertado.'); else alert('Pokémon libertado.');
+                setTimeout(() => openBag(), 100); 
+            } else { 
+                if(typeof showToast === 'function') showToast(data.error || 'Erro ao libertar.'); else alert(data.error);
+            } 
+        } catch(e) { 
+            if(typeof hideLoading === 'function') hideLoading(); 
+            alert('Erro de conexão.'); 
+        } 
+    }
+
+    async function setLead(pokeId) { 
+        const res = await fetch('/api/set-lead', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId }) }); 
+        const data = await res.json(); 
+        if(data.success) { 
+            if(typeof showToast === 'function') showToast("Novo líder definido!"); else alert("Novo líder definido!");
+            openBag(); 
+        } 
+    }
+
+    function showMoveEditor(id, name, equipped, learned) { 
+        currentPokeId = id; 
+        const pool = (learned && learned.length > 0) ? learned : equipped; 
+        let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`; 
+        pool.forEach(moveId => { 
+            const isEquipped = equipped.includes(moveId); 
+            const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;"; 
+            html += `<div onclick="toggleMove('${moveId}', this)" class="move-chip" style="padding:8px; border:2px solid; border-radius:5px; cursor:pointer; ${style}" data-id="${moveId}">${moveId}</div>`; 
+        }); 
+        html += `</div><button onclick="saveMoves()" style="width:100%; padding:10px; margin-top:20px; background:#f1c40f; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SALVAR</button><button onclick="openBag()" style="width:100%; padding:10px; margin-top:5px; background:#555; border:none; border-radius:5px; cursor:pointer; color:white;">VOLTAR</button>`; 
+        document.getElementById('teamListContent').innerHTML = html; 
+    }
+
+    function toggleMove(moveId, el) { 
+        const chips = document.querySelectorAll('.move-chip'); 
+        let selected = []; 
+        chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); }); 
+        if(el.style.background.includes('2ecc71')) { 
+            if(selected.length <= 1) { 
+                if(typeof showToast === 'function') showToast("Precisa de pelo menos 1 ataque!"); 
+                else alert("Precisa de pelo menos 1 ataque!");
+                return; 
+            } 
+            el.style.background = '#444'; el.style.borderColor = '#555'; 
+        } else { 
+            if(selected.length >= 4) { 
+                if(typeof showToast === 'function') showToast("Máximo de 4 ataques!"); 
+                else alert("Máximo de 4 ataques!");
+                return; 
+            } 
+            el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60'; 
+        } 
+    }
+
+    async function saveMoves() { 
+        const chips = document.querySelectorAll('.move-chip'); 
+        let finalMoves = []; 
+        chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); }); 
+        const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) }); 
+        const data = await res.json(); 
+        if(data.success) { 
+            if(typeof showToast === 'function') showToast("Golpes salvos!"); else alert("Golpes salvos!");
+            openBag(); 
+        } else { 
+            if(typeof showToast === 'function') showToast(data.error); else alert(data.error);
+        } 
+    }
 </script>
