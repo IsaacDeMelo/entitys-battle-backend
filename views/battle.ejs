@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Batalha</title>
-    <!-- PRELOAD DA BOLA PARA EVITAR QUE ELA FIQUE INVISÍVEL NA PRIMEIRA VEZ -->
     <link rel="preload" as="image" href="/uploads/catchcube.gif">
     
     <script src="/socket.io/socket.io.js"></script>
@@ -30,21 +29,8 @@
             justify-content: center;
             transition: opacity 0.5s ease-out;
         }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(255, 255, 255, 0.1);
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        .loading-text {
-            font-family: 'Press Start 2P', cursive;
-            font-size: 0.8rem;
-            color: #f1c40f;
-            animation: pulse 1.5s infinite;
-        }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.1); border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        .loading-text { font-family: 'Press Start 2P', cursive; font-size: 0.8rem; color: #f1c40f; animation: pulse 1.5s infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
@@ -61,13 +47,10 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
-        /* --- POSICIONAMENTO ATUALIZADO (42%) --- */
         .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 42%; transform: translateY(-50%); transition: opacity 0.5s; }
-        
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
         .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 21; background-position-y: 33.33%; } 
         .fighter.p2-position .sprite { order: 1; z-index: 22; }
-        
         .fighter.p1-position { left: 5%; justify-content: flex-start; }
         .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 21; background-position-y: 66.66%; }
         .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
@@ -78,7 +61,6 @@
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
         .sprite img.hurt { filter: brightness(1.6) saturate(1.1) sepia(0.15) hue-rotate(-10deg); }
 
-        /* --- TREINADOR ATUALIZADO (20px) --- */
         .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; top: 20px; }
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
@@ -167,6 +149,7 @@
 
         .deploy-ball { position: absolute; width: 20px; height: 20px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 100; pointer-events: none; }
         
+        /* ANIMAÇÕES DE ENTRADA (DEPLOY) */
         @keyframes popOut { 
             0% { transform: scale(0); filter: brightness(10) sepia(1) hue-rotate(-50deg) saturate(5); opacity: 0; }
             40% { transform: scale(1.2); filter: brightness(5) sepia(1) hue-rotate(-50deg) saturate(5); opacity: 1; }
@@ -179,6 +162,19 @@
             100% { transform: translateX(0); opacity: 1; }
         }
         .anim-wild-appear { animation: wildSlideIn 0.8s ease-out forwards; }
+
+        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) --- */
+        @keyframes returnAnim {
+            0% { transform: scale(1); filter: none; opacity: 1; }
+            100% { transform: scale(0); filter: sepia(1) hue-rotate(-50deg) saturate(5) brightness(2); opacity: 0; }
+        }
+        .anim-return { animation: returnAnim 0.8s forwards; }
+
+        @keyframes wildFaint {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(30px); opacity: 0; filter: grayscale(1); }
+        }
+        .anim-faint-wild { animation: wildFaint 1s forwards; }
     </style>
 </head>
 <body>
@@ -383,6 +379,23 @@
             trainerEl.classList.remove('frame-1'); 
         }
 
+        // --- FUNÇÃO NOVA: Retorno à Pokébola (Derrota) ---
+        async function returnPokemon(side) {
+            const spriteImg = document.querySelector(`#sprite-${side} img`);
+            if(!spriteImg) return;
+
+            // Se for selvagem, animação de desmaio simples
+            if (side === 'p2' && battleMode === 'wild') {
+                spriteImg.classList.add('anim-faint-wild');
+                await wait(1000);
+                return;
+            }
+
+            // Treinadores: Retorno vermelho para a bola
+            spriteImg.classList.add('anim-return');
+            await wait(800);
+        }
+
         async function deployPokemon(side, isWild = false) {
             const fighterDiv = document.getElementById(`fighter-${side}`);
             const spriteDiv = document.getElementById(`sprite-${side}`);
@@ -391,8 +404,12 @@
 
             if (!spriteImg || !fighterDiv) return;
 
-            spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear');
+            // Remove classes anteriores (inclusive a de retorno/morte)
+            spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear', 'anim-return', 'anim-faint-wild');
             spriteImg.style.opacity = '0';
+            // Reseta filtros caso venha do retorno
+            spriteImg.style.transform = 'scale(1)';
+            spriteImg.style.filter = 'none';
 
             if (isWild) {
                 await wait(300);
@@ -408,13 +425,14 @@
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
-            // Ajuste das coordenadas iniciais
             let startX = (side === 'p1') ? 60 : 220; 
             let startY = 60;
             
-            // --- CORREÇÃO TRAJETÓRIA ---
-            // Trazemos o endX mais para "trás" (perto do treinador/centro)
-            let endX = (side === 'p1') ? 110 : 190; // Antes era 140 / 160
+            // --- ATUALIZAÇÃO: Bola caindo MAIS PARA TRÁS ---
+            // P1: Trazendo de 110 para 85 (mais perto do treinador em 60)
+            let endX = (side === 'p1') ? 85 : 205; 
+            // P2: Trazendo de 190 para 205 (mais perto do treinador em 230)
+            
             let endY = 120;
             
             if (side === 'p2') { 
@@ -609,6 +627,13 @@
 
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp'); 
+                    
+                    // --- DETECÇÃO DE MORTE PARA ANIMAÇÃO DE RETORNO ---
+                    if (evt.newHp <= 0) {
+                        await wait(200);
+                        await returnPokemon(targetSide);
+                    }
+                    
                     await wait(500);
 
                 } else if (evt.type === 'HEAL') { 
@@ -712,9 +737,12 @@
                 }
 
                 if (type === 'catch' && data && data.threw) await playCaptureAnimation(p2RawId, data.captured);
+                
+                // Os eventos rodam aqui. Se alguém morreu, a animação de retorno acontece dentro do playEvents
                 if (data.events) await playEvents(data.events); 
                 
                 if (data.forceSwitch) {
+                    // O modal só aparecerá depois que playEvents terminar todas as animações
                     showSwitchModal(data.switchable);
                     return;
                 }
