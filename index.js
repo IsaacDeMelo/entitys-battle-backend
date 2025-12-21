@@ -39,17 +39,15 @@ const roomSpectators = {};
 const GRASS_PATCHES = ['grass1', 'grass2'];
 const GRASS_CHANCE = { grass1: 0.35, grass2: 0.35 };
 
-// --- FUNÇÃO DE RARIDADE (NOVO) ---
+// --- FUNÇÃO DE RARIDADE ---
 function pickWeightedPokemon(pokemonList) {
     let totalWeight = 0;
-    // Soma todos os pesos (ex: 100 + 50 + 1)
     pokemonList.forEach(p => {
         totalWeight += (p.spawnChance || 1); 
     });
 
     let random = Math.random() * totalWeight;
 
-    // Percorre subtraindo até achar o vencedor
     for (let i = 0; i < pokemonList.length; i++) {
         const weight = pokemonList[i].spawnChance || 1;
         if (random < weight) {
@@ -57,7 +55,7 @@ function pickWeightedPokemon(pokemonList) {
         }
         random -= weight;
     }
-    return pokemonList[0]; // Fallback
+    return pokemonList[0]; 
 }
 
 async function seedDatabase() { try { const count = await BasePokemon.countDocuments(); if (count === 0) { const starters = [ { id: 'bulbasaur', name: 'Bulbasaur', type: 'plant', baseStats: { hp: 45, energy: 25, attack: 49, defense: 49, speed: 45 }, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png', spawnLocation: 'forest', minSpawnLevel: 2, maxSpawnLevel: 5, catchRate: 0.6, spawnChance: 20, movePool: [{level: 1, moveId: 'tackle'}, {level: 3, moveId: 'vine_whip'}, {level: 8, moveId: 'solar_beam'}] }, { id: 'charmander', name: 'Charmander', type: 'fire', baseStats: { hp: 39, energy: 25, attack: 52, defense: 43, speed: 65 }, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png', spawnLocation: 'forest', minSpawnLevel: 2, maxSpawnLevel: 5, catchRate: 0.6, spawnChance: 20, movePool: [{level: 1, moveId: 'scratch'}, {level: 3, moveId: 'ember'}, {level: 8, moveId: 'flamethrower'}] }, { id: 'squirtle', name: 'Squirtle', type: 'water', baseStats: { hp: 44, energy: 25, attack: 48, defense: 65, speed: 43 }, sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png', spawnLocation: 'forest', minSpawnLevel: 2, maxSpawnLevel: 5, catchRate: 0.6, spawnChance: 20, movePool: [{level: 1, moveId: 'tackle'}, {level: 3, moveId: 'water_gun'}, {level: 8, moveId: 'hydro_pump'}] } ]; await BasePokemon.insertMany(starters); } } catch (e) { console.error(e); } }
@@ -70,26 +68,41 @@ app.get('/', async (req, res) => { const starters = await BasePokemon.find().lim
 app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/lobby?userId=' + user._id); } else { const starters = await BasePokemon.find().limit(3).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
 app.post('/register', async (req, res) => { const { username, password, skin, starterId } = req.body; try { let starterTeam = []; if (starterId) { const starter = await BasePokemon.findOne({ id: starterId }); if (starter) { const initialStats = calculateStats(starter.baseStats, 1); let initialMoves = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); if(initialMoves.length === 0) initialMoves = ['tackle']; starterTeam.push({ baseId: starter.id, nickname: starter.name, level: 1, currentHp: initialStats.hp, stats: initialStats, moves: initialMoves, learnedMoves: initialMoves }); } } const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [] }); await newUser.save(); res.redirect('/lobby?userId=' + newUser._id); } catch (e) { const starters = await BasePokemon.find().limit(3).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } });
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
-app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin }); });
+
+// --- ROTA FOREST CORRIGIDA (Adicionado skinCount e entities) ---
+app.get('/forest', async (req, res) => { 
+    const { userId } = req.query; 
+    const user = await User.findById(userId); 
+    if(!user) return res.redirect('/');
+    
+    // Busca todos os pokemons para a Pokedex funcionar
+    const allPokes = await BasePokemon.find().lean(); 
+
+    res.render('forest', { 
+        user, 
+        playerName: user.username, 
+        playerSkin: user.skin, 
+        isAdmin: user.isAdmin,
+        skinCount: SKIN_COUNT, // <--- CORREÇÃO AQUI
+        entities: allPokes     // <--- CORREÇÃO AQUI (Para Pokedex)
+    }); 
+});
+
 app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, user }); });
 
-// --- ROTA DE CRIAÇÃO (ATUALIZADA) ---
+// ROTA DE CRIAÇÃO (COM RARIDADE)
 app.post('/lab/create', upload.single('sprite'), async (req, res) => { 
-    // Captura o spawnChance do formulário
     const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, movesJson, evoTarget, evoLevel, existingId } = req.body; 
     const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; 
     let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} 
-    
     const data = { 
         name, type, baseStats: stats, spawnLocation: location, 
         minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), 
         catchRate: parseFloat(catchRate), 
-        // Salva o spawnChance (padrão 10 se vazio)
         spawnChance: parseFloat(spawnChance) || 10,
         evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, 
         movePool: movePool 
     }; 
-    
     if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; 
     if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); 
     else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } 
@@ -107,7 +120,7 @@ app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId
 app.post('/api/buy-item', async (req, res) => { const { userId, itemId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const prices = { pokeball: 50, rareCandy: 2000 }; if(!prices[itemId]) return res.json({ error: 'Item inválido' }); const cost = prices[itemId] * q; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' }); user.money = (user.money || 0) - cost; if(itemId === 'pokeball') user.pokeballs = (user.pokeballs || 0) + q; if(itemId === 'rareCandy') user.rareCandy = (user.rareCandy || 0) + q; await user.save(); res.json({ success: true, money: user.money, pokeballs: user.pokeballs, rareCandy: user.rareCandy }); });
 app.post('/api/use-item', async (req, res) => { const { userId, itemId, pokemonId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(itemId === 'rareCandy') { if(!pokemonId) return res.json({ error: 'pokemonId required' }); let poke = null; try { poke = user.pokemonTeam.id(pokemonId); } catch(e) { poke = user.pokemonTeam.find(p => p._id.toString() === (pokemonId || '')); } if(!poke) return res.json({ error: 'Pokemon not found' }); if((user.rareCandy || 0) < q) return res.json({ error: 'Not enough RareCandy' }); const base = await BasePokemon.findOne({ id: poke.baseId }); const oldLevel = poke.level || 1; poke.level = Math.min(100, oldLevel + q); if(base) poke.stats = calculateStats(base.baseStats, poke.level); poke.currentHp = poke.stats.hp; user.rareCandy = (user.rareCandy || 0) - q; await user.save(); return res.json({ success: true, rareCandy: user.rareCandy, pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp } }); } return res.json({ error: 'Item cannot be used here' }); });
 
-// --- ROTA DE BATALHA SELVAGEM (ATUALIZADA) ---
+// --- ROTA DE BATALHA SELVAGEM ---
 app.post('/battle/wild', async (req, res) => { 
     const { userId } = req.body; 
     const user = await User.findById(userId); 
@@ -117,7 +130,6 @@ app.post('/battle/wild', async (req, res) => {
     const possibleSpawns = await BasePokemon.find({ spawnLocation: 'forest' }); 
     if(possibleSpawns.length === 0) return res.json({ error: "Nenhum pokemon." }); 
     
-    // USA O SISTEMA DE RARIDADE
     const wildBase = pickWeightedPokemon(possibleSpawns); 
     
     const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
