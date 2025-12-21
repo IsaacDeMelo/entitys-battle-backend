@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const BasePokemonSchema = new mongoose.Schema({
@@ -11,7 +10,8 @@ const BasePokemonSchema = new mongoose.Schema({
     minSpawnLevel: { type: Number, default: 1 },
     maxSpawnLevel: { type: Number, default: 5 },
     catchRate: { type: Number, default: 0.5 },
-    spawnChance: { type: Number, default: 0.1 }, 
+    // AQUI: O peso para o sorteio (ex: 100 = comum, 1 = raro)
+    spawnChance: { type: Number, default: 10 }, 
     evolution: { targetId: String, level: Number },
     movePool: [{ level: Number, moveId: String }]
 });
