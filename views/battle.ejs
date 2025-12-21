@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Batalha</title>
+    <!-- PRELOAD DA BOLA PARA EVITAR QUE ELA FIQUE INVISÍVEL NA PRIMEIRA VEZ -->
+    <link rel="preload" as="image" href="/uploads/catchcube.gif">
+    
     <script src="/socket.io/socket.io.js"></script>
     <script src="/scripts/common.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
@@ -58,6 +61,7 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
+        /* --- POSICIONAMENTO ATUALIZADO (42%) --- */
         .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 42%; transform: translateY(-50%); transition: opacity 0.5s; }
         
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
@@ -74,6 +78,7 @@
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
         .sprite img.hurt { filter: brightness(1.6) saturate(1.1) sepia(0.15) hue-rotate(-10deg); }
 
+        /* --- TREINADOR ATUALIZADO (20px) --- */
         .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; top: 20px; }
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
@@ -403,14 +408,17 @@
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
+            // Ajuste das coordenadas iniciais
             let startX = (side === 'p1') ? 60 : 220; 
             let startY = 60;
-            let endX = (side === 'p1') ? 140 : 180; 
+            
+            // --- CORREÇÃO TRAJETÓRIA ---
+            // Trazemos o endX mais para "trás" (perto do treinador/centro)
+            let endX = (side === 'p1') ? 110 : 190; // Antes era 140 / 160
             let endY = 120;
             
             if (side === 'p2') { 
                 startX = 230; 
-                endX = 160; 
             }
 
             ball.style.left = startX + 'px';
@@ -832,7 +840,6 @@
         socket.on('opponent_ready', () => { if(!isSpectator) { document.getElementById('statusMsg').style.display = "block"; document.getElementById('statusMsg').innerText = "Oponente pronto!"; } });
         
         window.onload = async () => { 
-            // 1. Remove o loader primeiro
             const loader = document.getElementById('global-loader');
             loader.style.opacity = '0';
             
@@ -842,11 +849,9 @@
             updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
             if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
             
-            // Espera o fade out do loader (500ms) antes de começar as animações
             await wait(500);
             loader.style.display = 'none';
 
-            // 2. Agora sim começa a entrada
             deployPokemon('p1', false);
             deployPokemon('p2', battleMode === 'wild');
 
