@@ -59,7 +59,16 @@
             </div>
             <div class="row"><div class="col form-group"><label>ATK</label><input type="number" name="atk" id="pAtk" value="10"></div><div class="col form-group"><label>DEF</label><input type="number" name="def" id="pDef" value="10"></div><div class="col form-group"><label>SPD</label><input type="number" name="spd" id="pSpd" value="10"></div></div>
             <div class="form-group"><label>Spawn Location</label><select name="location" id="pLoc"><option value="none">Nenhum (Evolução/Inicial)</option><option value="forest">Floresta (Selvagem)</option></select></div>
-            <div class="row"><div class="col form-group"><label>Min Lvl</label><input type="number" name="minLvl" id="pMin" value="1"></div><div class="col form-group"><label>Max Lvl</label><input type="number" name="maxLvl" id="pMax" value="5"></div><div class="col form-group"><label>Chance (0-1)</label><input type="number" step="0.1" name="catchRate" id="pRate" value="0.5"></div></div>
+            
+            <!-- LINHA DE RARIDADE -->
+            <div class="row">
+                <div class="col form-group"><label>Min Lvl</label><input type="number" name="minLvl" id="pMin" value="1"></div>
+                <div class="col form-group"><label>Max Lvl</label><input type="number" name="maxLvl" id="pMax" value="5"></div>
+                <div class="col form-group"><label>Catch(0-1)</label><input type="number" step="0.1" name="catchRate" id="pRate" value="0.5"></div>
+                <!-- NOVO CAMPO: SPAWN CHANCE -->
+                <div class="col form-group"><label>Chance (Peso)</label><input type="number" name="spawnChance" id="pSpawn" value="10" placeholder="Maior = Comum"></div>
+            </div>
+            
             <div class="row"><div class="col form-group"><label>Evolui para (ID)</label><input type="text" name="evoTarget" id="pEvoT" placeholder="ID do monstro"></div><div class="col form-group"><label>Nível Evo</label><input type="number" name="evoLevel" id="pEvoL" value="100"></div></div>
             <div class="form-group"><label>Moveset (JSON)</label><textarea name="movesJson" id="pMoves" rows="4" placeholder='[{"level":1,"moveId":"tackle"}]'>[{"level":1,"moveId":"tackle"}]</textarea></div>
             <button type="submit" class="btn-submit" id="btnAction">SALVAR DADOS</button>
@@ -73,7 +82,7 @@
                 <% if(p.sprite) { %> <img src="<%= p.sprite %>"> <% } else { %> <div style="width:40px;height:40px;background:#555;border-radius:50%;"></div> <% } %>
                 <div>
                     <div style="font-weight:bold; color:#f1c40f"><%= p.name %></div>
-                    <div style="font-size:0.7rem; color:#aaa">ID: <%= p.id %> | Type: <%= p.type %></div>
+                    <div style="font-size:0.7rem; color:#aaa">ID: <%= p.id %> | Chance: <%= p.spawnChance || 10 %></div>
                 </div>
             </div>
         <% }) %>
@@ -90,8 +99,13 @@
             document.getElementById('existingId').value = p.id; document.getElementById('pName').value = p.name; document.getElementById('pType').value = p.type;
             document.getElementById('pHp').value = p.baseStats.hp; document.getElementById('pEn').value = p.baseStats.energy;
             document.getElementById('pAtk').value = p.baseStats.attack; document.getElementById('pDef').value = p.baseStats.defense; document.getElementById('pSpd').value = p.baseStats.speed;
-            document.getElementById('pLoc').value = p.spawnLocation || 'none'; document.getElementById('pMin').value = p.minSpawnLevel || 1; document.getElementById('pMax').value = p.maxSpawnLevel || 5;
+            document.getElementById('pLoc').value = p.spawnLocation || 'none'; 
+            document.getElementById('pMin').value = p.minSpawnLevel || 1; 
+            document.getElementById('pMax').value = p.maxSpawnLevel || 5;
             document.getElementById('pRate').value = p.catchRate || 0.5;
+            // Carrega a raridade
+            document.getElementById('pSpawn').value = p.spawnChance || 10;
+            
             if(p.evolution) { document.getElementById('pEvoT').value = p.evolution.targetId || ''; document.getElementById('pEvoL').value = p.evolution.level || ''; } else { document.getElementById('pEvoT').value = ''; document.getElementById('pEvoL').value = ''; }
             document.getElementById('pMoves').value = JSON.stringify(p.movePool || []);
         }
