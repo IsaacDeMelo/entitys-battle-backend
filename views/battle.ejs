@@ -407,22 +407,28 @@
             let startX = (side === 'p1') ? 85 : 205; 
             let startY = 120; // Chão
 
-            // Coordenadas FINAIS (Mão do treinador - 20/260)
+            // Coordenadas FINAIS (Mão do treinador - 20/260) - Altura 95 (Cintura/Mão)
             let endX = (side === 'p1') ? 20 : 260;
-            let endY = 60; // Mão
+            let endY = 95; 
 
             // Posiciona a bola inicialmente
             ball.style.left = startX + 'px';
             ball.style.top = startY + 'px';
 
-            // 3. Anima a bola voando de volta para a mão
+            // 3. Anima a bola voando de volta para a mão com curva suave
             const deltaX = endX - startX;
             const deltaY = endY - startY;
 
             const anim = ball.animate([
-                { transform: 'translate(0,0) scale(0.6)' },
-                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.5)` }
-            ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
+                { transform: 'translate(0,0) scale(0.6)', opacity: 1 },
+                // Pequena curva para cima no meio do caminho para dar fluidez
+                { transform: `translate(${deltaX * 0.5}px, ${deltaY - 30}px) scale(0.6)`, offset: 0.5 },
+                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0)`, opacity: 0 }
+            ], { 
+                duration: 650, 
+                easing: 'ease-in-out', 
+                fill: 'forwards' 
+            });
 
             await anim.finished;
             
