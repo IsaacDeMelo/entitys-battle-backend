@@ -61,7 +61,7 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* EFEITOS */
+        /* LISTA COMPLETA DE EFEITOS */
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
@@ -73,7 +73,7 @@
         .effect-flying { background: radial-gradient(circle, #ecf0f1, #95a5a6); box-shadow: 0 0 10px #fff; }
         .effect-psychic { background: radial-gradient(circle, #e056fd, #be2edd); box-shadow: 0 0 10px #e056fd; }
         .effect-bug { background: radial-gradient(circle, #badc58, #6ab04c); box-shadow: 0 0 10px #badc58; }
-        .effect-rock { background: radial-gradient(circle, #95a5a6, #7f8c8d); box-shadow: 0 0 10px #555; }
+        .effect-rock { background: radial-gradient(circle, #95a5a6, #7f8c8d); box-shadow: 0 0 10px #95a5a6; }
         .effect-ghost { background: radial-gradient(circle, #4834d4, #686de0); box-shadow: 0 0 10px #4834d4; }
         .effect-dragon { background: radial-gradient(circle, #30336b, #130f40); box-shadow: 0 0 10px #30336b; }
         .effect-dark { background: radial-gradient(circle, #2d3436, #000); box-shadow: 0 0 10px #000; }
@@ -404,13 +404,14 @@
             fighterDiv.appendChild(ball);
 
             // Coordenadas INICIAIS (Onde o Pokémon estava - 85/205)
+            // AJUSTE +15px para baixo: era 120 -> 135
             let startX = (side === 'p1') ? 85 : 205; 
-            let startY = 120; // Chão
+            let startY = 135; 
 
             // Coordenadas FINAIS (Mão do treinador - 20/260)
+            // AJUSTE +15px para baixo: era 60 -> 75
             let endX = (side === 'p1') ? 20 : 260;
-            // AJUSTADO: 115 para ficar na altura correta (baixo/cintura)
-            let endY = 115; 
+            let endY = 75; 
 
             // Posiciona a bola inicialmente
             ball.style.left = startX + 'px';
@@ -464,10 +465,14 @@
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
+            // Ajuste das coordenadas iniciais
+            // AJUSTE +15px: era 60 -> 75
             let startX = (side === 'p1') ? 60 : 220; 
-            let startY = 60;
+            let startY = 75;
+            
             let endX = (side === 'p1') ? 85 : 205; 
-            let endY = 120;
+            // AJUSTE +15px: era 120 -> 135
+            let endY = 135;
             
             if (side === 'p2') { 
                 startX = 230; 
@@ -908,13 +913,11 @@
             updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
             if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
             
-            // AGORA A ENTRADA ACONTECE ENQUANTO O LOADER FICA TRANSPARENTE
             await wait(100); 
             
             deployPokemon('p1', false);
             deployPokemon('p2', battleMode === 'wild');
 
-            // TERMINA DE ESPERAR O LOADER SUMIR
             await wait(400);
             loader.style.display = 'none';
 
