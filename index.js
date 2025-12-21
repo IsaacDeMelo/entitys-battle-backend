@@ -223,7 +223,22 @@ app.post('/api/turn', async (req, res) => {
             await user.save();
             events.push({ type: 'MSG', text: `Vai, ${p1.name}!` });
             if (p2.hp > 0 && !isForced) { performEnemyTurn(p2, p1, events); }
-            return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy, maxHp: p1.maxHp, name: p1.name, level: p1.level, sprite: p1.sprite, moves: p1.moves }, p2State: { hp: p2.hp }, switched: true, newP1Id: p1.instanceId });
+            return res.json({ 
+        events, 
+        p1State: { 
+            hp: p1.hp, // HP JÁ COM DANO (se houve)
+            maxHp: p1.maxHp, // NECESSÁRIO PARA CORRIGIR A BARRA
+            energy: p1.energy, 
+            maxEnergy: p1.maxEnergy,
+            name: p1.name, 
+            level: p1.level, 
+            sprite: p1.sprite, 
+            moves: p1.moves 
+        }, 
+        p2State: { hp: p2.hp },
+        switched: true,
+        newP1Id: p1.instanceId
+    });
         }
         if (action === 'catch') {
             if (battle.type !== 'wild') { events.push({ type: 'MSG', text: 'Não é possível capturar aqui.' }); return res.json({ events }); } 
@@ -334,3 +349,4 @@ io.on('connection', (socket) => {
 });
 
 seedDatabase().then(() => { const PORT = process.env.PORT || 3000; server.listen(PORT, () => console.log(`Server ON Port ${PORT}`)); });
+// switch
