@@ -61,7 +61,7 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* LISTA COMPLETA DE EFEITOS PARA NÃO SUMIR MAIS */
+        /* EFEITOS */
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
@@ -164,13 +164,13 @@
         }
         .anim-wild-appear { animation: wildSlideIn 0.8s ease-out forwards; }
 
-        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) - CORRIGIDO --- */
+        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) --- */
         @keyframes returnAnim {
             0% { transform: scale(1); filter: none; opacity: 1; }
             100% { transform: scale(0); filter: sepia(1) hue-rotate(-50deg) saturate(5) brightness(2); opacity: 0; }
         }
         /* Importante: transition: none para não brigar com a animação */
-        .anim-return { animation: returnAnim 0.8s forwards !important; transition: none !important; }
+        .anim-return { animation: returnAnim 0.5s forwards !important; transition: none !important; }
 
         @keyframes wildFaint {
             0% { transform: translateY(0); opacity: 1; }
@@ -376,25 +376,58 @@
             trainerEl.classList.remove('frame-1'); 
         }
 
-        // --- RETORNO À POKÉBOLA (MORTE) ---
+        // --- RETORNO À POKÉBOLA (MORTE + VOO DE VOLTA) ---
         async function returnPokemon(side) {
+            const fighterDiv = document.getElementById(`fighter-${side}`);
             const spriteImg = document.querySelector(`#sprite-${side} img`);
-            if(!spriteImg) return;
+            if(!spriteImg || !fighterDiv) return;
 
+            // Se for selvagem, só desmaia
             if (side === 'p2' && battleMode === 'wild') {
                 spriteImg.classList.add('anim-faint-wild');
                 await wait(1000);
                 return;
             }
 
-            // Garante que o CSS possa agir removendo estilos inline
+            // 1. Pokémon brilha e encolhe (Recall)
             spriteImg.style.opacity = ''; 
             spriteImg.style.transform = '';
-            
-            // Adiciona classe de animação com force-reflow
             void spriteImg.offsetWidth;
             spriteImg.classList.add('anim-return');
-            await wait(800);
+            
+            // Espera a animação de encolher (500ms do CSS)
+            await wait(500);
+
+            // 2. Cria a bola no pé do pokémon
+            const ball = document.createElement('div');
+            ball.className = 'deploy-ball';
+            fighterDiv.appendChild(ball);
+
+            // Coordenadas INICIAIS (Onde o Pokémon estava - 85/205)
+            let startX = (side === 'p1') ? 85 : 205; 
+            let startY = 120; // Chão
+
+            // Coordenadas FINAIS (Mão do treinador - 20/260)
+            let endX = (side === 'p1') ? 20 : 260;
+            let endY = 60; // Mão
+
+            // Posiciona a bola inicialmente
+            ball.style.left = startX + 'px';
+            ball.style.top = startY + 'px';
+
+            // 3. Anima a bola voando de volta para a mão
+            const deltaX = endX - startX;
+            const deltaY = endY - startY;
+
+            const anim = ball.animate([
+                { transform: 'translate(0,0) scale(0.6)' },
+                { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.5)` }
+            ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
+
+            await anim.finished;
+            
+            // 4. Remove a bola
+            ball.remove();
         }
 
         async function deployPokemon(side, isWild = false) {
@@ -945,4 +978,4 @@
         }
     </script>
 </body>
-</html> 
+</html>
