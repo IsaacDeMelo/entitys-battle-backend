@@ -58,7 +58,7 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
-        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 38%; transform: translateY(-50%); transition: opacity 0.5s; }
+        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 42%; transform: translateY(-50%); transition: opacity 0.5s; }
         
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
         .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 21; background-position-y: 33.33%; } 
@@ -74,7 +74,7 @@
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
         .sprite img.hurt { filter: brightness(1.6) saturate(1.1) sepia(0.15) hue-rotate(-10deg); }
 
-        .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; top: 45px; }
+        .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; top: 20px; }
         <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
         .trainer.frame-1 { background-position-x: -100%; }
