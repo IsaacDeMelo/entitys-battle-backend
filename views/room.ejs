@@ -18,7 +18,7 @@
             max-width: 500px; 
             height: 100%; 
             max-height: 900px; 
-            background-image: url('/uploads/map_bg.png'); /* Sua nova imagem */
+            background-image: url('/uploads/map_bg.png');
             image-rendering: pixelated; 
             background-size: cover; 
             background-position: center top; 
@@ -35,30 +35,16 @@
             position: absolute; 
             z-index: 50; 
             cursor: pointer; 
-            background-color: transparent; /* Invisível */
-            /* border: 1px solid rgba(255, 0, 0, 0.5); Descomente para ver as caixas (Debug) */
+            background-color: transparent; 
             outline: none;
         }
         .machine:active { transform: scale(0.98); }
 
-        /* POSICIONAMENTO BASEADO NA IMAGEM ENVIADA */
-        /* Loja (Verde - Esquerda) */
-        #market { 
-            top: 5%; left: 2%; width: 30%; height: 18%; 
-        }
-        /* Ginásio (Azul - Centro) */
-        #gym-building { 
-            top: 5%; left: 35%; width: 30%; height: 18%; 
-        }
-        /* Centro Pokémon (Vermelho - Direita) */
-        #pc-center { 
-            top: 5%; right: 2%; width: 30%; height: 18%; 
-        }
-        /* Arena (Banco da Praça - Canto Inferior Direito) */
-        #pc-battle { 
-            top: 72%; right: 0%; width: 15%; height: 12%; 
-        }
-        /* Lab Admin (Mantido Visível e separado) */
+        /* POSICIONAMENTO */
+        #market { top: 5%; left: 2%; width: 30%; height: 18%; }
+        #gym-building { top: 5%; left: 35%; width: 30%; height: 18%; }
+        #pc-center { top: 5%; right: 2%; width: 30%; height: 18%; }
+        #pc-battle { top: 72%; right: 0%; width: 25%; height: 20%; } /* Aumentei um pouco a área do banco */
         #pc-lab { 
             top: 80%; left: 5%; width: 80px; height: 80px; 
             background-image: url('/uploads/lab_building.png'); 
@@ -77,7 +63,7 @@
         .searching-planet { position: absolute; top: -60px; left: 50%; margin-left: -10px; width: 20px; height: 20px; font-size: 1.2rem; animation: spin-planet 2s linear infinite; z-index: 600; pointer-events: none; }
         @keyframes spin-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        /* CHAT */
+        /* UI */
         .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
@@ -112,7 +98,7 @@
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
         
-        /* ESTILO DO PC (Retro Aesthetic) */
+        /* PC THEME */
         #modalPC .modal-content { max-width: 700px; background: #001100; border: 4px solid #004400; border-radius: 10px; font-family: 'Press Start 2P', monospace; box-shadow: 0 0 30px rgba(0,255,0,0.2); }
         #modalPC .close-btn { background: #003300; border: 2px solid #00ff00; color: #00ff00; border-radius: 4px; }
         .pc-screen { background: repeating-linear-gradient(0deg, rgba(0, 20, 0, 0.2), rgba(0, 20, 0, 0.2) 1px, transparent 1px, transparent 2px); }
@@ -121,7 +107,7 @@
         .pc-column h3 { margin: 0 0 10px 0; text-align: center; color: #00ff00; font-size: 0.7rem; border-bottom: 2px dashed #008800; padding-bottom: 8px; text-transform: uppercase; }
         .pc-item { display: flex; align-items: center; gap: 10px; padding: 8px; background: #002200; border: 1px solid #006600; cursor: pointer; transition: 0.1s; }
         .pc-item:hover { background: #004400; border-color: #00ff00; }
-        .pc-item img { width: 32px; height: 32px; image-rendering: pixelated; filter: grayscale(0.2) sepia(1) hue-rotate(80deg) saturate(3); } /* Green tint */
+        .pc-item img { width: 32px; height: 32px; image-rendering: pixelated; filter: grayscale(0.2) sepia(1) hue-rotate(80deg) saturate(3); }
         .pc-info { flex: 1; }
         .pc-name { color: #ccffcc; font-size: 0.65rem; margin-bottom: 4px; }
         .pc-sub { color: #00aa00; font-size: 0.5rem; }
@@ -161,13 +147,12 @@
     </style>
 </head>
 <body>
-    <!-- Retractable menu toggle and floating buttons -->
+    <!-- Retractable menu (Shop Removed) -->
     <div id="floatMenu" style="position:fixed; right:16px; bottom:120px; z-index:9999; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:12px;">
         <button id="menuToggle" class="float-btn menu-toggle" aria-label="Menu" onclick="toggleFloatMenu()">☰</button>
         <div id="menuItems" style="display:none; flex-direction:column-reverse; align-items:flex-end; gap:10px;">
             <button class="float-btn" data-role="pokedex" onclick="openPokedex()" aria-label="Pokedex">📚</button>
             <button class="float-btn" data-role="pc" style="border-color:#00ff00; color:#00ff00;" onclick="openPC()" aria-label="PC">💻</button>
-            <button class="float-btn" data-role="shop" onclick="openShop()" aria-label="Shop">🏪</button>
             <button class="float-btn" data-role="bag" onclick="openBag()" aria-label="Bag">🎒</button>
         </div>
     </div>
@@ -175,16 +160,16 @@
     <div id="gameArea">
         <div class="forest-exit"></div>
         
-        <!-- LOJA (HITBOX INVISIVEL) -->
+        <!-- LOJA -->
         <div class="machine" id="market" onclick="moveToAndInteract(event, this, 'market')"></div>
         
-        <!-- CENTRO POKEMON (HITBOX INVISIVEL) -->
+        <!-- CENTRO POKEMON -->
         <div class="machine" id="pc-center" onclick="moveToAndInteract(event, this, 'heal')"></div>
         
-        <!-- GINÁSIO FECHADO (HITBOX INVISIVEL) -->
+        <!-- GINÁSIO FECHADO -->
         <div class="machine" id="gym-building" onclick="moveToAndInteract(event, this, 'gym_closed')"></div>
         
-        <!-- ARENA (BANCO DA PRAÇA) -->
+        <!-- ARENA (BANCO) -->
         <div class="machine" id="pc-battle" onclick="moveToAndInteract(event, this, 'battle')"></div>
 
         <% if(isAdmin) { %>
@@ -197,7 +182,7 @@
 
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
-    <!-- MODAL PC STORAGE (THEMED) -->
+    <!-- MODAL PC STORAGE -->
     <div class="modal-overlay" id="modalPC">
         <div class="modal-content pc-screen">
             <button class="close-btn" onclick="closeModal('modalPC')">X</button>
@@ -216,13 +201,19 @@
         </div>
     </div>
 
-    <!-- OUTROS MODAIS -->
+    <!-- MODAL LOJA -->
     <div class="modal-overlay" id="modalShop"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalShop')">X</button><h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:10px;">LOJA</h2><div style="display:flex; flex-direction:column; gap:10px;"><div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;"><div><div style="font-weight:bold">Pokébola</div><div style="font-size:0.8rem; color:#aaa">Captura pokémons</div></div><div style="display:flex; gap:8px; align-items:center;"><input id="buyPokeballQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;"><button onclick="buyItem('pokeball')" style="background:#2ecc71; border:none; padding:8px; border-radius:6px;">COMPRAR (50)</button></div></div><div style="display:flex; justify-content:space-between; align-items:center; padding:8px; background:#0b1220; border-radius:8px;"><div><div style="font-weight:bold">Rare Candy</div><div style="font-size:0.8rem; color:#aaa">+1 Nível (instantâneo)</div></div><div style="display:flex; gap:8px; align-items:center;"><input id="buyRareQty" type="number" value="1" min="1" style="width:60px; padding:6px; background:#07101a; color:#fff; border-radius:6px; border:1px solid #233;"><button onclick="buyItem('rareCandy')" style="background:#f1c40f; border:none; padding:8px; border-radius:6px;">COMPRAR (2000)</button></div></div><div style="text-align:center; color:#aaa; font-size:0.85rem;">Seu saldo: <span id="shopBalance">0</span></div></div></div></div>
+    
+    <!-- MODAL TEAM -->
     <div class="modal-overlay" id="modalTeam"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalTeam')">X</button><h2 style="font-family:'Press Start 2P'; text-align:center; color:#f1c40f; font-size:1rem; margin-bottom:20px;">MINHA EQUIPE</h2><div id="teamListContent">Carregando...</div></div></div>
+    
+    <!-- MODAL POKEDEX -->
     <div class="modal-overlay" id="modalPokedex"><div class="modal-content"><button class="close-btn" onclick="closeModal('modalPokedex')">X</button><div class="dex-sidebar"><div class="dex-search-box"><input type="text" id="dexSearch" class="dex-search-input" placeholder="🔍" onkeyup="filterDex()"></div><div class="dex-grid" id="dexGrid"><% entities.forEach((e, index) => { %><div class="dex-card" onclick="selectDexMonster(<%= index %>, this)" data-name="<%= e.name.toLowerCase() %>"><% if(e.sprite) { %> <img src="<%= e.sprite %>" class="dex-card-img"> <% } else { %> ❓ <% } %><div class="dex-card-name"><%= e.name %></div></div><% }) %></div></div><div class="dex-main"><div class="dex-content-wrapper" id="dexDetailsView">Selecione um monstro.</div></div></div></div>
     
+    <!-- MODAL ONLINE -->
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;"><div style="display:flex; border-bottom:1px solid #333;"><button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button><button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button><button class="close-btn" onclick="closeModal('modalOnline')">X</button></div><div id="tab-play" class="tab-content" style="padding:20px; flex:1;"><select id="onlineFighter"><% if(team.length > 0) { team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }); } else { %><option>Sem Pokemons</option><% } %></select><div style="margin-top:10px; display:flex; gap:8px; align-items:center;"><label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label><input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;"></div><button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button><button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button><div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div></div><div id="tab-watch" class="tab-content" style="display:none; padding:10px;"><div id="battlesList"></div></div></div></div>
     
+    <!-- MODAL BATTLE -->
     <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:18px; display:block; max-width:420px;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2><form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;"><input type="hidden" name="userId" value="<%= user._id %>"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><input type="hidden" name="mode" value="manual"><div style="display:flex; gap:12px; align-items:center;"><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div><div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div><div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div></div><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div><div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div><div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div></div></div><label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label><select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;"><option value="" disabled selected>Escolha...</option><% if(team.length === 0) { %><option value="" disabled>Sem Pokémons</option><% } else { %><% team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }) %><% } %></select><div style="display:flex; gap:8px;"><button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button><button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button></div></form></div></div>
 
     <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;"><input type="hidden" name="roomId" id="specRoomId"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"></form>
@@ -244,12 +235,12 @@
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         function openModal(id) { document.getElementById(id).style.display = 'flex'; if(id==='modalPokedex' && allMonsters.length>0) { const first = document.querySelectorAll('.dex-card')[0]; if(first) selectDexMonster(0, first); } }
-        // Retractable menu helpers (room)
+        
         function toggleFloatMenu() {
             const items = document.getElementById('menuItems'); if(!items) return; items.style.display = items.style.display === 'flex' ? 'none' : 'flex';
         }
-        // close menu when clicking outside
         document.addEventListener('click', (ev) => { try { const menu = document.getElementById('floatMenu'); if(!menu) return; if(!menu.contains(ev.target)) { const items = document.getElementById('menuItems'); if(items) items.style.display = 'none'; } } catch(e) {} });
+        
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
 
@@ -264,19 +255,15 @@
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
         function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); if(p.isSearching) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet); } gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
         
-        // --- CLICK LISTENER COM COLISÃO (Não andar nos telhados) ---
+        // --- CLICK COM COLISÃO AJUSTADA (Limite 16%) ---
         gameArea.addEventListener('click', (e) => { 
             if (isPlayerMoving || e.target.classList.contains('machine')) return; 
             const rect = gameArea.getBoundingClientRect(); 
             const targetX = ((e.clientX - rect.left) / rect.width) * 100; 
             const targetY = ((e.clientY - rect.top) / rect.height) * 100; 
             
-            // Lógica de colisão simples: não pode andar se Y < 22 (telhados/árvores de cima)
-            // A menos que esteja saindo (esquerda < 10)
-            if (targetY < 22 && targetX > 15) {
-                // Bloqueado
-                return;
-            }
+            // Colisão: Não sobe no telhado (Y < 16), exceto se for para sair (X < 15)
+            if (targetY < 16 && targetX > 15) { return; }
 
             isPlayerMoving = true; 
             gameArea.classList.add('locked'); 
@@ -289,11 +276,19 @@
             const rect = gameArea.getBoundingClientRect(); 
             const targetRect = element.getBoundingClientRect(); 
             
-            // Ponto de destino: Meio horizontal, mas ABAIXO do prédio (Y=26)
+            // Ponto horizontal: meio do objeto
             const centerXpx = (targetRect.left - rect.left) + (targetRect.width / 2); 
-            // Força o destino para Y=26% (chão em frente às portas) para não andar no telhado
-            const targetY = 26; 
             const targetX = (centerXpx / rect.width) * 100; 
+            
+            // Ponto vertical (targetY): Depende se é prédio de cima ou banco de baixo
+            let targetY = 24; // Padrão para prédios de cima (porta)
+            
+            if (element.id === 'pc-battle' || element.id === 'pc-lab') {
+                // Se for o banco ou o lab (embaixo), o destino é mais embaixo
+                // Pega a base do objeto e adiciona um pouco
+                const bottomYpx = (targetRect.bottom - rect.top);
+                targetY = (bottomYpx / rect.height) * 100 - 5; // -5% para ficar na frente
+            }
             
             const myEl = document.getElementById(`p-${myId}`); 
             let travelTime = 0; 
@@ -313,13 +308,8 @@
                 else if (type === 'market') { showLoading('Entrando na Loja...', 'left'); setTimeout(() => { openShop(); }, 120); }
                 else if (type === 'pokedex') openPokedex(); 
                 else if (type === 'heal') healTeam(); 
-                else if (type === 'gym_closed') {
-                    showToast('⛔ Ginásio fechado temporariamente.');
-                }
-                else if (type === 'online' || type === 'battle') {
-                    updateBattleSelect();
-                    openModal('modalBattle'); 
-                }
+                else if (type === 'gym_closed') { showToast('⛔ Ginásio fechado temporariamente.'); }
+                else if (type === 'online' || type === 'battle') { updateBattleSelect(); openModal('modalBattle'); }
             }, travelTime); 
         }
 
@@ -363,38 +353,27 @@
         async function updateBattleSelect() { try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const team = data.team || []; const select1 = document.getElementById('f1'); const selectOnline = document.getElementById('onlineFighter'); let html = '<option value="" disabled selected>Escolha...</option>'; if(team.length === 0) html = '<option value="" disabled>Sem Pokémons</option>'; else team.forEach(p => { html += `<option value="${p.instanceId}">${p.name} (Lv.${p.level})</option>`; }); if(select1) select1.innerHTML = html; if(selectOnline) selectOnline.innerHTML = html; } catch(e) { console.error("Erro ao atualizar select de batalha", e); } }
 
         let currentMoves = []; let currentPokeId = null;
-        async function openBag() { 
-            document.getElementById('modalTeam').style.display='flex'; 
-            const content = document.getElementById('teamListContent'); 
-            content.innerHTML = 'Carregando...'; 
-            try { 
-                const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; 
-                let html = `<div style="display:flex; gap:8px; margin-bottom:12px;"><button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button><button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button><div style="flex:1"></div><button onclick="openShop()" style="background:#2ecc71; border:none; padding:6px 8px; border-radius:6px; color:#000;">Abrir Loja</button></div><div id="bagContentPoke">`; 
-                if (pokemons.length === 0) { html += '<p style="text-align:center">Vazio.</p>'; } else { pokemons.forEach((p, index) => { const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100)); const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0; const safeSprite = resolveImg(p.sprite); const isLead = index === 0; html += `<div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}"><div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div><div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div></div></div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}<div style="display:flex; gap:6px;"><div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div><div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div></div></div></div>`; }); } 
-                html += `</div><div id="bagContentItems" style="display:none;"><div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;"><div style="font-weight:bold; color:#f1c40f; margin-bottom:8px;">Inventário</div><div style="margin-top:6px; color:#ccc;">🔴 Pokébolas: ${pokeballs}</div><div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#ccc; background:#111; padding:8px; border-radius:4px;"><span>🍬 Rare Candy: <strong>${rareCandy}</strong></span>${rareCandy > 0 ? `<button onclick="startRareCandySelection()" style="background:#f1c40f; color:#000; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">USAR</button>` : ''}</div><div style="margin-top:10px; font-size:0.8rem; color:#aaa;">💰 Saldo: ${money}</div></div><div style="display:flex; gap:8px;"><button onclick="openShop()" style="flex:1; background:#2ecc71; border:none; padding:10px; border-radius:6px;">Comprar</button><button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button></div></div>`; 
-                content.innerHTML = html; switchBagTab('poke'); 
-            } catch(e) { content.innerHTML = 'Erro.'; } 
-        }
+        async function openBag() { document.getElementById('modalTeam').style.display='flex'; const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; let html = `<div style="display:flex; gap:8px; margin-bottom:12px;"><button id="bagTabPoke" class="tab-btn active" onclick="switchBagTab('poke')">Pokémons</button><button id="bagTabItems" class="tab-btn" onclick="switchBagTab('items')">Itens</button><div style="flex:1"></div><button onclick="openShop()" style="background:#2ecc71; border:none; padding:6px 8px; border-radius:6px; color:#000;">Abrir Loja</button></div><div id="bagContentPoke">`; if (pokemons.length === 0) { html += '<p style="text-align:center">Vazio.</p>'; } else { pokemons.forEach((p, index) => { const hpPct = Math.max(0, Math.min(100, (p.hp / p.maxHp) * 100)); const xpPct = (p.xpToNext && p.xp !== undefined) ? Math.max(0, Math.min(100, (p.xp / p.xpToNext) * 100)) : 0; const safeSprite = resolveImg(p.sprite); const isLead = index === 0; html += `<div class="team-list-item" style="${isLead ? 'border: 2px solid #f1c40f;' : ''}"><div onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" style="display:flex; align-items:center; gap:10px; flex:1;"><img src="${safeSprite}" class="team-sprite"><div class="team-info"><div style="font-weight:bold; color:#f1c40f">${p.name} <span style="font-size:0.8rem; color:#aaa">Lv.${p.level}</span></div><div style="font-size:0.8rem; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div><div class="team-bar"><div class="team-fill" style="width:${hpPct}%"></div></div><div style="font-size:0.75rem; margin-top:4px; color:#aaa;">XP: ${p.xp || 0}/${p.xpToNext || '—'}</div><div class="team-bar"><div style="height:100%; background: linear-gradient(90deg,#f1c40f,#f39c12); width:${xpPct}%"></div></div></div></div><div style="display:flex; flex-direction:column; align-items:center; gap:6px;">${!isLead ? `<button onclick="setLead('${p.instanceId}')" style="background:none; border:none; cursor:pointer; font-size:1.2rem;">⭐</button>` : '<span style="font-size:1rem;">👑</span>'}<div style="display:flex; gap:6px;"><div style="font-size:1rem; cursor:pointer;" onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})">⚙️</div><div style="font-size:1rem; cursor:pointer;" onclick="abandonPokemon('${p.instanceId}')">🗑️</div></div></div></div>`; }); } html += `</div><div id="bagContentItems" style="display:none;"><div style="padding:10px; background:#07101a; border-radius:8px; border:1px solid #233; margin-bottom:10px;"><div style="font-weight:bold; color:#f1c40f; margin-bottom:8px;">Inventário</div><div style="margin-top:6px; color:#ccc;">🔴 Pokébolas: ${pokeballs}</div><div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#ccc; background:#111; padding:8px; border-radius:4px;"><span>🍬 Rare Candy: <strong>${rareCandy}</strong></span>${rareCandy > 0 ? `<button onclick="startRareCandySelection()" style="background:#f1c40f; color:#000; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">USAR</button>` : ''}</div><div style="margin-top:10px; font-size:0.8rem; color:#aaa;">💰 Saldo: ${money}</div></div><div style="display:flex; gap:8px;"><button onclick="openShop()" style="flex:1; background:#2ecc71; border:none; padding:10px; border-radius:6px;">Comprar</button><button onclick="closeModal('modalTeam')" style="flex:1; background:#555; border:none; padding:10px; border-radius:6px; color:#fff;">Fechar</button></div></div>`; content.innerHTML = html; switchBagTab('poke'); } catch(e) { content.innerHTML = 'Erro.'; } }
         async function startRareCandySelection() { const content = document.getElementById('teamListContent'); content.innerHTML = 'Carregando equipe...'; try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const pokemons = data.team || []; const rareCandy = data.rareCandy || 0; if(rareCandy <= 0) { openBag(); return; } let html = `<div style="text-align:center; margin-bottom:10px; color:#f1c40f;">🍬 Doces Restantes: ${rareCandy}</div><p style="text-align:center; font-size:0.8rem; color:#ccc; margin-bottom:15px;">Escolha quem vai subir de nível:</p>`; pokemons.forEach(p => { const safeSprite = resolveImg(p.sprite); html += `<div style="background:#222; padding:8px; margin-bottom:8px; border-radius:8px; display:flex; align-items:center; gap:10px;"><img src="${safeSprite}" style="width:40px; height:40px; image-rendering:pixelated;"><div style="flex:1;"><div style="font-weight:bold;">${p.name}</div><div style="font-size:0.8rem; color:#aaa;">Lv.${p.level}</div></div><button onclick="applyRareCandy('${p.instanceId}')" style="background:#f39c12; color:#000; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">DAR DOCE</button></div>`; }); html += `<button onclick="openBag()" style="width:100%; margin-top:10px; background:#555; padding:10px; border-radius:6px; color:#fff;">VOLTAR</button>`; content.innerHTML = html; } catch(e) { content.innerHTML = "Erro ao carregar."; } }
         async function applyRareCandy(pokeId) { showLoading('Usando doce...'); try { const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast(`Nível subiu!`); startRareCandySelection(); } else { showToast(data.error || "Erro ao usar."); } } catch(e) { hideLoading(); showToast("Erro de conexão."); } }
         function switchBagTab(tab) { const poke = document.getElementById('bagContentPoke'); const items = document.getElementById('bagContentItems'); const tP = document.getElementById('bagTabPoke'); const tI = document.getElementById('bagTabItems'); if(!poke || !items) return; if(tab === 'poke') { poke.style.display = 'block'; items.style.display = 'none'; if(tP) tP.classList.add('active'); if(tI) tI.classList.remove('active'); } else { poke.style.display = 'none'; items.style.display = 'block'; if(tP) tP.classList.remove('active'); if(tI) tI.classList.add('active'); } }
-        async function openShop() { try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); document.getElementById('shopBalance').innerText = data.money || 0; } catch (e) { document.getElementById('shopBalance').innerText = '—'; } document.getElementById('modalShop').style.display = 'flex'; }
+        async function openShop() { 
+            try { 
+                const res = await fetch('/api/me?userId=<%= user._id %>'); 
+                const data = await res.json(); 
+                document.getElementById('shopBalance').innerText = data.money || 0; 
+            } catch (e) { 
+                document.getElementById('shopBalance').innerText = '—'; 
+            } 
+            hideLoading(); 
+            document.getElementById('modalShop').style.display = 'flex'; 
+        }
         async function buyItem(item) { const qty = Number(document.getElementById(item === 'pokeball' ? 'buyPokeballQty' : 'buyRareQty').value) || 1; try { const res = await fetch('/api/buy-item', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty }) }); const data = await res.json(); if(data.success) { showToast('Compra bem sucedida!'); document.getElementById('shopBalance').innerText = data.money || '0'; if(document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro na compra'); } } catch(e) { alert('Erro ao conectar'); } }
         async function abandonPokemon(instanceId) { if(!confirm('Tem certeza que deseja LIBERTAR este pokémon para sempre?')) return; showLoading('Libertando...', 'left'); try { const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) }); const data = await res.json(); hideLoading(); if(data.success) { showToast('Pokémon libertado.'); setTimeout(() => openBag(), 100); } else { showToast(data.error || 'Erro ao libertar.'); } } catch(e) { hideLoading(); alert('Erro de conexão.'); } }
         async function setLead(pokeId) { const res = await fetch('/api/set-lead', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: pokeId }) }); const data = await res.json(); if(data.success) { showToast("Novo líder definido!"); openBag(); } }
         function showMoveEditor(id, name, equipped, learned) { currentPokeId = id; const pool = (learned && learned.length > 0) ? learned : equipped; let html = `<h3 style="text-align:center; color:#3498db;">${name} - Golpes</h3><p style="font-size:0.7rem; color:#aaa; text-align:center;">Selecione até 4.</p><div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:10px;">`; pool.forEach(moveId => { const isEquipped = equipped.includes(moveId); const style = isEquipped ? "background:#2ecc71; border-color:#27ae60;" : "background:#444; border-color:#555;"; html += `<div onclick="toggleMove('${moveId}', this)" class="move-chip" style="padding:8px; border:2px solid; border-radius:5px; cursor:pointer; ${style}" data-id="${moveId}">${moveId}</div>`; }); html += `</div><button onclick="saveMoves()" style="width:100%; padding:10px; margin-top:20px; background:#f1c40f; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SALVAR</button><button onclick="openBag()" style="width:100%; padding:10px; margin-top:5px; background:#555; border:none; border-radius:5px; cursor:pointer; color:white;">VOLTAR</button>`; document.getElementById('teamListContent').innerHTML = html; }
         function toggleMove(moveId, el) { const chips = document.querySelectorAll('.move-chip'); let selected = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) selected.push(c); }); if(el.style.background.includes('2ecc71')) { if(selected.length <= 1) { showToast("Precisa de pelo menos 1 ataque!"); return; } el.style.background = '#444'; el.style.borderColor = '#555'; } else { if(selected.length >= 4) { showToast("Máximo de 4 ataques!"); return; } el.style.background = '#2ecc71'; el.style.borderColor = '#27ae60'; } }
         async function saveMoves() { const chips = document.querySelectorAll('.move-chip'); let finalMoves = []; chips.forEach(c => { if(c.style.background.includes('2ecc71')) finalMoves.push(c.getAttribute('data-id')); }); const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentPokeId, moves: finalMoves }) }); const data = await res.json(); if(data.success) { showToast("Golpes salvos!"); openBag(); } else { showToast(data.error); } }
-        function startSearch() { const fid = document.getElementById('onlineFighter').value; if(!fid) { showToast("Escolha um Pokémon!"); return; } const bet = Number(document.getElementById('betAmount') ? document.getElementById('betAmount').value : 0) || 0; socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin, bet); document.getElementById('searchStatus').style.display='block'; document.getElementById('btnSearch').style.display='none'; document.getElementById('btnCancelSearch').style.display='block'; }
-        function openWatchTab() { switchTab('tab-watch'); socket.emit('request_active_battles'); }
-        socket.on('active_battles_list', (list) => { const container = document.getElementById('battlesList'); if(!container) return; if(!list || list.length === 0) { container.innerHTML = '<div style="text-align:center; color:#aaa;">Sem lutas ativas</div>'; return; } let html = ''; list.forEach(b => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #222;"><div style="flex:1;"><div style="font-weight:bold; color:#f1c40f">${b.p1Name} vs ${b.p2Name}</div><div style="font-size:0.8rem; color:#aaa">Sala: ${b.id}</div></div><div><button onclick="spectate('${b.id}')" style="padding:8px; background:#2ecc71; border:none; border-radius:6px; color:#000">ESPECTAR</button></div></div>`; }); container.innerHTML = html; });
-        function spectate(roomId) { document.getElementById('specRoomId').value = roomId; document.getElementById('spectateForm').submit(); }
-        function cancelSearch() { socket.emit('cancel_match'); document.getElementById('searchStatus').style.display='none'; document.getElementById('btnSearch').style.display='block'; document.getElementById('btnCancelSearch').style.display='none'; }
-        socket.on('match_found', (data) => { document.getElementById('formRoomId').value = data.roomId; document.getElementById('formMeData').value = JSON.stringify(data.me); document.getElementById('formOpponentData').value = JSON.stringify(data.opponent); showLoading('Conectando...', 'left'); document.getElementById('onlineRedirectForm').submit(); });
-        function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-card').forEach(c => c.style.display = c.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
-        function selectDexMonster(i, el) { const m = allMonsters[i]; const safeSprite = resolveImg(m.sprite || ''); document.querySelectorAll('.dex-card').forEach(c=>c.classList.remove('active')); if(el) el.classList.add('active'); const left = `<div style="padding:20px; text-align:center;"><div style="width:160px; height:160px; margin:0 auto; background:#081018; border-radius:12px; display:flex; align-items:center; justify-content:center;"><img src="${safeSprite}" style="width:120px; height:120px; image-rendering:pixelated;" /></div><h2 style="margin-top:12px;">${m.name}</h2><div style="margin-top:6px;"> <span class="dex-type-tag">${m.type}</span> </div><div style="margin-top:8px; color:#aaa; font-size:0.9rem;">Catch Rate: ${m.catchRate || 0.5}</div></div>`; const stats = m.baseStats || {}; const statRow = (label, key, color) => { const val = stats[key] || 0; const pct = Math.max(2, Math.min(100, Math.round((val / 100) * 100))); return `<div class="dex-stats-row"><div class="dex-stat-label">${label}</div><div class="dex-stat-bar-bg"><div class="dex-stat-bar-fill ${key === 'hp' ? 'stat-hp' : key === 'attack' ? 'stat-atk' : key === 'defense' ? 'stat-def' : 'stat-spd'}" style="width:${pct}%"></div></div><div class="dex-stat-val">${val}</div></div>`; }; const right = `<div style="padding:20px;"><div style="font-weight:bold; color:#fff; margin-bottom:8px;">Base Stats</div>${statRow('HP','hp')}${statRow('ATK','attack')}${statRow('DEF','defense')}${statRow('SPD','speed')}<div style="margin-top:12px;"><strong style="color:#fff">Moves</strong><div class="dex-moves-list">${(m.movePool && m.movePool.length>0) ? m.movePool.map(mp => `<div class="dex-move-item">Lv.${mp.level}: ${mp.moveId}</div>`).join('') : '<div style="color:#777">Nenhum</div>'}</div></div>${m.evolution && m.evolution.targetId ? `<div style="margin-top:12px; color:#aaa">Evolui para: ${m.evolution.targetId} no nível ${m.evolution.level || '—'}</div>` : ''}</div>`; document.getElementById('dexDetailsView').innerHTML = `<div style="display:flex; gap:10px; flex-direction:row;"> <div style="width:320px;">${left}</div> <div style="flex:1;">${right}</div> </div>`; }
-        function validateBattleForm() { const f1 = document.getElementById('f1').value; if(!f1) { alert("Selecione seu lutador!"); return false; } return true; }
-        document.addEventListener('DOMContentLoaded', () => { const localForm = document.querySelector('#modalBattle form'); if (localForm) localForm.addEventListener('submit', () => { showLoading('Iniciando batalha...'); }); });
         function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         window.addEventListener('beforeunload', () => { showLoading(); });
