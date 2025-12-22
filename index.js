@@ -339,42 +339,73 @@ app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, 
 app.get('/api/me', async (req, res) => { const { userId } = req.query; if(!userId) return res.status(400).json({ error: 'No ID' }); const user = await User.findById(userId); if(!user) return res.status(404).json({ error: 'User not found' }); const teamWithSprites = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); const nextXp = getXpForNextLevel(p.level); const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves.map(m=>m.moveId); teamWithSprites.push({ instanceId: p._id, name: p.nickname, level: p.level, hp: p.currentHp, maxHp: p.stats.hp, xp: p.xp, xpToNext: nextXp, sprite: base ? base.sprite : '', moves: p.moves.map(m=>m.moveId), learnedMoves: allLearned }); } res.json({ team: teamWithSprites, allMoves: MOVES_LIBRARY, money: user.money || 0, pokeballs: user.pokeballs || 0, rareCandy: user.rareCandy || 0 }); });
 app.get('/api/pokedex', async (req, res) => { const { userId } = req.query; if (!userId) return res.status(400).json({ error: 'userId required' }); try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'User not found' }); const seen = new Set(); const addFromList = (list) => { if (!list) return; for (const p of list) { if (p && p.baseId) seen.add(String(p.baseId).toLowerCase()); } }; addFromList(user.pokemonTeam); addFromList(user.pc); return res.json({ list: Array.from(seen) }); } catch (e) { return res.status(500).json({ error: 'internal' }); } });
 // ROTA DE CORREÇÃO DE DADOS (Rode uma vez e apague depois)
+// ROTA DE CORREÇÃO (AGORA BLINDADA CONTRA USUÁRIOS BUGA DOS)
 app.get('/fix-database', async (req, res) => {
     try {
         const users = await User.find();
-        let count = 0;
+        let fixedCount = 0;
+        let deletedCount = 0;
 
         for (let user of users) {
-            // Função para corrigir uma lista de pokemons
+            // 1. Verifica se o usuário é válido. Se não tiver nome ou senha, é lixo.
+            if (!user.username || !user.password) {
+                await User.deleteOne({ _id: user._id });
+                deletedCount++;
+                continue; // Pula para o próximo
+            }
+
+            // 2. Função de correção dos ataques (String -> Objeto PP)
             const fixList = (list) => {
+                if (!list) return;
                 list.forEach(poke => {
-                    // Se os ataques forem strings (formato antigo), converte para objeto
+                    // Se os ataques forem strings, converte
                     if (poke.moves && poke.moves.length > 0 && typeof poke.moves[0] === 'string') {
                         poke.moves = poke.moves.map(moveStr => {
                             const libData = MOVES_LIBRARY[moveStr];
+                            // Se o golpe não existir na lib, ignora ou põe um padrão
+                            if (!libData) return { moveId: moveStr, pp: 0, maxPp: 0 };
+                            
                             return {
                                 moveId: moveStr,
-                                pp: libData ? libData.maxPp : 10,
-                                maxPp: libData ? libData.maxPp : 10
+                                pp: libData.maxPp,
+                                maxPp: libData.maxPp
                             };
                         });
+                    }
+                    
+                    // Garante que learnedMoves exista
+                    if (!poke.learnedMoves) {
+                        poke.learnedMoves = poke.moves.map(m => m.moveId);
                     }
                 });
             };
 
-            fixList(user.pokemonTeam); // Corrige time
-            if(user.pc) fixList(user.pc); // Corrige PC
+            fixList(user.pokemonTeam);
+            if(user.pc) fixList(user.pc);
             
-            // Força o Mongoose a notar a mudança
+            // Avisa o Mongoose que mexemos em arrays mistos
             user.markModified('pokemonTeam');
             user.markModified('pc');
             
-            await user.save();
-            count++;
+            try {
+                await user.save();
+                fixedCount++;
+            } catch (err) {
+                console.log(`Não foi possível salvar usuário ${user._id}: ${err.message}`);
+                // Se der erro ao salvar, provavelmente o dado está muito corrompido
+            }
         }
-        res.send(`<h1>Sucesso! ${count} usuários foram atualizados para o sistema de PP.</h1><p>Seus monstros criados continuam lá.</p><a href='/'>Voltar</a>`);
+        
+        res.send(`
+            <style>body{background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:50px;}</style>
+            <h1 style="color:#2ecc71">Correção Concluída!</h1>
+            <p>✅ Usuários corrigidos: <strong>${fixedCount}</strong></p>
+            <p>🗑️ Usuários corrompidos deletados: <strong>${deletedCount}</strong></p>
+            <br>
+            <a href="/" style="color:#3498db;font-size:1.5rem;">VOLTAR AO JOGO</a>
+        `);
     } catch (e) {
-        res.send(`Erro: ${e.message}`);
+        res.send(`Erro fatal: ${e.message}`);
     }
 });
 // HEAL (Restaura HP e PP)
