@@ -34,10 +34,13 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
-        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 42%; transform: translateY(-50%); transition: opacity 0.5s; }
+        /* --- POSICIONAMENTO GERAL BAIXADO (50%) --- */
+        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 50%; transform: translateY(-50%); transition: opacity 0.5s; }
+        
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
         .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 21; background-position-y: 33.33%; } 
         .fighter.p2-position .sprite { order: 1; z-index: 22; }
+        
         .fighter.p1-position { left: 5%; justify-content: flex-start; }
         .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 21; background-position-y: 66.66%; }
         .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
@@ -61,7 +64,7 @@
         .impact-pop { animation: impactPop 0.4s forwards; }
         @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
 
-        /* LISTA COMPLETA DE EFEITOS */
+        /* EFEITOS */
         .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 10px #e67e22; }
         .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 10px #3498db; }
         .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 10px #2ecc71; }
@@ -403,15 +406,15 @@
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
-            // Coordenadas INICIAIS (Onde o Pokémon estava - 85/205)
-            // AJUSTE +15px para baixo: era 120 -> 135
+            // Coordenadas INICIAIS (Onde o Pokémon estava)
+            // Chão ~100px (alinhado com os pés)
             let startX = (side === 'p1') ? 85 : 205; 
-            let startY = 135; 
+            let startY = 100; 
 
-            // Coordenadas FINAIS (Mão do treinador - 20/260)
-            // AJUSTE +15px para baixo: era 60 -> 75
+            // Coordenadas FINAIS (Mão do treinador)
+            // Altura 55px (Cintura/Mão)
             let endX = (side === 'p1') ? 20 : 260;
-            let endY = 75; 
+            let endY = 55; 
 
             // Posiciona a bola inicialmente
             ball.style.left = startX + 'px';
@@ -434,7 +437,8 @@
 
             await anim.finished;
             
-            // 4. Remove a bola
+            // 4. Remove a bola e garante que o impacto aconteça EXATAMENTE aqui
+            createImpact(side, 'effect-normal', endX, endY);
             ball.remove();
         }
 
@@ -465,14 +469,15 @@
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
-            // Ajuste das coordenadas iniciais
-            // AJUSTE +15px: era 60 -> 75
+            // Ajuste das coordenadas iniciais (Mão do Treinador)
+            // Altura 55px (Cintura/Mão)
             let startX = (side === 'p1') ? 60 : 220; 
-            let startY = 75;
+            let startY = 55;
             
+            // Destino (Pé do Pokémon)
+            // Chão ~100px
             let endX = (side === 'p1') ? 85 : 205; 
-            // AJUSTE +15px: era 120 -> 135
-            let endY = 135;
+            let endY = 100;
             
             if (side === 'p2') { 
                 startX = 230; 
@@ -495,7 +500,8 @@
             await animation.finished;
             ball.remove();
             
-            createImpact(side, 'effect-normal'); 
+            // Passa coordenadas exatas para evitar "pulo"
+            createImpact(side, 'effect-normal', endX, endY); 
             spriteImg.classList.add('anim-pop-out');
             setTimeout(() => { spriteImg.style.opacity = '1'; }, 50);
         }
@@ -520,15 +526,28 @@
             setTimeout(() => part.remove(), 500);
         }
 
-        function createImpact(targetSide, cssClass) {
+        // Modificado para aceitar coordenadas customizadas (fix do teleporte)
+        function createImpact(targetSide, cssClass, customX = null, customY = null) {
             const toEl = document.getElementById(`sprite-${targetSide}`);
-            if(!toEl) return;
-            const rect = toEl.getBoundingClientRect();
+            const fighterDiv = document.getElementById(`fighter-${targetSide}`);
+            if(!toEl && !fighterDiv) return;
+
             const impact = document.createElement('div');
             impact.className = `impact-effect impact-pop ${cssClass}`;
-            impact.style.left = (rect.left + rect.width/2 - 40) + 'px';
-            impact.style.top = (rect.top + rect.height/2 - 40) + 'px';
-            document.body.appendChild(impact);
+            
+            if (customX !== null && customY !== null && fighterDiv) {
+                // Se coordenadas customizadas forem passadas (Deploy/Return), usa elas relativo ao fighter div
+                impact.style.left = (customX - 40) + 'px'; // -40 para centralizar (width 80)
+                impact.style.top = (customY - 40) + 'px';
+                fighterDiv.appendChild(impact);
+            } else {
+                // Comportamento padrão (Ataques) - relativo ao Body/Screen
+                const rect = toEl.getBoundingClientRect();
+                impact.style.left = (rect.left + rect.width/2 - 40) + 'px';
+                impact.style.top = (rect.top + rect.height/2 - 40) + 'px';
+                document.body.appendChild(impact);
+            }
+            
             setTimeout(() => impact.remove(), 400);
         }
 
@@ -913,11 +932,13 @@
             updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
             if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
             
+            // AGORA A ENTRADA ACONTECE ENQUANTO O LOADER FICA TRANSPARENTE
             await wait(100); 
             
             deployPokemon('p1', false);
             deployPokemon('p2', battleMode === 'wild');
 
+            // TERMINA DE ESPERAR O LOADER SUMIR
             await wait(400);
             loader.style.display = 'none';
 
