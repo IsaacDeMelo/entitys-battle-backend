@@ -603,7 +603,43 @@ app.post('/api/turn', async (req, res) => {
 io.on('connection', (socket) => {
     socket.on('join_room', (r) => socket.join(r));
     socket.on('enter_map', (d) => { socket.join(d.map); players[socket.id] = { id: socket.id, ...d, x: 50, y: 50 }; socket.emit('map_state', Object.values(players).filter(p=>p.map===d.map)); socket.to(d.map).emit('player_joined', players[socket.id]); });
-    socket.on('move_player', (d) => { if(players[socket.id]) { players[socket.id].x = d.x; players[socket.id].y = d.y; players[socket.id].direction = d.direction; io.to(players[socket.id].map).emit('player_moved', { id: socket.id, ...d }); } });
+socket.on('move_player', (data) => { 
+        if (players[socket.id]) { 
+            const p = players[socket.id]; 
+            
+            // Lógica de Direção Híbrida (Funciona para WASD e Clique)
+            // 1. Se o cliente mandou a direção explícita (o ideal), usa ela.
+            if (data.direction) {
+                p.direction = data.direction;
+            } 
+            // 2. Se não mandou (código antigo do forest), calcula baseado no DELTA X e Y
+            else {
+                const dx = data.x - p.x;
+                const dy = data.y - p.y;
+                
+                // Só muda a direção se houve movimento significativo
+                if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        p.direction = dx > 0 ? 'right' : 'left';
+                    } else {
+                        p.direction = dy > 0 ? 'down' : 'up';
+                    }
+                }
+            }
+
+            // Atualiza posição
+            p.x = data.x; 
+            p.y = data.y; 
+            
+            // Envia o estado atualizado para todos
+            io.to(p.map).emit('player_moved', { 
+                id: socket.id, 
+                x: data.x, 
+                y: data.y, 
+                direction: p.direction 
+            }); 
+        } 
+    });
     socket.on('send_chat', (d) => { const p = players[socket.id]; if(p) io.to(p.map).emit('chat_message', { id: socket.id, msg: d.msg }); });
     socket.on('disconnect', () => { if(players[socket.id]) { io.to(players[socket.id].map).emit('player_left', socket.id); delete players[socket.id]; } matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); });
     
