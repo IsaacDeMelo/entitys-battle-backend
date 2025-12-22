@@ -7,323 +7,111 @@
     <style>
         * { box-sizing: border-box; }
         body { background: #0f172a; color: #ecf0f1; font-family: 'Rajdhani', sans-serif; padding: 0; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        
-        /* HEADER */
         .header { background: #1e293b; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; }
         .header h1 { margin: 0; font-family: 'Press Start 2P'; font-size: 1rem; color: #f1c40f; text-shadow: 2px 2px 0 #000; }
         .btn-cancel { background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; transition: 0.2s; }
-        .btn-cancel:hover { background: #c0392b; }
-
-        /* TABS */
         .tabs { display: flex; background: #0f172a; border-bottom: 1px solid #334155; }
         .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #64748b; font-weight: bold; font-size: 1.1rem; border-bottom: 3px solid transparent; transition: 0.2s; }
-        .tab-btn:hover { color: #94a3b8; background: #1e293b; }
         .tab-btn.active { color: #f1c40f; border-bottom-color: #f1c40f; background: #1e293b; }
-
-        /* CONTENT */
         .content-area { flex: 1; overflow-y: auto; padding: 20px; display: none; }
         .content-area.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* FORMS */
         .edit-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #334155; }
         .btn-new { background: #3498db; color: white; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
-        
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; font-size: 0.9rem; color: #94a3b8; font-weight: bold; }
         input, select, textarea { width: 100%; padding: 12px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px; font-size: 1rem; font-family: 'Rajdhani', sans-serif; transition: 0.2s; }
-        input:focus, select:focus { border-color: #f1c40f; outline: none; box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.2); }
-        
+        input:focus, select:focus { border-color: #f1c40f; outline: none; }
         .row { display: flex; gap: 15px; }
         .col { flex: 1; }
-        
-        .btn-submit { width: 100%; padding: 15px; background: #2ecc71; color: #000; border: none; font-weight: bold; font-size: 1.1rem; cursor: pointer; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 0 #27ae60; transition: 0.1s; }
-        .btn-submit:active { transform: translateY(2px); box-shadow: 0 2px 0 #27ae60; }
-
-        /* LISTA LATERAL */
+        .btn-submit { width: 100%; padding: 15px; background: #2ecc71; color: #000; border: none; font-weight: bold; font-size: 1.1rem; cursor: pointer; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 0 #27ae60; }
         .poke-item { background: #1e293b; padding: 12px; margin-bottom: 10px; border-radius: 10px; display: flex; align-items: center; gap: 15px; cursor: pointer; border: 1px solid #334155; transition: 0.2s; }
         .poke-item:hover { transform: translateX(5px); border-color: #f1c40f; }
         .poke-item img { width: 48px; height: 48px; image-rendering: pixelated; background: rgba(0,0,0,0.3); border-radius: 50%; object-fit: contain; border: 2px solid #334155; }
-
-        /* --- NOVO ESTILO: MOVE BUILDER --- */
         .move-builder-box { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; }
         .move-controls { display: flex; gap: 10px; margin-bottom: 15px; }
         .move-list-display { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
-        .move-chip-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: #0f172a; padding: 8px 12px; border-radius: 6px; border-left: 4px solid #3498db; 
-        }
-        .move-chip-info { font-size: 0.9rem; color: #fff; }
-        .btn-remove-move { background: none; border: none; color: #e74c3c; cursor: pointer; font-weight: bold; padding: 5px; }
-        .btn-remove-move:hover { color: #ff6b6b; }
+        .move-chip-item { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 8px 12px; border-radius: 6px; border-left: 4px solid #3498db; }
+        .btn-remove-move { background: none; border: none; color: #e74c3c; cursor: pointer; font-weight: bold; }
         .btn-add-move { background: #3498db; color: white; border: none; padding: 0 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-
-        /* GOLPES TAB */
         .moves-box { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
         .move-card { background: #1e293b; padding: 10px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; gap: 5px; }
         .type-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; color: #fff; background: #555; align-self: flex-start; }
-        
-        /* CORES DE TIPO */
-        .type-fire { background: #e74c3c; } .type-water { background: #3498db; } .type-plant { background: #2ecc71; } .type-electric { background: #f1c40f; color:#000; }
     </style>
 </head>
 <body>
     <div class="header"><h1>GENETICS LAB</h1><a href="/lobby?userId=<%= user._id %>" class="btn-cancel">SAIR</a></div>
-    
     <div class="tabs">
         <div class="tab-btn active" id="btn-tab-create" onclick="switchTab('tab-create')">EDITOR</div>
         <div class="tab-btn" id="btn-tab-list" onclick="switchTab('tab-list')">LISTA</div>
         <div class="tab-btn" id="btn-tab-moves" onclick="switchTab('tab-moves')">GOLPES</div>
     </div>
     
-    <!-- ABA DE CRIAÇÃO/EDIÇÃO -->
     <div id="tab-create" class="content-area active">
-        <div class="edit-panel-header">
-            <h2 id="modeTitle" style="margin:0; color:#3498db;">CRIAR NOVA ESPÉCIE</h2>
-            <button class="btn-new" onclick="clearForm()">LIMPAR CAMPOS</button>
-        </div>
-        
+        <div class="edit-panel-header"><h2 id="modeTitle" style="margin:0; color:#3498db;">CRIAR NOVA ESPÉCIE</h2><button class="btn-new" onclick="clearForm()">LIMPAR CAMPOS</button></div>
         <form action="/lab/create" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="existingId" id="existingId">
+            <div class="row"><div class="col form-group"><label>Nome</label><input type="text" name="name" id="pName" required placeholder="Ex: Charizard"></div><div class="col form-group"><label>Elemento</label><select name="type" id="pType"><% for(let t of types) { %><option value="<%= t %>"><%= t.toUpperCase() %></option><% } %></select></div></div>
+            <div class="row"><div class="col form-group"><label>Sprite</label><input type="file" name="sprite" style="padding: 9px;"></div><div class="col form-group"><label>Spawn</label><select name="location" id="pLoc"><option value="none">Nenhum</option><option value="forest">Floresta</option></select></div></div>
             
-            <div class="row">
-                <div class="col form-group">
-                    <label>Nome da Espécie</label>
-                    <input type="text" name="name" id="pName" required placeholder="Ex: Charizard">
-                </div>
-                <div class="col form-group">
-                    <label>Elemento (Tipo)</label>
-                    <select name="type" id="pType">
-                        <% for(let t of types) { %>
-                            <option value="<%= t %>"><%= t.toUpperCase() %></option>
-                        <% } %>
-                    </select>
-                </div>
-            </div>
+            <h3 style="color:#f1c40f; border-bottom:1px solid #444;">Atributos Base</h3>
+            <!-- REMOVIDO ENERGY, AGORA SÓ HP, ATK, DEF, SPD -->
+            <div class="row"><div class="col form-group"><label>HP</label><input type="number" name="hp" id="pHp" value="50"></div><div class="col form-group"><label>Velocidade</label><input type="number" name="spd" id="pSpd" value="10"></div></div>
+            <div class="row"><div class="col form-group"><label>Ataque</label><input type="number" name="atk" id="pAtk" value="10"></div><div class="col form-group"><label>Defesa</label><input type="number" name="def" id="pDef" value="10"></div></div>
+            
+            <!-- CAMPO OCULTO DE ENERGIA (PARA NÃO QUEBRAR O BACKEND SE ELE AINDA ESPERAR) -->
+            <input type="hidden" name="energy" id="pEn" value="0">
 
-            <div class="row">
-                <div class="col form-group">
-                    <label>Sprite (PNG Transparente)</label>
-                    <input type="file" name="sprite" style="padding: 9px;">
-                </div>
-                <div class="col form-group">
-                    <label>Spawn (Local)</label>
-                    <select name="location" id="pLoc">
-                        <option value="none">Nenhum (Evolução/Inicial)</option>
-                        <option value="forest">Floresta (Selvagem)</option>
-                    </select>
-                </div>
-            </div>
+            <h3 style="color:#f1c40f; border-bottom:1px solid #444;">Ecologia</h3>
+            <div class="row"><div class="col form-group"><label>Min Lvl</label><input type="number" name="minLvl" id="pMin" value="1"></div><div class="col form-group"><label>Max Lvl</label><input type="number" name="maxLvl" id="pMax" value="5"></div><div class="col form-group"><label>Raridade</label><input type="number" name="spawnChance" id="pSpawn" value="10"></div></div>
+            <div class="row"><div class="col form-group"><label>Captura (0.1-1)</label><input type="number" step="0.1" name="catchRate" id="pRate" value="0.5"></div><div class="col form-group" style="display:flex; align-items:end; padding-bottom:10px;"><div style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:10px; border-radius:6px; width:100%; border:1px solid #334155;"><input type="checkbox" name="isStarter" id="pStarter" style="width:20px; margin:0;"><label for="pStarter" style="margin:0; cursor:pointer;">Inicial?</label></div></div></div>
+            <div class="row"><div class="col form-group"><label>Evolui Para (ID)</label><input type="text" name="evoTarget" id="pEvoT"></div><div class="col form-group"><label>Nível Evo</label><input type="number" name="evoLevel" id="pEvoL" value="100"></div></div>
 
-            <h3 style="color:#f1c40f; border-bottom:1px solid #444; padding-bottom:5px; margin-top:20px;">Atributos Base</h3>
-            <div class="row">
-                <div class="col form-group"><label>HP (Vida)</label><input type="number" name="hp" id="pHp" value="50"></div>
-                <div class="col form-group"><label>Energia</label><input type="number" name="energy" id="pEn" value="100"></div>
-            </div>
-            <div class="row">
-                <div class="col form-group"><label>Ataque</label><input type="number" name="atk" id="pAtk" value="10"></div>
-                <div class="col form-group"><label>Defesa</label><input type="number" name="def" id="pDef" value="10"></div>
-                <div class="col form-group"><label>Velocidade</label><input type="number" name="spd" id="pSpd" value="10"></div>
-            </div>
-
-            <h3 style="color:#f1c40f; border-bottom:1px solid #444; padding-bottom:5px; margin-top:20px;">Ecologia & Evolução</h3>
-            <div class="row">
-                <div class="col form-group"><label>Nível Mínimo</label><input type="number" name="minLvl" id="pMin" value="1"></div>
-                <div class="col form-group"><label>Nível Máximo</label><input type="number" name="maxLvl" id="pMax" value="5"></div>
-                <div class="col form-group"><label>Raridade (Peso)</label><input type="number" name="spawnChance" id="pSpawn" value="10" title="Quanto maior, mais comum"></div>
-            </div>
-            <div class="row">
-                <div class="col form-group"><label>Chance Captura (0.1 - 1.0)</label><input type="number" step="0.1" name="catchRate" id="pRate" value="0.5"></div>
-                <div class="col form-group" style="display:flex; align-items:end; padding-bottom:10px;">
-                    <div style="display:flex; align-items:center; gap:10px; background:#1e293b; padding:10px; border-radius:6px; width:100%; border:1px solid #334155;">
-                        <input type="checkbox" name="isStarter" id="pStarter" style="width:20px; margin:0;">
-                        <label for="pStarter" style="margin:0; cursor:pointer;">É Inicial?</label>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col form-group"><label>Evolui Para (ID ex: charizard)</label><input type="text" name="evoTarget" id="pEvoT" placeholder="ID do monstro"></div>
-                <div class="col form-group"><label>Nível da Evolução</label><input type="number" name="evoLevel" id="pEvoL" value="100"></div>
-            </div>
-
-            <!-- NOVO GERENCIADOR DE GOLPES (MOVE BUILDER) -->
-            <h3 style="color:#f1c40f; border-bottom:1px solid #444; padding-bottom:5px; margin-top:20px;">Moveset (Golpes por Nível)</h3>
+            <h3 style="color:#f1c40f; border-bottom:1px solid #444;">Moveset (Golpes)</h3>
             <div class="form-group move-builder-box">
-                <div class="move-controls">
-                    <input type="number" id="newMoveLevel" placeholder="Nível" style="width:80px;" min="1" value="1">
-                    <select id="newMoveId">
-                        <option value="" disabled selected>Selecione um golpe...</option>
-                        <% Object.values(moves).sort((a,b) => a.name.localeCompare(b.name)).forEach(m => { %>
-                            <option value="<%= m.id %>"><%= m.name %> (<%= m.element %> | <%= m.category %>)</option>
-                        <% }) %>
-                    </select>
-                    <button type="button" class="btn-add-move" onclick="addMove()">ADICIONAR</button>
-                </div>
-                
-                <div id="moveListDisplay" class="move-list-display">
-                    <!-- Os golpes aparecerão aqui -->
-                    <div style="color:#666; text-align:center; padding:10px;">Nenhum golpe adicionado.</div>
-                </div>
-                
-                <!-- INPUT OCULTO QUE ENVIA O JSON PARA O SERVIDOR -->
+                <div class="move-controls"><input type="number" id="newMoveLevel" placeholder="Nível" style="width:80px;" min="1" value="1"><select id="newMoveId"><option value="" disabled selected>Selecione...</option><% Object.values(moves).sort((a,b) => a.name.localeCompare(b.name)).forEach(m => { %><option value="<%= m.id %>"><%= m.name %> (PP: <%= m.maxPp %>)</option><% }) %></select><button type="button" class="btn-add-move" onclick="addMove()">ADD</button></div>
+                <div id="moveListDisplay" class="move-list-display"><div style="color:#666; text-align:center; padding:10px;">Vazio</div></div>
                 <input type="hidden" name="movesJson" id="hiddenMovesJson" value="[]">
             </div>
-
             <button type="submit" class="btn-submit" id="btnAction">SALVAR DADOS</button>
         </form>
     </div>
     
-    <!-- ABA DE LISTA -->
     <div id="tab-list" class="content-area">
-        <h3 style="color:#f1c40f; margin-bottom:20px;">Banco de Dados (<%= pokemons.length %>)</h3>
+        <h3 style="color:#f1c40f;">Banco de Dados (<%= pokemons.length %>)</h3>
         <% pokemons.forEach(p => { %>
             <div class="poke-item" onclick='loadData(<%- JSON.stringify(p) %>)'>
-                <% if(p.sprite) { %> 
-                    <img src="<%= p.sprite %>"> 
-                <% } else { %> 
-                    <div style="width:48px;height:48px;background:#334155;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#aaa;">?</div> 
-                <% } %>
-                <div>
-                    <div style="font-weight:bold; color:#fff; font-size:1.1rem;"><%= p.name %> 
-                        <% if(p.isStarter) { %><span style="background:#27ae60; color:#000; padding:2px 6px; border-radius:4px; font-size:0.6rem; margin-left:5px;">STARTER</span><% } %>
-                    </div>
-                    <div style="font-size:0.8rem; color:#94a3b8; margin-top:4px;">
-                        ID: <span style="color:#f1c40f"><%= p.id %></span> | Tipo: <%= p.type %> | Local: <%= p.spawnLocation || 'N/A' %>
-                    </div>
-                </div>
+                <% if(p.sprite) { %> <img src="<%= p.sprite %>"> <% } else { %> <div style="width:48px;height:48px;background:#334155;border-radius:50%;color:#aaa;display:flex;justify-content:center;align-items:center;">?</div> <% } %>
+                <div><div style="font-weight:bold; color:#fff; font-size:1.1rem;"><%= p.name %> <% if(p.isStarter) { %><span style="background:#27ae60; color:#000; padding:2px 6px; border-radius:4px; font-size:0.6rem;">STARTER</span><% } %></div><div style="font-size:0.8rem; color:#94a3b8;">ID: <span style="color:#f1c40f"><%= p.id %></span> | Tipo: <%= p.type %></div></div>
             </div>
         <% }) %>
     </div>
     
-    <!-- ABA DE GOLPES (CONSULTA) -->
-    <div id="tab-moves" class="content-area">
-        <div class="moves-box">
-            <% Object.values(moves).forEach(m => { %>
-                <div class="move-card">
-                    <div style="display:flex; justify-content:space-between; align-items:start;">
-                        <div style="font-weight:bold; color:#fff; font-size:1rem;"><%= m.name %></div>
-                        <span class="type-badge type-<%= m.element %>"><%= m.element %></span>
-                    </div>
-                    <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">
-                        ID: <span style="color:#f1c40f"><%= m.id %></span><br>
-                        Power: <%= m.power %> | Cost: <%= m.cost %><br>
-                        Cat: <%= m.category %>
-                    </div>
-                </div>
-            <% }) %>
-        </div>
-    </div>
+    <div id="tab-moves" class="content-area"><div class="moves-box"><% Object.values(moves).forEach(m => { %><div class="move-card"><div style="display:flex; justify-content:space-between;"><div style="font-weight:bold; color:#fff;"><%= m.name %></div><span class="type-badge"><%= m.element %></span></div><div style="font-size:0.8rem; color:#aaa;">ID: <span style="color:#f1c40f"><%= m.id %></span><br>Power: <%= m.power %> | PP: <%= m.maxPp %></div></div><% }) %></div></div>
     
     <script>
-        // --- GERENCIAMENTO DE TABS ---
-        function switchTab(id) {
-            document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.getElementById('btn-' + id).classList.add('active');
-        }
-
-        // --- MOVE BUILDER LOGIC ---
+        function switchTab(id) { document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-' + id).classList.add('active'); }
         let currentMoves = [];
-
         function renderMoves() {
-            const container = document.getElementById('moveListDisplay');
-            const hiddenInput = document.getElementById('hiddenMovesJson');
-            
-            // Ordena por nível
-            currentMoves.sort((a, b) => a.level - b.level);
-
-            // Atualiza Input Oculto
-            hiddenInput.value = JSON.stringify(currentMoves);
-
-            // Renderiza Visual
-            if (currentMoves.length === 0) {
-                container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Nenhum golpe adicionado.</div>';
-                return;
-            }
-
+            const container = document.getElementById('moveListDisplay'); const hiddenInput = document.getElementById('hiddenMovesJson');
+            currentMoves.sort((a, b) => a.level - b.level); hiddenInput.value = JSON.stringify(currentMoves);
+            if (currentMoves.length === 0) { container.innerHTML = '<div style="color:#666; text-align:center; padding:10px;">Vazio</div>'; return; }
             container.innerHTML = '';
-            currentMoves.forEach((m, index) => {
-                const div = document.createElement('div');
-                div.className = 'move-chip-item';
-                div.innerHTML = `
-                    <div class="move-chip-info">
-                        <strong style="color:#f1c40f">Lv. ${m.level}</strong> - ${m.moveId.toUpperCase()}
-                    </div>
-                    <button type="button" class="btn-remove-move" onclick="removeMove(${index})">✕</button>
-                `;
-                container.appendChild(div);
-            });
+            currentMoves.forEach((m, index) => { const div = document.createElement('div'); div.className = 'move-chip-item'; div.innerHTML = `<div class="move-chip-info"><strong style="color:#f1c40f">Lv. ${m.level}</strong> - ${m.moveId.toUpperCase()}</div><button type="button" class="btn-remove-move" onclick="removeMove(${index})">✕</button>`; container.appendChild(div); });
         }
-
-        function addMove() {
-            const lvl = parseInt(document.getElementById('newMoveLevel').value);
-            const id = document.getElementById('newMoveId').value;
-            
-            if (!id) return alert("Selecione um golpe!");
-            if (!lvl || lvl < 1) return alert("Nível inválido!");
-
-            // Evita duplicatas de golpe (opcional)
-            if(currentMoves.find(m => m.moveId === id)) return alert("Golpe já adicionado!");
-
-            currentMoves.push({ level: lvl, moveId: id });
-            renderMoves();
-        }
-
-        function removeMove(index) {
-            currentMoves.splice(index, 1);
-            renderMoves();
-        }
-
-        // --- CARREGAR DADOS ---
+        function addMove() { const lvl = parseInt(document.getElementById('newMoveLevel').value); const id = document.getElementById('newMoveId').value; if (!id || !lvl) return; if(currentMoves.find(m => m.moveId === id)) return; currentMoves.push({ level: lvl, moveId: id }); renderMoves(); }
+        function removeMove(index) { currentMoves.splice(index, 1); renderMoves(); }
         function loadData(p) {
-            switchTab('tab-create');
-            document.getElementById('modeTitle').innerText = "EDITANDO: " + p.name.toUpperCase();
-            document.getElementById('modeTitle').style.color = "#f1c40f";
-            
-            document.getElementById('existingId').value = p.id;
-            document.getElementById('pName').value = p.name;
-            document.getElementById('pType').value = p.type;
-            
-            // Stats
-            document.getElementById('pHp').value = p.baseStats.hp;
-            document.getElementById('pEn').value = p.baseStats.energy;
-            document.getElementById('pAtk').value = p.baseStats.attack;
-            document.getElementById('pDef').value = p.baseStats.defense;
-            document.getElementById('pSpd').value = p.baseStats.speed;
-            
-            // Meta
-            document.getElementById('pLoc').value = p.spawnLocation || 'none'; 
-            document.getElementById('pMin').value = p.minSpawnLevel || 1; 
-            document.getElementById('pMax').value = p.maxSpawnLevel || 5;
-            document.getElementById('pRate').value = p.catchRate || 0.5;
-            document.getElementById('pSpawn').value = p.spawnChance || 10;
-            document.getElementById('pStarter').checked = p.isStarter || false;
-
-            // Evolution
-            if(p.evolution) { 
-                document.getElementById('pEvoT').value = p.evolution.targetId || ''; 
-                document.getElementById('pEvoL').value = p.evolution.level || 100; 
-            } else { 
-                document.getElementById('pEvoT').value = ''; 
-                document.getElementById('pEvoL').value = 100; 
-            }
-            
-            // MOVES LOAD
-            currentMoves = p.movePool || [];
-            renderMoves();
+            switchTab('tab-create'); document.getElementById('modeTitle').innerText = "EDITANDO: " + p.name.toUpperCase(); document.getElementById('modeTitle').style.color = "#f1c40f";
+            document.getElementById('existingId').value = p.id; document.getElementById('pName').value = p.name; document.getElementById('pType').value = p.type;
+            document.getElementById('pHp').value = p.baseStats.hp; document.getElementById('pEn').value = 0; 
+            document.getElementById('pAtk').value = p.baseStats.attack; document.getElementById('pDef').value = p.baseStats.defense; document.getElementById('pSpd').value = p.baseStats.speed;
+            document.getElementById('pLoc').value = p.spawnLocation || 'none'; document.getElementById('pMin').value = p.minSpawnLevel || 1; document.getElementById('pMax').value = p.maxSpawnLevel || 5;
+            document.getElementById('pRate').value = p.catchRate || 0.5; document.getElementById('pSpawn').value = p.spawnChance || 10; document.getElementById('pStarter').checked = p.isStarter || false;
+            if(p.evolution) { document.getElementById('pEvoT').value = p.evolution.targetId || ''; document.getElementById('pEvoL').value = p.evolution.level || 100; } else { document.getElementById('pEvoT').value = ''; document.getElementById('pEvoL').value = 100; }
+            currentMoves = p.movePool || []; renderMoves();
         }
-
-        function clearForm() { 
-            document.getElementById('modeTitle').innerText = "CRIAR NOVA ESPÉCIE"; 
-            document.getElementById('modeTitle').style.color = "#3498db"; 
-            document.getElementById('existingId').value = ""; 
-            document.querySelector('form').reset(); 
-            document.getElementById('pStarter').checked = false;
-            
-            currentMoves = [];
-            renderMoves();
-        }
+        function clearForm() { document.getElementById('modeTitle').innerText = "CRIAR NOVA ESPÉCIE"; document.getElementById('modeTitle').style.color = "#3498db"; document.getElementById('existingId').value = ""; document.querySelector('form').reset(); document.getElementById('pStarter').checked = false; currentMoves = []; renderMoves(); }
     </script>
 </body>
 </html>
