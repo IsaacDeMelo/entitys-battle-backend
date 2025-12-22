@@ -440,7 +440,7 @@ app.post('/api/turn', async (req, res) => {
                 try {
                     const user = await User.findById(battle.userId);
                     if(!user) { events.push({ type: 'MSG', text: 'Erro de usuário.' }); return res.json({ events }); }
-                    if((user.pokeballs || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem Pokébolas!' }); return res.json({ events }); }
+                    if((user.pokeballs || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem Catchcubes!' }); return res.json({ events }); }
                     
                     user.pokeballs = (user.pokeballs || 0) - 1; threwPokeball = true;
                     const hpPercent = p2.hp / p2.maxHp; 
