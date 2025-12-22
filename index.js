@@ -338,7 +338,45 @@ app.get('/api/pc', async (req, res) => { const { userId } = req.query; const use
 app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, to } = req.body; const user = await User.findById(userId); if (!user.pc) user.pc = []; const sourceList = from === 'team' ? user.pokemonTeam : user.pc; const destList = to === 'team' ? user.pokemonTeam : user.pc; if (to === 'team' && destList.length >= 6) return res.json({ error: 'Equipe cheia' }); if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Não pode ficar sem pokémon' }); const index = sourceList.findIndex(p => p._id.toString() === pokemonId); if (index === -1) return res.json({ error: 'Erro' }); const [poke] = sourceList.splice(index, 1); destList.push(poke); await user.save(); res.json({ success: true }); });
 app.get('/api/me', async (req, res) => { const { userId } = req.query; if(!userId) return res.status(400).json({ error: 'No ID' }); const user = await User.findById(userId); if(!user) return res.status(404).json({ error: 'User not found' }); const teamWithSprites = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); const nextXp = getXpForNextLevel(p.level); const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves.map(m=>m.moveId); teamWithSprites.push({ instanceId: p._id, name: p.nickname, level: p.level, hp: p.currentHp, maxHp: p.stats.hp, xp: p.xp, xpToNext: nextXp, sprite: base ? base.sprite : '', moves: p.moves.map(m=>m.moveId), learnedMoves: allLearned }); } res.json({ team: teamWithSprites, allMoves: MOVES_LIBRARY, money: user.money || 0, pokeballs: user.pokeballs || 0, rareCandy: user.rareCandy || 0 }); });
 app.get('/api/pokedex', async (req, res) => { const { userId } = req.query; if (!userId) return res.status(400).json({ error: 'userId required' }); try { const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'User not found' }); const seen = new Set(); const addFromList = (list) => { if (!list) return; for (const p of list) { if (p && p.baseId) seen.add(String(p.baseId).toLowerCase()); } }; addFromList(user.pokemonTeam); addFromList(user.pc); return res.json({ list: Array.from(seen) }); } catch (e) { return res.status(500).json({ error: 'internal' }); } });
+// ROTA DE CORREÇÃO DE DADOS (Rode uma vez e apague depois)
+app.get('/fix-database', async (req, res) => {
+    try {
+        const users = await User.find();
+        let count = 0;
 
+        for (let user of users) {
+            // Função para corrigir uma lista de pokemons
+            const fixList = (list) => {
+                list.forEach(poke => {
+                    // Se os ataques forem strings (formato antigo), converte para objeto
+                    if (poke.moves && poke.moves.length > 0 && typeof poke.moves[0] === 'string') {
+                        poke.moves = poke.moves.map(moveStr => {
+                            const libData = MOVES_LIBRARY[moveStr];
+                            return {
+                                moveId: moveStr,
+                                pp: libData ? libData.maxPp : 10,
+                                maxPp: libData ? libData.maxPp : 10
+                            };
+                        });
+                    }
+                });
+            };
+
+            fixList(user.pokemonTeam); // Corrige time
+            if(user.pc) fixList(user.pc); // Corrige PC
+            
+            // Força o Mongoose a notar a mudança
+            user.markModified('pokemonTeam');
+            user.markModified('pc');
+            
+            await user.save();
+            count++;
+        }
+        res.send(`<h1>Sucesso! ${count} usuários foram atualizados para o sistema de PP.</h1><p>Seus monstros criados continuam lá.</p><a href='/'>Voltar</a>`);
+    } catch (e) {
+        res.send(`Erro: ${e.message}`);
+    }
+});
 // HEAL (Restaura HP e PP)
 app.post('/api/heal', async (req, res) => { 
     const { userId } = req.body; const user = await User.findById(userId); 
