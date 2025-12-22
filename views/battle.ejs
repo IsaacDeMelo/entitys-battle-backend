@@ -34,8 +34,8 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
-        /* --- POSICIONAMENTO GERAL BAIXADO (50%) --- */
-        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 50%; transform: translateY(-50%); transition: opacity 0.5s; }
+        /* --- POSICIONAMENTO 42% (Conforme solicitado) --- */
+        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 42%; transform: translateY(-50%); transition: opacity 0.5s; }
         
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
         .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 21; background-position-y: 33.33%; } 
@@ -167,13 +167,14 @@
         }
         .anim-wild-appear { animation: wildSlideIn 0.8s ease-out forwards; }
 
-        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) --- */
-        @keyframes returnAnim {
-            0% { transform: scale(1); filter: none; opacity: 1; }
-            100% { transform: scale(0); filter: sepia(1) hue-rotate(-50deg) saturate(5) brightness(2); opacity: 0; }
+        /* --- ANIMAÇÕES DE SAÍDA (RETORNO/DERROTA) - RECALL FLASH --- */
+        @keyframes recallFlash {
+            0% { transform: scale(1); filter: brightness(1); opacity: 1; }
+            50% { transform: scale(1.1); filter: brightness(5) sepia(1) hue-rotate(-50deg) saturate(5); opacity: 1; }
+            100% { transform: scale(0.1); filter: brightness(5) sepia(1) hue-rotate(-50deg) saturate(5); opacity: 0; }
         }
         /* Importante: transition: none para não brigar com a animação */
-        .anim-return { animation: returnAnim 0.5s forwards !important; transition: none !important; }
+        .anim-recall { animation: recallFlash 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards !important; transition: none !important; }
 
         @keyframes wildFaint {
             0% { transform: translateY(0); opacity: 1; }
@@ -383,7 +384,10 @@
         async function returnPokemon(side) {
             const fighterDiv = document.getElementById(`fighter-${side}`);
             const spriteImg = document.querySelector(`#sprite-${side} img`);
-            if(!spriteImg || !fighterDiv) return;
+            const trainer = document.getElementById(`trainer-${side}`);
+            const sprite = document.getElementById(`sprite-${side}`);
+            
+            if(!spriteImg || !fighterDiv || !trainer || !sprite) return;
 
             // Se for selvagem, só desmaia
             if (side === 'p2' && battleMode === 'wild') {
@@ -392,53 +396,57 @@
                 return;
             }
 
-            // 1. Pokémon brilha e encolhe (Recall)
+            // 1. ANIMAÇÃO DE RECALL (Flash + Shrink)
+            // Ordem: Brilho/Explosão -> Encolher
             spriteImg.style.opacity = ''; 
             spriteImg.style.transform = '';
             void spriteImg.offsetWidth;
-            spriteImg.classList.add('anim-return');
+            spriteImg.classList.add('anim-recall'); // Nova animação CSS
             
-            // Espera a animação de encolher (500ms do CSS)
-            await wait(500);
+            // Espera a animação de recall (600ms)
+            await wait(600);
 
-            // 2. Cria a bola no pé do pokémon
+            // 2. Cria a bola no pé do pokémon (DINÂMICO)
             const ball = document.createElement('div');
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
-            // Coordenadas INICIAIS (Onde o Pokémon estava)
-            // Chão ~100px (alinhado com os pés)
-            let startX = (side === 'p1') ? 85 : 205; 
-            let startY = 100; 
+            // Cálculos dinâmicos baseados nos elementos reais
+            const tRect = trainer.getBoundingClientRect();
+            const mRect = sprite.getBoundingClientRect();
+            const fRect = fighterDiv.getBoundingClientRect();
 
-            // Coordenadas FINAIS (Mão do treinador)
-            // Altura 55px (Cintura/Mão)
-            let endX = (side === 'p1') ? 20 : 260;
-            let endY = 55; 
+            // Ponto de Partida: Centro do Pokémon
+            const startX = (mRect.left - fRect.left) + (mRect.width / 2) - 10; // -10 metade da bola
+            const startY = (mRect.top - fRect.top) + (mRect.height / 2) + 20; // +20 para ser o pé
+
+            // Ponto de Chegada: Mão do Treinador (aprox 80% w, 40% h)
+            // Se for P1 (esquerda), mão na direita. Se P2 (direita), mão na esquerda.
+            const handOffsetX = (side === 'p1') ? (tRect.width * 0.8) : (tRect.width * 0.2);
+            const endX = (tRect.left - fRect.left) + handOffsetX;
+            const endY = (tRect.top - fRect.top) + (tRect.height * 0.5);
 
             // Posiciona a bola inicialmente
             ball.style.left = startX + 'px';
             ball.style.top = startY + 'px';
 
-            // 3. Anima a bola voando de volta para a mão com curva suave
+            // 3. Anima a bola voando de volta
             const deltaX = endX - startX;
             const deltaY = endY - startY;
 
             const anim = ball.animate([
                 { transform: 'translate(0,0) scale(0.6)', opacity: 1 },
-                // Pequena curva para cima no meio do caminho para dar fluidez
+                // Pequena curva para cima
                 { transform: `translate(${deltaX * 0.5}px, ${deltaY - 30}px) scale(0.6)`, offset: 0.5 },
                 { transform: `translate(${deltaX}px, ${deltaY}px) scale(0)`, opacity: 0 }
             ], { 
-                duration: 650, 
+                duration: 550, 
                 easing: 'ease-in-out', 
                 fill: 'forwards' 
             });
 
             await anim.finished;
             
-            // 4. Remove a bola e garante que o impacto aconteça EXATAMENTE aqui
-            createImpact(side, 'effect-normal', endX, endY);
             ball.remove();
         }
 
@@ -450,7 +458,7 @@
 
             if (!spriteImg || !fighterDiv) return;
 
-            spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear', 'anim-return', 'anim-faint-wild');
+            spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear', 'anim-recall', 'anim-faint-wild');
             spriteImg.style.opacity = '0';
             spriteImg.style.filter = '';
             spriteImg.style.transform = '';
@@ -469,19 +477,19 @@
             ball.className = 'deploy-ball';
             fighterDiv.appendChild(ball);
 
-            // Ajuste das coordenadas iniciais (Mão do Treinador)
-            // Altura 55px (Cintura/Mão)
-            let startX = (side === 'p1') ? 60 : 220; 
-            let startY = 55;
+            // CÁLCULOS DINÂMICOS (Inverso do Return)
+            const tRect = trainerDiv.getBoundingClientRect();
+            const mRect = spriteDiv.getBoundingClientRect();
+            const fRect = fighterDiv.getBoundingClientRect();
+
+            // Início: Mão
+            const handOffsetX = (side === 'p1') ? (tRect.width * 0.8) : (tRect.width * 0.2);
+            let startX = (tRect.left - fRect.left) + handOffsetX; 
+            let startY = (tRect.top - fRect.top) + (tRect.height * 0.5);
             
-            // Destino (Pé do Pokémon)
-            // Chão ~100px
-            let endX = (side === 'p1') ? 85 : 205; 
-            let endY = 100;
-            
-            if (side === 'p2') { 
-                startX = 230; 
-            }
+            // Fim: Pé do Monstro
+            let endX = (mRect.left - fRect.left) + (mRect.width / 2) - 10;
+            let endY = (mRect.top - fRect.top) + (mRect.height / 2) + 20;
 
             ball.style.left = startX + 'px';
             ball.style.top = startY + 'px';
@@ -500,8 +508,11 @@
             await animation.finished;
             ball.remove();
             
-            // Passa coordenadas exatas para evitar "pulo"
-            createImpact(side, 'effect-normal', endX, endY); 
+            // Cria impacto visual exatamente onde a bola caiu
+            // (Ajuste +40 pois a função subtrai 40 para centralizar no sprite, aqui queremos absoluto relativo ao pai)
+            // A função createImpact foi adaptada para aceitar coords
+            createImpact(side, 'effect-normal', endX + 40, endY + 40); 
+            
             spriteImg.classList.add('anim-pop-out');
             setTimeout(() => { spriteImg.style.opacity = '1'; }, 50);
         }
@@ -526,7 +537,6 @@
             setTimeout(() => part.remove(), 500);
         }
 
-        // Modificado para aceitar coordenadas customizadas (fix do teleporte)
         function createImpact(targetSide, cssClass, customX = null, customY = null) {
             const toEl = document.getElementById(`sprite-${targetSide}`);
             const fighterDiv = document.getElementById(`fighter-${targetSide}`);
@@ -536,12 +546,12 @@
             impact.className = `impact-effect impact-pop ${cssClass}`;
             
             if (customX !== null && customY !== null && fighterDiv) {
-                // Se coordenadas customizadas forem passadas (Deploy/Return), usa elas relativo ao fighter div
-                impact.style.left = (customX - 40) + 'px'; // -40 para centralizar (width 80)
+                // Coordenadas manuais (Deploy/Return)
+                impact.style.left = (customX - 40) + 'px'; // Centro da explosão (80px width)
                 impact.style.top = (customY - 40) + 'px';
                 fighterDiv.appendChild(impact);
             } else {
-                // Comportamento padrão (Ataques) - relativo ao Body/Screen
+                // Automático (Ataques)
                 const rect = toEl.getBoundingClientRect();
                 impact.style.left = (rect.left + rect.width/2 - 40) + 'px';
                 impact.style.top = (rect.top + rect.height/2 - 40) + 'px';
@@ -932,13 +942,11 @@
             updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
             if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
             
-            // AGORA A ENTRADA ACONTECE ENQUANTO O LOADER FICA TRANSPARENTE
             await wait(100); 
             
             deployPokemon('p1', false);
             deployPokemon('p2', battleMode === 'wild');
 
-            // TERMINA DE ESPERAR O LOADER SUMIR
             await wait(400);
             loader.style.display = 'none';
 
