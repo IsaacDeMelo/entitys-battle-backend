@@ -375,64 +375,76 @@
     }
 
     function renderTeamBag(data) {
-        const content = document.getElementById('teamListContent'); 
-        const pokemons = data.team || [];
-        const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
-        
-        let html = '';
-        if (pokemons.length === 0) html = '<p style="text-align:center; color:#777;">Você não tem Pokémons.</p>';
-        else {
-            pokemons.forEach((p, index) => {
-                const hpPct = Math.min(100, (p.hp / p.maxHp) * 100);
-                const xpPct = (p.xp && p.xpToNext) ? Math.min(100, (p.xp / p.xpToNext) * 100) : 0;
+    const content = document.getElementById('teamListContent'); 
+    const pokemons = data.team || [];
+    const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+    
+    let html = '';
+    if (pokemons.length === 0) html = '<p style="text-align:center; color:#777;">Você não tem Pokémons.</p>';
+    else {
+        pokemons.forEach((p, index) => {
+            const hpPct = Math.min(100, (p.hp / p.maxHp) * 100);
+            
+            // Tratamento de segurança para XP
+            const currentXp = p.xp || 0;
+            const nextXp = p.xpToNext || 100;
+            const xpPct = Math.min(100, (currentXp / nextXp) * 100);
+            
+            html += `
+            <div class="poke-card ${index === 0 ? 'leader' : ''}">
+                <div class="poke-img-container">
+                    <img src="${_resImg(p.sprite)}" class="poke-img">
+                </div>
+                <div class="poke-details">
+                    <div class="poke-name">${p.name} <span class="poke-lvl">Lv.${p.level}</span></div>
+                    
+                    <!-- HP -->
+                    <div class="stat-bar-box"><div class="stat-fill hp-fill" style="width:${hpPct}%"></div></div>
+                    <div style="font-size:0.7rem; color:#aaa; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
+                    
+                    <!-- XP (Agora com texto) -->
+                    <div class="stat-bar-box" style="height:4px; margin-top:6px; background:rgba(255,255,255,0.1);">
+                        <div class="stat-fill xp-fill" style="width:${xpPct}%"></div>
+                    </div>
+                    <div style="font-size:0.65rem; color:#666; margin-top:1px; text-align:right;">XP: ${currentXp}/${nextXp}</div>
+                </div>
                 
-                html += `
-                <div class="poke-card ${index === 0 ? 'leader' : ''}">
-                    <div class="poke-img-container">
-                        <img src="${_resImg(p.sprite)}" class="poke-img">
-                    </div>
-                    <div class="poke-details">
-                        <div class="poke-name">${p.name} <span class="poke-lvl">Lv.${p.level}</span></div>
-                        <div class="stat-bar-box"><div class="stat-fill hp-fill" style="width:${hpPct}%"></div></div>
-                        <div style="font-size:0.7rem; color:#aaa; margin-top:2px;">HP: ${p.hp}/${p.maxHp}</div>
-                        <div class="stat-bar-box" style="height:4px; margin-top:4px;"><div class="stat-fill xp-fill" style="width:${xpPct}%"></div></div>
-                    </div>
-                    <div class="card-actions">
-                        ${index !== 0 ? `<button onclick="setLead('${p.instanceId}')" class="icon-btn" title="Tornar Líder">⭐</button>` : `<span title="Líder">👑</span>`}
-                        <button onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" class="icon-btn" title="Ataques">⚔️</button>
-                        <button onclick="abandonPokemon('${p.instanceId}')" class="icon-btn" title="Libertar" style="color:var(--danger)">🗑️</button>
-                    </div>
-                </div>`;
-            });
-        }
-        content.innerHTML = html;
+                <div class="card-actions">
+                    ${index !== 0 ? `<button onclick="setLead('${p.instanceId}')" class="icon-btn" title="Tornar Líder">⭐</button>` : `<span title="Líder" style="text-align:center; font-size:1.2rem;">👑</span>`}
+                    <button onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${JSON.stringify(p.moves).replace(/"/g, '&quot;')}, ${JSON.stringify(p.learnedMoves).replace(/"/g, '&quot;')})" class="icon-btn" title="Ataques">⚔️</button>
+                    <button onclick="abandonPokemon('${p.instanceId}')" class="icon-btn" title="Libertar" style="color:var(--danger)">🗑️</button>
+                </div>
+            </div>`;
+        });
+    }
+    content.innerHTML = html;
 
-        // Renderiza itens na aba oculta - AGORA COM CATCHCUBES
-        const itemsDiv = document.getElementById('bagContentItems');
-        if(itemsDiv) {
-            itemsDiv.innerHTML = `
-                <div class="poke-card" style="display:block;">
-                    <h3 style="color:var(--text-main); margin-bottom:15px;">Inventário</h3>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
-                        <span style="display:flex; align-items:center; gap:10px;">
-                            <img src="/uploads/catchcube.gif" style="width:24px; vertical-align:middle;"> CatchCubes
-                        </span> 
-                        <strong style="color:var(--text-main); font-size:1.1rem;">${data.pokeballs || 0}</strong>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; color:var(--text-muted);">
-                        <span style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:1.4rem; line-height:1;">🍬</span> Rare Candy
-                        </span>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <strong style="color:var(--text-main); font-size:1.1rem;">${data.rareCandy || 0}</strong>
-                            ${(data.rareCandy > 0) ? `<button onclick="startRareCandySelection()" class="btn btn-primary" style="padding:5px 10px; font-size:0.7rem;">USAR</button>` : ''}
-                        </div>
+    // Renderiza itens na aba oculta
+    const itemsDiv = document.getElementById('bagContentItems');
+    if(itemsDiv) {
+        itemsDiv.innerHTML = `
+            <div class="poke-card" style="display:block;">
+                <h3 style="color:var(--text-main); margin-bottom:15px;">Inventário</h3>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <img src="/uploads/catchcube.gif" style="width:24px; vertical-align:middle;"> CatchCubes
+                    </span> 
+                    <strong style="color:var(--text-main); font-size:1.1rem;">${data.pokeballs || 0}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; color:var(--text-muted);">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.4rem; line-height:1;">🍬</span> Rare Candy
+                    </span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <strong style="color:var(--text-main); font-size:1.1rem;">${data.rareCandy || 0}</strong>
+                        ${(data.rareCandy > 0) ? `<button onclick="startRareCandySelection()" class="btn btn-primary" style="padding:5px 10px; font-size:0.7rem;">USAR</button>` : ''}
                     </div>
                 </div>
-            `;
-        }
-        switchBagTab('poke');
+            </div>
+        `;
     }
+    switchBagTab('poke');
+}
 
     // --- LOJA ---
     async function openShop() {
