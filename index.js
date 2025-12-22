@@ -169,40 +169,76 @@ function applyStatusDamage(pokemon, events) {
 }
 
 // Processa ataque e chance de status
+// Substitua a função processAction inteira no index.js por esta:
+
 function processAction(attacker, defender, move, logArray) {
+    // 1. Verifica se o movimento existe
     if(!move) { logArray.push({ type: 'MSG', text: `${attacker.name} hesitou!` }); return; }
     
+    // 2. Gasto de Energia
     if (attacker.energy >= move.cost) attacker.energy -= move.cost; 
     else { logArray.push({ type: 'MSG', text: `${attacker.name} cansou!` }); return; }
     
+    // Registra o uso do movimento
     logArray.push({ type: 'USE_MOVE', actorId: attacker.instanceId || 'wild', moveName: move.name, moveIcon: move.icon, moveElement: move.element || 'normal', moveCategory: move.category || 'physical', moveType: move.type, cost: move.cost, newEnergy: attacker.energy });
     
+    // 3. Lógica de Cura
     if(move.type === 'heal') { 
         const oldHp = attacker.hp; 
         attacker.hp = Math.min(attacker.maxHp, attacker.hp + move.power); 
         logArray.push({ type: 'HEAL', actorId: attacker.instanceId || 'wild', amount: attacker.hp - oldHp, newHp: attacker.hp }); 
     } 
+    // 4. Lógica de Defesa
     else if (move.type === 'defend') { 
         logArray.push({ type: 'MSG', text: `${attacker.name} se protegeu!` }); 
     } 
+    // 5. Lógica de Dano (Ataque)
     else { 
-        const multiplier = getTypeEffectiveness(move.element, defender.type);
-        const level = attacker.level || 1; const atk = attacker.stats.attack; const def = defender.stats.defense;
+        let multiplier = getTypeEffectiveness(move.element, defender.type);
+        
+        // --- BALANCEAMENTO DE DANO ---
+        // Se for Super Efetivo (>1), aumentamos ainda mais a vantagem (x1.5)
+        // Ex: De 2x passa a ser 3x de dano.
+        if (multiplier > 1) {
+            multiplier = multiplier * 1.5; 
+        }
+
+        const level = attacker.level || 1; 
+        const atk = attacker.stats.attack; 
+        const def = defender.stats.defense;
+        
+        // Variação aleatória entre 0.85 e 1.00
         const random = (Math.floor(Math.random() * 16) + 85) / 100;
-        let damage = Math.floor((((2 * level / 5 + 2) * move.power * (atk / def)) / 50 + 2) * multiplier * random);
-        if (damage < 1) damage = 1; defender.hp -= damage; 
+        
+        // FÓRMULA DE DANO MODIFICADA:
+        // Mudamos o divisor de 50 para 85. Isso reduz o dano global drasticamente.
+        let damage = Math.floor((((2 * level / 5 + 2) * move.power * (atk / def)) / 85 + 2) * multiplier * random);
+        
+        // Garante pelo menos 1 de dano
+        if (damage < 1) damage = 1; 
+        
+        defender.hp -= damage; 
         if (defender.hp < 0) defender.hp = 0;
         
-        logArray.push({ type: 'ATTACK_HIT', attackerId: attacker.instanceId || 'wild', targetId: defender.instanceId || 'wild', damage, newHp: defender.hp, isEffective: multiplier > 1, isNotEffective: multiplier < 1 && multiplier > 0, isBlocked: multiplier === 0 }); 
+        logArray.push({ 
+            type: 'ATTACK_HIT', 
+            attackerId: attacker.instanceId || 'wild', 
+            targetId: defender.instanceId || 'wild', 
+            damage, 
+            newHp: defender.hp, 
+            isEffective: multiplier > 1.5, // Ajustado para checar o novo valor
+            isNotEffective: multiplier < 1 && multiplier > 0, 
+            isBlocked: multiplier === 0 
+        }); 
 
-        // Chance de Veneno (25%)
+        // --- LÓGICA DE APLICAÇÃO DE VENENO ---
+        // Se o golpe for tipo 'poison', alvo não tem status, alvo vivo, e cair nos 25% (1/4)
         if (move.element === 'poison' && !defender.status && defender.hp > 0 && Math.random() < 0.25) {
             defender.status = { type: 'poison', turns: 2 }; // Dura 2 turnos
             logArray.push({ type: 'STATUS_APPLIED', targetId: defender.instanceId || 'wild', status: 'poison', text: `${defender.name} foi envenenado!` });
         }
     }
 }
-
 function performEnemyTurn(attacker, defender, events) { 
     const move = attacker.moves[Math.floor(Math.random() * attacker.moves.length)]; 
     processAction(attacker, defender, move, events); 
