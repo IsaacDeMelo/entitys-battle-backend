@@ -34,15 +34,16 @@
         .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
         .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; }
 
-        /* --- POSICIONAMENTO 42% (Conforme solicitado) --- */
+        /* --- POSICIONAMENTO --- */
         .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 42%; transform: translateY(-50%); transition: opacity 0.5s; }
         
+        /* ALTERAÇÃO: z-index do trainer mudado para 23 (maior que o sprite 22) */
         .fighter.p2-position { right: 5%; justify-content: flex-end; }
-        .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 21; background-position-y: 33.33%; } 
+        .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 23; background-position-y: 33.33%; } 
         .fighter.p2-position .sprite { order: 1; z-index: 22; }
         
         .fighter.p1-position { left: 5%; justify-content: flex-start; }
-        .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 21; background-position-y: 66.66%; }
+        .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 23; background-position-y: 66.66%; }
         .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
 
         .sprite { position: relative; width: 120px; height: 120px; transition: transform 0.2s; }
@@ -401,7 +402,7 @@
             spriteImg.style.opacity = ''; 
             spriteImg.style.transform = '';
             void spriteImg.offsetWidth;
-            spriteImg.classList.add('anim-recall'); // Nova animação CSS
+            spriteImg.classList.add('anim-recall'); 
             
             // Espera a animação de recall (600ms)
             await wait(600);
@@ -509,8 +510,6 @@
             ball.remove();
             
             // Cria impacto visual exatamente onde a bola caiu
-            // (Ajuste +40 pois a função subtrai 40 para centralizar no sprite, aqui queremos absoluto relativo ao pai)
-            // A função createImpact foi adaptada para aceitar coords
             createImpact(side, 'effect-normal', endX + 40, endY + 40); 
             
             spriteImg.classList.add('anim-pop-out');
