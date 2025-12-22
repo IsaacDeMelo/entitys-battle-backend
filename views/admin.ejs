@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Balanceamento</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #0f172a; color: #e2e8f0; font-family: 'Rajdhani', sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #f1c40f; }
+        .container { width: 100%; max-width: 800px; }
+        textarea { width: 100%; height: 400px; background: #1e293b; color: #33ff33; border: 1px solid #333; padding: 10px; border-radius: 8px; font-family: monospace; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { padding: 10px 20px; border-radius: 5px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-get { background: #3498db; color: white; }
+        .btn-save { background: #2ecc71; color: #000; }
+        .btn-back { background: #555; color: white; }
+        button:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <h1>🔧 Sistema de Balanceamento</h1>
+    <div class="container">
+        <p>1. Clique em "Obter JSON" para ver os dados atuais.<br>2. Copie, edite (ou mande pro ChatGPT), e cole de volta.<br>3. Clique em "Salvar no Banco".</p>
+        <textarea id="jsonArea" placeholder="Cole o JSON aqui..."></textarea>
+        <div class="btn-group">
+            <button class="btn-get" onclick="getJson()">⬇️ Obter JSON Atual</button>
+            <button class="btn-save" onclick="saveJson()">⬆️ Atualizar Dados</button>
+            <a href="/"><button class="btn-back">Sair</button></a>
+        </div>
+    </div>
+
+    <script>
+        async function getJson() {
+            const res = await fetch('/api/admin/export');
+            const data = await res.json();
+            document.getElementById('jsonArea').value = JSON.stringify(data, null, 4);
+        }
+
+        async function saveJson() {
+            try {
+                const jsonText = document.getElementById('jsonArea').value;
+                const jsonData = JSON.parse(jsonText);
+                
+                if(!confirm(`Tem certeza que deseja atualizar ${jsonData.length} pokémons?`)) return;
+
+                const res = await fetch('/api/admin/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pokemons: jsonData })
+                });
+                
+                const response = await res.json();
+                alert(response.message);
+            } catch (e) {
+                alert("Erro no JSON: " + e.message);
+            }
+        }
+    </script>
+</body>
+</html>
