@@ -219,7 +219,17 @@ app.get('/lab', async (req, res) => { const { userId } = req.query; const user =
 
 // --- ROTAS ADMIN (BALANCEAMENTO) ---
 app.get('/admin', (req, res) => { res.render('admin'); });
-app.get('/api/admin/export', async (req, res) => { const pokemons = await BasePokemon.find().lean(); const cleanList = pokemons.map(({ _id, __v, ...rest }) => rest); res.json(cleanList); });
+app.get('/api/admin/export', async (req, res) => {
+    const pokemons = await BasePokemon.find().lean();
+    
+    const cleanList = pokemons.map(p => {
+        // Desestruturação para separar o que queremos remover
+        const { _id, __v, sprite, ...rest } = p;
+        return rest; // Retorna apenas o resto (Dados de combate, nome, tipo, etc)
+    });
+    
+    res.json(cleanList);
+});
 app.post('/api/admin/import', async (req, res) => { try { const { pokemons } = req.body; if (!Array.isArray(pokemons)) return res.status(400).json({ message: "Formato inválido" }); let count = 0; for (const p of pokemons) { await BasePokemon.findOneAndUpdate({ id: p.id }, p, { upsert: true, new: true }); count++; } res.json({ success: true, message: `${count} monstros atualizados!` }); } catch (e) { res.status(500).json({ message: "Erro: " + e.message }); } });
 
 // Rota de criação manual
