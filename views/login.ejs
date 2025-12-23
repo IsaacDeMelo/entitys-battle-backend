@@ -1,55 +1,326 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Goofymon Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Goofymon - Aventura</title>
+    <!-- Viewport crucial para mobile: evita zoom indesejado e ajusta a escala -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { background: #111; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: #222; padding: 20px; border: 2px solid #3498db; width: 90%; max-width: 350px; text-align: center; border-radius: 10px; box-shadow: 0 0 20px rgba(52,152,219,0.3); }
-        input, select { width: 90%; padding: 12px; margin: 8px 0; background: #000; border: 1px solid #555; color: white; border-radius: 5px; }
-        button { width: 100%; padding: 12px; background: #3498db; border: none; color: white; font-weight: bold; cursor: pointer; margin-top: 15px; border-radius: 5px; }
-        .tab { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #333; }
-        .tab div { flex: 1; padding: 10px; cursor: pointer; }
-        .active { border-bottom: 3px solid #f1c40f; color: #f1c40f; font-weight: bold; }
-        .starter-opt { display: inline-block; margin: 5px; cursor: pointer; border: 2px solid transparent; padding: 5px; }
-        .starter-opt img { width: 50px; height: 50px; }
+        :root {
+            --primary: #3498db;
+            --accent: #f1c40f;
+            --bg-dark: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.95);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            background: radial-gradient(circle at center, #1e293b 0%, #000000 100%);
+            color: white; 
+            font-family: 'Rajdhani', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px;
+            overflow-y: auto; /* Permite scroll se o teclado do celular subir */
+        }
+
+        /* Container Principal */
+        .box { 
+            background: var(--panel-bg); 
+            padding: 30px 20px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            width: 100%; 
+            max-width: 400px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7); 
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Detalhe decorativo no topo */
+        .box::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            color: var(--accent);
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1.5;
+        }
+
+        /* Inputs Modernos */
+        input, select { 
+            width: 100%; 
+            padding: 15px; 
+            margin: 8px 0; 
+            background: rgba(0,0,0,0.4); 
+            border: 1px solid #334155; 
+            color: white; 
+            border-radius: 12px; 
+            font-size: 1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus, select:focus {
+            border-color: var(--primary);
+            background: rgba(0,0,0,0.6);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.2);
+        }
+
+        /* Botão Principal */
+        button.btn-action { 
+            width: 100%; 
+            padding: 16px; 
+            background: linear-gradient(135deg, var(--primary), #2980b9); 
+            border: none; 
+            color: white; 
+            font-weight: 800; 
+            font-size: 1.1rem;
+            cursor: pointer; 
+            margin-top: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 0 #1c5980;
+            transition: transform 0.1s;
+        }
+        button.btn-action:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* Abas de Navegação */
+        .tab-container { 
+            display: flex; 
+            background: rgba(0,0,0,0.3); 
+            border-radius: 12px; 
+            padding: 4px; 
+            margin-bottom: 25px;
+        }
+        .tab { 
+            flex: 1; 
+            padding: 12px; 
+            cursor: pointer; 
+            text-align: center; 
+            border-radius: 8px; 
+            font-weight: bold;
+            color: #94a3b8;
+            transition: 0.3s;
+        }
+        .tab.active { 
+            background: var(--bg-dark); 
+            color: white; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* --- ÁREA DE PREVIEW DA SKIN --- */
+        .skin-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px 0;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* O "Palco" onde o boneco fica */
+        .sprite-preview-box {
+            width: 64px;
+            height: 64px;
+            background: #111;
+            border-radius: 8px;
+            border: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: inset 0 0 10px #000;
+        }
+
+        /* O Boneco Animado */
+        .character-sprite {
+            width: 48px; 
+            height: 48px;
+            background-image: url('/uploads/char1.png'); /* Padrão */
+            background-size: 400% auto; /* Lógica do 4x4 */
+            image-rendering: pixelated;
+            background-position-y: 0%; /* Olhando para baixo */
+            animation: walk-anim 0.8s steps(4) infinite; /* Animação de andar */
+            transform: scale(1.2); /* Aumenta um pouco visualmente */
+        }
+
+        @keyframes walk-anim { 
+            from { background-position-x: 0; } 
+            to { background-position-x: -400%; } 
+        }
+
+        /* --- SELEÇÃO DE INICIAIS --- */
+        .starters-container {
+            display: flex; 
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .starter-opt { 
+            cursor: pointer; 
+            position: relative;
+            transition: 0.2s;
+        }
+        .starter-opt img { 
+            width: 85px; /* Bem maior */
+            height: 85px; 
+            object-fit: contain;
+            image-rendering: pixelated;
+            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)) grayscale(0.6);
+            transition: 0.3s;
+        }
         .starter-opt input { display: none; }
-        .starter-opt input:checked + img { border: 2px solid #f1c40f; border-radius: 5px; }
+        
+        /* Estado Selecionado do Inicial */
+        .starter-opt input:checked + img { 
+            filter: drop-shadow(0 0 10px var(--accent)) grayscale(0);
+            transform: scale(1.15) translateY(-5px);
+        }
+        /* Indicador visual abaixo do pokemon */
+        .starter-opt input:checked + img::after {
+            content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            width: 30px; height: 4px; background: var(--accent); border-radius: 2px;
+        }
+
+        .error-msg {
+            background: rgba(231, 76, 60, 0.2);
+            color: #ff6b6b;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
+
+        /* Label pequena */
+        .form-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Ajuste para telas muito pequenas */
+        @media (max-height: 600px) {
+            .box { padding: 15px; margin: 10px 0; }
+            h1 { font-size: 1.2rem; margin-bottom: 15px; }
+            .starter-opt img { width: 70px; height: 70px; }
+        }
     </style>
 </head>
 <body>
+
     <div class="box">
         <h1>GOOFYMON</h1>
-        <div class="tab"><div id="btnLogin" class="active" onclick="toggle('login')">Entrar</div><div id="btnReg" onclick="toggle('register')">Cadastrar</div></div>
+
+        <div class="tab-container">
+            <div id="tabLogin" class="tab active" onclick="switchTab('login')">ENTRAR</div>
+            <div id="tabRegister" class="tab" onclick="switchTab('register')">NOVA CONTA</div>
+        </div>
+
+        <!-- FORMULÁRIO DE LOGIN -->
         <form id="formLogin" action="/login" method="POST">
-            <input type="text" name="username" placeholder="Usuário" required>
-            <input type="password" name="password" placeholder="Senha" required>
-            <button>JOGAR</button>
+            <label class="form-label">Credenciais</label>
+            <input type="text" name="username" placeholder="Seu Usuário" required autocomplete="username">
+            <input type="password" name="password" placeholder="Sua Senha" required autocomplete="current-password">
+            <button class="btn-action">JOGAR AGORA</button>
         </form>
+
+        <!-- FORMULÁRIO DE REGISTRO -->
         <form id="formRegister" action="/register" method="POST" style="display:none;">
-            <input type="text" name="username" placeholder="Novo Usuário" required>
-            <input type="password" name="password" placeholder="Senha" required>
-            <select name="skin"><% for(let i=1; i<=skinCount; i++) { %><option value="char<%=i%>">Personagem <%=i%></option><% } %></select>
-            <p style="margin:10px 0 5px 0; color:#aaa; font-size:0.9rem;">Escolha seu Inicial</p>
-            <div style="display:flex; justify-content:center;">
+            <label class="form-label">Identidade</label>
+            <input type="text" name="username" placeholder="Nome do Treinador" required autocomplete="off">
+            <input type="password" name="password" placeholder="Senha Secreta" required autocomplete="new-password">
+
+            <label class="form-label" style="margin-top: 10px;">Visual</label>
+            
+            <!-- PREVIEW DA SKIN INTEGRADO -->
+            <div class="skin-section">
+                <div class="sprite-preview-box">
+                    <div id="charPreview" class="character-sprite"></div>
+                </div>
+                <div style="flex: 1;">
+                    <select id="skinSelect" name="skin" onchange="updateSkinPreview(this.value)">
+                        <% for(let i=1; i<=skinCount; i++) { %>
+                            <option value="char<%=i%>">Visual #<%=i%></option>
+                        <% } %>
+                    </select>
+                </div>
+            </div>
+
+            <label class="form-label" style="margin-top: 15px; text-align: center;">Escolha seu Parceiro</label>
+            <div class="starters-container">
                 <% if(starters && starters.length > 0) { %>
-                    <% starters.forEach(s => { %>
+                    <% starters.forEach((s, index) => { %>
                         <label class="starter-opt">
-                            <input type="radio" name="starterId" value="<%= s.id %>" required>
-                            <!-- VERIFICA SE O SPRITE É URL OU LOCAL -->
+                            <input type="radio" name="starterId" value="<%= s.id %>" required <%= index === 0 ? 'checked' : '' %>>
                             <% if(s.sprite) { %>
-                                <img src="<%= s.sprite %>" title="<%= s.name %>">
+                                <img src="<%= s.sprite %>" alt="<%= s.name %>">
                             <% } else { %>
-                                <span><%= s.name %></span>
+                                <div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:50%;"><%= s.name %></div>
                             <% } %>
                         </label>
                     <% }) %>
-                <% } else { %><small>Sem iniciais. Aguarde um Admin.</small><% } %>
+                <% } else { %>
+                    <small style="color:#aaa;">Nenhum inicial disponível no banco de dados.</small>
+                <% } %>
             </div>
-            <button style="background:#2ecc71">CRIAR CONTA</button>
+
+            <button class="btn-action" style="background: linear-gradient(135deg, #2ecc71, #27ae60); box-shadow: 0 4px 0 #1e8449;">COMEÇAR JORNADA</button>
         </form>
-        <% if(typeof error !== 'undefined' && error) { %><p style="color:#e74c3c; margin-top:10px;"><%= error %></p><% } %>
+
+        <% if(typeof error !== 'undefined' && error) { %>
+            <div class="error-msg">⚠️ <%= error %></div>
+        <% } %>
     </div>
-    <script>function toggle(m){document.getElementById('formLogin').style.display=m==='login'?'block':'none';document.getElementById('formRegister').style.display=m==='register'?'block':'none';document.getElementById('btnLogin').classList.toggle('active',m==='login');document.getElementById('btnReg').classList.toggle('active',m==='register');}</script>
+
+    <script>
+        // Lógica de Abas
+        function switchTab(mode) {
+            document.getElementById('formLogin').style.display = mode === 'login' ? 'block' : 'none';
+            document.getElementById('formRegister').style.display = mode === 'register' ? 'block' : 'none';
+            
+            document.getElementById('tabLogin').className = mode === 'login' ? 'tab active' : 'tab';
+            document.getElementById('tabRegister').className = mode === 'register' ? 'tab active' : 'tab';
+        }
+
+        // Lógica do Preview de Skin
+        function updateSkinPreview(skinName) {
+            const previewEl = document.getElementById('charPreview');
+            // Assume que as imagens estão em /uploads/ e são PNGs
+            previewEl.style.backgroundImage = `url('/uploads/${skinName}.png')`;
+        }
+
+        // Inicializa o preview com o valor atual do select
+        document.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('skinSelect');
+            if(select && select.value) {
+                updateSkinPreview(select.value);
+            }
+        });
+    </script>
 </body>
 </html>
