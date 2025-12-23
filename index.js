@@ -7,8 +7,8 @@ const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
 // --- IMPORTS DOS ARQUIVOS LOCAIS ---
-// Certifique-se que models.js, gameData.js e config.js estão na mesma pasta
-const { BasePokemon, User, NPC } = require('./models'); // Adicione NPC
+// Certifique-se que models.js tem o NPC exportado
+const { BasePokemon, User, NPC } = require('./models');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
 
@@ -221,18 +221,12 @@ app.get('/lab', async (req, res) => { const { userId } = req.query; const user =
 app.get('/admin', (req, res) => { res.render('admin'); });
 app.get('/api/admin/export', async (req, res) => {
     const pokemons = await BasePokemon.find().lean();
-    
-    const cleanList = pokemons.map(p => {
-        // Desestruturação para separar o que queremos remover
-        const { _id, __v, sprite, ...rest } = p;
-        return rest; // Retorna apenas o resto (Dados de combate, nome, tipo, etc)
-    });
-    
+    const cleanList = pokemons.map(p => { const { _id, __v, sprite, ...rest } = p; return rest; });
     res.json(cleanList);
 });
 app.post('/api/admin/import', async (req, res) => { try { const { pokemons } = req.body; if (!Array.isArray(pokemons)) return res.status(400).json({ message: "Formato inválido" }); let count = 0; for (const p of pokemons) { await BasePokemon.findOneAndUpdate({ id: p.id }, p, { upsert: true, new: true }); count++; } res.json({ success: true, message: `${count} monstros atualizados!` }); } catch (e) { res.status(500).json({ message: "Erro: " + e.message }); } });
 
-// Rota de criação manual
+// Rota de criação manual de POKEMON
 app.post('/lab/create', upload.single('sprite'), async (req, res) => { 
     const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId } = req.body; 
     const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; 
@@ -242,42 +236,19 @@ app.post('/lab/create', upload.single('sprite'), async (req, res) => {
     if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } 
     res.redirect(req.header('Referer') || '/'); 
 });
+
+// --- ROTA DE CRIAÇÃO DE NPC ---
 app.post('/lab/create-npc', upload.single('npcSkinFile'), async (req, res) => {
     try {
         const { name, map, x, y, direction, skinSelect, dialogue, money, teamJson } = req.body;
-        
         let finalSkin = skinSelect;
         let isCustom = false;
-
-        // Se fez upload de imagem, usa ela
-        if (req.file) {
-            finalSkin = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-            isCustom = true;
-        }
-
-        let team = [];
-        try { team = JSON.parse(teamJson); } catch (e) {}
-
-        const newNpc = new NPC({
-            name,
-            map,
-            x: parseInt(x),
-            y: parseInt(y),
-            direction,
-            skin: finalSkin,
-            isCustomSkin: isCustom,
-            dialogue,
-            moneyReward: parseInt(money),
-            team
-        });
-
+        if (req.file) { finalSkin = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; isCustom = true; }
+        let team = []; try { team = JSON.parse(teamJson); } catch (e) {}
+        const newNpc = new NPC({ name, map, x: parseInt(x), y: parseInt(y), direction, skin: finalSkin, isCustomSkin: isCustom, dialogue, moneyReward: parseInt(money), team });
         await newNpc.save();
-        console.log(`NPC ${name} criado em ${map}`);
         res.redirect('/lab?userId=' + req.body.userId);
-    } catch (e) {
-        console.error(e);
-        res.send("Erro ao criar NPC: " + e.message);
-    }
+    } catch (e) { res.send("Erro ao criar NPC: " + e.message); }
 });
 
 // --- APIS DO JOGO (PC, Bag, Shop, Items) ---
@@ -316,7 +287,57 @@ app.post('/battle/wild', async (req, res) => {
     const { userId } = req.body; const user = await User.findById(userId); const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Pokémons estão desmaiados! Cure-os no Centro." }); const possibleSpawns = await BasePokemon.find({ spawnLocation: 'forest' }); if(possibleSpawns.length === 0) return res.json({ error: "Nenhum pokemon." }); const wildBase = pickWeightedPokemon(possibleSpawns); const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; const wildEntity = await createBattleInstance(wildBase.id, wildLevel); const userBase = await BasePokemon.findOne({ id: userPokeData.baseId }); const userEntity = userPokemonToEntity(userPokeData, userBase); userEntity.playerName = user.username; userEntity.skin = user.skin; const battleId = `wild_${Date.now()}`; activeBattles[battleId] = { p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1 }; res.json({ battleId }); 
 });
 
-// --- ROTA DE BATALHA ONLINE (FIXADA: ANTES DE /battle/:id) ---
+// --- ROTA DE BATALHA CONTRA NPC ---
+app.post('/battle/npc', async (req, res) => {
+    const { userId, npcId } = req.body;
+    const user = await User.findById(userId);
+    const npc = await NPC.findById(npcId);
+
+    if (!user || !npc) return res.json({ error: "Erro: NPC ou Usuário não encontrado." });
+
+    const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0];
+    if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Pokémons estão desmaiados!" });
+
+    const userBase = await BasePokemon.findOne({ id: userPokeData.baseId });
+    const p1Entity = userPokemonToEntity(userPokeData, userBase);
+    p1Entity.playerName = user.username;
+    p1Entity.skin = user.skin;
+
+    // Pega o primeiro pokemon do time do NPC
+    const npcPokeConfig = npc.team[0]; 
+    if (!npcPokeConfig) return res.json({ error: "Este NPC não tem Pokémons!" });
+
+    const npcBase = await BasePokemon.findOne({ id: npcPokeConfig.baseId });
+    const npcStats = calculateStats(npcBase.baseStats, npcPokeConfig.level);
+    
+    let npcMoves = npcBase.movePool ? npcBase.movePool.filter(m => m.level <= npcPokeConfig.level).map(m => m.moveId) : ['tackle'];
+    if(npcMoves.length > 4) npcMoves = npcMoves.sort(() => 0.5 - Math.random()).slice(0, 4);
+
+    const p2Entity = {
+        instanceId: 'npc_mon_' + Date.now(),
+        baseId: npcBase.id,
+        name: npcBase.name,
+        type: npcBase.type,
+        level: npcPokeConfig.level,
+        maxHp: npcStats.hp,
+        hp: npcStats.hp,
+        maxEnergy: npcStats.energy,
+        energy: npcStats.energy,
+        stats: npcStats,
+        moves: npcMoves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
+        sprite: npcBase.sprite,
+        playerName: npc.name,
+        skin: npc.skin,
+        isWild: false,
+        status: null
+    };
+
+    const battleId = `npc_${Date.now()}`;
+    activeBattles[battleId] = { p1: p1Entity, p2: p2Entity, type: 'local', userId: user._id, turn: 1, npcId: npc._id };
+    res.json({ battleId });
+});
+
+// --- ROTA DE BATALHA ONLINE ---
 app.post('/battle/online', (req, res) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     const { roomId, meData, opponentData } = req.body;
@@ -332,7 +353,7 @@ app.post('/battle', async (req, res) => { const { fighterId, playerName, playerS
 // --- ROTA GENÉRICA DE BATALHA ---
 app.get('/battle/:id', async (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const battle = activeBattles[req.params.id]; if(!battle) return res.redirect('/'); let switchable = []; if (battle.userId) { const user = await User.findById(battle.userId); if (user) { for (let p of user.pokemonTeam) { if (p._id.toString() !== battle.p1.instanceId && p.currentHp > 0) { const b = await BasePokemon.findOne({ id: p.baseId }); if(b) switchable.push(userPokemonToEntity(p, b)); } } } } const bg = battle.type === 'wild' ? 'forest_bg.png' : 'battle_bg.png'; res.render('battle', { p1: battle.p1, p2: battle.p2, battleId: req.params.id, battleMode: battle.type === 'local' ? 'manual' : battle.type, isSpectator: false, myRoleId: battle.p1.instanceId, realUserId: battle.userId, playerName: battle.p1.playerName, playerSkin: battle.p1.skin, bgImage: bg, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable }); });
 
-// --- ROTA DE PROCESSAMENTO DO TURNO (OFFLINE/WILD) ---
+// --- ROTA DE PROCESSAMENTO DO TURNO ---
 app.post('/api/turn', async (req, res) => {
     const { battleId, action, moveId, isForced } = req.body; 
     const battle = activeBattles[battleId];
@@ -432,7 +453,34 @@ app.post('/api/turn', async (req, res) => {
 // --- SOCKET.IO ---
 io.on('connection', (socket) => {
     socket.on('join_room', (roomId) => { socket.join(roomId); });
-    socket.on('enter_map', (data) => { if (data && data.userId) { const existing = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString()); if (existing) { const prevId = existing[0]; try { const prevSocket = io.sockets.sockets.get(prevId); if (prevSocket) { prevSocket.emit('duplicate_session', { reason: 'another_session' }); prevSocket.disconnect(true); } } catch (e) { } if (players[prevId] && players[prevId].map) io.to(players[prevId].map).emit('player_left', prevId); delete players[prevId]; } } socket.join(data.map); const startX = data.x !== undefined ? data.x : 50; const startY = data.y !== undefined ? data.y : 50; players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; const mapPlayers = Object.values(players).filter(p => p.map === data.map); socket.emit('map_state', mapPlayers); socket.to(data.map).emit('player_joined', players[socket.id]); });
+    socket.on('enter_map', async (data) => { 
+        if (data && data.userId) { 
+            const existing = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString()); 
+            if (existing) { 
+                const prevId = existing[0]; 
+                try { 
+                    const prevSocket = io.sockets.sockets.get(prevId); 
+                    if (prevSocket) { prevSocket.emit('duplicate_session', { reason: 'another_session' }); prevSocket.disconnect(true); } 
+                } catch (e) { } 
+                if (players[prevId] && players[prevId].map) io.to(players[prevId].map).emit('player_left', prevId); 
+                delete players[prevId]; 
+            } 
+        } 
+        socket.join(data.map); 
+        
+        // --- NPC SYSTEM ---
+        const mapNpcs = await NPC.find({ map: data.map }).lean();
+        socket.emit('npcs_list', mapNpcs);
+        // ------------------
+
+        const startX = data.x !== undefined ? data.x : 50; 
+        const startY = data.y !== undefined ? data.y : 50; 
+        players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; 
+        const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
+        socket.emit('map_state', mapPlayers); 
+        socket.to(data.map).emit('player_joined', players[socket.id]); 
+    });
+    
     socket.on('move_player', (data) => { if (players[socket.id]) { const p = players[socket.id]; const dx = data.x - p.x; const dy = data.y - p.y; let dir = p.direction; if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up'; p.x = data.x; p.y = data.y; p.direction = dir; io.to(p.map).emit('player_moved', { id: socket.id, x: data.x, y: data.y, direction: dir }); } });
     socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
     socket.on('check_encounter', (data) => { const grassId = data && data.grassId; if (!grassId || !GRASS_PATCHES.includes(grassId)) return; const chance = GRASS_CHANCE[grassId] || 0.3; if (Math.random() < chance) socket.emit('encounter_found'); });
