@@ -219,7 +219,6 @@
 
         <div class="fighter p2-position" id="fighter-p2">
             <div class="command-bubble" id="bubble-p2"></div>
-            <!-- CORREÇÃO: STYLE INLINE PARA NPC/CUSTOM -->
             <div class="trainer" id="trainer-p2" 
                  data-skin="<%= p2.skin || 'char1' %>" 
                  style="<%= (p2.isCustomSkin || (p2.skin && (p2.skin.startsWith('http') || p2.skin.startsWith('data:')))) ? 'background-image: url(\'' + p2.skin + '\')' : '' %><%= battleMode === 'wild' ? ';opacity:0;' : '' %>">
@@ -328,7 +327,7 @@
         const battleId = "<%= battleId %>";
         const initialData = <%- battleData %>;
         const myRoleId = "<%= myRoleId %>"; 
-        const realUserId = "<%= realUserId %>"; // CORREÇÃO PARA ONLINE (DB ID)
+        const realUserId = "<%= realUserId %>"; 
         const isSpectator = <%= isSpectator ? 'true' : 'false' %>;
         
         let p1RawId = "<%= p1.instanceId %>"; 
@@ -347,7 +346,6 @@
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
         let p1Data = { name: "<%= p1.playerName %>", skin: "<%= p1.skin %>", sprite: resolveImg("<%= p1.sprite %>"), mon: "<%= p1.name %>" };
-        // CORREÇÃO: Passa isCustom para o JS
         let p2Data = { name: "<%= p2.playerName %>", skin: "<%= p2.skin %>", sprite: resolveImg("<%= p2.sprite %>"), mon: "<%= p2.name %>", isCustom: <%= p2.isCustomSkin ? 'true' : 'false' %> };
 
         if (isSpectator) { socket.emit('join_spectator', { roomId: battleId }); }
@@ -652,13 +650,57 @@
             } else { 
                 const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
                 const data = await res.json(); 
+                
                 if (data.switched) {
-                    await wait(500); p1RawId = data.newP1Id; p1Mon = data.p1State.name; p1CurHp = data.p1State.hp; p1MaxHp = data.p1State.maxHp; currentEnergy = data.p1State.energy;
-                    document.getElementById('p1-name').innerText = p1Mon; document.getElementById('p1-lv').innerText = data.p1State.level; document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
-                    document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); deployPokemon('p1', false); updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); updateBar(p1RawId, currentEnergy, 100, 'en'); 
-                    const mc = document.getElementById('moves-container'); mc.innerHTML = ''; data.p1State.moves.forEach(move => { const btn = document.createElement('button'); btn.className = 'move-btn'; btn.onclick = () => sendAction('move', move.id); btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; mc.appendChild(btn); });
-                    if (data.events) await playEvents(data.events); setControlsState(true); return; 
+                    await wait(500);
+                    // Lógica para saber QUEM trocou
+                    if (data.p2Switched) {
+                        // INIMIGO TROCOU
+                        p2RawId = data.p2State.instanceId;
+                        p2Mon = data.p2State.name;
+                        p2CurHp = data.p2State.hp;
+                        p2MaxHp = data.p2State.maxHp;
+                        
+                        document.getElementById('p2-name').innerText = p2Mon;
+                        document.getElementById('p2-lv').innerText = data.p2State.level;
+                        document.getElementById('max-hp-p2').innerText = p2MaxHp;
+
+                        const s2 = document.querySelector('#sprite-p2 img');
+                        s2.src = resolveImg(data.p2State.sprite);
+                        
+                        deployPokemon('p2', false);
+                        updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
+                    } else {
+                        // PLAYER TROCOU
+                        p1RawId = data.newP1Id; 
+                        p1Mon = data.p1State.name; 
+                        p1CurHp = data.p1State.hp; 
+                        p1MaxHp = data.p1State.maxHp; 
+                        currentEnergy = data.p1State.energy;
+
+                        document.getElementById('p1-name').innerText = p1Mon; 
+                        document.getElementById('p1-lv').innerText = data.p1State.level; 
+                        document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
+                        document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
+                        
+                        deployPokemon('p1', false); 
+                        updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
+                        updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                        
+                        const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
+                        data.p1State.moves.forEach(move => { 
+                            const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                            btn.onclick = () => sendAction('move', move.id); 
+                            btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                            mc.appendChild(btn); 
+                        });
+                    }
+
+                    if (data.events) await playEvents(data.events); 
+                    setControlsState(true); 
+                    return; 
                 }
+
                 if (type === 'catch' && data && data.threw) await playCaptureAnimation(p2RawId, data.captured);
                 if (data.events) await playEvents(data.events); 
                 if (data.forceSwitch) { showSwitchModal(data.switchable); return; }
@@ -684,7 +726,6 @@
             modal.style.display = 'flex';
         }
 
-        // CORREÇÃO CRÍTICA: ENVIA SWITCH PELO SOCKET SE ONLINE
         async function performSwitch(newPokeId, isForced = false) {
             document.getElementById('switchModal').style.display = 'none';
             
@@ -698,7 +739,6 @@
                 document.getElementById('statusMsg').innerText = "Trocando..."; 
                 document.getElementById('statusMsg').style.display = "block";
             } else {
-                // Modo Offline / NPC
                 const res = await fetch('/api/turn', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
@@ -726,7 +766,6 @@
             }
         }
 
-        // CORREÇÃO CRÍTICA: ENVIA FORFEIT PELO SOCKET SE ONLINE
         function forfeitBattle() {
             document.getElementById('switchModal').style.display = 'none';
             if (battleMode === 'online') {
@@ -754,7 +793,6 @@
             const winMon = document.getElementById('win-mon-img'); const loseMon = document.getElementById('lose-mon-img'); 
             
             let isP1Win = false;
-            // Verifica vencedor usando ID do banco
             if (battleMode === 'online') { isP1Win = (String(winnerId) === String(realUserId)); } 
             else { isP1Win = (String(winnerId) === String(p1RawId)); }
 
@@ -762,7 +800,6 @@
             winName.innerText = winner.name; loseName.innerText = loser.name; 
             winMon.src = winner.sprite; loseMon.src = loser.sprite; 
             
-            // SKIN CUSTOM FIX NO RESULTADO
             if(winner.isCustom || (winner.skin && winner.skin.startsWith('data:'))) winTrainer.style.backgroundImage = `url('${winner.skin}')`; else winTrainer.style.backgroundImage = `url('/uploads/${winner.skin}.png')`;
             if(loser.isCustom || (loser.skin && loser.skin.startsWith('data:'))) loseTrainer.style.backgroundImage = `url('${loser.skin}')`; else loseTrainer.style.backgroundImage = `url('/uploads/${loser.skin}.png')`;
             
@@ -779,8 +816,11 @@
             document.getElementById('statusMsg').style.display = "none"; 
             await playEvents(data.events); 
             
-            // Se houve troca no online, atualiza a HUD
-            if (data.switched) { /* Lógica complexa de sync de estado seria aqui, mas vamos confiar no evento */ }
+            if (data.switched) { 
+                // Se o backend online mandar info detalhada de quem trocou, atualiza aqui
+                // (O código atual de socket online_action no index.js ainda é básico, 
+                // mas se expandir, a lógica viria aqui. Por enquanto, só anima eventos)
+            }
 
             if(data.winnerId) endGame(data.winnerId); 
             else if(!isSpectator) setControlsState(true); 

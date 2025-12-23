@@ -151,26 +151,66 @@ app.post('/api/use-item', async (req, res) => { const { userId, itemId, pokemonI
 app.post('/battle/wild', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Pokémons estão desmaiados!" }); const possibleSpawns = await BasePokemon.find({ spawnLocation: 'forest' }); if(possibleSpawns.length === 0) return res.json({ error: "Nenhum pokemon." }); const wildBase = pickWeightedPokemon(possibleSpawns); const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; const wildEntity = await createBattleInstance(wildBase.id, wildLevel); const userBase = await BasePokemon.findOne({ id: userPokeData.baseId }); const userEntity = userPokemonToEntity(userPokeData, userBase); userEntity.playerName = user.username; userEntity.skin = user.skin; const battleId = `wild_${Date.now()}`; activeBattles[battleId] = { p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1 }; res.json({ battleId }); });
 
 app.post('/battle/npc', async (req, res) => {
-    const { userId, npcId } = req.body; const user = await User.findById(userId); const npc = await NPC.findById(npcId);
+    const { userId, npcId } = req.body; 
+    const user = await User.findById(userId); 
+    const npc = await NPC.findById(npcId);
     if (!user || !npc) return res.json({ error: "Erro: NPC/Usuário não encontrado." });
+
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0];
     if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Pokémons estão desmaiados!" });
-    const userBase = await BasePokemon.findOne({ id: userPokeData.baseId });
-    const p1Entity = userPokemonToEntity(userPokeData, userBase); p1Entity.playerName = user.username; p1Entity.skin = user.skin;
-    const npcPokeConfig = npc.team[0]; if (!npcPokeConfig) return res.json({ error: "Este NPC não tem Pokémons!" });
-    const npcBase = await BasePokemon.findOne({ id: npcPokeConfig.baseId }); const npcStats = calculateStats(npcBase.baseStats, npcPokeConfig.level);
-    let npcMoves = npcBase.movePool ? npcBase.movePool.filter(m => m.level <= npcPokeConfig.level).map(m => m.moveId) : ['tackle'];
-    if(npcMoves.length > 4) npcMoves = npcMoves.sort(() => 0.5 - Math.random()).slice(0, 4);
     
-    // NPC ENTITY COM SKIN CORRETA
-    const p2Entity = { 
-        instanceId: 'npc_mon_' + Date.now(), baseId: npcBase.id, name: npcBase.name, type: npcBase.type, level: npcPokeConfig.level, maxHp: npcStats.hp, hp: npcStats.hp, maxEnergy: npcStats.energy, energy: npcStats.energy, stats: npcStats, moves: npcMoves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })), sprite: npcBase.sprite, 
-        playerName: npc.name, 
-        skin: npc.skin, // URL ou charX
-        isCustomSkin: npc.isCustomSkin, 
-        isWild: false, status: null 
-    };
-    const battleId = `npc_${Date.now()}`; activeBattles[battleId] = { p1: p1Entity, p2: p2Entity, type: 'local', userId: user._id, turn: 1, npcId: npc._id }; res.json({ battleId });
+    const userBase = await BasePokemon.findOne({ id: userPokeData.baseId });
+    const p1Entity = userPokemonToEntity(userPokeData, userBase); 
+    p1Entity.playerName = user.username; 
+    p1Entity.skin = user.skin;
+
+    // --- CARREGA O TIME INTEIRO DO NPC ---
+    const npcTeamInstances = [];
+    
+    if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Pokémons!" });
+
+    for (let member of npc.team) {
+        const base = await BasePokemon.findOne({ id: member.baseId });
+        if (base) {
+            const stats = calculateStats(base.baseStats, member.level);
+            let moves = base.movePool ? base.movePool.filter(m => m.level <= member.level).map(m => m.moveId) : ['tackle'];
+            if(moves.length > 4) moves = moves.sort(() => 0.5 - Math.random()).slice(0, 4);
+            
+            npcTeamInstances.push({
+                instanceId: 'npc_mon_' + Math.random().toString(36).substr(2, 9), // ID único
+                baseId: base.id, 
+                name: base.name, 
+                type: base.type, 
+                level: member.level, 
+                maxHp: stats.hp, 
+                hp: stats.hp, 
+                maxEnergy: stats.energy, 
+                energy: stats.energy, 
+                stats: stats, 
+                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
+                sprite: base.sprite, 
+                playerName: npc.name, 
+                skin: npc.skin, 
+                isCustomSkin: npc.isCustomSkin, 
+                isWild: false, 
+                status: null
+            });
+        }
+    }
+    // -----------------------------------------------------
+
+    const battleId = `npc_${Date.now()}`; 
+    activeBattles[battleId] = { 
+        p1: p1Entity, 
+        p2: npcTeamInstances[0], // O primeiro vai para a arena
+        npcReserve: npcTeamInstances, // Guardamos o time todo aqui
+        type: 'local', 
+        userId: user._id, 
+        turn: 1, 
+        npcId: npc._id 
+    }; 
+    
+    res.json({ battleId });
 });
 
 app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [] }); });
@@ -186,8 +226,12 @@ app.post('/api/turn', async (req, res) => {
         else if (action === 'run') { if (Math.random() > 0.4) { delete activeBattles[battleId]; return res.json({ events: [{type:'MSG', text:'Fugiu!'}], finished: true, fled: true }); } else { events.push({ type: 'MSG', text: `Falha ao fugir!` }); performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } } 
         else if (action === 'move') { const p1Move = p1.moves.find(m => m.id === moveId); if (p1.stats.speed >= p2.stats.speed) { processAction(p1, p2, p1Move, events); if (p2.hp > 0) performEnemyTurn(p2, p1, events); } else { performEnemyTurn(p2, p1, events); if (p1.hp > 0) processAction(p1, p2, p1Move, events); } if (p1.hp > 0) applyStatusDamage(p1, events); if (p2.hp > 0) applyStatusDamage(p2, events); }
         if (p1.hp <= 0) { const user = await User.findById(battle.userId); if(user) { const poke = user.pokemonTeam.find(p => p._id.toString() === p1.instanceId); if(poke) { poke.currentHp = 0; await user.save(); } const hasAlive = user.pokemonTeam.some(p => p.currentHp > 0); if (hasAlive) { events.push({ type: 'MSG', text: `${p1.name} desmaiou!` }); let switchable = []; for (let p of user.pokemonTeam) { if (p.currentHp > 0) { const b = await BasePokemon.findOne({ id: p.baseId }); if(b) switchable.push(userPokemonToEntity(p, b)); } } return res.json({ events, forceSwitch: true, switchable }); } } delete activeBattles[battleId]; return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwPokeball }); }
+        
         if (p2.hp <= 0) {
-            let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30; events.push({ type: 'MSG', text: `Ganhou ${xpGained} XP!` });
+            let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30; 
+            events.push({ type: 'MSG', text: `${p2.name} desmaiou!` }); 
+            events.push({ type: 'MSG', text: `Ganhou ${xpGained} XP!` });
+            
             const user = await User.findById(battle.userId); 
             if(user) {
                 let poke = user.pokemonTeam.find(p => p._id.toString() === p1.instanceId);
@@ -203,7 +247,32 @@ app.post('/api/turn', async (req, res) => {
                     poke.currentHp = p1.hp; await user.save(); 
                 }
             }
-            if (battle.type === 'local') { try { const user = await User.findById(battle.userId); if (user) { const reward = Math.max(5, (p2.level || 1) * 5); user.money = (user.money || 0) + reward; await user.save(); events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); } } catch (e) {} }
+
+            // --- LÓGICA DE TROCA DO NPC ---
+            if (battle.npcReserve) {
+                // Atualiza o estado do atual na reserva para morto
+                const currentInReserve = battle.npcReserve.find(p => p.instanceId === p2.instanceId);
+                if (currentInReserve) currentInReserve.hp = 0;
+
+                // Procura o próximo vivo
+                const nextNpcPoke = battle.npcReserve.find(p => p.hp > 0);
+                if (nextNpcPoke) {
+                    battle.p2 = nextNpcPoke;
+                    events.push({ type: 'MSG', text: `${battle.p2.playerName} vai usar ${nextNpcPoke.name}!` });
+                    
+                    return res.json({ 
+                        events, 
+                        switched: true, 
+                        p2Switched: true,
+                        newP1Id: p1.instanceId,
+                        p1State: p1,
+                        p2State: nextNpcPoke 
+                    });
+                }
+            }
+            // ------------------------------
+
+            if (battle.type === 'local') { try { const user = await User.findById(battle.userId); if (user) { const reward = Math.max(5, (p2.level || 1) * 5 * (battle.npcReserve ? battle.npcReserve.length : 1)); user.money = (user.money || 0) + reward; await user.save(); events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); } } catch (e) {} }
             delete activeBattles[battleId]; return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwPokeball });
         }
         return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp }, threw: threwPokeball });
@@ -268,12 +337,11 @@ io.on('connection', (socket) => {
     socket.on('spectator_move', ({ roomId, x, y }) => { if (roomSpectators[roomId] && roomSpectators[roomId][socket.id]) { roomSpectators[roomId][socket.id].x = x; roomSpectators[roomId][socket.id].y = y; io.to(roomId).emit('spectator_moved', { id: socket.id, x, y }); } });
     socket.on('request_active_battles', () => { const list = Object.keys(onlineBattles).map(roomId => { const b = onlineBattles[roomId]; return { id: roomId, p1Name: b.p1.playerName, p1Skin: b.p1.skin, p2Name: b.p2.playerName, p2Skin: b.p2.skin, turn: b.turn }; }); socket.emit('active_battles_list', list); });
     
-    // --- LÓGICA ONLINE (CORRIGIDA: USO DE USERID) ---
+    // --- LÓGICA ONLINE ---
     socket.on('online_action', async ({ roomId, action, value, playerId }) => { 
         const battle = onlineBattles[roomId]; 
         if (!battle || battle.processing) return; 
 
-        // CRUCIAL FIX: COMPARAÇÃO PELO USERID DO BANCO, NÃO SOCKET ID
         const isP1 = (String(playerId) === String(battle.p1.userId)); 
         const actor = isP1 ? battle.p1 : battle.p2; 
         
@@ -398,7 +466,7 @@ io.on('connection', (socket) => {
                 delete onlineBattles[roomId]; 
             } 
             
-            io.to(roomId).emit('turn_result', { events, winnerId }); 
+            io.to(roomId).emit('turn_result', { events, winnerId, switched: (p1Acted || p2Acted) }); 
         } else { 
             socket.to(roomId).emit('opponent_ready'); 
         } 
