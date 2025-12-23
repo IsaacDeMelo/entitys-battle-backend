@@ -1,19 +1,17 @@
-// Funções compartilhadas entre views
+// --- SISTEMA DE UI (TOASTS E MODAIS) ---
+
 function switchTab(id, btn) {
-    // Suporta tabs com classes diferentes usadas nas views
     document.querySelectorAll('.content-area, .tab-content').forEach(d => d.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
-    // Tenta inferir o elemento clicado: primeiro param, depois activeElement, depois window.event
     const target = btn || document.activeElement || (window.event && window.event.target) || null;
     if (target && target.classList) target.classList.add('active');
 }
 
-// Pequena helper para abrir/fechar modais quando necessário (fallback)
 function closeModal(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 function openModal(id) { const el = document.getElementById(id); if (el) el.style.display = 'flex'; }
-// Simple toast notification helper (non-blocking)
+
 function showToast(message, opts = {}) {
     const duration = opts.duration || 3000;
     let container = document.getElementById('global-toast-container');
@@ -27,6 +25,7 @@ function showToast(message, opts = {}) {
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
         container.style.gap = '8px';
+        container.style.pointerEvents = 'none';
         document.body.appendChild(container);
     }
     const toast = document.createElement('div');
@@ -38,16 +37,18 @@ function showToast(message, opts = {}) {
     toast.style.borderRadius = '8px';
     toast.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
     toast.style.fontFamily = "'Press Start 2P', monospace";
-    toast.style.fontSize = '12px';
+    toast.style.fontSize = '10px';
     toast.style.maxWidth = '320px';
     toast.style.wordBreak = 'break-word';
     toast.style.opacity = '0';
     toast.style.transition = 'opacity 0.18s ease-out, transform 0.18s ease-out';
     toast.style.transform = 'translateY(-6px)';
     container.appendChild(toast);
+    
     // force reflow
     void toast.offsetWidth;
     toast.style.opacity = '1'; toast.style.transform = 'translateY(0)';
+    
     setTimeout(() => {
         toast.style.opacity = '0'; toast.style.transform = 'translateY(-6px)';
         setTimeout(() => toast.remove(), 180);
@@ -55,7 +56,6 @@ function showToast(message, opts = {}) {
     return toast;
 }
 
-// Custom confirm modal that returns a Promise<boolean>
 function showConfirm(message, opts = {}) {
     return new Promise((resolve) => {
         let wrapper = document.getElementById('global-confirm-wrapper');
@@ -73,18 +73,21 @@ function showConfirm(message, opts = {}) {
             wrapper.style.zIndex = 100000;
             document.body.appendChild(wrapper);
         }
-        // overlay
+        
         const overlay = document.createElement('div');
         overlay.style.position = 'absolute'; overlay.style.left = '0'; overlay.style.top = '0'; overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.background = 'rgba(0,0,0,0.6)';
-        // dialog
+        
         const dialog = document.createElement('div');
-        dialog.style.minWidth = '320px'; dialog.style.maxWidth = '90%'; dialog.style.background = '#0f1720'; dialog.style.color = '#fff'; dialog.style.padding = '18px'; dialog.style.borderRadius = '10px'; dialog.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)'; dialog.style.fontFamily = "'Press Start 2P', monospace";
-        // message
-        const msg = document.createElement('div'); msg.innerText = message; msg.style.marginBottom = '12px'; msg.style.fontSize = '13px'; msg.style.color = '#fff';
-        // buttons
-        const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '8px'; btnRow.style.justifyContent = 'flex-end';
-        const btnCancel = document.createElement('button'); btnCancel.innerText = opts.cancelText || 'Cancelar'; btnCancel.style.background = '#555'; btnCancel.style.color = '#fff'; btnCancel.style.border = 'none'; btnCancel.style.padding = '8px 12px'; btnCancel.style.borderRadius = '6px'; btnCancel.style.cursor = 'pointer';
-        const btnOk = document.createElement('button'); btnOk.innerText = opts.okText || 'OK'; btnOk.style.background = opts.okBg || '#27ae60'; btnOk.style.color = '#fff'; btnOk.style.border = 'none'; btnOk.style.padding = '8px 12px'; btnOk.style.borderRadius = '6px'; btnOk.style.cursor = 'pointer';
+        dialog.style.minWidth = '300px'; dialog.style.maxWidth = '90%'; dialog.style.background = '#0f1720'; dialog.style.color = '#fff'; dialog.style.padding = '20px'; dialog.style.borderRadius = '12px'; dialog.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)'; dialog.style.fontFamily = "'Press Start 2P', monospace"; dialog.style.border = "1px solid #3498db"; dialog.style.position = "relative"; dialog.style.zIndex = "100001";
+
+        const msg = document.createElement('div'); msg.innerText = message; msg.style.marginBottom = '20px'; msg.style.fontSize = '12px'; msg.style.lineHeight = '1.5'; msg.style.color = '#fff'; msg.style.textAlign = 'center';
+        
+        const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '10px'; btnRow.style.justifyContent = 'center';
+        
+        const btnCancel = document.createElement('button'); btnCancel.innerText = opts.cancelText || 'Não'; btnCancel.style.background = '#c0392b'; btnCancel.style.color = '#fff'; btnCancel.style.border = 'none'; btnCancel.style.padding = '10px 20px'; btnCancel.style.borderRadius = '6px'; btnCancel.style.cursor = 'pointer'; btnCancel.style.fontFamily = 'inherit';
+        
+        const btnOk = document.createElement('button'); btnOk.innerText = opts.okText || 'Sim'; btnOk.style.background = opts.okBg || '#27ae60'; btnOk.style.color = '#fff'; btnOk.style.border = 'none'; btnOk.style.padding = '10px 20px'; btnOk.style.borderRadius = '6px'; btnOk.style.cursor = 'pointer'; btnOk.style.fontFamily = 'inherit';
+        
         btnRow.appendChild(btnCancel); btnRow.appendChild(btnOk);
         dialog.appendChild(msg); dialog.appendChild(btnRow);
         wrapper.appendChild(overlay); wrapper.appendChild(dialog);
@@ -94,4 +97,9 @@ function showConfirm(message, opts = {}) {
         btnCancel.addEventListener('click', () => { cleanup(); resolve(false); });
         btnOk.addEventListener('click', () => { cleanup(); resolve(true); });
     });
+}
+
+// --- FUNÇÕES DE AUXÍLIO GERAIS ---
+function resolveImg(src) { 
+    return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; 
 }
