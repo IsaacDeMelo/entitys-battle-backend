@@ -1,64 +1,48 @@
 const mongoose = require('mongoose');
 
-// Schema para os golpes aprendidos (no histórico/pool)
-const moveSchema = new mongoose.Schema({
-    level: Number,
-    moveId: String
-});
-
-// Schema para as espécies (Base)
-const basePokemonSchema = new mongoose.Schema({
-    id: String,
+const BasePokemonSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
     name: String,
     type: String,
-    baseStats: { hp: Number, attack: Number, defense: Number, speed: Number },
+    baseStats: { hp: Number, energy: Number, attack: Number, defense: Number, speed: Number },
     sprite: String,
-    spawnLocation: String,
-    minSpawnLevel: Number,
-    maxSpawnLevel: Number,
-    catchRate: Number,
-    spawnChance: Number,
-    isStarter: Boolean,
+    spawnLocation: { type: String, default: 'none' },
+    minSpawnLevel: { type: Number, default: 1 },
+    maxSpawnLevel: { type: Number, default: 5 },
+    catchRate: { type: Number, default: 0.5 },
+    spawnChance: { type: Number, default: 50 }, 
+    // NOVO CAMPO: Define se aparece na tela de registro
+    isStarter: { type: Boolean, default: false },
     evolution: { targetId: String, level: Number },
-    movePool: [moveSchema]
+    movePool: [{ level: Number, moveId: String }]
 });
 
-// --- NOVO SCHEMA PARA GOLPES EQUIPADOS (COM PP) ---
-const equippedMoveSchema = new mongoose.Schema({
-    moveId: String,
-    pp: Number,
-    maxPp: Number
-}, { _id: false }); // _id: false evita criar ids para cada golpe
-
-// Schema dos Pokémons do Jogador
-const userPokemonSchema = new mongoose.Schema({
-    baseId: String,
-    nickname: String,
-    level: Number,
-    currentHp: Number,
+const UserPokemonSchema = new mongoose.Schema({
+    baseId: String, 
+    nickname: String, 
+    level: { type: Number, default: 1 },
+    currentHp: Number, 
     xp: { type: Number, default: 0 },
-    stats: { hp: Number, attack: Number, defense: Number, speed: Number },
-    
-    // AQUI ESTÁ A MUDANÇA MÁGICA:
-    moves: [equippedMoveSchema], // Agora aceita objetos {moveId, pp, maxPp}
-    
-    learnedMoves: [String]
+    stats: { hp: Number, energy: Number, attack: Number, defense: Number, speed: Number }, 
+    moves: [String], 
+    learnedMoves: [String] 
 });
 
-// Schema do Usuário
-const userSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    skin: String,
+    skin: { type: String, default: 'char1' },
+    isAdmin: { type: Boolean, default: false },
+    x: { type: Number, default: 50 },
+    y: { type: Number, default: 80 },
     money: { type: Number, default: 100 },
     pokeballs: { type: Number, default: 5 },
     rareCandy: { type: Number, default: 0 },
-    pokemonTeam: [userPokemonSchema],
-    pc: [userPokemonSchema],
-    isAdmin: { type: Boolean, default: false }
+    pokemonTeam: [UserPokemonSchema],
+    pc: [UserPokemonSchema]
 });
 
-module.exports = {
-    BasePokemon: mongoose.model('BasePokemon', basePokemonSchema),
-    User: mongoose.model('User', userSchema)
-};
+const BasePokemon = mongoose.model('BasePokemon', BasePokemonSchema);
+const User = mongoose.model('User', UserSchema);
+
+module.exports = { BasePokemon, User };
