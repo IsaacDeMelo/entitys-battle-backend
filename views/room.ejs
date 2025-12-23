@@ -6,6 +6,7 @@
     <title>Cidade - Lobby</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <!-- CSS MANTIDO -->
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: center; }
@@ -66,7 +67,6 @@
         .tab-btn.active { color: #fff; background: #1f2533; border-bottom-color: #3498db; }
         .arena-char { width:80px; height:80px; background-size: 400% auto; background-position: 0% 0%; image-rendering: pixelated; margin: 0 auto; }
         
-        /* NPC */
         .npc-entity { cursor: pointer; }
         .npc-entity:hover { filter: brightness(1.2); }
     </style>
@@ -88,37 +88,49 @@
 
     <!-- MODAL ONLINE/BATTLE -->
     <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;"><div style="display:flex; border-bottom:1px solid #333;"><button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button><button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button><button class="close-btn" onclick="closeModal('modalOnline')">X</button></div><div id="tab-play" class="tab-content" style="padding:20px; flex:1;"><select id="onlineFighter"><% if(team.length > 0) { team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }); } else { %><option>Sem Pokemons</option><% } %></select><div style="margin-top:10px; display:flex; gap:8px; align-items:center;"><label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label><input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;"></div><button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button><button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button><div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div></div><div id="tab-watch" class="tab-content" style="display:none; padding:10px;"><div id="battlesList"></div></div></div></div>
-    
     <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:18px; display:block; max-width:420px;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2><form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;"><input type="hidden" name="userId" value="<%= user._id %>"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><input type="hidden" name="mode" value="manual"><div style="display:flex; gap:12px; align-items:center;"><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div><div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div><div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div></div><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div><div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div><div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div></div></div><label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label><select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;"><option value="" disabled selected>Escolha...</option><% if(team.length === 0) { %><option value="" disabled>Sem Pokémons</option><% } else { %><% team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }) %><% } %></select><div style="display:flex; gap:8px;"><button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button><button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button></div></form></div></div>
     
     <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;"><input type="hidden" name="roomId" id="specRoomId"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"></form>
     <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
 
-    <!-- 1. DEFINE SOCKET E ID -->
     <script>
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
-        window.CURRENT_USER_ID = "<%= user._id %>"; // Variável global para common.js
+        window.CURRENT_USER_ID = "<%= user._id %>"; 
+        window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
+        
+        // VARIÁVEIS GLOBAIS DE ESTADO (Para o common.js usar)
+        window.isPlayerMoving = false;
+        window.isInteracting = false;
     </script>
 
-    <!-- 2. CARREGA COMMON -->
+    <!-- CARREGA O COMMON.JS (QUE AGORA FAZ TUDO DOS NPCS) -->
     <script src="/scripts/common.js"></script>
 
-    <!-- 3. LÓGICA DO MAPA + INTERAÇÃO COM NPC (BACKUP) -->
     <script>
         const gameArea = document.getElementById('gameArea');
-        let myId = null; const MOVEMENT_SPEED = 55; let isPlayerMoving = false;
-        let isInteracting = false; // Flag para impedir movimento duplo
+        let myId = null; const MOVEMENT_SPEED = 55;
 
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
         const urlParams = new URLSearchParams(window.location.search);
+        
         const spawnFrom = urlParams.get('from');
+        const returnX = urlParams.get('x');
+        const returnY = urlParams.get('y');
 
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
 
-        socket.on('connect', () => { myId = socket.id; let initialX = 50; let initialY = 50; let initialDir = 'down'; if(spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); });
+        socket.on('connect', () => { 
+            myId = socket.id; 
+            let initialX = returnX ? parseFloat(returnX) : 50; 
+            let initialY = returnY ? parseFloat(returnY) : 50; 
+            let initialDir = 'down'; 
+            if(!returnX && !returnY && spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } 
+            
+            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); 
+        });
         
         socket.on('map_state', (players) => { document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
@@ -140,8 +152,8 @@
                     el.walkTimeout = setTimeout(() => { 
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
-                            isPlayerMoving = false; gameArea.classList.remove('locked'); 
-                            // Portal Floresta
+                            window.isPlayerMoving = false; // Atualiza global
+                            gameArea.classList.remove('locked'); 
                             if (data.x < 12 && data.y > 25 && data.y < 75) { showLoading('Indo para a floresta...', 'left'); setTimeout(() => { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }, 120); } 
                         } 
                     }, duration * 1000); 
@@ -152,98 +164,9 @@
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
         
-        // --- NPC RENDER & INTERACTION ---
-        socket.on('npcs_list', (list) => {
-            document.querySelectorAll('.npc-entity').forEach(el => el.remove());
-            list.forEach(npc => {
-                const div = document.createElement('div');
-                div.className = 'player npc-entity'; 
-                div.style.left = npc.x + '%';
-                div.style.top = npc.y + '%';
-                div.style.zIndex = Math.floor(npc.y);
-
-                // CSS Crop
-                if (npc.isCustomSkin) div.style.backgroundImage = `url('${npc.skin}')`;
-                else div.style.backgroundImage = `url('/uploads/${npc.skin}.png')`;
-                
-                div.setAttribute('data-dir', npc.direction || 'down');
-
-                const label = document.createElement('div');
-                label.className = 'player-name';
-                label.style.color = '#f1c40f'; 
-                label.innerText = npc.name;
-                div.appendChild(label);
-                
-                // Clique no NPC -> Move até lá
-                div.onclick = (e) => { 
-                    e.stopPropagation(); 
-                    moveToAndTalkToNPC(npc); 
-                };
-                
-                gameArea.appendChild(div);
-            });
-        });
-
-        // FUNÇÃO DE MOVER ATÉ NPC
-        function moveToAndTalkToNPC(npc) {
-            if (isPlayerMoving || isInteracting) return;
-            const myPlayer = document.getElementById(`p-${myId}`);
-            if(!myPlayer) return;
-
-            const currentLeft = parseFloat(myPlayer.style.left);
-            const currentTop = parseFloat(myPlayer.style.top);
-            const dx = npc.x - currentLeft;
-            const dy = npc.y - currentTop;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-
-            if (dist > 8) { // Se longe, anda
-                isInteracting = true;
-                const ratio = 6 / dist; 
-                const targetX = npc.x - (dx * ratio);
-                const targetY = npc.y - (dy * ratio);
-                
-                // Trava input
-                gameArea.classList.add('locked');
-                socket.emit('move_player', { x: targetX, y: targetY });
-                
-                const timeToTravel = (dist / MOVEMENT_SPEED) * 1000;
-                
-                setTimeout(() => {
-                    gameArea.classList.remove('locked');
-                    isInteracting = false;
-                    openNpcDialog(npc); // Abre dialogo ao chegar
-                }, timeToTravel);
-            } else {
-                openNpcDialog(npc);
-            }
-        }
-
-        function openNpcDialog(npc) {
-            showConfirm(`${npc.name} diz:\n"${npc.dialogue || '...'}"\n\nAceitar batalha?`, { okText: 'BATALHAR', cancelText: 'Sair', okBg: '#e67e22' }).then(yes => {
-                if(yes) {
-                    showLoading('Iniciando Batalha...');
-                    fetch('/battle/npc', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', npcId: npc._id }) })
-                    .then(r => r.json()).then(data => { if(data.error) { hideLoading(); showToast(data.error); } else { window.location.href = '/battle/' + data.battleId; } });
-                }
-            });
-        }
-
-        function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); if(p.isSearching) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet); } gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
-        
-        gameArea.addEventListener('click', (e) => { 
-            if (isPlayerMoving || isInteracting || e.target.classList.contains('machine')) return; 
-            const rect = gameArea.getBoundingClientRect(); 
-            const targetX = ((e.clientX - rect.left) / rect.width) * 100; 
-            const targetY = ((e.clientY - rect.top) / rect.height) * 100; 
-            if (targetY < 16 && targetX > 15) { return; }
-            isPlayerMoving = true; 
-            gameArea.classList.add('locked'); 
-            socket.emit('move_player', { x: targetX, y: targetY }); 
-        });
-        
         function moveToAndInteract(event, element, type) { 
             event.stopPropagation(); 
-            if (isPlayerMoving || isInteracting) return; 
+            if (window.isPlayerMoving || window.isInteracting) return; 
             const rect = gameArea.getBoundingClientRect(); 
             const targetRect = element.getBoundingClientRect(); 
             const centerXpx = (targetRect.left - rect.left) + (targetRect.width / 2); 
@@ -252,7 +175,7 @@
             const targetX = (centerXpx / rect.width) * 100; 
             const myEl = document.getElementById(`p-${myId}`); 
             let travelTime = 0; 
-            isPlayerMoving = true; 
+            window.isPlayerMoving = true; // Atualiza global
             gameArea.classList.add('locked'); 
             if (myEl) { const currentLeft = parseFloat(myEl.style.left) || 50; const currentTop = parseFloat(myEl.style.top) || 50; const dist = Math.sqrt(Math.pow(targetX - currentLeft, 2) + Math.pow(targetY - currentTop, 2)); travelTime = (dist / MOVEMENT_SPEED) * 1000; } 
             socket.emit('move_player', { x: targetX, y: targetY }); 
@@ -281,6 +204,19 @@
         function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         window.addEventListener('beforeunload', () => { showLoading(); });
+        
+        function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); if(p.isSearching) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet); } gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
+        
+        gameArea.addEventListener('click', (e) => { 
+            if (window.isPlayerMoving || window.isInteracting || e.target.classList.contains('machine')) return; 
+            const rect = gameArea.getBoundingClientRect(); 
+            const targetX = ((e.clientX - rect.left) / rect.width) * 100; 
+            const targetY = ((e.clientY - rect.top) / rect.height) * 100; 
+            if (targetY < 16 && targetX > 15) { return; }
+            window.isPlayerMoving = true; // Atualiza global
+            gameArea.classList.add('locked'); 
+            socket.emit('move_player', { x: targetX, y: targetY }); 
+        });
     </script>
 </body> 
 </html>

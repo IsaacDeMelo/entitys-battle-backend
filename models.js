@@ -11,7 +11,6 @@ const BasePokemonSchema = new mongoose.Schema({
     maxSpawnLevel: { type: Number, default: 5 },
     catchRate: { type: Number, default: 0.5 },
     spawnChance: { type: Number, default: 50 }, 
-    // NOVO CAMPO: Define se aparece na tela de registro
     isStarter: { type: Boolean, default: false },
     evolution: { targetId: String, level: Number },
     movePool: [{ level: Number, moveId: String }]
@@ -39,19 +38,43 @@ const UserSchema = new mongoose.Schema({
     pokeballs: { type: Number, default: 5 },
     rareCandy: { type: Number, default: 0 },
     pokemonTeam: [UserPokemonSchema],
-    pc: [UserPokemonSchema]
+    pc: [UserPokemonSchema],
+    
+    // CORRIGIDO AQUI:
+    defeatedNPCs: {
+        type: [{ 
+            npcId: String, 
+            defeatedAt: Number 
+        }],
+        default: []
+    }
 });
 
 const NpcSchema = new mongoose.Schema({
     name: String,
-    map: String, // 'lobby' ou 'forest'
+    map: String, 
     x: Number,
     y: Number,
     direction: { type: String, default: 'down' },
-    skin: String, // Pode ser 'char1' ou uma URL/Base64
-    isCustomSkin: { type: Boolean, default: false }, // Para saber se usa background-image ou tag img
-    dialogue: String,
+    skin: String,
+    isCustomSkin: { type: Boolean, default: false },
+    
+    dialogue: String,         // Fala antes da batalha
+    winDialogue: String,      // Fala se já venceu (e for Tutorial/Único)
+    cooldownDialogue: String, // Fala se estiver em cooldown (Carregando)
+    
     moneyReward: { type: Number, default: 50 },
+    
+    // 0 = Único (Tutorial/Lendário), nunca mais batalha.
+    // > 0 = Minutos para poder batalhar de novo.
+    cooldownMinutes: { type: Number, default: 0 }, 
+
+    reward: {
+        type: { type: String, default: 'none' }, 
+        value: String, 
+        qty: { type: Number, default: 1 },
+        level: { type: Number, default: 1 } 
+    },
     team: [{ 
         baseId: String, 
         level: Number 
