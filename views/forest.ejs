@@ -30,8 +30,6 @@
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
-        .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
-        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -39,13 +37,12 @@
         .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loader-text { font-size: 0.8rem; color:#f1c40f; }
-        .float-btn { position: fixed; bottom: 80px; width: 60px; height: 60px; border-radius: 50%; background: #2c3e50; color: white; border: 3px solid #f1c40f; font-size: 1.5rem; cursor: pointer; z-index: 9999; box-shadow: 0 5px 0 #000; display: flex; align-items: center; justify-content: center; transition: transform 0.1s, box-shadow 0.1s; }
-        .float-btn:active { transform: translateY(5px); box-shadow: none; }
-        #floatMenu .float-btn { position: relative; right: auto; bottom: auto; margin: 0; width:48px; height:48px; border-radius:50%; }
         .modal-overlay, .app-modal { z-index: 11000 !important; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
+        /* NPC */
+        .npc-entity { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -74,23 +71,19 @@
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
         
-        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
-        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
-        
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from');
 
         // Socket Logic
         socket.on('connect', () => {
             myId = socket.id;
-            // Spawn na direita (entrada da cidade)
             let initialX = 92; 
             let initialY = 50; 
             let initialDir = 'left';
             if (spawnFrom === 'lobby') { initialX = 92; initialY = 50; initialDir = 'left'; }
             socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
         });
-        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
+        socket.on('map_state', (players) => { document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
         socket.on('duplicate_session', (info) => { showToast('Sessão desconectada: outra entrada com esta conta.'); setTimeout(() => { window.location.href = '/'; }, 1800); });
         socket.on('player_moved', (data) => {
@@ -108,7 +101,6 @@
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
                             isPlayerMoving = false; 
-                            // SAÍDA PARA CIDADE
                             if (data.x > 95) { 
                                 showLoading('Voltando para a cidade...', 'right'); 
                                 setTimeout(() => { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }, 120); 
@@ -126,6 +118,42 @@
             showLoading('Iniciando batalha...', 'left');
             setTimeout(() => { fetch('/battle/wild', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>' }) }).then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; else { hideLoading(); showToast(data.error); isPlayerMoving = false; } }); }, 1000);
         });
+
+        // --- NPC SYSTEM ---
+        socket.on('npcs_list', (list) => {
+            document.querySelectorAll('.npc-entity').forEach(el => el.remove());
+            list.forEach(npc => {
+                const div = document.createElement('div');
+                div.className = 'player npc-entity'; 
+                div.style.left = npc.x + '%';
+                div.style.top = npc.y + '%';
+                div.style.zIndex = Math.floor(npc.y);
+                if (npc.isCustomSkin) {
+                    const img = document.createElement('img'); img.src = npc.skin; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain'; div.appendChild(img);
+                } else {
+                    div.style.backgroundImage = `url('/uploads/${npc.skin}.png')`; div.setAttribute('data-dir', npc.direction);
+                }
+                const label = document.createElement('div'); label.className = 'player-name'; label.style.color = '#f1c40f'; label.innerText = npc.name; div.appendChild(label);
+                div.onclick = (e) => { e.stopPropagation(); interactWithNPC(npc); };
+                gameArea.appendChild(div);
+            });
+        });
+
+        function interactWithNPC(npc) {
+            const myPlayer = document.getElementById(`p-${socket.id}`);
+            if(myPlayer) {
+                const pX = parseFloat(myPlayer.style.left); const pY = parseFloat(myPlayer.style.top);
+                const dist = Math.sqrt(Math.pow(pX - npc.x, 2) + Math.pow(pY - npc.y, 2));
+                if(dist > 15) { showToast("Chegue mais perto para falar!"); return; }
+            }
+            showConfirm(`${npc.name} diz:\n"${npc.dialogue || '...'}"\n\nAceitar batalha?`, { okText: 'BATALHAR', cancelText: 'Sair', okBg: '#e67e22' }).then(yes => {
+                if(yes) {
+                    showLoading('Iniciando Batalha...');
+                    fetch('/battle/npc', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', npcId: npc._id }) })
+                    .then(r => r.json()).then(data => { if(data.error) { hideLoading(); showToast(data.error); } else { window.location.href = '/battle/' + data.battleId; } });
+                }
+            });
+        }
 
         function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); div.style.backgroundImage = `url('/uploads/${p.skin || "char1"}.png')`; const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); gameArea.appendChild(div); }
         
