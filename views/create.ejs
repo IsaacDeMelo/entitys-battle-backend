@@ -199,25 +199,76 @@
             </div>
 
             <!-- ABA NPC (Simplificado mas funcional) -->
-            <div id="tab-npc" class="tab-content hidden">
-                <form action="/lab/create-npc" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="userId" value="<%= user._id %>">
-                    <h3>Criador Rápido de NPC</h3>
-                    <div class="form-grid">
-                        <div><label>Nome</label><input type="text" name="name" required></div>
-                        <div><label>Mapa</label><select name="map"><option value="lobby">Lobby</option><option value="forest">Floresta</option></select></div>
-                    </div>
-                    <div class="form-grid">
-                        <div><label>X (%)</label><input type="number" name="x" value="50"></div>
-                        <div><label>Y (%)</label><input type="number" name="y" value="50"></div>
-                        <div><label>Skin</label><select name="skinSelect"><% for(let i=1; i<=6; i++){ %><option value="char<%=i%>">Char <%=i%></option><% } %></select></div>
-                    </div>
-                    <label>Falas</label><input type="text" name="dialogue">
-                    <label>Time (JSON Simples)</label>
-                    <textarea name="teamJson" style="height:50px;">[{"baseId":"bulbasaur", "level":5}]</textarea>
-                    <button type="submit" class="btn-save" style="margin-top:10px;">CRIAR NPC</button>
-                </form>
+            <!-- ABA NPC CORRIGIDA -->
+<div id="tab-npc" class="tab-content hidden">
+    <form action="/lab/create-npc" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="userId" value="<%= user._id %>">
+        
+        <h3>Criador de NPC</h3>
+        
+        <div class="form-grid">
+            <div class="full-width">
+                <label>Nome do Personagem</label>
+                <input type="text" name="name" required placeholder="Ex: Enfermeira Joy">
             </div>
+        </div>
+
+        <div class="form-grid">
+            <div>
+                <label>Mapa</label>
+                <select name="map">
+                    <option value="lobby">Cidade (Lobby)</option>
+                    <option value="forest">Floresta</option>
+                </select>
+            </div>
+            <div>
+                <label>Posição X (0-100%)</label>
+                <input type="number" name="x" value="50" min="0" max="100">
+            </div>
+            <div>
+                <label>Posição Y (0-100%)</label>
+                <input type="number" name="y" value="50" min="0" max="100">
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div>
+                <label>Direção do Olhar</label>
+                <select name="direction">
+                    <option value="down">Baixo</option>
+                    <option value="up">Cima</option>
+                    <option value="left">Esquerda</option>
+                    <option value="right">Direita</option>
+                </select>
+            </div>
+            <div>
+                <label>Recompensa ($)</label>
+                <!-- ESTE CAMPO ESTAVA FALTANDO -->
+                <input type="number" name="money" value="100" required>
+            </div>
+            <div>
+                <label>Skin Padrão</label>
+                <select name="skinSelect">
+                    <% for(let i=1; i<=6; i++){ %><option value="char<%=i%>">Char <%=i%></option><% } %>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label>OU Upload de Skin (Substitui a padrão)</label>
+            <input type="file" name="npcSkinFile" accept="image/*">
+        </div>
+
+        <label>Falas do NPC</label>
+        <input type="text" name="dialogue" placeholder="Ex: Olá jovem treinador!">
+
+        <label style="margin-top:15px;">Time Pokémon (JSON Simples)</label>
+        <textarea name="teamJson" style="height:60px; font-family:monospace; color:#2ecc71; background:#000;">[{"baseId":"bulbasaur", "level":5}]</textarea>
+        <small style="color:#777">IDs disponíveis: <%= pokemons.map(p=>p.id).join(', ') %></small>
+
+        <button type="submit" class="btn-save" style="margin-top:15px;">CRIAR NPC</button>
+    </form>
+</div>
         </div>
     </div>
 
