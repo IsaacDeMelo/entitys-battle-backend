@@ -3,153 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laboratório (Admin)</title>
+    <title>Laboratório - Goofymon Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #111; color: white; font-family: sans-serif; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: #222; padding: 20px; border-radius: 10px; }
-        h1, h2, h3 { color: #f1c40f; text-align: center; }
-        label { display: block; margin-top: 10px; color: #ccc; }
-        input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; background: #000; border: 1px solid #555; color: white; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; margin-top: 15px; background: #3498db; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
-        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .tab-btn { flex: 1; padding: 10px; background: #333; border: none; color: #aaa; cursor: pointer; }
-        .tab-btn.active { background: #f1c40f; color: #000; font-weight: bold; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        :root { --bg: #0f172a; --panel: #1e293b; --accent: #3498db; --text: #e2e8f0; --danger: #e74c3c; --success: #2ecc71; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; padding: 20px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
+        h1 { margin: 0; color: #f1c40f; text-shadow: 0 0 10px rgba(241, 196, 15, 0.3); }
+        .back-btn { text-decoration: none; color: #94a3b8; font-weight: bold; border: 1px solid #333; padding: 8px 15px; border-radius: 8px; transition: 0.2s; }
+        .back-btn:hover { background: #333; color: #fff; }
+
+        .main-layout { display: flex; gap: 20px; height: 100%; overflow: hidden; }
+        
+        /* LISTA LATERAL */
+        .sidebar { width: 300px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
+        .sidebar-header { padding: 15px; background: rgba(255,255,255,0.05); font-weight: bold; text-align: center; border-bottom: 1px solid #333; }
+        .poke-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .poke-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s; border-radius: 6px; }
+        .poke-item:hover { background: rgba(52, 152, 219, 0.1); }
+        .poke-item img { width: 40px; height: 40px; image-rendering: pixelated; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 50%; }
+        .poke-item-info { flex: 1; }
+        .poke-item-name { font-weight: bold; color: #fff; font-size: 1rem; }
+        .poke-item-id { font-size: 0.7rem; color: #777; }
+        
+        /* ÁREA DE EDIÇÃO */
+        .editor-area { flex: 1; background: var(--panel); border-radius: 12px; padding: 20px; overflow-y: auto; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* ABAS */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #333; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; color: #777; font-weight: bold; cursor: pointer; font-size: 1rem; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .full-width { grid-column: span 3; }
+        
+        label { display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; }
+        input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 10px; border-radius: 6px; font-family: inherit; }
+        input:focus { border-color: var(--accent); outline: none; }
+
+        /* MOVES SELECTOR */
+        .moves-wrapper { background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 5px; }
+        .move-option { display: flex; align-items: center; gap: 5px; padding: 5px; background: rgba(255,255,255,0.03); border-radius: 4px; font-size: 0.8rem; cursor: pointer; user-select: none; }
+        .move-option:hover { background: rgba(255,255,255,0.1); }
+        .move-option input { width: auto; margin: 0; }
+        .move-lvl-input { width: 40px; padding: 2px; font-size: 0.7rem; text-align: center; border: 1px solid #555; background: #000; color: var(--accent); }
+
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-save { background: var(--success); color: #000; }
+        .btn-delete { background: var(--danger); color: #fff; flex: 0.3; }
+        .btn-new { background: var(--accent); color: #fff; margin-bottom: 10px; width: 100%; padding: 10px; border-radius: 6px; border: none; cursor: pointer; }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>LABORATÓRIO</h1>
-        <a href="/" style="color:#aaa; text-decoration:none;">&larr; Voltar</a>
 
-        <div class="tab-nav">
-            <button class="tab-btn active" onclick="openTab('tab-poke')">CRIAR POKEMON</button>
-            <button class="tab-btn" onclick="openTab('tab-npc')">CRIAR NPC</button>
+    <header>
+        <div>
+            <h1>LABORATÓRIO</h1>
+            <small style="color:#777">Painel de Criação e Balanceamento</small>
         </div>
+        <a href="/lobby?userId=<%= user._id %>" class="back-btn">VOLTAR AO JOGO</a>
+    </header>
 
-        <!-- TAB POKEMON -->
-        <div id="tab-poke" class="tab-content active">
-            <form action="/lab/create" method="POST" enctype="multipart/form-data">
-                <label>ID Existente (para editar):</label>
-                <input type="text" name="existingId" placeholder="Deixe vazio para criar novo">
-
-                <label>Nome:</label>
-                <input type="text" name="name" required>
-
-                <label>Tipo:</label>
-                <select name="type">
-                    <% Object.keys(types).forEach(t => { %>
-                        <option value="<%= t %>"><%= t.toUpperCase() %></option>
-                    <% }) %>
-                </select>
-
-                <h3>Status Base</h3>
-                <div style="display:flex; gap:5px;">
-                    <input type="number" name="hp" placeholder="HP" required>
-                    <input type="number" name="energy" placeholder="EN" required>
-                    <input type="number" name="atk" placeholder="ATK" required>
-                </div>
-                <div style="display:flex; gap:5px;">
-                    <input type="number" name="def" placeholder="DEF" required>
-                    <input type="number" name="spd" placeholder="SPD" required>
-                </div>
-
-                <h3>Spawn & Info</h3>
-                <label>Local:</label>
-                <select name="location">
-                    <option value="none">Nenhum</option>
-                    <option value="forest">Floresta</option>
-                </select>
-
-                <div style="display:flex; gap:5px;">
-                    <input type="number" name="minLvl" placeholder="Min Lvl" value="1">
-                    <input type="number" name="maxLvl" placeholder="Max Lvl" value="5">
-                </div>
-                
-                <div style="display:flex; gap:5px;">
-                    <input type="number" step="0.1" name="catchRate" placeholder="Catch Rate (0-1)" value="0.5">
-                    <input type="number" name="spawnChance" placeholder="Spawn Weight" value="10">
-                </div>
-
-                <label><input type="checkbox" name="isStarter" style="width:auto;"> É Inicial?</label>
-
-                <h3>Golpes (JSON)</h3>
-                <textarea name="movesJson" placeholder='[{"level":1, "moveId":"tackle"}]' rows="4"></textarea>
-                <small>Moves: <%= Object.keys(moves).join(', ') %></small>
-
-                <h3>Evolução</h3>
-                <div style="display:flex; gap:5px;">
-                    <input type="text" name="evoTarget" placeholder="ID do Alvo">
-                    <input type="number" name="evoLevel" placeholder="Nível">
-                </div>
-
-                <h3>Sprite</h3>
-                <input type="file" name="sprite" accept="image/*">
-
-                <button type="submit">SALVAR MONSTRO</button>
-            </form>
-        </div>
-
-        <!-- TAB NPC -->
-        <div id="tab-npc" class="tab-content">
-            <form action="/lab/create-npc" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="userId" value="<%= user._id %>">
-                
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div><label>Nome</label><input type="text" name="name" required></div>
-                    <div>
-                        <label>Mapa</label>
-                        <select name="map">
-                            <option value="lobby">Cidade (Lobby)</option>
-                            <option value="forest">Floresta</option>
-                        </select>
+    <div class="main-layout">
+        
+        <!-- LATERAL: LISTA -->
+        <div class="sidebar">
+            <div class="sidebar-header">BANCO DE DADOS (<%= pokemons.length %>)</div>
+            <div style="padding:10px;">
+                <button class="btn-new" onclick="clearForm()">+ NOVO POKEMON</button>
+            </div>
+            <div class="poke-list">
+                <% pokemons.forEach(p => { %>
+                    <div class="poke-item" onclick="loadPokemon(<%= JSON.stringify(p) %>)">
+                        <img src="<%= (p.sprite && (p.sprite.startsWith('http') || p.sprite.startsWith('data:'))) ? p.sprite : '/uploads/' + p.sprite %>">
+                        <div class="poke-item-info">
+                            <div class="poke-item-name"><%= p.name %></div>
+                            <div class="poke-item-id">ID: <%= p.id %> | Tipo: <%= p.type %></div>
+                        </div>
                     </div>
-                    <div><label>Pos X (%)</label><input type="number" name="x" value="50"></div>
-                    <div><label>Pos Y (%)</label><input type="number" name="y" value="50"></div>
-                    <div>
-                        <label>Direção</label>
-                        <select name="direction">
-                            <option value="down">Baixo</option>
-                            <option value="up">Cima</option>
-                            <option value="left">Esquerda</option>
-                            <option value="right">Direita</option>
-                        </select>
-                    </div>
-                    <div><label>Recompensa ($)</label><input type="number" name="money" value="100"></div>
-                </div>
-        
-                <label>Skin Padrão:</label>
-                <select name="skinSelect">
-                    <option value="char1">Char 1</option>
-                    <option value="char2">Char 2</option>
-                    <option value="char3">Char 3</option>
-                    <option value="char4">Char 4</option>
-                    <option value="char5">Char 5</option>
-                    <option value="char6">Char 6</option>
-                </select>
-                <label>OU Upload Customizado:</label>
-                <input type="file" name="npcSkinFile" accept="image/*">
-        
-                <label>Diálogo:</label>
-                <input type="text" name="dialogue" placeholder="Ex: Vamos batalhar!">
-        
-                <label>Time Pokémon (JSON):</label>
-                <textarea name="teamJson" rows="3" style="font-family:monospace; color:#0f0;">[{"baseId":"charmander", "level":5}]</textarea>
-                <small>IDs: <%= pokemons.map(p=>p.id).join(', ') %></small>
-        
-                <button type="submit" style="background:#e67e22;">CRIAR NPC</button>
-            </form>
+                <% }) %>
+            </div>
         </div>
 
+        <!-- CENTRO: EDITOR -->
+        <div class="editor-area">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('poke')">POKEMON</button>
+                <button class="tab-btn" onclick="showTab('npc')">NPC</button>
+            </div>
+
+            <!-- FORMULÁRIO POKEMON -->
+            <div id="tab-poke" class="tab-content">
+                <form id="pokeForm" action="/lab/create" method="POST" enctype="multipart/form-data" onsubmit="prepareMoves()">
+                    <!-- Campo Oculto para ID antigo (modo edição) -->
+                    <input type="hidden" name="existingId" id="existingId">
+                    <input type="hidden" name="movesJson" id="movesJson"> <!-- JSON gerado pelo JS -->
+
+                    <div class="form-grid">
+                        <div>
+                            <label>ID Único (Sistema)</label>
+                            <input type="text" name="id" id="pokeId" placeholder="Gerado auto se vazio" disabled style="opacity:0.5;">
+                        </div>
+                        <div class="full-width" style="grid-column: span 2;">
+                            <label>Nome da Criatura</label>
+                            <input type="text" name="name" id="pokeName" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Tipo Elementar</label>
+                            <select name="type" id="pokeType">
+                                <% Object.keys(types).forEach(t => { %>
+                                    <option value="<%= t %>"><%= t.toUpperCase() %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Chance Captura (0.1 - 1.0)</label>
+                            <input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5">
+                        </div>
+                        <div>
+                            <label>Peso Spawn (Raridade)</label>
+                            <input type="number" name="spawnChance" id="pokeSpawn" value="10">
+                        </div>
+                    </div>
+
+                    <h4 style="color:var(--accent); border-bottom:1px solid #333; padding-bottom:5px;">STATUS BASE</h4>
+                    <div class="form-grid" style="grid-template-columns: repeat(5, 1fr);">
+                        <div><label>HP</label><input type="number" name="hp" id="statHp" required></div>
+                        <div><label>Energy</label><input type="number" name="energy" id="statEn" required></div>
+                        <div><label>Atk</label><input type="number" name="atk" id="statAtk" required></div>
+                        <div><label>Def</label><input type="number" name="def" id="statDef" required></div>
+                        <div><label>Spd</label><input type="number" name="spd" id="statSpd" required></div>
+                    </div>
+
+                    <h4 style="color:var(--accent); border-bottom:1px solid #333; padding-bottom:5px;">GOLPES & NÍVEL DE APRENDIZADO</h4>
+                    <div class="moves-wrapper">
+                        <% Object.keys(moves).forEach(moveKey => { const m = moves[moveKey]; %>
+                            <div class="move-option">
+                                <input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>">
+                                <span><%= m.name %></span>
+                                <input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" placeholder="Lv" min="1" max="100" value="1">
+                            </div>
+                        <% }) %>
+                    </div>
+
+                    <div class="form-grid" style="margin-top:20px;">
+                        <div>
+                            <label>Local de Spawn</label>
+                            <select name="location" id="pokeLoc">
+                                <option value="none">Nenhum (Apenas Evolução/Inicial)</option>
+                                <option value="forest">Floresta</option>
+                            </select>
+                        </div>
+                        <div><label>Min Level</label><input type="number" name="minLvl" id="spawnMin" value="1"></div>
+                        <div><label>Max Level</label><input type="number" name="maxLvl" id="spawnMax" value="5"></div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Evolução (ID do Próximo + Nível)</label>
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" name="evoTarget" id="evoTarget" placeholder="Ex: charizard">
+                                <input type="number" name="evoLevel" id="evoLevel" placeholder="Ex: 36" style="width:80px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Sprite (Imagem PNG/GIF)</label>
+                            <input type="file" name="sprite" accept="image/*">
+                            <div id="imgPreview" style="margin-top:10px; height:50px;"></div>
+                        </div>
+                    </div>
+
+                    <label><input type="checkbox" name="isStarter" id="isStarter" style="width:auto;"> Disponível como Inicial?</label>
+
+                    <div class="btn-row">
+                        <button type="submit" class="btn-save">SALVAR DADOS</button>
+                        <button type="button" class="btn-delete" onclick="deletePokemon()">EXCLUIR</button>
+                    </div>
+                </form>
+                
+                <!-- Form escondido para deletar -->
+                <form id="deleteForm" action="/lab/delete" method="POST" style="display:none;">
+                    <input type="hidden" name="id" id="deleteId">
+                </form>
+            </div>
+
+            <!-- ABA NPC (Simplificado mas funcional) -->
+            <div id="tab-npc" class="tab-content hidden">
+                <form action="/lab/create-npc" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="userId" value="<%= user._id %>">
+                    <h3>Criador Rápido de NPC</h3>
+                    <div class="form-grid">
+                        <div><label>Nome</label><input type="text" name="name" required></div>
+                        <div><label>Mapa</label><select name="map"><option value="lobby">Lobby</option><option value="forest">Floresta</option></select></div>
+                    </div>
+                    <div class="form-grid">
+                        <div><label>X (%)</label><input type="number" name="x" value="50"></div>
+                        <div><label>Y (%)</label><input type="number" name="y" value="50"></div>
+                        <div><label>Skin</label><select name="skinSelect"><% for(let i=1; i<=6; i++){ %><option value="char<%=i%>">Char <%=i%></option><% } %></select></div>
+                    </div>
+                    <label>Falas</label><input type="text" name="dialogue">
+                    <label>Time (JSON Simples)</label>
+                    <textarea name="teamJson" style="height:50px;">[{"baseId":"bulbasaur", "level":5}]</textarea>
+                    <button type="submit" class="btn-save" style="margin-top:10px;">CRIAR NPC</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>
-        function openTab(id) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
+        function showTab(t) {
+            document.getElementById('tab-poke').classList.add('hidden');
+            document.getElementById('tab-npc').classList.add('hidden');
+            document.getElementById('tab-' + t).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
+        }
+
+        // LIMPAR O FORMULÁRIO PARA CRIAR NOVO
+        function clearForm() {
+            document.getElementById('pokeForm').reset();
+            document.getElementById('existingId').value = "";
+            document.getElementById('pokeId').value = "Novo ID será gerado";
+            document.getElementById('imgPreview').innerHTML = "";
+            
+            // Limpa os checkboxes
+            document.querySelectorAll('.move-check').forEach(c => c.checked = false);
+            document.querySelectorAll('.move-lvl-input').forEach(i => i.value = 1);
+        }
+
+        // CARREGAR DADOS NO FORMULÁRIO (EDIÇÃO)
+        function loadPokemon(p) {
+            clearForm();
+            document.getElementById('existingId').value = p.id;
+            document.getElementById('pokeId').value = p.id; // Visual apenas
+            document.getElementById('pokeName').value = p.name;
+            document.getElementById('pokeType').value = p.type;
+            
+            // Stats
+            document.getElementById('statHp').value = p.baseStats.hp;
+            document.getElementById('statEn').value = p.baseStats.energy;
+            document.getElementById('statAtk').value = p.baseStats.attack;
+            document.getElementById('statDef').value = p.baseStats.defense;
+            document.getElementById('statSpd').value = p.baseStats.speed;
+
+            // Info
+            document.getElementById('pokeRate').value = p.catchRate || 0.5;
+            document.getElementById('pokeSpawn').value = p.spawnChance || 10;
+            document.getElementById('pokeLoc').value = p.spawnLocation || 'none';
+            document.getElementById('spawnMin').value = p.minSpawnLevel || 1;
+            document.getElementById('spawnMax').value = p.maxSpawnLevel || 5;
+            document.getElementById('isStarter').checked = !!p.isStarter;
+
+            // Evo
+            if(p.evolution) {
+                document.getElementById('evoTarget').value = p.evolution.targetId || '';
+                document.getElementById('evoLevel').value = p.evolution.level || '';
+            }
+
+            // Preview Imagem
+            if(p.sprite) {
+                const src = (p.sprite.startsWith('http') || p.sprite.startsWith('data:')) ? p.sprite : '/uploads/' + p.sprite;
+                document.getElementById('imgPreview').innerHTML = `<img src="${src}" style="height:100%;">`;
+            }
+
+            // POPULAR GOLPES (O PULO DO GATO)
+            if(p.movePool) {
+                p.movePool.forEach(mp => {
+                    const check = document.getElementById('chk_' + mp.moveId);
+                    const lvlInp = document.getElementById('lvl_' + mp.moveId);
+                    if(check) check.checked = true;
+                    if(lvlInp) lvlInp.value = mp.level;
+                });
+            }
+        }
+
+        // PREPARAR JSON DE GOLPES ANTES DE ENVIAR
+        function prepareMoves() {
+            const moves = [];
+            document.querySelectorAll('.move-check').forEach(chk => {
+                if(chk.checked) {
+                    const id = chk.getAttribute('data-id');
+                    const lvl = document.getElementById('lvl_' + id).value;
+                    moves.push({ moveId: id, level: parseInt(lvl) });
+                }
+            });
+            document.getElementById('movesJson').value = JSON.stringify(moves);
+            return true;
+        }
+
+        // DELETAR
+        function deletePokemon() {
+            const id = document.getElementById('existingId').value;
+            if(!id) return alert('Selecione um Pokémon da lista primeiro.');
+            if(confirm('Tem certeza que deseja apagar este Pokémon para sempre?')) {
+                document.getElementById('deleteId').value = id;
+                document.getElementById('deleteForm').submit();
+            }
         }
     </script>
 </body>
