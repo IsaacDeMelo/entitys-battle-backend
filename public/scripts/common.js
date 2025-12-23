@@ -1,5 +1,4 @@
-// --- SISTEMA DE UI (TOASTS E MODAIS) ---
-
+// --- UI HELPERS ---
 function switchTab(id, btn) {
     document.querySelectorAll('.content-area, .tab-content').forEach(d => d.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -16,90 +15,83 @@ function showToast(message, opts = {}) {
     const duration = opts.duration || 3000;
     let container = document.getElementById('global-toast-container');
     if(!container) {
-        container = document.createElement('div');
-        container.id = 'global-toast-container';
-        container.style.position = 'fixed';
-        container.style.right = '12px';
-        container.style.top = '12px';
-        container.style.zIndex = 99999;
-        container.style.display = 'flex';
-        container.style.flexDirection = 'column';
-        container.style.gap = '8px';
-        container.style.pointerEvents = 'none';
+        container = document.createElement('div'); container.id = 'global-toast-container';
+        container.style.position = 'fixed'; container.style.right = '12px'; container.style.top = '12px'; container.style.zIndex = 99999;
+        container.style.display = 'flex'; container.style.flexDirection = 'column'; container.style.gap = '8px'; container.style.pointerEvents = 'none';
         document.body.appendChild(container);
     }
-    const toast = document.createElement('div');
-    toast.className = 'simple-toast';
-    toast.innerText = message;
-    toast.style.background = opts.bg || 'rgba(0,0,0,0.85)';
-    toast.style.color = opts.color || '#fff';
-    toast.style.padding = '10px 12px';
-    toast.style.borderRadius = '8px';
-    toast.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-    toast.style.fontFamily = "'Press Start 2P', monospace";
-    toast.style.fontSize = '10px';
-    toast.style.maxWidth = '320px';
-    toast.style.wordBreak = 'break-word';
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.18s ease-out, transform 0.18s ease-out';
-    toast.style.transform = 'translateY(-6px)';
+    const toast = document.createElement('div'); toast.className = 'simple-toast'; toast.innerText = message;
+    toast.style.background = opts.bg || 'rgba(0,0,0,0.85)'; toast.style.color = opts.color || '#fff'; toast.style.padding = '10px 12px'; toast.style.borderRadius = '8px'; toast.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)'; toast.style.fontFamily = "'Press Start 2P', monospace"; toast.style.fontSize = '10px'; toast.style.maxWidth = '320px';
     container.appendChild(toast);
-    
-    // force reflow
-    void toast.offsetWidth;
-    toast.style.opacity = '1'; toast.style.transform = 'translateY(0)';
-    
-    setTimeout(() => {
-        toast.style.opacity = '0'; toast.style.transform = 'translateY(-6px)';
-        setTimeout(() => toast.remove(), 180);
-    }, duration);
-    return toast;
+    setTimeout(() => { toast.remove(); }, duration);
 }
 
 function showConfirm(message, opts = {}) {
     return new Promise((resolve) => {
-        let wrapper = document.getElementById('global-confirm-wrapper');
-        if(!wrapper) {
-            wrapper = document.createElement('div');
-            wrapper.id = 'global-confirm-wrapper';
-            wrapper.style.position = 'fixed';
-            wrapper.style.left = '0';
-            wrapper.style.top = '0';
-            wrapper.style.width = '100%';
-            wrapper.style.height = '100%';
-            wrapper.style.display = 'flex';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.justifyContent = 'center';
-            wrapper.style.zIndex = 100000;
-            document.body.appendChild(wrapper);
-        }
-        
         const overlay = document.createElement('div');
-        overlay.style.position = 'absolute'; overlay.style.left = '0'; overlay.style.top = '0'; overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.background = 'rgba(0,0,0,0.6)';
+        overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.background = 'rgba(0,0,0,0.7)'; overlay.style.zIndex = '100000'; overlay.style.display = 'flex'; overlay.style.justifyContent = 'center'; overlay.style.alignItems = 'center';
         
         const dialog = document.createElement('div');
-        dialog.style.minWidth = '300px'; dialog.style.maxWidth = '90%'; dialog.style.background = '#0f1720'; dialog.style.color = '#fff'; dialog.style.padding = '20px'; dialog.style.borderRadius = '12px'; dialog.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)'; dialog.style.fontFamily = "'Press Start 2P', monospace"; dialog.style.border = "1px solid #3498db"; dialog.style.position = "relative"; dialog.style.zIndex = "100001";
+        dialog.style.background = '#1e293b'; dialog.style.padding = '20px'; dialog.style.borderRadius = '10px'; dialog.style.textAlign = 'center'; dialog.style.border = '2px solid #3498db'; dialog.style.maxWidth = '300px';
+        
+        const msg = document.createElement('p'); msg.innerText = message; msg.style.color = '#fff'; msg.style.fontFamily = 'sans-serif'; msg.style.marginBottom = '20px';
+        const btnYes = document.createElement('button'); btnYes.innerText = opts.okText || 'Sim'; btnYes.style.background = opts.okBg || '#2ecc71'; btnYes.style.border = 'none'; btnYes.style.padding = '10px 20px'; btnYes.style.color = '#fff'; btnYes.style.marginRight = '10px'; btnYes.style.cursor = 'pointer';
+        const btnNo = document.createElement('button'); btnNo.innerText = opts.cancelText || 'Não'; btnNo.style.background = '#e74c3c'; btnNo.style.border = 'none'; btnNo.style.padding = '10px 20px'; btnNo.style.color = '#fff'; btnNo.style.cursor = 'pointer';
 
-        const msg = document.createElement('div'); msg.innerText = message; msg.style.marginBottom = '20px'; msg.style.fontSize = '12px'; msg.style.lineHeight = '1.5'; msg.style.color = '#fff'; msg.style.textAlign = 'center';
-        
-        const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '10px'; btnRow.style.justifyContent = 'center';
-        
-        const btnCancel = document.createElement('button'); btnCancel.innerText = opts.cancelText || 'Não'; btnCancel.style.background = '#c0392b'; btnCancel.style.color = '#fff'; btnCancel.style.border = 'none'; btnCancel.style.padding = '10px 20px'; btnCancel.style.borderRadius = '6px'; btnCancel.style.cursor = 'pointer'; btnCancel.style.fontFamily = 'inherit';
-        
-        const btnOk = document.createElement('button'); btnOk.innerText = opts.okText || 'Sim'; btnOk.style.background = opts.okBg || '#27ae60'; btnOk.style.color = '#fff'; btnOk.style.border = 'none'; btnOk.style.padding = '10px 20px'; btnOk.style.borderRadius = '6px'; btnOk.style.cursor = 'pointer'; btnOk.style.fontFamily = 'inherit';
-        
-        btnRow.appendChild(btnCancel); btnRow.appendChild(btnOk);
-        dialog.appendChild(msg); dialog.appendChild(btnRow);
-        wrapper.appendChild(overlay); wrapper.appendChild(dialog);
+        btnYes.onclick = () => { overlay.remove(); resolve(true); };
+        btnNo.onclick = () => { overlay.remove(); resolve(false); };
 
-        function cleanup() { try { wrapper.innerHTML = ''; wrapper.remove(); } catch(e) {} }
-
-        btnCancel.addEventListener('click', () => { cleanup(); resolve(false); });
-        btnOk.addEventListener('click', () => { cleanup(); resolve(true); });
+        dialog.appendChild(msg); dialog.appendChild(btnYes); dialog.appendChild(btnNo); overlay.appendChild(dialog); document.body.appendChild(overlay);
     });
 }
 
-// --- FUNÇÕES DE AUXÍLIO GERAIS ---
-function resolveImg(src) { 
-    return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; 
+function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+
+// --- NPC RENDER & INTERACTION ---
+if(typeof socket !== 'undefined') {
+    socket.on('npcs_list', (list) => {
+        document.querySelectorAll('.npc-entity').forEach(el => el.remove());
+        list.forEach(npc => {
+            const div = document.createElement('div');
+            div.className = 'player npc-entity'; 
+            div.style.left = npc.x + '%';
+            div.style.top = npc.y + '%';
+            div.style.zIndex = Math.floor(npc.y);
+
+            // CORREÇÃO SPRITE CROP
+            if (npc.isCustomSkin) {
+                div.style.backgroundImage = `url('${npc.skin}')`;
+            } else {
+                div.style.backgroundImage = `url('/uploads/${npc.skin}.png')`;
+            }
+            
+            div.setAttribute('data-dir', npc.direction || 'down');
+
+            const label = document.createElement('div');
+            label.className = 'player-name';
+            label.style.color = '#f1c40f'; 
+            label.innerText = npc.name;
+            div.appendChild(label);
+            
+            div.onclick = (e) => { e.stopPropagation(); interactWithNPC(npc); };
+            document.getElementById('gameArea').appendChild(div);
+        });
+    });
+}
+
+function interactWithNPC(npc) {
+    showConfirm(`${npc.name} diz:\n"${npc.dialogue || '...'}"\n\nAceitar batalha?`, { okText: 'BATALHAR', cancelText: 'Sair', okBg: '#e67e22' }).then(yes => {
+        if(yes) {
+            // Assume que showLoading e user_id estão disponíveis no escopo global do EJS
+            if(typeof showLoading === 'function') showLoading('Iniciando Batalha...');
+            // Pegamos o ID do user da URL ou de uma variável global se existir, 
+            // mas como é common.js, precisamos injetar ou pegar do contexto.
+            // Solução: Pegar do socket.emit 'enter_map' context se possível, ou URL param.
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            
+            fetch('/battle/npc', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: userId, npcId: npc._id }) })
+            .then(r => r.json()).then(data => { if(data.error) { if(typeof hideLoading === 'function') hideLoading(); alert(data.error); } else { window.location.href = '/battle/' + data.battleId; } });
+        }
+    });
 }
