@@ -33,8 +33,6 @@
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
-        .toast { background: rgba(0, 0, 0, 0.9); color: #f1c40f; border: 2px solid #f1c40f; padding: 10px; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-align: center; animation: slideDown 0.5s ease-out; }
-        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -52,6 +50,8 @@
         select, button { width: 100%; padding: 10px; margin-top: 10px; border-radius: 5px; border: none; } button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
         .tab-btn { color: #555; border-bottom: 3px solid transparent; width:auto; margin:0; border-radius:0; background:none; padding: 8px 10px; border-radius: 8px; } .tab-btn.active { color: #fff; background: #1f2533; border-bottom-color: #3498db; }
         .arena-char { width:80px; height:80px; background-size: 400% auto; background-position: 0% 0%; image-rendering: pixelated; margin: 0 auto; }
+        /* NPC */
+        .npc-entity { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -87,14 +87,11 @@
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from');
 
-        function showToast(msg) { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast'; toast.innerText = msg; container.appendChild(toast); setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000); }
-        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
-        
         function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
         chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
 
         socket.on('connect', () => { myId = socket.id; let initialX = 50; let initialY = 50; let initialDir = 'down'; if(spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); });
-        socket.on('map_state', (players) => { document.querySelectorAll('.player').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
+        socket.on('map_state', (players) => { document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
         socket.on('duplicate_session', (info) => { showToast('Sessão desconectada: outra entrada com esta conta.'); setTimeout(() => { window.location.href = '/'; }, 1800); });
         socket.on('player_updated', (p) => { const el = document.getElementById(`p-${p.id}`); if(el) { const existingPlanet = el.querySelector('.searching-planet'); if(p.isSearching) { if(!existingPlanet) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; el.appendChild(planet); } } else { if(existingPlanet) existingPlanet.remove(); } } });
@@ -102,6 +99,43 @@
         socket.on('player_moved', (data) => { const el = document.getElementById(`p-${data.id}`); if (el) { const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50; const dx = data.x - currentLeft; const dy = data.y - currentTop; const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0; el.style.transition = `top ${duration}s linear, left ${duration}s linear`; void el.offsetWidth; el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction); if (duration > 0) { if (!el.classList.contains('walking')) el.classList.add('walking'); if (el.walkTimeout) clearTimeout(el.walkTimeout); el.walkTimeout = setTimeout(() => { el.classList.remove('walking'); if (data.id === myId) { isPlayerMoving = false; gameArea.classList.remove('locked'); if (data.x < 12 && data.y > 25 && data.y < 75) { showLoading('Indo para a floresta...', 'left'); setTimeout(() => { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }, 120); } } }, duration * 1000); } } });
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
+        
+        // --- NPC SYSTEM ---
+        socket.on('npcs_list', (list) => {
+            document.querySelectorAll('.npc-entity').forEach(el => el.remove());
+            list.forEach(npc => {
+                const div = document.createElement('div');
+                div.className = 'player npc-entity'; 
+                div.style.left = npc.x + '%';
+                div.style.top = npc.y + '%';
+                div.style.zIndex = Math.floor(npc.y);
+                if (npc.isCustomSkin) {
+                    const img = document.createElement('img'); img.src = npc.skin; img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain'; div.appendChild(img);
+                } else {
+                    div.style.backgroundImage = `url('/uploads/${npc.skin}.png')`; div.setAttribute('data-dir', npc.direction);
+                }
+                const label = document.createElement('div'); label.className = 'player-name'; label.style.color = '#f1c40f'; label.innerText = npc.name; div.appendChild(label);
+                div.onclick = (e) => { e.stopPropagation(); interactWithNPC(npc); };
+                gameArea.appendChild(div);
+            });
+        });
+
+        function interactWithNPC(npc) {
+            const myPlayer = document.getElementById(`p-${socket.id}`);
+            if(myPlayer) {
+                const pX = parseFloat(myPlayer.style.left); const pY = parseFloat(myPlayer.style.top);
+                const dist = Math.sqrt(Math.pow(pX - npc.x, 2) + Math.pow(pY - npc.y, 2));
+                if(dist > 15) { showToast("Chegue mais perto para falar!"); return; }
+            }
+            showConfirm(`${npc.name} diz:\n"${npc.dialogue || '...'}"\n\nAceitar batalha?`, { okText: 'BATALHAR', cancelText: 'Sair', okBg: '#e67e22' }).then(yes => {
+                if(yes) {
+                    showLoading('Iniciando Batalha...');
+                    fetch('/battle/npc', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', npcId: npc._id }) })
+                    .then(r => r.json()).then(data => { if(data.error) { hideLoading(); showToast(data.error); } else { window.location.href = '/battle/' + data.battleId; } });
+                }
+            });
+        }
+        
         function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); if(p.isSearching) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet); } gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
         
         gameArea.addEventListener('click', (e) => { 
