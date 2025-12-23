@@ -43,6 +43,7 @@
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
         /* NPC */
         .npc-entity { cursor: pointer; }
+        .npc-entity:hover { filter: brightness(1.2); }
     </style>
 </head>
 <body>
@@ -55,7 +56,6 @@
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
     </div>
     <div id="toastContainer"></div>
-
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
     <!-- 1. DEFINE SOCKET -->
@@ -63,44 +63,45 @@
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
-        window.CURRENT_USER_ID = "<%= user._id %>"; // Passa o ID para o common.js
+        window.CURRENT_USER_ID = "<%= user._id %>"; 
     </script>
 
-    <!-- 2. CARREGA COMMON (Agora ele vê o socket) -->
+    <!-- 2. CARREGA COMMON -->
     <script src="/scripts/common.js"></script>
 
-    <!-- 3. LOGICA DO MAPA -->
+    <!-- 3. LÓGICA DO MAPA -->
     <script>
         const gameArea = document.getElementById('gameArea');
         const allMonsters = <%- JSON.stringify(typeof entities !== 'undefined' ? entities : []) %>;
         let myId = null; const MOVEMENT_SPEED = 55; let isPlayerMoving = false;
+        let isInteracting = false; 
         
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
-        function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
-        chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
-        
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from');
 
-        // Socket Logic
-        socket.on('connect', () => {
-            myId = socket.id;
-            let initialX = 92; 
-            let initialY = 50; 
-            let initialDir = 'left';
-            if (spawnFrom === 'lobby') { initialX = 92; initialY = 50; initialDir = 'left'; }
-            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir });
+        function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
+        chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
+        
+        socket.on('connect', () => { 
+            myId = socket.id; 
+            let initialX = 92; let initialY = 50; let initialDir = 'left'; 
+            if (spawnFrom === 'lobby') { initialX = 92; initialY = 50; initialDir = 'left'; } 
+            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir }); 
         });
+        
         socket.on('map_state', (players) => { document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
         socket.on('duplicate_session', (info) => { showToast('Sessão desconectada: outra entrada com esta conta.'); setTimeout(() => { window.location.href = '/'; }, 1800); });
+        
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
                 const dx = data.x - currentLeft; const dy = data.y - currentTop;
                 const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
-                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; void el.offsetWidth; 
+                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
+                void el.offsetWidth; 
                 el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
                 if (duration > 0) { 
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
@@ -108,8 +109,7 @@
                     el.walkTimeout = setTimeout(() => { 
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
-                            isPlayerMoving = false; 
-                            // SAÍDA PARA CIDADE
+                            isPlayerMoving = false; gameArea.classList.remove('locked');
                             if (data.x > 95) { 
                                 showLoading('Voltando para a cidade...', 'right'); 
                                 setTimeout(() => { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }, 120); 
@@ -119,6 +119,7 @@
                 }
             }
         });
+        
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
         
@@ -128,10 +129,79 @@
             setTimeout(() => { fetch('/battle/wild', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>' }) }).then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; else { hideLoading(); showToast(data.error); isPlayerMoving = false; } }); }, 1000);
         });
 
+        // --- NPC RENDER & INTERACTION ---
+        socket.on('npcs_list', (list) => {
+            document.querySelectorAll('.npc-entity').forEach(el => el.remove());
+            list.forEach(npc => {
+                const div = document.createElement('div');
+                div.className = 'player npc-entity'; 
+                div.style.left = npc.x + '%';
+                div.style.top = npc.y + '%';
+                div.style.zIndex = Math.floor(npc.y);
+
+                if (npc.isCustomSkin) div.style.backgroundImage = `url('${npc.skin}')`;
+                else div.style.backgroundImage = `url('/uploads/${npc.skin}.png')`;
+                
+                div.setAttribute('data-dir', npc.direction || 'down');
+
+                const label = document.createElement('div');
+                label.className = 'player-name';
+                label.style.color = '#f1c40f'; 
+                label.innerText = npc.name;
+                div.appendChild(label);
+                
+                div.onclick = (e) => { e.stopPropagation(); moveToAndTalkToNPC(npc); };
+                gameArea.appendChild(div);
+            });
+        });
+
+        // FUNÇÃO DE MOVIMENTO ATÉ NPC
+        function moveToAndTalkToNPC(npc) {
+            if (isPlayerMoving || isInteracting) return;
+            const myPlayer = document.getElementById(`p-${myId}`);
+            if(!myPlayer) return;
+
+            const currentLeft = parseFloat(myPlayer.style.left);
+            const currentTop = parseFloat(myPlayer.style.top);
+            const dx = npc.x - currentLeft;
+            const dy = npc.y - currentTop;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            if (dist > 8) { 
+                isInteracting = true;
+                const ratio = 6 / dist; 
+                const targetX = npc.x - (dx * ratio);
+                const targetY = npc.y - (dy * ratio);
+                
+                gameArea.classList.add('locked');
+                socket.emit('move_player', { x: targetX, y: targetY });
+                
+                const timeToTravel = (dist / MOVEMENT_SPEED) * 1000;
+                
+                setTimeout(() => {
+                    gameArea.classList.remove('locked');
+                    isInteracting = false;
+                    openNpcDialog(npc);
+                }, timeToTravel);
+            } else {
+                openNpcDialog(npc);
+            }
+        }
+
+        function openNpcDialog(npc) {
+            showConfirm(`${npc.name} diz:\n"${npc.dialogue || '...'}"\n\nAceitar batalha?`, { okText: 'BATALHAR', cancelText: 'Sair', okBg: '#e67e22' }).then(yes => {
+                if(yes) {
+                    showLoading('Iniciando Batalha...');
+                    fetch('/battle/npc', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', npcId: npc._id }) })
+                    .then(r => r.json()).then(data => { if(data.error) { hideLoading(); showToast(data.error); } else { window.location.href = '/battle/' + data.battleId; } });
+                }
+            });
+        }
+
         function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
         
         gameArea.addEventListener('click', (e) => {
-            if (isPlayerMoving) return;
+            if (isPlayerMoving || isInteracting) return;
             const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
             isPlayerMoving = true; socket.emit('move_player', { x: targetX, y: targetY });
             
