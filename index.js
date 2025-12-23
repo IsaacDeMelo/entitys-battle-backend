@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 
 // --- IMPORTS DOS ARQUIVOS LOCAIS ---
 // Certifique-se que models.js, gameData.js e config.js estão na mesma pasta
-const { BasePokemon, User } = require('./models');
+const { BasePokemon, User, NPC } = require('./models'); // Adicione NPC
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
 
@@ -241,6 +241,43 @@ app.post('/lab/create', upload.single('sprite'), async (req, res) => {
     if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; 
     if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } 
     res.redirect(req.header('Referer') || '/'); 
+});
+app.post('/lab/create-npc', upload.single('npcSkinFile'), async (req, res) => {
+    try {
+        const { name, map, x, y, direction, skinSelect, dialogue, money, teamJson } = req.body;
+        
+        let finalSkin = skinSelect;
+        let isCustom = false;
+
+        // Se fez upload de imagem, usa ela
+        if (req.file) {
+            finalSkin = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+            isCustom = true;
+        }
+
+        let team = [];
+        try { team = JSON.parse(teamJson); } catch (e) {}
+
+        const newNpc = new NPC({
+            name,
+            map,
+            x: parseInt(x),
+            y: parseInt(y),
+            direction,
+            skin: finalSkin,
+            isCustomSkin: isCustom,
+            dialogue,
+            moneyReward: parseInt(money),
+            team
+        });
+
+        await newNpc.save();
+        console.log(`NPC ${name} criado em ${map}`);
+        res.redirect('/lab?userId=' + req.body.userId);
+    } catch (e) {
+        console.error(e);
+        res.send("Erro ao criar NPC: " + e.message);
+    }
 });
 
 // --- APIS DO JOGO (PC, Bag, Shop, Items) ---
