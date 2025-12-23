@@ -42,7 +42,24 @@ const UserSchema = new mongoose.Schema({
     pc: [UserPokemonSchema]
 });
 
+const NpcSchema = new mongoose.Schema({
+    name: String,
+    map: String, // 'lobby' ou 'forest'
+    x: Number,
+    y: Number,
+    direction: { type: String, default: 'down' },
+    skin: String, // Pode ser 'char1' ou uma URL/Base64
+    isCustomSkin: { type: Boolean, default: false }, // Para saber se usa background-image ou tag img
+    dialogue: String,
+    moneyReward: { type: Number, default: 50 },
+    team: [{ 
+        baseId: String, 
+        level: Number 
+    }]
+});
+
+const NPC = mongoose.model('NPC', NpcSchema);
 const BasePokemon = mongoose.model('BasePokemon', BasePokemonSchema);
 const User = mongoose.model('User', UserSchema);
 
-module.exports = { BasePokemon, User };
+module.exports = { BasePokemon, User, NPC };
