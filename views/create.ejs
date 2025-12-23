@@ -1,127 +1,155 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Admin Lab</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>Laboratório (Admin)</title>
     <style>
-        * { box-sizing: border-box; }
-        body { background: #1a1a2e; color: #ecf0f1; font-family: 'Roboto', sans-serif; padding: 0; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        .header { background: #111; padding: 15px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #3498db; }
-        .header h1 { margin: 0; font-family: 'Press Start 2P'; font-size: 1rem; color: #f1c40f; }
-        .btn-cancel { background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
-        .tabs { display: flex; background: #2c3e50; overflow-x: auto; }
-        .tab-btn { flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #aaa; font-weight: bold; min-width: 100px; border-bottom: 4px solid transparent; user-select: none; }
-        .tab-btn.active { color: white; background: #34495e; border-bottom-color: #3498db; }
-        .content-area { flex: 1; overflow-y: auto; padding: 20px; display: none; }
-        .content-area.active { display: block; }
-        .edit-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .btn-new { background: #3498db; color: white; padding: 5px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 0.8rem; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 0.85rem; color: #bdc3c7; }
-        input, select, textarea { width: 100%; padding: 10px; background: #0f0f15; border: 1px solid #444; color: white; border-radius: 6px; font-size: 1rem; }
-        input:focus, select:focus, textarea:focus { border-color: #3498db; outline: none; }
-        .row { display: flex; gap: 10px; }
-        .col { flex: 1; }
-        .btn-submit { width: 100%; padding: 15px; background: #2ecc71; color: white; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; border-radius: 6px; margin-top: 10px; }
-        .poke-item { background: #2c3e50; padding: 10px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; border: 1px solid #34495e; }
-        .poke-item:hover { background: #34495e; border-color: #f1c40f; }
-        .poke-item img { width: 40px; height: 40px; image-rendering: pixelated; background: rgba(0,0,0,0.3); border-radius: 50%; object-fit: contain; }
-        .manual-box, .moves-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; font-family: monospace; line-height: 1.5; }
-        .move-card { background: #111; padding: 8px; margin-bottom: 5px; border-left: 4px solid #3498db; display: flex; justify-content: space-between; align-items: center; }
-        .type-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; color: #000; font-weight: bold; }
+        body { background: #111; color: white; font-family: sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #222; padding: 20px; border-radius: 10px; }
+        h1, h2, h3 { color: #f1c40f; text-align: center; }
+        label { display: block; margin-top: 10px; color: #ccc; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; background: #000; border: 1px solid #555; color: white; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; margin-top: 15px; background: #3498db; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .tab-btn { flex: 1; padding: 10px; background: #333; border: none; color: #aaa; cursor: pointer; }
+        .tab-btn.active { background: #f1c40f; color: #000; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body>
-    <div class="header"><h1>GENETICS LAB</h1><a href="/lobby?userId=<%= user._id %>" class="btn-cancel">SAIR</a></div>
-    <div class="tabs">
-        <div class="tab-btn active" onclick="switchTab('tab-create')">EDITOR</div>
-        <div class="tab-btn" onclick="switchTab('tab-list')">LISTA</div>
-        <div class="tab-btn" onclick="switchTab('tab-moves')">GOLPES</div>
-        <div class="tab-btn" onclick="switchTab('tab-manual')">GUIA</div>
-    </div>
-    
-    <div id="tab-create" class="content-area active">
-        <div class="edit-panel-header">
-            <h3 id="modeTitle" style="margin:0; color:#3498db;">Modo: Criação</h3>
-            <button class="btn-new" onclick="clearForm()">+ NOVO</button>
+    <div class="container">
+        <h1>LABORATÓRIO</h1>
+        <a href="/" style="color:#aaa; text-decoration:none;">&larr; Voltar</a>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="openTab('tab-poke')">CRIAR POKEMON</button>
+            <button class="tab-btn" onclick="openTab('tab-npc')">CRIAR NPC</button>
         </div>
-        <form action="/lab/create" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="existingId" id="existingId">
-            <div class="form-group"><label>Nome do Pokémon</label><input type="text" name="name" id="pName" required placeholder="Ex: Charizard"></div>
-            <div class="row">
-                <div class="col form-group"><label>Tipo</label><select name="type" id="pType"><% for(let t in types) { %><option value="<%= types[t] %>"><%= types[t].toUpperCase() %></option><% } %></select></div>
-                <div class="col form-group"><label>Imagem (Sprite)</label><input type="file" name="sprite" style="padding: 7px;"></div>
-            </div>
-            <div class="row">
-                <div class="col form-group"><label>HP Base</label><input type="number" name="hp" id="pHp" value="50"></div>
-                <div class="col form-group"><label>Energy Base</label><input type="number" name="energy" id="pEn" value="40"></div>
-            </div>
-            <div class="row"><div class="col form-group"><label>ATK</label><input type="number" name="atk" id="pAtk" value="10"></div><div class="col form-group"><label>DEF</label><input type="number" name="def" id="pDef" value="10"></div><div class="col form-group"><label>SPD</label><input type="number" name="spd" id="pSpd" value="10"></div></div>
-            <div class="form-group"><label>Spawn Location</label><select name="location" id="pLoc"><option value="none">Nenhum (Evolução/Inicial)</option><option value="forest">Floresta (Selvagem)</option></select></div>
-            <div class="row">
-                <div class="col form-group"><label>Min Lvl</label><input type="number" name="minLvl" id="pMin" value="1"></div>
-                <div class="col form-group"><label>Max Lvl</label><input type="number" name="maxLvl" id="pMax" value="5"></div>
-                <div class="col form-group"><label>Catch(0-1)</label><input type="number" step="0.1" name="catchRate" id="pRate" value="0.5"></div>
-                <div class="col form-group"><label>Chance (Peso)</label><input type="number" name="spawnChance" id="pSpawn" value="10"></div>
-            </div>
-            
-            <!-- CHECKBOX PARA INICIAL -->
-            <div class="form-group" style="background:#2c3e50; padding:10px; border-radius:6px; display:flex; align-items:center; gap:10px;">
-                <input type="checkbox" name="isStarter" id="pStarter" style="width:20px; height:20px;">
-                <label for="pStarter" style="margin:0; cursor:pointer; color:#fff; font-weight:bold;">Definir como INICIAL (Aparece no registro)</label>
-            </div>
 
-            <div class="row"><div class="col form-group"><label>Evolui para (ID)</label><input type="text" name="evoTarget" id="pEvoT" placeholder="ID do monstro"></div><div class="col form-group"><label>Nível Evo</label><input type="number" name="evoLevel" id="pEvoL" value="100"></div></div>
-            <div class="form-group"><label>Moveset (JSON)</label><textarea name="movesJson" id="pMoves" rows="4" placeholder='[{"level":1,"moveId":"tackle"}]'>[{"level":1,"moveId":"tackle"}]</textarea></div>
-            <button type="submit" class="btn-submit" id="btnAction">SALVAR DADOS</button>
-        </form>
-    </div>
-    
-    <div id="tab-list" class="content-area">
-        <h3>Banco de Dados</h3>
-        <% pokemons.forEach(p => { %>
-            <div class="poke-item" onclick='loadData(<%- JSON.stringify(p) %>)'>
-                <% if(p.sprite) { %> <img src="<%= p.sprite %>"> <% } else { %> <div style="width:40px;height:40px;background:#555;border-radius:50%;"></div> <% } %>
-                <div>
-                    <div style="font-weight:bold; color:#f1c40f"><%= p.name %> 
-                        <% if(p.isStarter) { %><span style="background:#27ae60; color:#fff; padding:2px 4px; border-radius:4px; font-size:0.6rem;">STARTER</span><% } %>
-                    </div>
-                    <div style="font-size:0.7rem; color:#aaa">ID: <%= p.id %> | Chance: <%= p.spawnChance || 10 %></div>
+        <!-- TAB POKEMON -->
+        <div id="tab-poke" class="tab-content active">
+            <form action="/lab/create" method="POST" enctype="multipart/form-data">
+                <label>ID Existente (para editar):</label>
+                <input type="text" name="existingId" placeholder="Deixe vazio para criar novo">
+
+                <label>Nome:</label>
+                <input type="text" name="name" required>
+
+                <label>Tipo:</label>
+                <select name="type">
+                    <% Object.keys(types).forEach(t => { %>
+                        <option value="<%= t %>"><%= t.toUpperCase() %></option>
+                    <% }) %>
+                </select>
+
+                <h3>Status Base</h3>
+                <div style="display:flex; gap:5px;">
+                    <input type="number" name="hp" placeholder="HP" required>
+                    <input type="number" name="energy" placeholder="EN" required>
+                    <input type="number" name="atk" placeholder="ATK" required>
                 </div>
-            </div>
-        <% }) %>
-    </div>
-    
-    <div id="tab-moves" class="content-area"><div class="moves-box"><% Object.values(moves).forEach(m => { %><div class="move-card"><div><div style="font-weight:bold; color:#fff"><%= m.name %></div><div style="font-size:0.7rem; color:#aaa">ID: <span style="color:#f1c40f"><%= m.id %></span> | Power: <%= m.power %></div></div><div class="type-badge" style="background:#ddd"><%= m.element || m.type %></div></div><% }) %></div></div>
-    <div id="tab-manual" class="content-area"><div class="manual-box"><p>Guia rápido...</p></div></div>
-    
-    <script src="/scripts/common.js"></script>
-    <script>
-        function loadData(p) {
-            switchTab('tab-create');
-            document.getElementById('modeTitle').innerText = "Modo: Edição (" + p.name + ")"; document.getElementById('modeTitle').style.color = "#f1c40f";
-            document.getElementById('existingId').value = p.id; document.getElementById('pName').value = p.name; document.getElementById('pType').value = p.type;
-            document.getElementById('pHp').value = p.baseStats.hp; document.getElementById('pEn').value = p.baseStats.energy;
-            document.getElementById('pAtk').value = p.baseStats.attack; document.getElementById('pDef').value = p.baseStats.defense; document.getElementById('pSpd').value = p.baseStats.speed;
-            document.getElementById('pLoc').value = p.spawnLocation || 'none'; 
-            document.getElementById('pMin').value = p.minSpawnLevel || 1; 
-            document.getElementById('pMax').value = p.maxSpawnLevel || 5;
-            document.getElementById('pRate').value = p.catchRate || 0.5;
-            document.getElementById('pSpawn').value = p.spawnChance || 10;
-            
-            // Carrega checkbox do starter
-            document.getElementById('pStarter').checked = p.isStarter || false;
+                <div style="display:flex; gap:5px;">
+                    <input type="number" name="def" placeholder="DEF" required>
+                    <input type="number" name="spd" placeholder="SPD" required>
+                </div>
 
-            if(p.evolution) { document.getElementById('pEvoT').value = p.evolution.targetId || ''; document.getElementById('pEvoL').value = p.evolution.level || ''; } else { document.getElementById('pEvoT').value = ''; document.getElementById('pEvoL').value = ''; }
-            document.getElementById('pMoves').value = JSON.stringify(p.movePool || []);
-        }
-        function clearForm() { 
-            document.getElementById('modeTitle').innerText = "Modo: Criação"; 
-            document.getElementById('modeTitle').style.color = "#3498db"; 
-            document.getElementById('existingId').value = ""; 
-            document.querySelector('form').reset(); 
-            document.getElementById('pStarter').checked = false;
+                <h3>Spawn & Info</h3>
+                <label>Local:</label>
+                <select name="location">
+                    <option value="none">Nenhum</option>
+                    <option value="forest">Floresta</option>
+                </select>
+
+                <div style="display:flex; gap:5px;">
+                    <input type="number" name="minLvl" placeholder="Min Lvl" value="1">
+                    <input type="number" name="maxLvl" placeholder="Max Lvl" value="5">
+                </div>
+                
+                <div style="display:flex; gap:5px;">
+                    <input type="number" step="0.1" name="catchRate" placeholder="Catch Rate (0-1)" value="0.5">
+                    <input type="number" name="spawnChance" placeholder="Spawn Weight" value="10">
+                </div>
+
+                <label><input type="checkbox" name="isStarter" style="width:auto;"> É Inicial?</label>
+
+                <h3>Golpes (JSON)</h3>
+                <textarea name="movesJson" placeholder='[{"level":1, "moveId":"tackle"}]' rows="4"></textarea>
+                <small>Moves: <%= Object.keys(moves).join(', ') %></small>
+
+                <h3>Evolução</h3>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" name="evoTarget" placeholder="ID do Alvo">
+                    <input type="number" name="evoLevel" placeholder="Nível">
+                </div>
+
+                <h3>Sprite</h3>
+                <input type="file" name="sprite" accept="image/*">
+
+                <button type="submit">SALVAR MONSTRO</button>
+            </form>
+        </div>
+
+        <!-- TAB NPC -->
+        <div id="tab-npc" class="tab-content">
+            <form action="/lab/create-npc" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="userId" value="<%= user._id %>">
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div><label>Nome</label><input type="text" name="name" required></div>
+                    <div>
+                        <label>Mapa</label>
+                        <select name="map">
+                            <option value="lobby">Cidade (Lobby)</option>
+                            <option value="forest">Floresta</option>
+                        </select>
+                    </div>
+                    <div><label>Pos X (%)</label><input type="number" name="x" value="50"></div>
+                    <div><label>Pos Y (%)</label><input type="number" name="y" value="50"></div>
+                    <div>
+                        <label>Direção</label>
+                        <select name="direction">
+                            <option value="down">Baixo</option>
+                            <option value="up">Cima</option>
+                            <option value="left">Esquerda</option>
+                            <option value="right">Direita</option>
+                        </select>
+                    </div>
+                    <div><label>Recompensa ($)</label><input type="number" name="money" value="100"></div>
+                </div>
+        
+                <label>Skin Padrão:</label>
+                <select name="skinSelect">
+                    <option value="char1">Char 1</option>
+                    <option value="char2">Char 2</option>
+                    <option value="char3">Char 3</option>
+                    <option value="char4">Char 4</option>
+                    <option value="char5">Char 5</option>
+                    <option value="char6">Char 6</option>
+                </select>
+                <label>OU Upload Customizado:</label>
+                <input type="file" name="npcSkinFile" accept="image/*">
+        
+                <label>Diálogo:</label>
+                <input type="text" name="dialogue" placeholder="Ex: Vamos batalhar!">
+        
+                <label>Time Pokémon (JSON):</label>
+                <textarea name="teamJson" rows="3" style="font-family:monospace; color:#0f0;">[{"baseId":"charmander", "level":5}]</textarea>
+                <small>IDs: <%= pokemons.map(p=>p.id).join(', ') %></small>
+        
+                <button type="submit" style="background:#e67e22;">CRIAR NPC</button>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        function openTab(id) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.target.classList.add('active');
         }
     </script>
 </body>
