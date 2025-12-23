@@ -380,47 +380,110 @@
     }
 
     // --- DEX ---
+    // 1. Carregamos os dados vindos do servidor para uma variável JS global neste script
+    const ALL_ENTITIES = <%- JSON.stringify(entities) %>;
+
     async function openPokedex() {
         document.getElementById('modalPokedex').style.display = 'flex';
-        // Se usar partial, ensure entities está disponível ou carregue via ajax. 
-        // No contexto atual, entities é passado pelo render do room.
-        try {
-            const first = document.querySelector('.dex-icon');
-            if(first) selectDexMonster(0, first);
-        } catch(e) {}
+        
+        const grid = document.getElementById('dexGrid');
+        grid.innerHTML = ''; // Limpa a lista antes de gerar
+        
+        const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+
+        // 2. Geramos os ícones dinamicamente
+        ALL_ENTITIES.forEach((p, index) => {
+            const sprite = _resImg(p.sprite);
+            // Criamos o HTML do ícone com a classe 'dex-icon' necessária para o filtro funcionar
+            const itemHtml = `
+                <div class="dex-icon" onclick="selectDexMonster(${index}, this)" data-name="${p.name.toLowerCase()}" 
+                     style="cursor:pointer; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:8px; padding:8px; display:flex; flex-direction:column; align-items:center; transition:0.2s;">
+                    <img src="${sprite}" style="width:40px; height:40px; image-rendering:pixelated; margin-bottom:5px;">
+                    <span style="font-size:0.65rem; color:#aaa;">${p.name}</span>
+                </div>
+            `;
+            grid.innerHTML += itemHtml;
+        });
+
+        // Seleciona o primeiro automaticamente se existir
+        const first = document.querySelector('.dex-icon');
+        if(first) selectDexMonster(0, first);
     }
+
     async function openDex() { openPokedex(); }
 
     function filterDex() {
         const v = document.getElementById('dexSearch').value.toLowerCase();
-        document.querySelectorAll('.dex-icon').forEach(el => el.style.display = el.getAttribute('data-name').includes(v) ? 'flex' : 'none');
+        // Agora isso vai funcionar porque os elementos .dex-icon foram criados acima
+        document.querySelectorAll('.dex-icon').forEach(el => {
+            el.style.display = el.getAttribute('data-name').includes(v) ? 'flex' : 'none';
+        });
     }
+
     function selectDexMonster(i, el) {
-        document.querySelectorAll('.dex-icon').forEach(e => e.classList.remove('active'));
-        if(el) el.classList.add('active');
-        // 'allMonsters' deve ser definido no script principal do room ou passado via EJS como 'entities'
-        // Como o EJS processa no server, podemos usar o array 'entities' direto aqui se estiver inline
-        // Mas para segurança, vamos usar o array injetado pelo EJS
-        const m = <%- JSON.stringify(entities) %>[i];
+        // Remove classe ativa dos outros
+        document.querySelectorAll('.dex-icon').forEach(e => {
+            e.style.border = '1px solid #333';
+            e.style.background = 'rgba(255,255,255,0.05)';
+        });
+        
+        // Adiciona destaque ao selecionado
+        if(el) {
+            el.style.borderColor = '#f1c40f';
+            el.style.background = 'rgba(241, 196, 15, 0.1)';
+        }
+
+        // Usa a variável global definida no início
+        const m = ALL_ENTITIES[i];
         if(!m) return;
+
         const s = m.baseStats;
-        const sprite = (typeof resolveImg === 'function') ? resolveImg(m.sprite) : m.sprite;
+        const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+        const sprite = _resImg(m.sprite);
+        
         let evoHtml = '';
         if(m.evolution && m.evolution.targetId) {
-            // Buscando nome do target no array client-side
-            const target = <%- JSON.stringify(entities) %>.find(x => x.id === m.evolution.targetId);
-            evoHtml = `<div style="margin-top:15px; color:#555; font-size:0.8rem;">Evolui para: <strong>${target ? target.name : '???'}</strong> (Lv.${m.evolution.level})</div>`;
-        }
-        document.getElementById('dexDetailsView').innerHTML = `
-            <div class="dex-featured">
-                <div class="dex-big-sprite"><img src="${sprite}"></div>
-                <div class="dex-info"><h1>${m.name}</h1><span class="dex-tag">${m.type}</span><span class="dex-tag" style="border-color:#3498db; color:#3498db">Chance: ${m.catchRate}</span>${evoHtml}</div>
-            </div>
-            <div class="dex-stats">
-                <div class="stat-row">HP <div class="stat-bar"><div style="width:${Math.min(100,s.hp)}%; background:#2ecc71"></div></div> <span class="stat-val">${s.hp}</span></div>
-                <div class="stat-row">ATK <div class="stat-bar"><div style="width:${Math.min(100,s.attack)}%; background:#e74c3c"></div></div> <span class="stat-val">${s.attack}</span></div>
-                <div class="stat-row">DEF <div class="stat-bar"><div style="width:${Math.min(100,s.defense)}%; background:#f1c40f"></div></div> <span class="stat-val">${s.defense}</span></div>
-                <div class="stat-row">SPD <div class="stat-bar"><div style="width:${Math.min(100,s.speed)}%; background:#3498db"></div></div> <span class="stat-val">${s.speed}</span></div>
+            const target = ALL_ENTITIES.find(x => x.id === m.evolution.targetId);
+            evoHtml = `<div style="margin-top:15px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); color:#94a3b8; font-size:0.8rem;">
+                Evolui para: <br><strong style="color:#fff">${target ? target.name : '???'}</strong> <span style="font-size:0.7rem">(Lv.${m.evolution.level})</span>
             </div>`;
+        }
+
+        document.getElementById('dexDetailsView').innerHTML = `
+            <div class="dex-featured" style="display:flex; align-items:center; gap:20px; margin-bottom:20px;">
+                <div class="dex-big-sprite" style="width:100px; height:100px; background:rgba(0,0,0,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,0.1);">
+                    <img src="${sprite}" style="width:80px; height:80px; image-rendering:pixelated;">
+                </div>
+                <div class="dex-info">
+                    <h1 style="margin:0; font-size:1.5rem; color:#fff;">${m.name}</h1>
+                    <div style="margin-top:5px;">
+                        <span style="background:#222; padding:3px 8px; border-radius:4px; font-size:0.7rem; color:#aaa; border:1px solid #444;">${m.type}</span>
+                        <span style="background:rgba(52, 152, 219, 0.2); padding:3px 8px; border-radius:4px; font-size:0.7rem; color:#3498db; border:1px solid rgba(52, 152, 219, 0.4);">Rate: ${m.catchRate}</span>
+                    </div>
+                    ${evoHtml}
+                </div>
+            </div>
+            
+            <h3 style="color:#aaa; font-size:0.9rem; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">Base Stats</h3>
+            <div class="dex-stats" style="display:flex; flex-direction:column; gap:8px;">
+                ${renderStatRow('HP', s.hp, '#2ecc71')}
+                ${renderStatRow('ATK', s.attack, '#e74c3c')}
+                ${renderStatRow('DEF', s.defense, '#f1c40f')}
+                ${renderStatRow('SPD', s.speed, '#3498db')}
+            </div>`;
+    }
+
+    function renderStatRow(label, val, color) {
+        // Assume 150 como um maximo visual para a barra
+        const pct = Math.min(100, (val / 150) * 100);
+        return `
+            <div style="display:flex; align-items:center; gap:10px; font-size:0.8rem;">
+                <span style="width:30px; font-weight:bold; color:#777;">${label}</span>
+                <div style="flex:1; height:6px; background:#111; border-radius:3px; overflow:hidden;">
+                    <div style="width:${pct}%; height:100%; background:${color};"></div>
+                </div>
+                <span style="width:25px; text-align:right; color:#fff;">${val}</span>
+            </div>
+        `;
     }
 </script>
