@@ -12,7 +12,7 @@ const { BasePokemon, User, NPC } = require('./models');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
 
-const SKIN_COUNT = 6;
+const SKIN_COUNT = 11;
 
 // --- CONEXÃO COM O BANCO ---
 mongoose.connect(MONGO_URI)
