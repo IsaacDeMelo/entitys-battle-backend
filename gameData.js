@@ -212,8 +212,16 @@ function getXpForNextLevel(level) {
 }
 
 function getTypeEffectiveness(atkType, defType) {
-    if (!TypeChart[atkType]) return 1;
-    const val = TypeChart[atkType][defType];
+    // Proteção: Se algum dos tipos vier nulo ou indefinido, retorna dano normal
+    if (!atkType || !defType) return 1;
+
+    // Força ambos para minúsculo antes de buscar na tabela
+    const atk = atkType.toLowerCase().trim(); // .trim() remove espaços extras "fire " -> "fire"
+    const def = defType.toLowerCase().trim();
+
+    if (!TypeChart[atk]) return 1;
+    
+    const val = TypeChart[atk][def];
     return val === undefined ? 1 : val;
 }
 
