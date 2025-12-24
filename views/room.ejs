@@ -6,7 +6,7 @@
     <title>Cidade - Lobby</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    <!-- CSS MANTIDO -->
+    
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: center; }
@@ -33,9 +33,57 @@
         .player[data-dir="up"] { background-position-y: 100%; }
         
         .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 500; }
-        .searching-planet { position: absolute; top: -60px; left: 50%; margin-left: -10px; width: 20px; height: 20px; font-size: 1.2rem; animation: spin-planet 2s linear infinite; z-index: 600; pointer-events: none; }
-        @keyframes spin-planet { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
+        /* --- NOVO DESIGN DO PLANETA/BUSCA --- */
+        .searching-indicator {
+            position: absolute;
+            top: -75px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            z-index: 600;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .planet-icon {
+            font-size: 24px;
+            /* Brilho azul ciano para parecer holográfico */
+            filter: drop-shadow(0 0 8px #00e5ff);
+            animation: float-planet 2s ease-in-out infinite alternate;
+            z-index: 2;
+        }
+
+        .radar-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(0, 229, 255, 0.8);
+            border-radius: 50%;
+            width: 10px; height: 10px;
+            box-sizing: border-box;
+            opacity: 0;
+            animation: radar-expand 1.5s infinite linear;
+            z-index: 1;
+        }
+        
+        /* Segundo anel com delay para criar efeito contínuo */
+        .radar-ring:nth-child(2) { animation-delay: 0.75s; }
+
+        @keyframes float-planet {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-5px) scale(1.1); }
+        }
+
+        @keyframes radar-expand {
+            0% { width: 10px; height: 10px; opacity: 1; border-width: 2px; }
+            100% { width: 50px; height: 50px; opacity: 0; border-width: 0px; }
+        }
+        /* ------------------------------------ */
+
         .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
@@ -99,19 +147,14 @@
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
-        
-        // VARIÁVEIS GLOBAIS DE ESTADO (Para o common.js usar)
         window.isPlayerMoving = false;
         window.isInteracting = false;
     </script>
-
-    <!-- CARREGA O COMMON.JS (QUE AGORA FAZ TUDO DOS NPCS) -->
     <script src="/scripts/common.js"></script>
 
     <script>
         const gameArea = document.getElementById('gameArea');
         let myId = null; const MOVEMENT_SPEED = 55;
-
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
         const urlParams = new URLSearchParams(window.location.search);
         
@@ -128,7 +171,6 @@
             let initialY = returnY ? parseFloat(returnY) : 50; 
             let initialDir = 'down'; 
             if(!returnX && !returnY && spawnFrom === 'forest') { initialX = 10; initialY = 50; initialDir = 'right'; } 
-            
             socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'lobby', x: initialX, y: initialY, direction: initialDir }); 
         });
         
@@ -152,7 +194,7 @@
                     el.walkTimeout = setTimeout(() => { 
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
-                            window.isPlayerMoving = false; // Atualiza global
+                            window.isPlayerMoving = false; 
                             gameArea.classList.remove('locked'); 
                             if (data.x < 12 && data.y > 25 && data.y < 75) { showLoading('Indo para a floresta...', 'left'); setTimeout(() => { window.location.href = '/forest?from=lobby&userId=<%= user._id %>'; }, 120); } 
                         } 
@@ -175,7 +217,7 @@
             const targetX = (centerXpx / rect.width) * 100; 
             const myEl = document.getElementById(`p-${myId}`); 
             let travelTime = 0; 
-            window.isPlayerMoving = true; // Atualiza global
+            window.isPlayerMoving = true; 
             gameArea.classList.add('locked'); 
             if (myEl) { const currentLeft = parseFloat(myEl.style.left) || 50; const currentTop = parseFloat(myEl.style.top) || 50; const dist = Math.sqrt(Math.pow(targetX - currentLeft, 2) + Math.pow(targetY - currentTop, 2)); travelTime = (dist / MOVEMENT_SPEED) * 1000; } 
             socket.emit('move_player', { x: targetX, y: targetY }); 
@@ -191,7 +233,15 @@
 
         async function healTeam() { try { const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) }); const data = await res.json(); if (data && data.success) { showToast(data.message || 'Equipe curada!'); if (document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro ao curar'); } } catch (e) { showToast('Erro ao conectar ao servidor'); } }
         async function updateBattleSelect() { try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const team = data.team || []; const select1 = document.getElementById('f1'); const selectOnline = document.getElementById('onlineFighter'); let html = '<option value="" disabled selected>Escolha...</option>'; if(team.length === 0) html = '<option value="" disabled>Sem Pokémons</option>'; else team.forEach(p => { html += `<option value="${p.instanceId}">${p.name} (Lv.${p.level})</option>`; }); if(select1) select1.innerHTML = html; if(selectOnline) selectOnline.innerHTML = html; } catch(e) { console.error("Erro ao atualizar select de batalha", e); } }
+        
         function startSearch() { const fid = document.getElementById('onlineFighter').value; if(!fid) { showToast("Escolha um Pokémon!"); return; } const bet = Number(document.getElementById('betAmount') ? document.getElementById('betAmount').value : 0) || 0; socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin, bet); document.getElementById('searchStatus').style.display='block'; document.getElementById('btnSearch').style.display='none'; document.getElementById('btnCancelSearch').style.display='block'; }
+        
+        // TRATAMENTO DE ERRO DE BUSCA (Mantido)
+        socket.on('search_error', (msg) => {
+            showToast('Erro: ' + msg);
+            cancelSearch();
+        });
+
         function openWatchTab() { switchTab('tab-watch'); socket.emit('request_active_battles'); }
         socket.on('active_battles_list', (list) => { const container = document.getElementById('battlesList'); if(!container) return; if(!list || list.length === 0) { container.innerHTML = '<div style="text-align:center; color:#aaa;">Sem lutas ativas</div>'; return; } let html = ''; list.forEach(b => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #222;"><div style="flex:1;"><div style="font-weight:bold; color:#f1c40f">${b.p1Name} vs ${b.p2Name}</div><div style="font-size:0.8rem; color:#aaa">Sala: ${b.id}</div></div><div><button onclick="spectate('${b.id}')" style="padding:8px; background:#2ecc71; border:none; border-radius:6px; color:#000">ESPECTAR</button></div></div>`; }); container.innerHTML = html; });
         function spectate(roomId) { document.getElementById('specRoomId').value = roomId; document.getElementById('spectateForm').submit(); }
@@ -205,7 +255,38 @@
         function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
         window.addEventListener('beforeunload', () => { showLoading(); });
         
-        function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); if(p.isSearching) { const planet = document.createElement('div'); planet.className = 'searching-planet'; planet.innerText = '🌎'; div.appendChild(planet); } gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
+        function createPlayerElement(p) { 
+            const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
+            if (p.sprite) { 
+                const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; 
+            } else { 
+                const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; 
+            } 
+            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); 
+            
+            // --- CÓDIGO DO PLANETA ATUALIZADO ---
+            if(p.isSearching) { 
+                const container = document.createElement('div');
+                container.className = 'searching-indicator';
+                
+                // Anéis do radar
+                const ring1 = document.createElement('div'); ring1.className = 'radar-ring';
+                const ring2 = document.createElement('div'); ring2.className = 'radar-ring';
+                
+                // Ícone do planeta
+                const icon = document.createElement('div');
+                icon.className = 'planet-icon';
+                icon.innerText = '🌎';
+
+                container.appendChild(ring1);
+                container.appendChild(ring2);
+                container.appendChild(icon);
+                div.appendChild(container);
+            } 
+            // ------------------------------------
+
+            gameArea.appendChild(div); if (p.id === myId) playerElement = div; 
+        }
         
         gameArea.addEventListener('click', (e) => { 
             if (window.isPlayerMoving || window.isInteracting || e.target.classList.contains('machine')) return; 
@@ -213,7 +294,7 @@
             const targetX = ((e.clientX - rect.left) / rect.width) * 100; 
             const targetY = ((e.clientY - rect.top) / rect.height) * 100; 
             if (targetY < 16 && targetX > 15) { return; }
-            window.isPlayerMoving = true; // Atualiza global
+            window.isPlayerMoving = true; 
             gameArea.classList.add('locked'); 
             socket.emit('move_player', { x: targetX, y: targetY }); 
         });
