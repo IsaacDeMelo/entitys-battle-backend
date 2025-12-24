@@ -75,7 +75,9 @@ async function seedDatabase() { try { const count = await BasePokemon.countDocum
 function calculateStats(base, level) { 
     const mult = 1 + (level * 0.025); 
     return { 
-        hp: Math.floor((base.hp * 2 * level / 100) + level + 55), 
+        // MUDEI DE + 55 PARA + 10 AQUI EMBAIXO:
+        hp: Math.floor((base.hp * 1.5 * level / 100) + level + 10), 
+        
         energy: Math.floor(base.energy + (level * 0.1)), 
         attack: Math.floor(base.attack * mult), 
         defense: Math.floor(base.defense * mult), 
