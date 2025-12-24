@@ -809,40 +809,63 @@
             await playEvents(data.events); 
             
             if (data.switched) { 
-                if (data.p2Switched) {
+                // --- CORREÇÃO DA LÓGICA DE TROCA ONLINE ---
+                let newState = data.p1State || data.p2State; // Pega o estado de quem trocou
+                
+                // Se foi o P2 que trocou, pega o estado do P2, senão pega do P1
+                if (data.p2Switched) newState = data.p2State; 
+                else if (data.p1State) newState = data.p1State; // Força pegar do P1 se existir
+
+                // Verifica QUEM trocou comparando o ID com o meu ID
+                const switchedUserId = newState.userId || ''; 
+                const iAmSwitching = (String(switchedUserId) === String(realUserId));
+
+                if (!iAmSwitching) {
+                    // O INIMIGO TROCOU
+                    // Atualiza o lado direito (P2 na visão local)
                     if (data.events) await playEvents(data.events);
                     await wait(500);
-                    p2RawId = data.p2State.instanceId;
-                    p2Mon = data.p2State.name;
-                    p2CurHp = data.p2State.hp;
-                    p2MaxHp = data.p2State.maxHp;
-                    p2Data.name = data.p2State.playerName;
-                    p2Data.sprite = resolveImg(data.p2State.sprite);
-                    p2Data.mon = data.p2State.name;
-                    p2Data.skin = data.p2State.skin;
+                    
+                    p2RawId = newState.instanceId;
+                    p2Mon = newState.name;
+                    p2CurHp = newState.hp;
+                    p2MaxHp = newState.maxHp;
+                    p2Data.name = newState.playerName;
+                    p2Data.sprite = resolveImg(newState.sprite);
+                    p2Data.mon = newState.name;
+                    p2Data.skin = newState.skin;
+                    
                     document.getElementById('p2-name').innerText = p2Mon;
-                    document.getElementById('p2-lv').innerText = data.p2State.level;
+                    document.getElementById('p2-lv').innerText = newState.level;
                     document.getElementById('max-hp-p2').innerText = p2MaxHp;
+                    
                     const s2 = document.querySelector('#sprite-p2 img');
-                    s2.src = resolveImg(data.p2State.sprite);
+                    s2.src = resolveImg(newState.sprite);
+                    
                     deployPokemon('p2', false);
                     updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
                 } else {
+                    // EU TROQUEI
+                    // Atualiza o lado esquerdo (P1 na visão local)
                     await wait(500);
-                    p1RawId = data.newP1Id; 
-                    p1Mon = data.p1State.name; 
-                    p1CurHp = data.p1State.hp; 
-                    p1MaxHp = data.p1State.maxHp; 
-                    currentEnergy = data.p1State.energy;
+                    
+                    p1RawId = newState.instanceId; 
+                    p1Mon = newState.name; 
+                    p1CurHp = newState.hp; 
+                    p1MaxHp = newState.maxHp; 
+                    currentEnergy = newState.energy;
+                    
                     document.getElementById('p1-name').innerText = p1Mon; 
-                    document.getElementById('p1-lv').innerText = data.p1State.level; 
-                    document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
-                    document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
+                    document.getElementById('p1-lv').innerText = newState.level; 
+                    document.getElementById('max-hp-p1').innerText = newState.maxHp;
+                    document.querySelector('#sprite-p1 img').src = resolveImg(newState.sprite); 
+                    
                     deployPokemon('p1', false); 
-                    updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
+                    updateBar(p1RawId, p1CurHp, newState.maxHp, 'hp'); 
                     updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                    
                     const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
-                    data.p1State.moves.forEach(move => { 
+                    newState.moves.forEach(move => { 
                         const btn = document.createElement('button'); btn.className = 'move-btn'; 
                         btn.onclick = () => sendAction('move', move.id); 
                         btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
