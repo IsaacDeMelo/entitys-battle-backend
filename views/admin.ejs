@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - JSON Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; background: #1e1e1e; color: #d4d4d4; font-family: 'Roboto', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: #2d2d2d; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3e3e3e; }
+        h1 { margin: 0; font-size: 1.2rem; color: #4ec9b0; }
+        
+        #editor-container { flex: 1; position: relative; display: flex; }
+        
+        textarea {
+            width: 100%;
+            height: 100%;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            white-space: pre;
+            overflow-y: auto;
+        }
+
+        /* Scrollbar estilo VS Code */
+        textarea::-webkit-scrollbar { width: 10px; }
+        textarea::-webkit-scrollbar-track { background: #1e1e1e; }
+        textarea::-webkit-scrollbar-thumb { background: #424242; }
+        textarea::-webkit-scrollbar-thumb:hover { background: #4f4f4f; }
+
+        .btn-save {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: 'Roboto', sans-serif;
+            transition: background 0.2s;
+        }
+        .btn-save:hover { background: #1177bb; }
+        .btn-back {
+            background: #3c3c3c;
+            color: #ccc;
+            border: none;
+            padding: 10px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .btn-back:hover { background: #4a4a4a; }
+
+        #status-msg { margin-right: 15px; font-size: 0.9rem; opacity: 0; transition: opacity 0.5s; }
+        .success { color: #6a9955; }
+        .error { color: #f48771; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="display:flex; align-items:center;">
+            <a href="/lobby?userId=<%= userId %>" class="btn-back">← Voltar ao Jogo</a>
+            <h1>Database JSON Editor (BasePokemon)</h1>
+        </div>
+        <div style="display:flex; align-items:center;">
+            <span id="status-msg"></span>
+            <button class="btn-save" onclick="saveData()">SALVAR ALTERAÇÕES (SYNC)</button>
+        </div>
+    </header>
+
+    <div id="editor-container">
+        <textarea id="jsonInput" spellcheck="false"><%= pokemonsJSON %></textarea>
+    </div>
+
+    <script>
+        const userId = "<%= userId %>";
+        const statusEl = document.getElementById('status-msg');
+        const textarea = document.getElementById('jsonInput');
+
+        // Permitir usar TAB no textarea
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+                e.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                this.value = this.value.substring(0, start) +
+                    "    " + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+            }
+        });
+
+        async function saveData() {
+            const raw = textarea.value;
+            
+            // Validação local simples antes de enviar
+            try {
+                JSON.parse(raw);
+            } catch (e) {
+                showStatus("Erro de Sintaxe JSON: " + e.message, true);
+                return;
+            }
+
+            showStatus("Salvando...", false);
+
+            try {
+                const res = await fetch('/admin/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        jsonData: raw
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showStatus(`✅ Sucesso! ${data.count} Pokémons processados.`, false);
+                    setTimeout(() => { window.location.reload(); }, 1500); // Recarrega para formatar bonitinho
+                } else {
+                    showStatus("❌ Erro: " + data.error, true);
+                }
+            } catch (e) {
+                showStatus("❌ Erro de conexão", true);
+            }
+        }
+
+        function showStatus(msg, isError) {
+            statusEl.innerText = msg;
+            statusEl.className = isError ? 'error' : 'success';
+            statusEl.style.opacity = 1;
+            if(!isError && !msg.includes('Salvando')) {
+                setTimeout(() => statusEl.style.opacity = 0, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
