@@ -86,6 +86,16 @@
     .shop-item { background: #1e293b; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
     .qty-input { width: 50px; background: #000; border: 1px solid #444; color: white; padding: 5px; border-radius: 5px; text-align: center; }
     .btn-success { background: #2ecc71; color: #000; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; }
+
+    /* DEX LOCKED STATE */
+    .locked-sprite {
+        filter: brightness(0) contrast(100%);
+        opacity: 0.4;
+    }
+    .dex-icon.locked {
+        border-color: #333 !important;
+        background: rgba(0,0,0,0.3) !important;
+    }
 </style>
 
 <!-- MENU FLUTUANTE -->
@@ -177,11 +187,11 @@
 <div class="modal-overlay" id="modalPokedex">
     <div class="modal-content" style="max-width:800px; height:600px; flex-direction:row;">
         <button class="close-btn" onclick="closeModal('modalPokedex')" style="position:absolute; top:10px; right:10px; z-index:100;">✕</button>
-        <div style="width:35%; border-right:1px solid #333; display:flex; flex-direction:column;">
+        <div style="width:35%; border-right:1px solid #333; display:flex; flex-direction:column; background: #0b1120;">
             <div style="padding:10px; border-bottom:1px solid #333;"><input type="text" id="dexSearch" placeholder="Buscar..." onkeyup="filterDex()" style="width:100%; padding:8px; background:#000; border:1px solid #333; color:#fff; border-radius:5px;"></div>
-            <div id="dexGrid" style="flex:1; overflow-y:auto; padding:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(60px, 1fr)); gap:5px;"></div>
+            <div id="dexGrid" style="flex:1; overflow-y:auto; padding:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(60px, 1fr)); gap:5px; align-content: flex-start;"></div>
         </div>
-        <div id="dexDetailsView" style="flex:1; padding:20px; overflow-y:auto; background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);">
+        <div id="dexDetailsView" style="flex:1; padding:20px; overflow-y:auto; background:radial-gradient(circle at top, #1e293b 0%, #0f172a 100%); position: relative;">
             <div style="text-align:center; color:#555; margin-top:50px;">Selecione uma criatura.</div>
         </div>
     </div>
@@ -298,7 +308,6 @@
         content.innerHTML = '<div style="text-align:center; color:#f1c40f; margin-bottom:10px;">Quem vai evoluir?</div><div id="candyList"></div>';
         const listDiv = document.getElementById('candyList');
         
-        // !!! AQUI ESTÁ A CORREÇÃO !!!
         switchBagTab('monster'); // Força a aba visual a voltar para a lista
         
         try {
@@ -379,33 +388,45 @@
         if(data.success) { alert('Compra realizada!'); document.getElementById('shopBalance').innerText = data.money; if(document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { alert(data.error); }
     }
 
-    // --- DEX ---
-    // 1. Carregamos os dados vindos do servidor para uma variável JS global neste script
+    // --- DEX (ATUALIZADA) ---
     const ALL_ENTITIES = <%- JSON.stringify(entities) %>;
+    
+    // Lista de IDs que o usuário possui (Team + PC)
+    const USER_TEAM = <%- JSON.stringify(user.pokemonTeam || []) %>;
+    const USER_PC = <%- JSON.stringify(user.pc || []) %>;
+    const UNLOCKED_IDS = new Set([
+        ...USER_TEAM.map(p => p.baseId),
+        ...USER_PC.map(p => p.baseId)
+    ]);
 
     async function openPokedex() {
         document.getElementById('modalPokedex').style.display = 'flex';
         
         const grid = document.getElementById('dexGrid');
-        grid.innerHTML = ''; // Limpa a lista antes de gerar
+        grid.innerHTML = '';
         
         const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
 
-        // 2. Geramos os ícones dinamicamente
         ALL_ENTITIES.forEach((p, index) => {
+            const isUnlocked = UNLOCKED_IDS.has(p.id);
             const sprite = _resImg(p.sprite);
-            // Criamos o HTML do ícone com a classe 'dex-icon' necessária para o filtro funcionar
+            
+            // Se desbloqueado, mostra normal. Se não, aplica filtro preto e ??? no nome.
+            const imgClass = isUnlocked ? '' : 'locked-sprite';
+            const displayName = isUnlocked ? p.name : '???';
+            const itemClass = isUnlocked ? '' : 'locked';
+
             const itemHtml = `
-                <div class="dex-icon" onclick="selectDexMonster(${index}, this)" data-name="${p.name.toLowerCase()}" 
+                <div class="dex-icon ${itemClass}" onclick="selectDexMonster(${index}, this)" data-name="${p.name.toLowerCase()}" 
                      style="cursor:pointer; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:8px; padding:8px; display:flex; flex-direction:column; align-items:center; transition:0.2s;">
-                    <img src="${sprite}" style="width:40px; height:40px; image-rendering:pixelated; margin-bottom:5px;">
-                    <span style="font-size:0.65rem; color:#aaa;">${p.name}</span>
+                    <img src="${sprite}" class="${imgClass}" style="width:40px; height:40px; image-rendering:pixelated; margin-bottom:5px;">
+                    <span style="font-size:0.65rem; color:#aaa;">${displayName}</span>
                 </div>
             `;
             grid.innerHTML += itemHtml;
         });
 
-        // Seleciona o primeiro automaticamente se existir
+        // Seleciona o primeiro
         const first = document.querySelector('.dex-icon');
         if(first) selectDexMonster(0, first);
     }
@@ -414,38 +435,54 @@
 
     function filterDex() {
         const v = document.getElementById('dexSearch').value.toLowerCase();
-        // Agora isso vai funcionar porque os elementos .dex-icon foram criados acima
         document.querySelectorAll('.dex-icon').forEach(el => {
             el.style.display = el.getAttribute('data-name').includes(v) ? 'flex' : 'none';
         });
     }
 
     function selectDexMonster(i, el) {
-        // Remove classe ativa dos outros
         document.querySelectorAll('.dex-icon').forEach(e => {
             e.style.border = '1px solid #333';
-            e.style.background = 'rgba(255,255,255,0.05)';
+            if(!e.classList.contains('locked')) e.style.background = 'rgba(255,255,255,0.05)';
         });
         
-        // Adiciona destaque ao selecionado
         if(el) {
             el.style.borderColor = '#f1c40f';
-            el.style.background = 'rgba(241, 196, 15, 0.1)';
+            if(!el.classList.contains('locked')) el.style.background = 'rgba(241, 196, 15, 0.1)';
         }
 
-        // Usa a variável global definida no início
         const m = ALL_ENTITIES[i];
         if(!m) return;
 
-        const s = m.baseStats;
+        // Verifica se está desbloqueado
+        const isUnlocked = UNLOCKED_IDS.has(m.id);
         const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
         const sprite = _resImg(m.sprite);
-        
+
+        // Se bloqueado, mostra tela de mistério
+        if(!isUnlocked) {
+            document.getElementById('dexDetailsView').innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#555;">
+                    <div style="width:150px; height:150px; background:#000; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px dashed #333;">
+                        <img src="${sprite}" class="locked-sprite" style="width:100px; height:100px; image-rendering:pixelated; opacity:0.2;">
+                    </div>
+                    <h1 style="margin-top:20px; font-size:2rem; color:#333;">???</h1>
+                    <p style="font-size:0.8rem; margin-top:10px;">Criatura não capturada.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Se desbloqueado, mostra tudo
+        const s = m.baseStats;
         let evoHtml = '';
         if(m.evolution && m.evolution.targetId) {
             const target = ALL_ENTITIES.find(x => x.id === m.evolution.targetId);
+            const targetUnlocked = target && UNLOCKED_IDS.has(target.id);
+            const targetName = target ? (targetUnlocked ? target.name : '???') : '???';
+            
             evoHtml = `<div style="margin-top:15px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); color:#94a3b8; font-size:0.8rem;">
-                Evolui para: <br><strong style="color:#fff">${target ? target.name : '???'}</strong> <span style="font-size:0.7rem">(Lv.${m.evolution.level})</span>
+                Evolui para: <br><strong style="color:${targetUnlocked ? '#fff' : '#777'}">${targetName}</strong> <span style="font-size:0.7rem">(Lv.${m.evolution.level})</span>
             </div>`;
         }
 
@@ -474,7 +511,6 @@
     }
 
     function renderStatRow(label, val, color) {
-        // Assume 150 como um maximo visual para a barra
         const pct = Math.min(100, (val / 150) * 100);
         return `
             <div style="display:flex; align-items:center; gap:10px; font-size:0.8rem;">
