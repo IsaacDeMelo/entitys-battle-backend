@@ -334,30 +334,14 @@
 </div>
 
 <script>
-    // --- MAPA DE TIPOS (PARA CORES DOS ATAQUES) ---
-    // Adicione aqui os IDs dos ataques e seus tipos
-    const MOVE_TYPES = {
-        'tackle': 'normal', 'scratch': 'normal', 'bite': 'dark',
-        'ember': 'fire', 'flamethrower': 'fire',
-        'watergun': 'water', 'bubble': 'water',
-        'vinewhip': 'grass', 'razorleaf': 'grass',
-        'thundershock': 'electric', 'thunderbolt': 'electric',
-        'poisonsting': 'poison', 'sludge': 'poison',
-        'peck': 'flying', 'gust': 'flying',
-        'confusion': 'psychic', 'psybeam': 'psychic',
-        'rockthrow': 'rock', 'earthquake': 'ground',
-        'shadowball': 'ghost', 'ironclaw': 'steel'
-    };
-
-    function getMoveType(moveId) {
-        return MOVE_TYPES[moveId] || 'normal';
-    }
-
-    // --- UTILS & UI ---
+    // --- VARIÁVEIS GLOBAIS ---
     let currentMonId = null;
+    let GLOBAL_MOVES_LIB = {}; // Vai armazenar os dados vindos do servidor
+    const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+
+    // --- UI HELPERS ---
     function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-    const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
 
     // --- PC SYSTEM (DRAG & DROP) ---
     async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
@@ -424,7 +408,15 @@
     async function openPokemon() { 
         document.getElementById('modalPokemon').style.display='flex'; 
         const content = document.getElementById('pokemonListContent'); content.innerHTML = 'Carregando...'; 
-        try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); renderPokemonList(data.team); } catch(e) { content.innerHTML = 'Erro.'; } 
+        try { 
+            const res = await fetch('/api/me?userId=<%= user._id %>'); 
+            const data = await res.json(); 
+            
+            // AQUI ESTÁ A CORREÇÃO: Salvamos a biblioteca de moves vinda do servidor
+            if(data.allMoves) GLOBAL_MOVES_LIB = data.allMoves;
+
+            renderPokemonList(data.team); 
+        } catch(e) { content.innerHTML = 'Erro.'; } 
     }
 
     function renderPokemonList(team) {
@@ -458,7 +450,7 @@
         content.innerHTML = html;
     }
 
-    // --- MOVE EDITOR (ATUALIZADO COM CORES) ---
+    // --- MOVE EDITOR (AGORA LÊ DO BACKEND) ---
     function showMoveEditor(id, name, equipped, learned) {
         currentMonId = id;
         const pool = (learned && learned.length > 0) ? learned : equipped;
@@ -472,19 +464,29 @@
         
         pool.forEach(moveId => { 
             const isEquipped = equipped.includes(moveId); 
-            const type = getMoveType(moveId);
+            
+            // LÓGICA CORRIGIDA: Pega os dados da variável global preenchida pelo backend
+            let moveData = GLOBAL_MOVES_LIB[moveId];
+            let type = 'normal';
+            let moveName = moveId;
+
+            if (moveData) {
+                type = moveData.element ? moveData.element.toLowerCase() : 'normal';
+                moveName = moveData.name || moveId;
+            }
+
             const cardClass = isEquipped ? `skill-card equipped type-${type}` : `skill-card type-${type}`; 
             
             html += `
                 <div onclick="toggleMove('${moveId}', this)" class="${cardClass}" data-id="${moveId}">
-                    <div class="skill-name">${moveId}</div>
+                    <div class="skill-name">${moveName}</div>
                     <div class="skill-type">${type}</div>
                 </div>`; 
         }); 
         
         html += `</div>
             <div style="display:flex; gap:10px; margin-top:20px;">
-                <button onclick="saveMoves()" class="btn-success" style="flex:2; padding:12px; font-size:1rem;">SALVAR</button>
+                <button onclick="saveMoves()" class="btn-success" style="flex:2; padding:12px; font-size:1rem;">SALVAR CONFIGURAÇÃO</button>
                 <button onclick="openPokemon()" style="flex:1; background:transparent; border:1px solid #555; color:#aaa; border-radius:6px; cursor:pointer;">VOLTAR</button>
             </div>`; 
         
@@ -634,7 +636,7 @@
 
     function selectDexMonster(i, el) {
         document.querySelectorAll('.dex-icon').forEach(e => { e.style.border = '1px solid #333'; if(!e.classList.contains('locked')) e.style.background = 'rgba(255,255,255,0.05)'; });
-        if(el) { el.style.borderColor = '#f1c40f'; if(!el.classList.contains('locked')) el.style.background = 'rgba(241, 196, 15, 0.1)'; }
+        if(el) { el.style.borderColor = '#f1c40f'; if(!el.classList.contains('locked')) e.style.background = 'rgba(241, 196, 15, 0.1)'; }
 
         const m = ALL_ENTITIES[i]; if(!m) return;
         const isUnlocked = UNLOCKED_IDS.has(m.id);
