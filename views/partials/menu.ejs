@@ -1,4 +1,7 @@
-<!-- ESTILOS DO MENU E SISTEMAS (UI DARK GLASS & DRAG DROP) -->
+<!-- POLYFILL PARA DRAG AND DROP NO CELULAR -->
+<script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+
+<!-- ESTILOS GERAIS -->
 <style>
     /* SCROLLBAR */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -47,7 +50,16 @@
     .float-menu-items.show { display: flex; animation: slideUp 0.3s; }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* CARDS DE MONSTRO (MENU TIME) */
+    /* ÍCONES PIXELADOS 17x17px */
+    .pixel-icon { 
+        width: 17px !important; 
+        height: 17px !important; 
+        min-width: 17px;
+        image-rendering: pixelated; 
+        object-fit: contain;
+    }
+
+    /* CARDS DE MONSTRO */
     .poke-card { 
         background: linear-gradient(135deg, #1e293b, #0f172a); 
         border: 1px solid rgba(255,255,255,0.1); 
@@ -79,7 +91,7 @@
     .icon-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; font-size: 1.1rem; cursor: pointer; padding: 6px 10px; transition: 0.2s; color: #ccc; }
     .icon-btn:hover { background: rgba(255,255,255,0.15); color: #fff; border-color: #fff; }
 
-    /* --- PC SYSTEM (REDESENHADO) --- */
+    /* --- PC SYSTEM (MOBILE FIX & DESIGN) --- */
     #modalPC .modal-content { max-width: 650px; background: #080808; border: 1px solid #333; }
     
     .pc-layout { display: flex; flex-direction: column; height: 100%; gap: 15px; padding: 5px; }
@@ -91,20 +103,16 @@
     }
     
     .pc-storage-area {
-        /* Design Firme */
         background: #0f1115;
         border: 2px solid #222;
         border-radius: 4px;
         padding: 10px;
-        
-        /* Grid Fixa */
         display: grid;
-        grid-template-columns: repeat(6, 1fr); /* 6 Slots por linha */
+        grid-template-columns: repeat(6, 1fr); 
         gap: 8px;
-        
-        /* Altura travada para 3 linhas visíveis (aprox) + Scroll interno */
         height: 230px; 
-        overflow-y: auto;
+        overflow-y: scroll; /* Força o scroll no mobile */
+        -webkit-overflow-scrolling: touch; /* Suaviza no iOS */
         overflow-x: hidden;
         transition: border-color 0.2s;
     }
@@ -120,6 +128,7 @@
         align-items: center;
         gap: 10px;
         transition: border-color 0.2s;
+        overflow-x: auto;
     }
     .pc-team-area.drag-over { border-color: #f1c40f; background: #131313; }
 
@@ -132,14 +141,11 @@
         align-items: center; justify-content: center;
         cursor: grab;
         position: relative;
-        transition: 0.1s;
+        touch-action: none; /* Importante para o DragDropTouch funcionar */
     }
     .pc-slot:hover { background: rgba(255,255,255,0.08); border-color: #777; }
     .pc-slot:active { cursor: grabbing; }
-    
-    /* Importante: pointer-events none na imagem para não atrapalhar o drop */
-    .pc-slot img { width: 42px; height: 42px; image-rendering: pixelated; pointer-events: none; }
-    
+    .pc-slot img { width: 40px; height: 40px; image-rendering: pixelated; pointer-events: none; }
     .pc-slot .lvl-badge { 
         position: absolute; bottom: 2px; right: 2px; 
         font-size: 0.6rem; background: rgba(0,0,0,0.8); color: #fff; 
@@ -147,45 +153,58 @@
     }
     .pc-slot.dragging { opacity: 0.3; border: 1px dashed #f1c40f; }
 
-    /* --- SKILL CARDS (DESIGN MELHORADO) --- */
-    .skills-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;
-    }
+    /* --- SKILL CARDS (DESIGN PRO COM CORES) --- */
+    .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    
     .skill-card {
-        background: #111;
-        border: 1px solid #333;
-        border-left: 4px solid #555;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-left-width: 4px;
         border-radius: 6px;
-        padding: 10px;
+        padding: 12px 10px;
         cursor: pointer;
         transition: 0.2s;
         display: flex; flex-direction: column; justify-content: center;
         position: relative; overflow: hidden;
+        background: #111;
     }
-    .skill-card:hover { transform: translateX(2px); background: #161616; }
+    .skill-card:hover { transform: translateX(3px); filter: brightness(1.2); }
     
+    /* Cores por Tipo */
+    .type-fire { border-left-color: #e74c3c; background: linear-gradient(90deg, rgba(231, 76, 60, 0.1), transparent); }
+    .type-water { border-left-color: #3498db; background: linear-gradient(90deg, rgba(52, 152, 219, 0.1), transparent); }
+    .type-grass { border-left-color: #2ecc71; background: linear-gradient(90deg, rgba(46, 204, 113, 0.1), transparent); }
+    .type-electric { border-left-color: #f1c40f; background: linear-gradient(90deg, rgba(241, 196, 15, 0.1), transparent); }
+    .type-normal { border-left-color: #95a5a6; background: linear-gradient(90deg, rgba(149, 165, 166, 0.1), transparent); }
+    .type-poison { border-left-color: #9b59b6; background: linear-gradient(90deg, rgba(155, 89, 182, 0.1), transparent); }
+    .type-ground { border-left-color: #d35400; background: linear-gradient(90deg, rgba(211, 84, 0, 0.1), transparent); }
+    .type-flying { border-left-color: #ecf0f1; background: linear-gradient(90deg, rgba(236, 240, 241, 0.1), transparent); }
+    .type-psychic { border-left-color: #e056fd; background: linear-gradient(90deg, rgba(224, 86, 253, 0.1), transparent); }
+    .type-bug { border-left-color: #badc58; background: linear-gradient(90deg, rgba(186, 220, 88, 0.1), transparent); }
+    .type-rock { border-left-color: #7f8c8d; background: linear-gradient(90deg, rgba(127, 140, 141, 0.1), transparent); }
+    .type-ghost { border-left-color: #4834d4; background: linear-gradient(90deg, rgba(72, 52, 212, 0.1), transparent); }
+    .type-dragon { border-left-color: #30336b; background: linear-gradient(90deg, rgba(48, 51, 107, 0.1), transparent); }
+    .type-steel { border-left-color: #95a5a6; background: linear-gradient(90deg, rgba(149, 165, 166, 0.1), transparent); }
+    .type-fairy { border-left-color: #ff9ff3; background: linear-gradient(90deg, rgba(255, 159, 243, 0.1), transparent); }
+    .type-dark { border-left-color: #2d3436; background: linear-gradient(90deg, rgba(45, 52, 54, 0.3), transparent); }
+
     /* Estado Equipado */
     .skill-card.equipped {
-        background: linear-gradient(90deg, rgba(46, 204, 113, 0.1), transparent);
-        border-color: #2ecc71;
-        border-left-width: 6px;
+        box-shadow: inset 0 0 10px rgba(255,255,255,0.1);
+        border-color: #fff;
     }
     .skill-card.equipped::after {
-        content: 'EQUIPADO';
-        position: absolute; top: 4px; right: 4px;
-        font-size: 0.5rem; color: #2ecc71; font-weight: bold; letter-spacing: 1px;
+        content: '✔';
+        position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+        font-size: 1rem; color: #fff;
     }
 
-    .skill-name { color: #eee; font-weight: bold; font-family: 'Rajdhani'; font-size: 1rem; text-transform: uppercase; }
-    .skill-id { color: #666; font-size: 0.7rem; font-family: monospace; margin-top: 2px; }
+    .skill-name { color: #eee; font-weight: bold; font-family: 'Rajdhani'; font-size: 1rem; text-transform: uppercase; text-shadow: 1px 1px 0 #000; }
+    .skill-type { color: #aaa; font-size: 0.65rem; font-family: monospace; margin-top: 2px; text-transform: uppercase; }
 
     /* LOJA E ITENS */
     .shop-item { background: #1e293b; border-radius: 10px; padding: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
     .qty-input { width: 50px; background: #000; border: 1px solid #444; color: white; padding: 5px; border-radius: 5px; text-align: center; }
     .btn-success { background: #2ecc71; color: #000; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; }
-
-    /* CATCHCUBE ORIGINAL SIZE */
-    .item-icon { width: auto; height: auto; max-width: 48px; max-height: 48px; image-rendering: pixelated; }
 
     /* DEX LOCKED */
     .locked-sprite { filter: brightness(0) contrast(100%); opacity: 0.4; }
@@ -197,7 +216,7 @@
     <div id="menuItems" class="float-menu-items">
         <button class="float-btn" onclick="openBag()" title="Mochila de Itens" style="color:#e67e22; border-color:#e67e22;">🎒</button>
         <button class="float-btn" onclick="openPokemon()" title="Meus Monstros" style="color:#fff; border-color:#aaa;">
-            <img src="/uploads/catchcube.gif" style="width:32px; height:32px; image-rendering: pixelated;">
+            <img src="/uploads/catchcube.gif" class="pixel-icon" style="width:24px; height:24px;">
         </button>
         <button class="float-btn" onclick="openPC()" title="PC de Armazenamento" style="color:#33ff33; border-color:#33ff33;">💻</button>
         <button class="float-btn" onclick="openPokedex()" title="Dex" style="color:#00d2ff; border-color:#00d2ff;">📚</button>
@@ -205,7 +224,7 @@
     <button class="float-btn main-toggle" onclick="toggleFloatMenu()">☰</button>
 </div>
 
-<!-- MODAL PC (DRAG & DROP CORRIGIDO) -->
+<!-- MODAL PC (DRAG & DROP COM SCROLL) -->
 <div class="modal-overlay" id="modalPC">
     <div class="modal-content">
         <div class="modal-header">
@@ -218,7 +237,7 @@
                 <div>
                     <div class="pc-box-header">
                         <span>📦 BOX 01</span> 
-                        <span style="color:#aaa; font-size:0.6rem; font-family:'Roboto';">30 Slots</span>
+                        <span style="color:#aaa; font-size:0.6rem; font-family:'Roboto';">Arrastar para mover</span>
                     </div>
                     <div class="pc-storage-area" id="pcStorageArea" ondrop="handleDrop(event, 'pc')" ondragover="handleDragOver(event)">
                         <!-- Slots gerados via JS -->
@@ -229,7 +248,6 @@
                 <div style="margin-top: auto;">
                     <div class="pc-box-header" style="border-left-color: #2ecc71;">
                         <span style="color:#2ecc71;">⚡ EQUIPE ATIVA</span>
-                        <span style="color:#aaa; font-size:0.6rem; font-family:'Roboto';">Arrastar para mover</span>
                     </div>
                     <div class="pc-team-area" id="pcTeamArea" ondrop="handleDrop(event, 'team')" ondragover="handleDragOver(event)">
                         <!-- Slots gerados via JS -->
@@ -240,7 +258,7 @@
     </div>
 </div>
 
-<!-- MODAL POKEMON (TIME & XP & SKILLS) -->
+<!-- MODAL MONSTROS (TIME & XP & SKILLS) -->
 <div class="modal-overlay" id="modalPokemon">
     <div class="modal-content">
         <div class="modal-header">
@@ -279,7 +297,7 @@
             </div>
             <div class="shop-item">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <img src="/uploads/catchcube.gif" class="item-icon">
+                    <img src="/uploads/catchcube.gif" class="pixel-icon">
                     <div><div style="font-weight:bold;">CatchCube</div><div style="font-size:0.7rem; color:#aaa;">Captura monstros</div></div>
                 </div>
                 <div style="display:flex; gap:5px;">
@@ -316,6 +334,25 @@
 </div>
 
 <script>
+    // --- MAPA DE TIPOS (PARA CORES DOS ATAQUES) ---
+    // Adicione aqui os IDs dos ataques e seus tipos
+    const MOVE_TYPES = {
+        'tackle': 'normal', 'scratch': 'normal', 'bite': 'dark',
+        'ember': 'fire', 'flamethrower': 'fire',
+        'watergun': 'water', 'bubble': 'water',
+        'vinewhip': 'grass', 'razorleaf': 'grass',
+        'thundershock': 'electric', 'thunderbolt': 'electric',
+        'poisonsting': 'poison', 'sludge': 'poison',
+        'peck': 'flying', 'gust': 'flying',
+        'confusion': 'psychic', 'psybeam': 'psychic',
+        'rockthrow': 'rock', 'earthquake': 'ground',
+        'shadowball': 'ghost', 'ironclaw': 'steel'
+    };
+
+    function getMoveType(moveId) {
+        return MOVE_TYPES[moveId] || 'normal';
+    }
+
     // --- UTILS & UI ---
     let currentMonId = null;
     function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
@@ -354,7 +391,7 @@
     }
 
     function handleDragOver(ev) {
-        ev.preventDefault(); // Necessário para permitir o drop
+        ev.preventDefault();
         ev.currentTarget.classList.add('drag-over');
     }
 
@@ -380,10 +417,10 @@
             const data = await res.json(); 
             if(data.success) loadPCData(); 
             else alert(data.error);
-        } catch(e) { alert("Erro ao mover monstro."); }
+        } catch(e) { alert("Erro ao mover."); }
     }
 
-    // --- MONSTER LIST (COM XP) ---
+    // --- MONSTER LIST ---
     async function openPokemon() { 
         document.getElementById('modalPokemon').style.display='flex'; 
         const content = document.getElementById('pokemonListContent'); content.innerHTML = 'Carregando...'; 
@@ -421,7 +458,63 @@
         content.innerHTML = html;
     }
 
-    // --- BAG (SÓ ITENS) ---
+    // --- MOVE EDITOR (ATUALIZADO COM CORES) ---
+    function showMoveEditor(id, name, equipped, learned) {
+        currentMonId = id;
+        const pool = (learned && learned.length > 0) ? learned : equipped;
+        
+        let html = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+                <h3 style="color:#3498db; margin:0;">${name}</h3>
+                <span style="font-size:0.7rem; color:#777;">Selecione até 4</span>
+            </div>
+            <div class="skills-grid">`; 
+        
+        pool.forEach(moveId => { 
+            const isEquipped = equipped.includes(moveId); 
+            const type = getMoveType(moveId);
+            const cardClass = isEquipped ? `skill-card equipped type-${type}` : `skill-card type-${type}`; 
+            
+            html += `
+                <div onclick="toggleMove('${moveId}', this)" class="${cardClass}" data-id="${moveId}">
+                    <div class="skill-name">${moveId}</div>
+                    <div class="skill-type">${type}</div>
+                </div>`; 
+        }); 
+        
+        html += `</div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="saveMoves()" class="btn-success" style="flex:2; padding:12px; font-size:1rem;">SALVAR</button>
+                <button onclick="openPokemon()" style="flex:1; background:transparent; border:1px solid #555; color:#aaa; border-radius:6px; cursor:pointer;">VOLTAR</button>
+            </div>`; 
+        
+        document.getElementById('pokemonListContent').innerHTML = html; 
+    }
+
+    function toggleMove(moveId, el) {
+        const isEquipped = el.classList.contains('equipped');
+        const equippedCount = document.querySelectorAll('.skill-card.equipped').length;
+        
+        if (isEquipped) { 
+            if (equippedCount <= 1) return alert('Mínimo 1 habilidade!'); 
+            el.classList.remove('equipped');
+        } else { 
+            if (equippedCount >= 4) return alert('Máximo 4 habilidades!'); 
+            el.classList.add('equipped');
+        }
+    }
+
+    async function saveMoves() {
+        const cards = document.querySelectorAll('.skill-card.equipped'); 
+        let finalMoves = [];
+        cards.forEach(c => finalMoves.push(c.getAttribute('data-id')));
+        
+        const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentMonId, moves: finalMoves }) }); 
+        const data = await res.json(); 
+        if(data.success) openPokemon(); else alert(data.error);
+    }
+
+    // --- BAG (ITENS 17px) ---
     async function openBag() {
         document.getElementById('modalBag').style.display='flex';
         const content = document.getElementById('bagItemsContent'); content.innerHTML = 'Carregando...';
@@ -433,7 +526,7 @@
             <div class="poke-card" style="display:block;">
                 <h3 style="color:#e2e8f0; margin-bottom:15px; font-size:0.9rem; text-transform:uppercase;">Inventário</h3>
                 <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
-                    <span style="display:flex; align-items:center; gap:10px;"><img src="/uploads/catchcube.gif" class="item-icon"> CatchCubes</span> 
+                    <span style="display:flex; align-items:center; gap:10px;"><img src="/uploads/catchcube.gif" class="pixel-icon"> CatchCubes</span> 
                     <strong style="color:#fff; font-size:1.1rem;">${data.pokeballs || 0}</strong>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -447,7 +540,6 @@
         `;
     }
 
-    // --- USO DE ITENS (RARE CANDY) ---
     async function startRareCandySelection() {
         closeModal('modalBag');
         openPokemon(); 
@@ -460,7 +552,6 @@
                 const actions = card.querySelector('.card-actions');
                 if(actions) actions.style.display = 'none';
                 
-                // Extrai ID do HTML (Hack simples para evitar re-render)
                 const html = card.innerHTML;
                 const match = html.match(/setLead\('([^']+)'\)/) || html.match(/abandonPokemon\('([^']+)'\)/) || html.match(/showMoveEditor\('([^']+)'/);
                 if(match) {
@@ -491,61 +582,6 @@
     async function abandonPokemon(instanceId) { 
         if(!confirm('Tem certeza? Isso não pode ser desfeito.')) return; 
         const res = await fetch('/api/abandon-pokemon', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: instanceId }) }); 
-        const data = await res.json(); 
-        if(data.success) openPokemon(); else alert(data.error);
-    }
-
-    // --- MOVE EDITOR (REDESENHADO) ---
-    function showMoveEditor(id, name, equipped, learned) {
-        currentMonId = id;
-        const pool = (learned && learned.length > 0) ? learned : equipped;
-        
-        let html = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
-                <h3 style="color:#3498db; margin:0;">${name}</h3>
-                <span style="font-size:0.7rem; color:#777;">Selecione até 4</span>
-            </div>
-            <div class="skills-grid">`; 
-        
-        pool.forEach(moveId => { 
-            const isEquipped = equipped.includes(moveId); 
-            const cardClass = isEquipped ? "skill-card equipped" : "skill-card"; 
-            
-            html += `
-                <div onclick="toggleMove('${moveId}', this)" class="${cardClass}" data-id="${moveId}">
-                    <div class="skill-name">${moveId}</div>
-                    <div class="skill-id">Habilidade</div>
-                </div>`; 
-        }); 
-        
-        html += `</div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button onclick="saveMoves()" class="btn-success" style="flex:2; padding:12px; font-size:1rem;">SALVAR CONFIGURAÇÃO</button>
-                <button onclick="openPokemon()" style="flex:1; background:transparent; border:1px solid #555; color:#aaa; border-radius:6px; cursor:pointer;">VOLTAR</button>
-            </div>`; 
-        
-        document.getElementById('pokemonListContent').innerHTML = html; 
-    }
-
-    function toggleMove(moveId, el) {
-        const isEquipped = el.classList.contains('equipped');
-        const equippedCount = document.querySelectorAll('.skill-card.equipped').length;
-        
-        if (isEquipped) { 
-            if (equippedCount <= 1) return alert('Mínimo 1 habilidade!'); 
-            el.classList.remove('equipped');
-        } else { 
-            if (equippedCount >= 4) return alert('Máximo 4 habilidades!'); 
-            el.classList.add('equipped');
-        }
-    }
-
-    async function saveMoves() {
-        const cards = document.querySelectorAll('.skill-card.equipped'); 
-        let finalMoves = [];
-        cards.forEach(c => finalMoves.push(c.getAttribute('data-id')));
-        
-        const res = await fetch('/api/equip-move', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: '<%= user._id %>', pokemonId: currentMonId, moves: finalMoves }) }); 
         const data = await res.json(); 
         if(data.success) openPokemon(); else alert(data.error);
     }
