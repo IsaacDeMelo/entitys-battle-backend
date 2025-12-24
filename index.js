@@ -362,6 +362,75 @@ app.get('/battle/:id', async (req, res) => {
     }); 
 });
 
+// --- ROTA DE ADMINISTRAÇÃO JSON (BULK EDIT) ---
+
+// 1. Página de visualização/edição
+app.get('/admin', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        // Verifica segurança básica
+        if (!userId) return res.send("Acesso negado: userId necessário.");
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.send("Acesso negado: Apenas Admins.");
+
+        // Busca todos os pokemons, removendo o _id e __v do mongo para o JSON ficar limpo
+        const pokemons = await BasePokemon.find({}, '-_id -__v').sort({ id: 1 }).lean();
+
+        // Renderiza o EJS passando o JSON formatado
+        res.render('admin', { 
+            pokemonsJSON: JSON.stringify(pokemons, null, 4),
+            userId: user._id
+        });
+    } catch (e) {
+        res.send("Erro: " + e.message);
+    }
+});
+
+// 2. Rota que salva as alterações
+app.post('/admin/save', async (req, res) => {
+    try {
+        const { userId, jsonData } = req.body;
+        
+        // Verificação de segurança
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ error: "Não autorizado" });
+
+        let data;
+        try {
+            data = JSON.parse(jsonData);
+        } catch (e) {
+            return res.status(400).json({ error: "JSON Inválido: " + e.message });
+        }
+
+        if (!Array.isArray(data)) return res.status(400).json({ error: "O JSON deve ser uma lista [...]" });
+
+        // 1. Identificar IDs presentes no JSON enviado
+        const incomingIds = data.map(p => p.id).filter(id => id);
+
+        // 2. Excluir do banco qualquer Pokemon que NÃO esteja no JSON (foi removido pelo admin)
+        await BasePokemon.deleteMany({ id: { $nin: incomingIds } });
+
+        // 3. Preparar operações em lote (Bulk Write) para alta performance
+        const bulkOps = data.map(p => ({
+            updateOne: {
+                filter: { id: p.id },
+                update: { $set: p },
+                upsert: true // Cria se não existir
+            }
+        }));
+
+        if (bulkOps.length > 0) {
+            await BasePokemon.bulkWrite(bulkOps);
+        }
+
+        res.json({ success: true, count: bulkOps.length, message: "Banco de dados sincronizado com sucesso!" });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Erro interno: " + e.message });
+    }
+});
+
 app.post('/api/turn', async (req, res) => {
     const { battleId, action, moveId, isForced } = req.body; const battle = activeBattles[battleId]; if(!battle) { return res.json({ finished: true }); }
     try {
