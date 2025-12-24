@@ -103,7 +103,7 @@
     /* --- MONSTER CARDS --- */
     .poke-card { 
         background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid rgba(255,255,255,0.1); 
-        border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; 
+        border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; transition: 0.3s;
     }
     .poke-card.leader { border: 1px solid #f1c40f; background: linear-gradient(135deg, #2c2005, #0f172a); }
     .poke-img-container { width: 54px; height: 54px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
@@ -305,11 +305,11 @@
         } catch(e) {}
     }
 
-    // --- POKEDEX SYSTEM (COM TABELA DE MOVES) ---
+    // --- POKEDEX SYSTEM (CORRIGIDO PARA LER movePool DO BACKEND) ---
     async function openPokedex() {
         document.getElementById('modalPokedex').style.display = 'flex';
         
-        // Carregar biblioteca de moves se estiver vazia (para mostrar nomes bonitos na tabela)
+        // Carregar biblioteca de moves se estiver vazia
         if (Object.keys(GLOBAL_MOVES_LIB).length === 0) {
             try {
                 const res = await fetch(`/api/me?userId=${USER_ID}`);
@@ -355,21 +355,22 @@
         // Stats
         const s = m.baseStats || { hp:0, attack:0, defense:0, speed:0 };
         
-        // Moves Logic
+        // CORREÇÃO AQUI: Backend manda 'movePool', não 'learnset'
+        const movesList = m.movePool || m.learnset || [];
+        
         let movesHtml = '';
-        if (m.learnset && m.learnset.length > 0) {
+        if (movesList.length > 0) {
             // Ordena por nível
-            const sortedMoves = m.learnset.sort((a,b) => a.level - b.level);
+            const sortedMoves = movesList.sort((a,b) => a.level - b.level);
             
             movesHtml = `
             <div style="margin-top:20px; width:100%; max-width:400px;">
                 <h3 style="color:#aaa; font-size:0.8rem; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">MOVESET</h3>
                 <table class="dex-moves-table">
-                    <thead><tr><th width="15%">LVL</th><th>ATACK</th><th width="20%" style="text-align:right;">TIPO</th></tr></thead>
+                    <thead><tr><th width="15%">LVL</th><th>ATAQUE</th><th width="20%" style="text-align:right;">TIPO</th></tr></thead>
                     <tbody>`;
             
             sortedMoves.forEach(moveItem => {
-                // Suporta formato { level: 5, moveId: 'scratch' }
                 const moveId = moveItem.moveId || moveItem.move;
                 const level = moveItem.level;
                 
@@ -386,7 +387,7 @@
             });
             movesHtml += `</tbody></table></div>`;
         } else {
-            movesHtml = `<div style="margin-top:20px; color:#555; font-size:0.8rem;">Nenhum dado de ataques disponível.</div>`;
+            movesHtml = `<div style="margin-top:20px; color:#555; font-size:0.8rem;">Nenhum ataque registrado no banco de dados.</div>`;
         }
 
         contentDiv.innerHTML = `
@@ -495,5 +496,71 @@
         const moves = Array.from(document.querySelectorAll('.skill-card.equipped')).map(c => c.getAttribute('data-id'));
         await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); openPokemon();
     }
-    async function openBag() { document.getElementById('modalBag').style.display='flex'; const res = await fetch(`/api/me?userId=${USER_ID}`); const data = await res.json(); document.getElementById('bagItemsContent').innerHTML = `<div style="padding:10px;">CatchCubes: <strong>${data.pokeballs}</strong><br>Rare Candy: <strong>${data.rareCandy}</strong></div>`; }
+
+    // --- MOCHILA E RARE CANDY (CORRIGIDO) ---
+    async function openBag() { 
+        document.getElementById('modalBag').style.display='flex'; 
+        const res = await fetch(`/api/me?userId=${USER_ID}`); 
+        const data = await res.json(); 
+        
+        let candyBtn = '';
+        if (data.rareCandy > 0) {
+            candyBtn = `<button onclick="startRareCandySelection()" class="btn-success" style="padding:4px 8px; font-size:0.7rem;">USAR</button>`;
+        }
+
+        document.getElementById('bagItemsContent').innerHTML = `
+            <div class="poke-card" style="display:block;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+                    <span style="display:flex; align-items:center; gap:10px;"><img src="/uploads/catchcube.gif" class="pixel-icon"> CatchCubes</span> 
+                    <strong style="color:#fff; font-size:1.1rem;">${data.pokeballs || 0}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="display:flex; align-items:center; gap:10px;"><span style="font-size:1.4rem; line-height:1;">🍬</span> Rare Candy</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <strong style="color:#fff; font-size:1.1rem;">${data.rareCandy || 0}</strong>
+                        ${candyBtn}
+                    </div>
+                </div>
+            </div>`; 
+    }
+
+    async function startRareCandySelection() {
+        closeModal('modalBag');
+        openPokemon(); 
+        setTimeout(() => {
+            alert("Selecione um Pokémon para dar o doce.");
+            const cards = document.querySelectorAll('#pokemonListContent .poke-card');
+            cards.forEach(card => {
+                card.style.border = '2px dashed #f1c40f';
+                card.style.cursor = 'pointer';
+                const actions = card.querySelector('.card-actions');
+                if(actions) actions.style.display = 'none';
+                
+                // Encontrar ID no HTML (Meio gambiarra mas funcional pro layout atual)
+                // O HTML renderizado tem chamadas de função com o ID
+                const html = card.innerHTML;
+                const match = html.match(/setLead\('([^']+)'\)/) || html.match(/abandonPokemon\('([^']+)'\)/) || html.match(/showMoveEditor\('([^']+)'/);
+                
+                if(match) {
+                    const pokeId = match[1];
+                    card.onclick = () => applyRareCandy(pokeId);
+                }
+            });
+        }, 500);
+    }
+
+    async function applyRareCandy(pokeId) {
+        try {
+            const res = await fetch('/api/use-item', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ userId: USER_ID, itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) 
+            });
+            const data = await res.json();
+            if(data.success) {
+                alert(data.evolved ? 'Sua criatura evoluiu!' : 'Nível subiu!');
+                openPokemon(); 
+            } else { alert(data.error); }
+        } catch(e) { alert("Erro ao usar item."); }
+    }
 </script>
