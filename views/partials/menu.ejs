@@ -3,10 +3,10 @@
 
 <!-- ESTILOS GERAIS -->
 <style>
-    /* RESET BÁSICO E FONTES */
-    * { box-sizing: border-box; }
+    /* RESET E BASES */
+    * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
     
-    /* SCROLLBAR */
+    /* SCROLLBAR CUSTOMIZADA */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
     ::-webkit-scrollbar-thumb { background: #3498db; border-radius: 3px; }
@@ -25,24 +25,21 @@
         border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); 
         box-shadow: 0 20px 50px rgba(0,0,0,0.9); color: #e2e8f0; 
         display: flex; flex-direction: column; 
-        max-height: 90vh; /* Limite de altura para garantir scroll interno */
-        overflow: hidden;
+        max-height: 90vh; overflow: hidden;
     }
 
     .modal-header {
         padding: 15px 20px; background: rgba(15, 23, 42, 0.95);
         border-bottom: 1px solid rgba(255,255,255,0.1);
         display: flex; justify-content: space-between; align-items: center;
-        flex-shrink: 0; /* Impede o cabeçalho de encolher */
+        flex-shrink: 0;
     }
     .modal-header h2 { margin: 0; font-family: 'Press Start 2P'; font-size: 0.8rem; color: #f1c40f; letter-spacing: 1px; }
     .close-btn { background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; transition: 0.2s; }
     .close-btn:hover { color: #e74c3c; transform: scale(1.1); }
 
     .modal-body { 
-        padding: 20px; 
-        overflow-y: auto; 
-        flex: 1; /* Ocupa o espaço restante */
+        padding: 20px; overflow-y: auto; flex: 1; 
         background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
         position: relative;
     }
@@ -61,34 +58,17 @@
     .float-menu-items.show { display: flex; animation: slideUp 0.3s; }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* UTILITÁRIOS GERAIS */
+    /* UTILITÁRIOS */
     .pixel-icon { width: 17px !important; height: 17px !important; min-width: 17px; image-rendering: pixelated; object-fit: contain; }
     .btn-success { background: #2ecc71; color: #000; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer; }
-    .qty-input { width: 50px; background: #000; border: 1px solid #444; color: white; padding: 5px; border-radius: 5px; text-align: center; }
-
-    /* --- PC SYSTEM (CORRIGIDO PARA MOBILE) --- */
+    
+    /* --- PC SYSTEM (MOBILE FIX) --- */
     #modalPC .modal-content { max-width: 650px; background: #080808; border: 1px solid #333; height: 85vh; }
     
-    .pc-layout { 
-        display: flex; flex-direction: column; 
-        height: 100%; 
-        overflow: hidden; /* O scroll será interno nas áreas */
-    }
+    .pc-layout { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
     
-    .pc-container-top {
-        flex: 1; /* Faz esta parte ocupar todo o espaço disponível */
-        display: flex; flex-direction: column;
-        overflow: hidden;
-        padding: 10px;
-        min-height: 0; /* Crucial para o Firefox/Flexbox aninhado */
-    }
-
-    .pc-container-bottom {
-        flex-shrink: 0; /* Impede que o rodapé seja esmagado */
-        padding: 10px;
-        background: #0a0a0a;
-        border-top: 1px solid #222;
-    }
+    .pc-container-top { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 10px; min-height: 0; }
+    .pc-container-bottom { flex-shrink: 0; padding: 10px; background: #0a0a0a; border-top: 1px solid #222; }
 
     .pc-box-header { 
         font-family: 'Rajdhani'; font-weight: 700; font-size: 1rem; color: #fff; 
@@ -99,12 +79,7 @@
     .pc-storage-area {
         background: #0f1115; border: 2px solid #222; border-radius: 4px; padding: 10px;
         display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); 
-        gap: 8px;
-        /* CORREÇÃO DO SCROLL MOBILE */
-        flex: 1; 
-        overflow-y: auto; 
-        -webkit-overflow-scrolling: touch;
-        align-content: flex-start;
+        gap: 8px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; align-content: flex-start;
     }
     .pc-storage-area.drag-over { border-color: #f1c40f; background: #131313; }
 
@@ -118,19 +93,14 @@
         aspect-ratio: 1/1; width: 100%; max-width: 50px;
         background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
         border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        cursor: grab; position: relative;
-        /* CORREÇÃO CRUCIAL PARA SCROLL: pan-y permite scroll vertical */
-        touch-action: pan-y; 
+        cursor: grab; position: relative; touch-action: pan-y; 
     }
     .pc-slot:active { cursor: grabbing; }
     .pc-slot img { width: 32px; height: 32px; image-rendering: pixelated; pointer-events: none; }
-    .pc-slot .lvl-badge { 
-        position: absolute; bottom: 1px; right: 1px; font-size: 0.5rem; 
-        background: rgba(0,0,0,0.8); color: #fff; padding: 0 2px; border-radius: 2px; pointer-events: none; 
-    }
+    .pc-slot .lvl-badge { position: absolute; bottom: 1px; right: 1px; font-size: 0.5rem; background: rgba(0,0,0,0.8); color: #fff; padding: 0 2px; border-radius: 2px; pointer-events: none; }
     .pc-slot.dragging { opacity: 0.3; border: 1px dashed #f1c40f; }
 
-    /* --- CARDS DE MONSTRO & SKILLS --- */
+    /* --- MONSTER CARDS --- */
     .poke-card { 
         background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid rgba(255,255,255,0.1); 
         border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; 
@@ -148,74 +118,55 @@
     .card-actions { display: flex; gap: 8px; flex-direction: column; }
     .icon-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; font-size: 1.1rem; cursor: pointer; padding: 6px 10px; color: #ccc; }
 
-    /* SKILL CARDS */
+    /* --- SKILL CARDS --- */
     .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
     .skill-card { background: #111; border: 1px solid rgba(255,255,255,0.1); border-left-width: 4px; border-radius: 6px; padding: 10px; cursor: pointer; position: relative; }
     .skill-card.equipped { border-color: #fff; box-shadow: inset 0 0 10px rgba(255,255,255,0.1); }
     .skill-card.equipped::after { content: '✔'; position: absolute; top: 10px; right: 10px; color: #fff; font-size: 0.8rem; }
     .skill-name { color: #eee; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; }
     .skill-type { color: #aaa; font-size: 0.6rem; margin-top: 2px; text-transform: uppercase; }
-    /* Cores Tipos (Exemplo básico) */
-    .type-fire { border-left-color: #e74c3c; } .type-water { border-left-color: #3498db; } .type-grass { border-left-color: #2ecc71; } .type-electric { border-left-color: #f1c40f; } .type-normal { border-left-color: #95a5a6; }
 
-    /* --- POKEDEX REDESIGN (MOBILE RESPONSIVE) --- */
-    #modalPokedex .modal-content { 
-        max-width: 800px; height: 80vh; 
-        flex-direction: row; /* Desktop padrão */
-        position: relative;
-    }
+    /* Cores Tipos */
+    .type-fire { border-left-color: #e74c3c; } .type-water { border-left-color: #3498db; } .type-grass { border-left-color: #2ecc71; } 
+    .type-electric { border-left-color: #f1c40f; } .type-normal { border-left-color: #95a5a6; } .type-poison { border-left-color: #9b59b6; }
 
+    /* --- POKEDEX REDESIGN --- */
+    #modalPokedex .modal-content { max-width: 800px; height: 80vh; flex-direction: row; position: relative; }
     .dex-container { display: flex; width: 100%; height: 100%; overflow: hidden; position: relative; }
     
     /* Lista à Esquerda */
-    .dex-list {
-        width: 35%; 
-        border-right: 1px solid #333; 
-        display: flex; flex-direction: column; 
-        background: #0b1120;
-    }
+    .dex-list { width: 35%; border-right: 1px solid #333; display: flex; flex-direction: column; background: #0b1120; }
     .dex-search-box { padding: 10px; border-bottom: 1px solid #333; }
     .dex-search-input { width: 100%; padding: 8px; background: #000; border: 1px solid #333; color: #fff; border-radius: 5px; }
+    .dex-grid { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); gap: 5px; align-content: flex-start; }
+
+    /* Detalhes à Direita */
+    .dex-details-view { flex: 1; padding: 20px; overflow-y: auto; background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; }
     
-    .dex-grid {
-        flex: 1; overflow-y: auto; padding: 10px;
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); 
-        gap: 5px; align-content: flex-start;
-    }
-
-    /* Detalhes à Direita (Desktop) */
-    .dex-details-view {
-        flex: 1; padding: 20px; overflow-y: auto; 
-        background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
-        display: flex; flex-direction: column;
-    }
-
-    .dex-icon {
-        cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid #333; 
-        border-radius: 8px; padding: 5px; display: flex; flex-direction: column; align-items: center; 
-        transition: 0.2s;
-    }
+    .dex-icon { cursor: pointer; background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 8px; padding: 5px; display: flex; flex-direction: column; align-items: center; transition: 0.2s; }
     .dex-icon.locked { border-color: #222 !important; background: rgba(0,0,0,0.2) !important; }
     .dex-icon.selected { border-color: #f1c40f; background: rgba(241, 196, 15, 0.15); }
-    
     .locked-sprite { filter: brightness(0) contrast(100%); opacity: 0.3; }
 
-    /* Botão Voltar (Só aparece no Mobile) */
-    .dex-back-btn { display: none; margin-bottom: 10px; background: #333; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; align-self: flex-start; }
+    /* TABELA DE MOVES NA POKEDEX */
+    .dex-moves-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.8rem; background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; }
+    .dex-moves-table th { text-align: left; color: #94a3b8; padding: 8px; background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.1); font-family: monospace; text-transform: uppercase; }
+    .dex-moves-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #ddd; vertical-align: middle; }
+    .dex-moves-table tr:last-child td { border-bottom: none; }
+    .dex-moves-table tr:hover { background: rgba(255,255,255,0.03); }
+    
+    .type-badge { font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; background: #333; color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+    .type-badge.fire { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border-color: #e74c3c; }
+    .type-water { background: rgba(52, 152, 219, 0.2); color: #3498db; border-color: #3498db; }
+    .type-grass { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border-color: #2ecc71; }
+    /* Adicione outros tipos conforme necessário */
 
-    /* --- RESPONSIVIDADE POKEDEX (MOBILE) --- */
+    /* RESPONSIVIDADE POKEDEX */
+    .dex-back-btn { display: none; margin-bottom: 10px; background: #333; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; align-self: flex-start; }
     @media (max-width: 768px) {
         #modalPokedex .modal-content { flex-direction: column; }
-        
         .dex-list { width: 100%; height: 100%; }
-        
-        /* No mobile, os detalhes cobrem a lista quando ativos */
-        .dex-details-view {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; background: #0f172a;
-            transform: translateX(100%); /* Escondido por padrão */
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+        .dex-details-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; background: #0f172a; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .dex-details-view.active { transform: translateX(0); }
         .dex-back-btn { display: block; }
         .dex-grid { grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -235,7 +186,7 @@
     <button class="float-btn main-toggle" onclick="toggleFloatMenu()">☰</button>
 </div>
 
-<!-- MODAL PC (CORRIGIDO) -->
+<!-- MODAL PC -->
 <div class="modal-overlay" id="modalPC">
     <div class="modal-content">
         <div class="modal-header">
@@ -244,59 +195,31 @@
         </div>
         <div class="modal-body" style="padding: 0; display: flex; flex-direction: column;">
             <div class="pc-layout">
-                <!-- Parte Superior: Storage (Com Scroll Infinito) -->
                 <div class="pc-container-top">
-                    <div class="pc-box-header">
-                        <span>📦 BOX 01</span> 
-                        <span style="color:#aaa; font-size:0.6rem; font-family:'Roboto';">Arrastar para mover</span>
-                    </div>
-                    <div class="pc-storage-area" id="pcStorageArea" ondrop="handleDrop(event, 'pc')" ondragover="handleDragOver(event)">
-                        <!-- Slots gerados via JS -->
-                    </div>
+                    <div class="pc-box-header"><span>📦 BOX 01</span> <span style="color:#aaa; font-size:0.6rem;">Arrastar para mover</span></div>
+                    <div class="pc-storage-area" id="pcStorageArea" ondrop="handleDrop(event, 'pc')" ondragover="handleDragOver(event)"></div>
                 </div>
-
-                <!-- Parte Inferior: Time (Fixo) -->
                 <div class="pc-container-bottom">
-                    <div class="pc-box-header" style="border-left-color: #2ecc71;">
-                        <span style="color:#2ecc71;">⚡ EQUIPE ATIVA</span>
-                    </div>
-                    <div class="pc-team-area" id="pcTeamArea" ondrop="handleDrop(event, 'team')" ondragover="handleDragOver(event)">
-                        <!-- Slots gerados via JS -->
-                    </div>
+                    <div class="pc-box-header" style="border-left-color: #2ecc71;"><span style="color:#2ecc71;">⚡ EQUIPE ATIVA</span></div>
+                    <div class="pc-team-area" id="pcTeamArea" ondrop="handleDrop(event, 'team')" ondragover="handleDragOver(event)"></div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL DEX (REDESENHADA) -->
+<!-- MODAL DEX -->
 <div class="modal-overlay" id="modalPokedex">
     <div class="modal-content">
-        <div class="modal-header" style="display: none;"> <!-- Header escondido, layout customizado -->
-            <h2>DEX</h2>
-            <button class="close-btn" onclick="closeModal('modalPokedex')">✕</button>
-        </div>
-        
         <div class="dex-container">
-            <!-- Botão Fechar Flutuante -->
             <button class="close-btn" onclick="closeModal('modalPokedex')" style="position: absolute; top: 10px; right: 10px; z-index: 50; background:rgba(0,0,0,0.5); width:30px; height:30px; border-radius:50%;">✕</button>
-
-            <!-- Lista de Monstros -->
             <div class="dex-list">
-                <div class="dex-search-box">
-                    <input type="text" id="dexSearch" class="dex-search-input" placeholder="Buscar Pokémon..." onkeyup="filterDex()">
-                </div>
-                <div id="dexGrid" class="dex-grid">
-                    <!-- Ícones aqui -->
-                </div>
+                <div class="dex-search-box"><input type="text" id="dexSearch" class="dex-search-input" placeholder="Buscar..." onkeyup="filterDex()"></div>
+                <div id="dexGrid" class="dex-grid"></div>
             </div>
-
-            <!-- Detalhes (Overlay no mobile) -->
             <div id="dexDetailsView" class="dex-details-view">
-                <button class="dex-back-btn" onclick="closeDexDetails()">⬅ Voltar para lista</button>
-                <div id="dexContentInner" style="height:100%; display:flex; align-items:center; justify-content:center;">
-                    <p style="color:#555;">Selecione um Pokémon para ver os dados.</p>
-                </div>
+                <button class="dex-back-btn" onclick="closeDexDetails()">⬅ Voltar</button>
+                <div id="dexContentInner" style="height:100%; display:flex; align-items:center; justify-content:center; color:#555;">Selecione um Pokémon.</div>
             </div>
         </div>
     </div>
@@ -305,261 +228,205 @@
 <!-- MODAL MONSTROS -->
 <div class="modal-overlay" id="modalPokemon">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2>MEUS MONSTROS</h2>
-            <button class="close-btn" onclick="closeModal('modalPokemon')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div id="pokemonListContent">Carregando...</div>
-        </div>
+        <div class="modal-header"><h2>MEUS MONSTROS</h2><button class="close-btn" onclick="closeModal('modalPokemon')">✕</button></div>
+        <div class="modal-body"><div id="pokemonListContent">Carregando...</div></div>
     </div>
 </div>
 
 <!-- MODAL MOCHILA -->
 <div class="modal-overlay" id="modalBag">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2>MOCHILA</h2>
-            <button class="close-btn" onclick="closeModal('modalBag')">✕</button>
-        </div>
-        <div class="modal-body">
-            <div id="bagItemsContent">Carregando...</div>
-        </div>
+        <div class="modal-header"><h2>MOCHILA</h2><button class="close-btn" onclick="closeModal('modalBag')">✕</button></div>
+        <div class="modal-body"><div id="bagItemsContent">Carregando...</div></div>
     </div>
 </div>
 
 <script>
-    // --- VARIÁVEIS GLOBAIS ---
+    // --- DADOS E VARIÁVEIS ---
+    const USER_ID = '<%= user._id %>';
     let currentMonId = null;
-    let GLOBAL_MOVES_LIB = {};
-    const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
-    const USER_ID = '<%= user._id %>'; // EJS Seguro
-
-    // --- DADOS PARA A DEX (PREENCHIDOS PELO SERVER) ---
-    // Usamos JSON.stringify seguro e tratamos null como array vazio
+    let GLOBAL_MOVES_LIB = {}; // Será preenchido ao carregar a Dex ou o Time
+    
+    // Dados injetados pelo Servidor
     const RAW_ENTITIES = <%- JSON.stringify(entities || []) %>;
     const RAW_TEAM = <%- JSON.stringify(user.pokemonTeam || []) %>;
     const RAW_PC = <%- JSON.stringify(user.pc || []) %>;
-
-    // Criar um Set de IDs desbloqueados para busca rápida (O(1))
-    // Importante: Converter tudo para String para evitar conflito String vs ObjectID
+    
+    // IDs Desbloqueados
     const UNLOCKED_IDS = new Set([
         ...RAW_TEAM.map(p => String(p.baseId || p.id)),
         ...RAW_PC.map(p => String(p.baseId || p.id))
     ]);
 
-    // --- UI HELPERS ---
+    const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+
+    // --- UTILS ---
     function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    // --- PC SYSTEM (LOGIC) ---
+    // --- PC SYSTEM ---
     async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
     
     async function loadPCData() {
         const storageDiv = document.getElementById('pcStorageArea'); 
-        const teamDiv = document.getElementById('pcTeamArea');
-        
-        // Loader simples
-        storageDiv.innerHTML = '<span style="color:#555; grid-column:span 6; text-align:center; padding:20px;">Carregando PC...</span>'; 
-        
+        storageDiv.innerHTML = '<span style="color:#555; text-align:center; padding:10px;">Carregando...</span>'; 
         try {
             const res = await fetch(`/api/pc?userId=${USER_ID}`); 
             const data = await res.json(); 
             renderDragPC(data.team, data.pc);
-        } catch(e) { 
-            console.error(e);
-            storageDiv.innerHTML = '<span style="color:red;">Erro ao carregar.</span>';
-        }
+        } catch(e) { storageDiv.innerHTML = 'Erro.'; }
     }
 
     function renderDragPC(team, pc) {
-        const createDragSlot = (p, from) => `
+        const createSlot = (p, from) => `
             <div class="pc-slot" draggable="true" ondragstart="handleDragStart(event, '${p.instanceId}', '${from}')">
-                <img src="${_resImg(p.sprite)}">
-                <div class="lvl-badge">Lv.${p.level}</div>
+                <img src="${_resImg(p.sprite)}"><div class="lvl-badge">Lv.${p.level}</div>
             </div>`;
-        
-        // Se slot vazio, renderiza espaço vazio
         const emptySlot = `<div class="pc-slot" style="opacity:0.1; border-style:dashed;"></div>`;
 
-        document.getElementById('pcTeamArea').innerHTML = team.map(p => createDragSlot(p, 'team')).join('') + (team.length < 6 ? emptySlot : '');
-        document.getElementById('pcStorageArea').innerHTML = pc.map(p => createDragSlot(p, 'pc')).join('');
+        document.getElementById('pcTeamArea').innerHTML = team.map(p => createSlot(p, 'team')).join('') + (team.length < 6 ? emptySlot : '');
+        document.getElementById('pcStorageArea').innerHTML = pc.map(p => createSlot(p, 'pc')).join('');
     }
 
-    function handleDragStart(ev, pokeId, source) {
-        ev.dataTransfer.setData("text/plain", JSON.stringify({ pokeId, source }));
-        ev.currentTarget.classList.add('dragging');
-    }
-
-    function handleDragOver(ev) {
-        ev.preventDefault();
-        ev.currentTarget.classList.add('drag-over');
-    }
-
-    // Remover classe visual ao sair
-    ['pcStorageArea', 'pcTeamArea'].forEach(id => {
-        document.getElementById(id).addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drag-over'));
-    });
+    function handleDragStart(ev, pokeId, source) { ev.dataTransfer.setData("text/plain", JSON.stringify({ pokeId, source })); ev.currentTarget.classList.add('dragging'); }
+    function handleDragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+    
+    document.getElementById('pcStorageArea').addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drag-over'));
+    document.getElementById('pcTeamArea').addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drag-over'));
 
     async function handleDrop(ev, targetContainer) {
-        ev.preventDefault();
-        ev.currentTarget.classList.remove('drag-over');
-        
-        const dataRaw = ev.dataTransfer.getData("text/plain");
-        if(!dataRaw) return;
-        
-        const { pokeId, source } = JSON.parse(dataRaw);
-        if (source === targetContainer) return; 
+        ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+        const dataRaw = ev.dataTransfer.getData("text/plain"); if(!dataRaw) return;
+        const { pokeId, source } = JSON.parse(dataRaw); if (source === targetContainer) return; 
 
         try {
-            const res = await fetch('/api/pc/move', { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) 
-            });
-            const data = await res.json(); 
-            if(data.success) loadPCData(); 
-            else alert(data.error || "Erro ao mover");
-        } catch(e) { alert("Erro de conexão."); }
+            const res = await fetch('/api/pc/move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) });
+            const data = await res.json(); if(data.success) loadPCData(); else alert(data.error);
+        } catch(e) {}
     }
 
-    // --- POKEDEX SYSTEM (CORRIGIDO) ---
-    function openPokedex() {
+    // --- POKEDEX SYSTEM (COM TABELA DE MOVES) ---
+    async function openPokedex() {
         document.getElementById('modalPokedex').style.display = 'flex';
+        
+        // Carregar biblioteca de moves se estiver vazia (para mostrar nomes bonitos na tabela)
+        if (Object.keys(GLOBAL_MOVES_LIB).length === 0) {
+            try {
+                const res = await fetch(`/api/me?userId=${USER_ID}`);
+                const data = await res.json();
+                if(data.allMoves) GLOBAL_MOVES_LIB = data.allMoves;
+            } catch(e) { console.log('Erro ao carregar moves lib'); }
+        }
+
         renderDexGrid();
     }
 
     function renderDexGrid() {
-        const grid = document.getElementById('dexGrid'); 
-        grid.innerHTML = '';
-        
+        const grid = document.getElementById('dexGrid'); grid.innerHTML = '';
         RAW_ENTITIES.forEach((p, index) => {
-            // Comparação segura de IDs
-            const pIdString = String(p.id || p._id);
-            const isUnlocked = UNLOCKED_IDS.has(pIdString);
-            
+            const idString = String(p.id || p._id);
+            const isUnlocked = UNLOCKED_IDS.has(idString);
             const sprite = _resImg(p.sprite);
-            const imgClass = isUnlocked ? '' : 'locked-sprite';
-            const displayName = isUnlocked ? p.name : '???';
-            const extraClass = isUnlocked ? '' : 'locked';
+            const name = isUnlocked ? p.name : '???';
             const displayId = (index + 1).toString().padStart(3, '0');
-
+            
             grid.innerHTML += `
-                <div class="dex-icon ${extraClass}" onclick="selectDexMonster('${pIdString}', this)" data-name="${(p.name || '').toLowerCase()}" title="${displayName}">
+                <div class="dex-icon ${!isUnlocked ? 'locked' : ''}" onclick="selectDexMonster('${idString}', this)" data-name="${(p.name||'').toLowerCase()}">
                     <span style="font-size:0.5rem; color:#555; align-self:flex-start;">#${displayId}</span>
-                    <img src="${sprite}" class="${imgClass}" style="width:36px; height:36px; image-rendering:pixelated;">
-                    <span style="font-size:0.6rem; color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center;">${displayName}</span>
+                    <img src="${sprite}" class="${!isUnlocked ? 'locked-sprite' : ''}" style="width:36px; height:36px; image-rendering:pixelated;">
+                    <span style="font-size:0.6rem; color:#aaa; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center;">${name}</span>
                 </div>`;
-        });
-    }
-
-    function filterDex() {
-        const v = document.getElementById('dexSearch').value.toLowerCase();
-        document.querySelectorAll('.dex-icon').forEach(el => { 
-            el.style.display = el.getAttribute('data-name').includes(v) ? 'flex' : 'none'; 
         });
     }
 
     function selectDexMonster(idString, el) {
-        // UI Updates
         document.querySelectorAll('.dex-icon').forEach(e => e.classList.remove('selected'));
         if(el) el.classList.add('selected');
+        document.getElementById('dexDetailsView').classList.add('active');
 
-        // Mobile: Show Details View
-        const detailsView = document.getElementById('dexDetailsView');
-        detailsView.classList.add('active');
-
-        // Data Logic
         const m = RAW_ENTITIES.find(x => String(x.id || x._id) === idString);
         const contentDiv = document.getElementById('dexContentInner');
 
-        if(!m) {
-            contentDiv.innerHTML = '<p>Erro: Dados não encontrados.</p>';
+        if(!m || !UNLOCKED_IDS.has(idString)) {
+            contentDiv.innerHTML = `<div style="text-align:center; color:#777;"><div style="width:100px; height:100px; background:#000; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; border:2px dashed #333; margin-bottom:15px;"><img src="${_resImg(m?.sprite)}" class="locked-sprite" style="width:60px; opacity:0.2;"></div><h2>???</h2><p>Criatura não registrada.</p></div>`;
             return;
         }
 
-        const isUnlocked = UNLOCKED_IDS.has(idString);
-        const sprite = _resImg(m.sprite);
-
-        if(!isUnlocked) {
-            contentDiv.innerHTML = `
-                <div style="text-align:center; color:#777;">
-                    <div style="width:120px; height:120px; background:#000; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; border:2px dashed #333; margin-bottom:20px;">
-                        <img src="${sprite}" class="locked-sprite" style="width:80px; height:80px; image-rendering:pixelated; opacity:0.2;">
-                    </div>
-                    <h1 style="font-size:2rem; color:#333; margin:0;">???</h1>
-                    <p style="font-size:0.9rem;">Este monstro ainda não foi registrado.</p>
-                </div>`;
-            return;
-        }
-
-        // Render Stats se disponível
-        const s = m.baseStats || { hp: 0, attack: 0, defense: 0, speed: 0 };
+        // Stats
+        const s = m.baseStats || { hp:0, attack:0, defense:0, speed:0 };
         
-        // Render Evolution Data
-        let evoHtml = '';
-        if(m.evolution && m.evolution.targetId) {
-            const target = RAW_ENTITIES.find(x => String(x.id || x._id) === String(m.evolution.targetId));
-            const targetUnlocked = target && UNLOCKED_IDS.has(String(target.id || target._id));
-            const targetName = target ? (targetUnlocked ? target.name : '???') : '???';
-            evoHtml = `
-                <div style="margin-top:20px; padding:15px; background:rgba(255,255,255,0.03); border-radius:8px; width:100%;">
-                    <div style="font-size:0.7rem; color:#aaa; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Evolução</div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="color:#f1c40f;">➡</span> 
-                        <strong style="color:${targetUnlocked ? '#fff' : '#777'}">${targetName}</strong> 
-                        <span style="font-size:0.7rem; color:#aaa;">(Nível ${m.evolution.level})</span>
-                    </div>
-                </div>`;
+        // Moves Logic
+        let movesHtml = '';
+        if (m.learnset && m.learnset.length > 0) {
+            // Ordena por nível
+            const sortedMoves = m.learnset.sort((a,b) => a.level - b.level);
+            
+            movesHtml = `
+            <div style="margin-top:20px; width:100%; max-width:400px;">
+                <h3 style="color:#aaa; font-size:0.8rem; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:10px;">MOVESET</h3>
+                <table class="dex-moves-table">
+                    <thead><tr><th width="15%">LVL</th><th>ATACK</th><th width="20%" style="text-align:right;">TIPO</th></tr></thead>
+                    <tbody>`;
+            
+            sortedMoves.forEach(moveItem => {
+                // Suporta formato { level: 5, moveId: 'scratch' }
+                const moveId = moveItem.moveId || moveItem.move;
+                const level = moveItem.level;
+                
+                const moveData = GLOBAL_MOVES_LIB[moveId] || { name: moveId, element: 'normal' };
+                const moveName = moveData.name || moveId;
+                const moveType = (moveData.element || 'normal').toLowerCase();
+                
+                movesHtml += `
+                    <tr>
+                        <td><span style="color:#f1c40f; font-weight:bold;">${level}</span></td>
+                        <td>${moveName}</td>
+                        <td style="text-align:right;"><span class="type-badge type-${moveType}">${moveType}</span></td>
+                    </tr>`;
+            });
+            movesHtml += `</tbody></table></div>`;
+        } else {
+            movesHtml = `<div style="margin-top:20px; color:#555; font-size:0.8rem;">Nenhum dado de ataques disponível.</div>`;
         }
 
         contentDiv.innerHTML = `
-            <div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center;">
-                <div style="width:140px; height:140px; background:rgba(0,0,0,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; border:3px solid rgba(255,255,255,0.1); margin-bottom:20px; box-shadow:0 0 30px rgba(0,0,0,0.5);">
-                    <img src="${sprite}" style="width:100px; height:100px; image-rendering:pixelated;">
+            <div style="width:100%; max-width:400px; display:flex; flex-direction:column; align-items:center; padding-bottom:40px;">
+                <div style="width:120px; height:120px; background:rgba(0,0,0,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; border:3px solid rgba(255,255,255,0.1); margin-bottom:15px;">
+                    <img src="${_resImg(m.sprite)}" style="width:90px; height:90px; image-rendering:pixelated;">
                 </div>
-                
-                <h1 style="margin:0; font-size:1.8rem; color:#fff; font-family:'Rajdhani'; text-transform:uppercase;">${m.name}</h1>
-                
-                <div style="display:flex; gap:10px; margin-top:10px; margin-bottom:20px;">
-                    <span style="background:#222; padding:4px 12px; border-radius:15px; font-size:0.7rem; color:#ddd; border:1px solid #444; text-transform:uppercase;">${m.type || 'Normal'}</span>
-                    <span style="background:rgba(52, 152, 219, 0.1); padding:4px 12px; border-radius:15px; font-size:0.7rem; color:#3498db; border:1px solid rgba(52, 152, 219, 0.3);">Rate: ${m.catchRate || 0}%</span>
+                <h1 style="margin:0; font-size:1.8rem; font-family:'Rajdhani'; text-transform:uppercase;">${m.name}</h1>
+                <div style="margin:10px 0 20px;">
+                    <span class="type-badge type-${(m.type||'normal').toLowerCase()}" style="font-size:0.8rem; padding:4px 10px;">${m.type}</span>
                 </div>
 
                 <div style="width:100%; background:rgba(0,0,0,0.2); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.05);">
-                    <h3 style="color:#aaa; font-size:0.8rem; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:5px;">STATS BASE</h3>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        ${renderStatRow('HP', s.hp, '#2ecc71')}
-                        ${renderStatRow('ATK', s.attack, '#e74c3c')}
-                        ${renderStatRow('DEF', s.defense, '#f1c40f')}
-                        ${renderStatRow('SPD', s.speed, '#3498db')}
+                    <h3 style="color:#aaa; font-size:0.8rem; margin-bottom:10px; border-bottom:1px solid #333;">STATS BASE</h3>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        ${renderStat('HP', s.hp, '#2ecc71')}
+                        ${renderStat('ATK', s.attack, '#e74c3c')}
+                        ${renderStat('DEF', s.defense, '#f1c40f')}
+                        ${renderStat('SPD', s.speed, '#3498db')}
                     </div>
                 </div>
-
-                ${evoHtml}
-            </div>
-        `;
-    }
-
-    function closeDexDetails() {
-        document.getElementById('dexDetailsView').classList.remove('active');
-        document.querySelectorAll('.dex-icon').forEach(e => e.classList.remove('selected'));
-    }
-
-    function renderStatRow(label, val, color) {
-        // Assumindo max stat 150 para barra cheia
-        const pct = Math.min(100, (val / 150) * 100);
-        return `
-            <div style="display:flex; align-items:center; gap:10px; font-size:0.8rem;">
-                <span style="width:30px; font-weight:bold; color:#777; font-family:monospace;">${label}</span>
-                <div style="flex:1; height:6px; background:#111; border-radius:3px; overflow:hidden;">
-                    <div style="width:${pct}%; height:100%; background:${color}; box-shadow:0 0 5px ${color};"></div>
-                </div>
-                <span style="width:25px; text-align:right; color:#fff; font-weight:bold;">${val}</span>
+                ${movesHtml}
             </div>`;
     }
 
-    // --- MONSTER LIST LOGIC (Mantida do original mas referenciada corretamente) ---
+    function renderStat(label, val, color) {
+        const pct = Math.min(100, (val/150)*100);
+        return `<div style="display:flex; align-items:center; gap:10px; font-size:0.8rem;">
+            <span style="width:30px; font-weight:bold; color:#777;">${label}</span>
+            <div style="flex:1; height:6px; background:#111; border-radius:3px; overflow:hidden;"><div style="width:${pct}%; height:100%; background:${color};"></div></div>
+            <span style="width:25px; text-align:right; color:#fff;">${val}</span></div>`;
+    }
+
+    function filterDex() {
+        const v = document.getElementById('dexSearch').value.toLowerCase();
+        document.querySelectorAll('.dex-icon').forEach(el => el.style.display = el.getAttribute('data-name').includes(v) ? 'flex' : 'none');
+    }
+    function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); document.querySelectorAll('.dex-icon').forEach(e => e.classList.remove('selected')); }
+
+    // --- MONSTER MANAGEMENT ---
     async function openPokemon() { 
         document.getElementById('modalPokemon').style.display='flex'; 
         const content = document.getElementById('pokemonListContent'); content.innerHTML = 'Carregando...'; 
@@ -568,19 +435,17 @@
             const data = await res.json(); 
             if(data.allMoves) GLOBAL_MOVES_LIB = data.allMoves;
             renderPokemonList(data.team); 
-        } catch(e) { content.innerHTML = 'Erro ao carregar time.'; } 
+        } catch(e) { content.innerHTML = 'Erro.'; } 
     }
 
     function renderPokemonList(team) {
         const content = document.getElementById('pokemonListContent'); 
-        if (!team || team.length === 0) { content.innerHTML = '<p style="text-align:center; color:#777;">Sem monstros.</p>'; return; }
+        if (!team || team.length === 0) { content.innerHTML = '<p style="text-align:center; color:#777;">Vazio.</p>'; return; }
         
         let html = '';
         team.forEach((p, index) => {
             const hpPct = Math.min(100, (p.hp / p.maxHp) * 100);
             const xpPct = (p.xp && p.xpToNext) ? Math.min(100, (p.xp / p.xpToNext) * 100) : 0;
-            
-            // Tratamento de string para HTML attribute
             const movesStr = JSON.stringify(p.moves || []).replace(/"/g, '&quot;');
             const learnedStr = JSON.stringify(p.learnedMoves || []).replace(/"/g, '&quot;');
 
@@ -589,75 +454,46 @@
                 <div class="poke-img-container"><img src="${_resImg(p.sprite)}" class="poke-img"></div>
                 <div class="poke-details">
                     <div class="poke-name">${p.name} <span style="font-size:0.7rem; color:#f1c40f;">Lv.${p.level}</span></div>
-                    
                     <div class="stat-label"><span>HP</span> <span>${p.hp}/${p.maxHp}</span></div>
                     <div class="stat-bar-box"><div class="stat-fill hp-fill" style="width:${hpPct}%"></div></div>
-                    
                     <div class="stat-label"><span>XP</span> <span>${p.xp}/${p.xpToNext}</span></div>
                     <div class="stat-bar-box" style="height:4px; background:#111;"><div class="stat-fill xp-fill" style="width:${xpPct}%"></div></div>
                 </div>
                 <div class="card-actions">
                     ${index !== 0 ? `<button onclick="setLead('${p.instanceId}')" class="icon-btn" title="Líder">⭐</button>` : ''}
                     <button onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${movesStr}, ${learnedStr})" class="icon-btn" title="Skills">⚔️</button>
-                    <button onclick="abandonPokemon('${p.instanceId}')" class="icon-btn" title="Soltar" style="color:#e74c3c">🗑️</button>
+                    <button onclick="abandonPokemon('${p.instanceId}')" class="icon-btn" style="color:#e74c3c">🗑️</button>
                 </div>
             </div>`;
         });
         content.innerHTML = html;
     }
 
-    // --- FUNÇÕES DE MOVES, BAG E SHOP (Mantidas, apenas IDs corrigidos se necessário) ---
-    async function setLead(pokeId) {
-        await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:pokeId }) });
-        openPokemon();
-    }
-    async function abandonPokemon(instanceId) { 
-        if(!confirm('Tem certeza?')) return; 
-        await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:instanceId }) }); 
-        openPokemon();
-    }
+    // --- ACTIONS ---
+    async function setLead(id) { await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); }
+    async function abandonPokemon(id) { if(confirm('Certeza?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
     
-    // Skill Editor
     function showMoveEditor(id, name, equipped, learned) {
         currentMonId = id;
-        const pool = (learned && learned.length > 0) ? learned : equipped; // Fallback
-        
+        const pool = (learned && learned.length > 0) ? learned : equipped;
         let html = `<h3 style="color:#3498db; margin-bottom:10px;">${name} - Skills</h3><div class="skills-grid">`; 
         pool.forEach(moveId => { 
             const isEquipped = equipped.includes(moveId); 
-            let moveData = GLOBAL_MOVES_LIB[moveId] || { name: moveId, element: 'normal' };
-            const type = (moveData.element || 'normal').toLowerCase();
-            
-            html += `<div onclick="toggleMove(this)" class="skill-card type-${type} ${isEquipped ? 'equipped' : ''}" data-id="${moveId}">
-                    <div class="skill-name">${moveData.name}</div><div class="skill-type">${type}</div></div>`; 
+            const moveData = GLOBAL_MOVES_LIB[moveId] || { name: moveId, element: 'normal' };
+            html += `<div onclick="toggleMove(this)" class="skill-card type-${(moveData.element||'normal').toLowerCase()} ${isEquipped ? 'equipped' : ''}" data-id="${moveId}">
+                    <div class="skill-name">${moveData.name}</div><div class="skill-type">${moveData.element}</div></div>`; 
         }); 
         html += `</div><div style="margin-top:20px; display:flex; gap:10px;"><button onclick="saveMoves()" class="btn-success" style="flex:1;">Salvar</button><button onclick="openPokemon()" style="flex:1; background:#333; border:none; color:#fff; border-radius:6px;">Voltar</button></div>`;
         document.getElementById('pokemonListContent').innerHTML = html; 
     }
+    
     function toggleMove(el) {
-        if(el.classList.contains('equipped')) {
-            if(document.querySelectorAll('.skill-card.equipped').length <= 1) return alert('Mínimo 1 skill!');
-            el.classList.remove('equipped');
-        } else {
-            if(document.querySelectorAll('.skill-card.equipped').length >= 4) return alert('Máximo 4 skills!');
-            el.classList.add('equipped');
-        }
+        if(el.classList.contains('equipped')) { if(document.querySelectorAll('.skill-card.equipped').length <= 1) return alert('Min 1'); el.classList.remove('equipped'); }
+        else { if(document.querySelectorAll('.skill-card.equipped').length >= 4) return alert('Max 4'); el.classList.add('equipped'); }
     }
     async function saveMoves() {
         const moves = Array.from(document.querySelectorAll('.skill-card.equipped')).map(c => c.getAttribute('data-id'));
-        await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); 
-        openPokemon();
+        await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); openPokemon();
     }
-
-    // Bag & Shop (Stub functions to ensure no errors)
-    async function openBag() {
-        document.getElementById('modalBag').style.display='flex';
-        const res = await fetch(`/api/me?userId=${USER_ID}`);
-        const data = await res.json();
-        document.getElementById('bagItemsContent').innerHTML = `
-            <div style="padding:10px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;"><span>CatchCubes</span> <strong>${data.pokeballs}</strong></div>
-                <div style="display:flex; justify-content:space-between;"><span>Rare Candy</span> <strong>${data.rareCandy}</strong></div>
-            </div>`;
-    }
+    async function openBag() { document.getElementById('modalBag').style.display='flex'; const res = await fetch(`/api/me?userId=${USER_ID}`); const data = await res.json(); document.getElementById('bagItemsContent').innerHTML = `<div style="padding:10px;">CatchCubes: <strong>${data.pokeballs}</strong><br>Rare Candy: <strong>${data.rareCandy}</strong></div>`; }
 </script>
