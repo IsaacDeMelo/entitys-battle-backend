@@ -9,7 +9,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="/scripts/common.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
-    <!-- CSS MANTIDO IGUAL -->
     <style>
         :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -548,6 +547,23 @@
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp');
                     if (evt.newHp <= 0) { await wait(200); await returnPokemon(targetSide); } await wait(800);
                 }
+                else if (evt.type === 'REST') {
+                    await speak(actorIdRaw, 'rest');
+                    if(actorSide === 'p1' && !isSpectator) updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en');
+                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+5 EN`; txt.style.color = "#f1c40f";
+                    document.getElementById(`fighter-${actorSide}`).appendChild(txt); setTimeout(() => txt.remove(), 1000); await wait(500);
+                }
+                else if (evt.type === 'SWITCH_ANIM') {
+                    const side = (evt.side === 'p1') ? 'p1' : 'p2';
+                    const bubble = document.getElementById(`bubble-${side}`);
+                    if(bubble) {
+                        bubble.innerText = `Volte! Vai ${evt.newName}!`;
+                        bubble.classList.add('show');
+                        setTimeout(() => bubble.classList.remove('show'), 1500);
+                    }
+                    await returnPokemon(side);
+                    await wait(500);
+                }
             } 
         }
 
@@ -562,7 +578,6 @@
                     const ball = document.createElement('div'); ball.className = 'catchball'; ball.style.left = startX + 'px'; ball.style.top = startY + 'px'; document.body.appendChild(ball);
                     const deltaX = targetX - startX, deltaY = targetY - startY;
                     
-                    // --- ARREMESSO (SCALE 0.6) ---
                     await ball.animate([
                         { transform: `translate(0, 0) rotate(0deg) scale(0.6)` }, 
                         { transform: `translate(${deltaX * 0.6}px, ${deltaY - 150}px) rotate(360deg) scale(0.7)`, offset: 0.6 }, 
@@ -579,7 +594,6 @@
                     targetSprite.classList.add('absorbed-state'); await wait(200);
                     const groundY = mRect.bottom - 50; const dropDistY = groundY - targetY; 
                     
-                    // --- CAIR NO CHÃO (SCALE 0.6) ---
                     await ball.animate([
                         { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` }, 
                         { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` }
@@ -588,7 +602,6 @@
                     const finalTX = deltaX;
                     const finalTY = deltaY + dropDistY;
 
-                    // --- BALANÇO (SHAKE) ---
                     const sf = [
                         { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }, 
                         { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(-25deg)`, offset: 0.25 }, 
