@@ -21,13 +21,13 @@
     * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; }
     body { font-family: 'Rajdhani', sans-serif; background: #000; color: #fff; margin: 0; }
     
-    /* SCROLLBAR */
+    /* SCROLLBAR GLOBAL (Sutil) */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
-    /* --- MODAIS (Design Glassmorphism Mantido) --- */
-    /* Z-INDEX: 11000 para garantir que fique acima do menu (que é 9999) */
+    /* --- MODAIS --- */
+    /* Z-INDEX: 11000 (Maior que o menu 9999) */
     .modal-overlay { 
         position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
         background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); 
@@ -65,8 +65,7 @@
         position: relative; -webkit-overflow-scrolling: touch;
     }
 
-    /* --- RESTAURAÇÃO DO MENU ORIGINAL --- */
-    /* Z-INDEX: 9999 (Menor que o Modal 11000) */
+    /* --- MENU FLUTUANTE ORIGINAL RESTAURADO --- */
     .float-container { 
         position: fixed; right: 20px; bottom: 100px; z-index: 9999; 
         display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; 
@@ -80,30 +79,34 @@
     }
     .float-btn:hover { transform: scale(1.1); border-color: #f1c40f; }
     
-    /* Mecânica original: display none/flex */
     .float-menu-items { display: none; flex-direction: column-reverse; gap: 12px; }
     .float-menu-items.show { display: flex; animation: slideUp 0.3s; }
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* --- UTILS --- */
-    .pixel-icon { width: 17px !important; height: 17px !important; min-width: 17px; image-rendering: pixelated; object-fit: contain; }
-    
-    .btn-success { background: var(--success); color: #fff; border:none; padding:10px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-family: 'Rajdhani'; text-transform: uppercase; }
-    .btn-cancel { background: #333; color: #ccc; border:none; padding:10px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-family: 'Rajdhani'; text-transform: uppercase; width: 100%; margin-top: 10px; }
-    
-    .type-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); background: #222; }
-    .type-fire { color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.15); }
-    .type-water { color:#3b82f6; border-color:#3b82f6; background:rgba(59,130,246,0.15); }
-    .type-grass { color:#22c55e; border-color:#22c55e; background:rgba(34,197,94,0.15); }
-    .type-normal { color:#94a3b8; border-color:#94a3b8; background:rgba(148,163,184,0.15); }
-
-    /* --- ESTILOS DO PC --- */
+    /* --- ESTILOS DO PC E SCROLLBAR NOVO --- */
     .pc-layout { display: flex; flex-direction: column; height: 100%; gap: 10px; }
+    
     .pc-grid-box {
         background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px;
         padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); 
-        gap: 8px; flex: 1; overflow-y: auto; align-content: flex-start;
+        gap: 8px; flex: 1; 
+        
+        /* SCROLLBAR VÍSIVEL E OTIMIZADO */
+        overflow-y: auto; 
+        align-content: flex-start;
+        -webkit-overflow-scrolling: touch; /* Rolagem suave nativa */
+        scroll-behavior: smooth;
     }
+
+    /* CUSTOMIZAÇÃO ESPECÍFICA DO SCROLLBAR DO BOX 1 */
+    .pc-grid-box::-webkit-scrollbar { width: 8px; display: block; }
+    .pc-grid-box::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+    .pc-grid-box::-webkit-scrollbar-thumb { 
+        background: var(--accent-color); /* Azul brilhante para destaque */
+        border-radius: 4px; 
+        border: 2px solid rgba(0,0,0,0.3); /* Borda para contraste */
+    }
+
     .pc-team-row {
         background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px;
         height: 75px; padding: 8px; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;
@@ -117,7 +120,18 @@
     .pc-slot .lvl-badge { position: absolute; bottom: -2px; right: -2px; font-size: 0.55rem; background: #000; color: #fbbf24; padding: 1px 3px; border-radius: 4px; }
     .pc-slot.dragging { opacity: 0.3; } .drag-over { border-color: var(--accent-gold) !important; background: rgba(251, 191, 36, 0.1) !important; }
 
-    /* --- CARDS DE POKEMON --- */
+    /* UTILS & OUTROS CARDS */
+    .pixel-icon { width: 17px !important; height: 17px !important; min-width: 17px; image-rendering: pixelated; object-fit: contain; }
+    .btn-success { background: var(--success); color: #fff; border:none; padding:10px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-family: 'Rajdhani'; text-transform: uppercase; }
+    .btn-cancel { background: #333; color: #ccc; border:none; padding:10px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-family: 'Rajdhani'; text-transform: uppercase; width: 100%; margin-top: 10px; }
+    
+    .type-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); background: #222; }
+    .type-fire { color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.15); }
+    .type-water { color:#3b82f6; border-color:#3b82f6; background:rgba(59,130,246,0.15); }
+    .type-grass { color:#22c55e; border-color:#22c55e; background:rgba(34,197,94,0.15); }
+    .type-normal { color:#94a3b8; border-color:#94a3b8; background:rgba(148,163,184,0.15); }
+
+    /* CARDS POKEMON */
     .poke-card { 
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
         border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
@@ -125,10 +139,7 @@
         position: relative; overflow: hidden; transition: transform 0.2s, border-color 0.2s;
     }
     .poke-card.leader { border: 1px solid rgba(251, 191, 36, 0.5); box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.05); }
-    .poke-img-container { 
-        width: 60px; min-width: 60px; background: rgba(0,0,0,0.3); border-radius: 8px; 
-        display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05); 
-    }
+    .poke-img-container { width: 60px; min-width: 60px; background: rgba(0,0,0,0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05); }
     .poke-info-main { flex: 1; display: flex; flex-direction: column; justify-content: center; }
     .poke-name { font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
     .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
@@ -137,16 +148,10 @@
     .progress-fill { height:100%; border-radius:3px; }
     .action-row { display: flex; gap: 8px; margin-top: 8px; }
     .action-btn { flex: 1; padding: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer; color: #ccc; }
+    
+    .poke-card.selection-mode { border: 2px dashed var(--accent-gold); background: rgba(251, 191, 36, 0.05); cursor: pointer; }
 
-    /* MODO SELEÇÃO (RARE CANDY) */
-    .poke-card.selection-mode { 
-        border: 2px dashed var(--accent-gold); 
-        background: rgba(251, 191, 36, 0.05); 
-        cursor: pointer; 
-    }
-    .poke-card.selection-mode:active { transform: scale(0.98); background: rgba(251, 191, 36, 0.15); }
-
-    /* --- POKEDEX --- */
+    /* POKEDEX */
     #modalPokedex .modal-content { max-width: 800px; height: 90vh; }
     .dex-layout { display: flex; width: 100%; height: 100%; position: relative; }
     .dex-sidebar { width: 100%; max-width: 320px; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); background: #0b1120; }
@@ -154,9 +159,7 @@
     .dex-item { aspect-ratio: 1; cursor: pointer; background: rgba(255,255,255,0.03); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border: 1px solid transparent; }
     .dex-item.selected { border-color: var(--accent-gold); background: rgba(251, 191, 36, 0.1); }
     .dex-item.locked { opacity: 0.4; filter: grayscale(1); }
-    
     .dex-main-view { flex: 1; background: #131c2e; position: relative; display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
-    
     @media (max-width: 768px) {
         .dex-sidebar { width: 100%; max-width: 100%; }
         .dex-main-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; transform: translateX(105%); background: #0f172a; }
@@ -172,7 +175,7 @@
 
 </style>
 
-<!-- MENU FLUTUANTE (ESTRUTURA ORIGINAL RESTAURADA) -->
+<!-- MENU FLUTUANTE (ESTRUTURA ORIGINAL) -->
 <div class="float-container" id="floatMenu">
     <div id="menuItems" class="float-menu-items">
         <button class="float-btn" onclick="openBag()" title="Mochila" style="color:#e67e22; border-color:#e67e22;">🎒</button>
@@ -185,7 +188,7 @@
     <button class="float-btn main-toggle" onclick="toggleFloatMenu()">☰</button>
 </div>
 
-<!-- Modal PC -->
+<!-- Modal PC (Com BOX 01 scrollavel) -->
 <div class="modal-overlay" id="modalPC">
     <div class="modal-content">
         <div class="modal-header"><h2>Storage System</h2><button class="close-btn" onclick="closeModal('modalPC')">✕</button></div>
@@ -193,6 +196,7 @@
             <div class="pc-layout">
                 <div style="flex:1; padding:10px; overflow:hidden; display:flex; flex-direction:column;">
                     <div style="font-size:0.8rem; color:#888; margin-bottom:5px;">BOX 01</div>
+                    <!-- AQUI É O BOX QUE AGORA TEM SCROLLBAR -->
                     <div class="pc-grid-box" id="pcStorageArea" ondrop="handleDrop(event, 'pc')" ondragover="handleDragOver(event)"></div>
                 </div>
                 <div style="padding:10px; background:rgba(0,0,0,0.3); border-top:1px solid #333;">
@@ -221,7 +225,7 @@
     </div>
 </div>
 
-<!-- Modal Pokemon (Equipe) -->
+<!-- Modal Pokemon -->
 <div class="modal-overlay" id="modalPokemon">
     <div class="modal-content">
         <div class="modal-header"><h2>Meus Monstros</h2><button class="close-btn" onclick="closeModal('modalPokemon')">✕</button></div>
@@ -240,81 +244,58 @@
 </div>
 
 
-<!-- LÓGICA E SCRIPTS -->
+<!-- LÓGICA (MANTIDA IGUAL) -->
 <script>
-    // === ESTADO GLOBAL ===
     const USER_ID = '<%= user._id %>';
     let isSelectingMode = false;
     let currentMonId = null;
     let GLOBAL_MOVES_LIB = {};
-
-    // Dados Iniciais
     const RAW_ENTITIES = <%- JSON.stringify(entities || []) %>;
     const RAW_TEAM = <%- JSON.stringify(user.pokemonTeam || []) %>;
     const RAW_PC = <%- JSON.stringify(user.pc || []) %>;
     const UNLOCKED_IDS = new Set([...RAW_TEAM.map(p => String(p.baseId||p.id)), ...RAW_PC.map(p => String(p.baseId||p.id))]);
     const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
 
-    // === UTILITÁRIOS UX ===
-    // Restaura a lógica original do toggle
-    function toggleFloatMenu() { 
-        document.getElementById('menuItems').classList.toggle('show'); 
-    }
+    // MENU RESTAURADO
+    function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
     
     function closeModal(id) { 
         document.getElementById(id).style.display = 'none';
-        if (id === 'modalPokemon') {
-            isSelectingMode = false; 
-        }
+        if (id === 'modalPokemon') isSelectingMode = false; 
     }
 
-    // === SISTEMA PC ===
+    // PC SYSTEM
     async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
-    
     async function loadPCData() {
-        try {
-            const res = await fetch(`/api/pc?userId=${USER_ID}`);
-            const data = await res.json();
-            renderDragPC(data.team, data.pc);
-        } catch(e) {}
+        try { const r = await fetch(`/api/pc?userId=${USER_ID}`); const d = await r.json(); renderDragPC(d.team, d.pc); } catch(e){}
     }
-
     function renderDragPC(team, pc) {
         const createSlot = (p, from) => `
             <div class="pc-slot" draggable="true" ondragstart="handleDragStart(event, '${p.instanceId}', '${from}')">
-                <img src="${_resImg(p.sprite)}">
-                <div class="lvl-badge">Lv.${p.level}</div>
+                <img src="${_resImg(p.sprite)}"><div class="lvl-badge">Lv.${p.level}</div>
             </div>`;
-        
         document.getElementById('pcTeamArea').innerHTML = team.map(p => createSlot(p, 'team')).join('') 
             + (team.length < 6 ? '<div class="pc-slot" style="opacity:0.2; border:1px dashed #777;"></div>' : '');
-            
         document.getElementById('pcStorageArea').innerHTML = pc.map(p => createSlot(p, 'pc')).join('')
             + Array(5).fill('<div class="pc-slot" style="border:none;"></div>').join('');
     }
-
     function handleDragStart(ev, pokeId, source) { ev.dataTransfer.setData("text/plain", JSON.stringify({ pokeId, source })); ev.currentTarget.classList.add('dragging'); }
     function handleDragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
     document.querySelectorAll('.pc-grid-box, .pc-team-row').forEach(el => el.addEventListener('dragleave', e => e.currentTarget.classList.remove('drag-over')));
-
     async function handleDrop(ev, targetContainer) {
         ev.preventDefault(); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
         const dataRaw = ev.dataTransfer.getData("text/plain"); if(!dataRaw) return;
         const { pokeId, source } = JSON.parse(dataRaw); if (source === targetContainer) return; 
-
         await fetch('/api/pc/move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) });
         loadPCData();
     }
 
-    // === POKÉDEX ===
+    // POKEDEX
     async function openPokedex() {
         document.getElementById('modalPokedex').style.display='flex';
-        if(Object.keys(GLOBAL_MOVES_LIB).length === 0) {
-            try { const r = await fetch(`/api/me?userId=${USER_ID}`); const d = await r.json(); if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; } catch(e){}
-        }
+        if(Object.keys(GLOBAL_MOVES_LIB).length === 0) { try { const r = await fetch(`/api/me?userId=${USER_ID}`); const d = await r.json(); if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; } catch(e){} }
         renderDexGrid();
     }
-
     function renderDexGrid() {
         const grid = document.getElementById('dexGrid'); grid.innerHTML = '';
         RAW_ENTITIES.forEach((p, index) => {
@@ -326,17 +307,13 @@
             </div>`;
         });
     }
-
     function selectDexMonster(idStr, el) {
         document.querySelectorAll('.dex-item').forEach(e=>e.classList.remove('selected'));
         if(el) el.classList.add('selected');
         document.getElementById('dexDetailsView').classList.add('active');
-        
         const m = RAW_ENTITIES.find(x => String(x.id||x._id) === idStr);
         const div = document.getElementById('dexContentInner');
-        
         if(!m || !UNLOCKED_IDS.has(idStr)) { div.innerHTML = '<br><br><h1>🔒</h1><p>Não descoberto.</p>'; return; }
-
         let movesHtml = '<table style="width:100%; text-align:left; margin-top:15px; border-collapse:collapse;">';
         const pool = (m.movePool || m.learnset || []).sort((a,b)=>a.level-b.level);
         pool.forEach(mv => {
@@ -344,11 +321,7 @@
             movesHtml += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px; color:#fbbf24;">Lv.${mv.level}</td><td style="padding:6px;">${d.name}</td><td><span class="type-badge type-${(d.element||'normal').toLowerCase()}">${d.element}</span></td></tr>`;
         });
         movesHtml += '</table>';
-
-        div.innerHTML = `
-            <div style="width:100px; height:100px; margin:0 auto; background:radial-gradient(circle, #333, transparent); border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #444;">
-                <img src="${_resImg(m.sprite)}" style="width:80px; image-rendering:pixelated; transform:scale(1.3);">
-            </div>
+        div.innerHTML = `<div style="width:100px; height:100px; margin:0 auto; background:radial-gradient(circle, #333, transparent); border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #444;"><img src="${_resImg(m.sprite)}" style="width:80px; image-rendering:pixelated; transform:scale(1.3);"></div>
             <h1 style="margin:10px 0 0; font-family:'Press Start 2P'; font-size:1rem;">${m.name}</h1>
             <span class="type-badge type-${(m.type||'normal').toLowerCase()}" style="margin-bottom:15px; display:inline-block; margin-top:5px;">${m.type}</span>
             <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-top:10px; text-align:left;">
@@ -358,95 +331,40 @@
                 ${renderDexStat('SPD', m.baseStats.speed, '#3b82f6')}
             </div>
             <div style="text-align:left; margin-top:20px; font-size:0.8rem; color:#888; border-bottom:1px solid #333;">MOVE POOL</div>
-            ${movesHtml}
-        `;
+            ${movesHtml}`;
     }
-    
     function renderDexStat(l, v, c) {
-        return `<div style="display:flex; align-items:center; margin-bottom:4px; font-size:0.8rem;">
-            <span style="width:30px; font-weight:bold; color:#777;">${l}</span>
-            <div style="flex:1; height:6px; background:#111; border-radius:3px; overflow:hidden; margin:0 8px;"><div style="width:${Math.min(100, (v/150)*100)}%; height:100%; background:${c};"></div></div>
-            <span style="width:25px; text-align:right;">${v}</span>
-        </div>`;
+        return `<div style="display:flex; align-items:center; margin-bottom:4px; font-size:0.8rem;"><span style="width:30px; font-weight:bold; color:#777;">${l}</span><div style="flex:1; height:6px; background:#111; border-radius:3px; overflow:hidden; margin:0 8px;"><div style="width:${Math.min(100, (v/150)*100)}%; height:100%; background:${c};"></div></div><span style="width:25px; text-align:right;">${v}</span></div>`;
     }
-
-    function filterDex() {
-        const v = document.getElementById('dexSearch').value.toLowerCase();
-        document.querySelectorAll('.dex-item').forEach(e => e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none');
-    }
+    function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-item').forEach(e => e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
     function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); }
 
-
-    // === MONSTROS & EQUIPE (CORREÇÃO RARE CANDY) ===
+    // MONSTROS E RARE CANDY
     async function openPokemon() { 
         document.getElementById('modalPokemon').style.display='flex'; 
-        try { 
-            const r = await fetch(`/api/me?userId=${USER_ID}`); 
-            const d = await r.json(); 
-            if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves;
-            renderPokemonList(d.team); 
-        } catch(e) { document.getElementById('pokemonListContent').innerHTML = 'Erro de conexão.'; } 
+        try { const r = await fetch(`/api/me?userId=${USER_ID}`); const d = await r.json(); if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; renderPokemonList(d.team); } catch(e) { document.getElementById('pokemonListContent').innerHTML = 'Erro de conexão.'; } 
     }
-
     function renderPokemonList(team) {
         const content = document.getElementById('pokemonListContent');
-        
-        // Verifica se o modal ainda está aberto para validar o modo
-        if(document.getElementById('modalPokemon').style.display === 'none') {
-            isSelectingMode = false;
-        }
-
+        if(document.getElementById('modalPokemon').style.display === 'none') isSelectingMode = false;
         if(!team || team.length === 0) { content.innerHTML='Vazio'; return; }
-
         let html = '';
-        if(isSelectingMode) {
-            html += `<div style="background:#fbbf24; color:#000; padding:10px; text-align:center; border-radius:8px; font-weight:bold; margin-bottom:15px; animation:fadeIn 0.3s;">
-                SELECIONE UM MONSTRO PARA USAR O ITEM
-            </div>`;
-        }
-
+        if(isSelectingMode) html += `<div style="background:#fbbf24; color:#000; padding:10px; text-align:center; border-radius:8px; font-weight:bold; margin-bottom:15px; animation:fadeIn 0.3s;">SELECIONE UM MONSTRO PARA USAR O ITEM</div>`;
         team.forEach((p, idx) => {
             const hp = Math.min(100, (p.hp/p.maxHp)*100);
-            
-            // Lógica Condicional
             let cardClass = isSelectingMode ? 'poke-card selection-mode' : `poke-card ${idx===0?'leader':''}`;
             let clickAction = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
             let actionButtonsStyle = isSelectingMode ? 'display:none;' : 'display:flex;';
-            
             const mStr = JSON.stringify(p.moves||[]).replace(/"/g, '&quot;');
             const lStr = JSON.stringify(p.learnedMoves||[]).replace(/"/g, '&quot;');
-
-            html += `
-            <div class="${cardClass}" ${clickAction}>
-                <div class="poke-img-container"><img src="${_resImg(p.sprite)}" class="pixel-icon" style="width:48px;"></div>
-                <div class="poke-info-main">
-                    <div class="poke-name">
-                        ${p.name} 
-                        <span style="font-size:0.8rem; color:${isSelectingMode?'#fbbf24':'var(--accent-gold)'};">Lv.${p.level}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-icon">HP</span>
-                        <div class="progress-track"><div class="progress-fill" style="width:${hp}%; background:#22c55e;"></div></div>
-                    </div>
-                    
-                    <div class="action-row" style="${actionButtonsStyle}">
-                        ${idx!==0 ? `<button onclick="setLead('${p.instanceId}')" class="action-btn">⭐</button>` : ''}
-                        <button onclick="showMoveEditor('${p.instanceId}','${p.name}',${mStr},${lStr})" class="action-btn">⚔️</button>
-                        <button onclick="abandonPokemon('${p.instanceId}')" class="action-btn" style="color:#ef4444;">🗑️</button>
-                    </div>
-                </div>
-            </div>`;
+            html += `<div class="${cardClass}" ${clickAction}><div class="poke-img-container"><img src="${_resImg(p.sprite)}" class="pixel-icon" style="width:48px;"></div><div class="poke-info-main"><div class="poke-name">${p.name} <span style="font-size:0.8rem; color:${isSelectingMode?'#fbbf24':'var(--accent-gold)'};">Lv.${p.level}</span></div><div class="stat-row"><span class="stat-icon">HP</span><div class="progress-track"><div class="progress-fill" style="width:${hp}%; background:#22c55e;"></div></div></div><div class="action-row" style="${actionButtonsStyle}">${idx!==0 ? `<button onclick="setLead('${p.instanceId}')" class="action-btn">⭐</button>` : ''}<button onclick="showMoveEditor('${p.instanceId}','${p.name}',${mStr},${lStr})" class="action-btn">⚔️</button><button onclick="abandonPokemon('${p.instanceId}')" class="action-btn" style="color:#ef4444;">🗑️</button></div></div></div>`;
         });
-
-        if(isSelectingMode) {
-            html += `<button onclick="cancelSelection()" class="btn-cancel">CANCELAR</button>`;
-        }
+        if(isSelectingMode) html += `<button onclick="cancelSelection()" class="btn-cancel">CANCELAR</button>`;
         content.innerHTML = html;
     }
-
     async function setLead(id) { await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); }
     async function abandonPokemon(id) { if(confirm('Libertar?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
-
+    
     function showMoveEditor(id, name, equipped, learned) {
         currentMonId = id;
         const pool = (learned && learned.length>0) ? learned : equipped;
@@ -454,10 +372,7 @@
         pool.forEach(mid => {
             const eq = equipped.includes(mid);
             const d = GLOBAL_MOVES_LIB[mid] || {name:mid, element:'normal'};
-            html += `<div onclick="toggleMove(this)" class="skill-card ${eq?'equipped':''}" data-id="${mid}">
-                <div style="font-weight:bold; color:#fff;">${d.name}</div>
-                <div style="font-size:0.6rem; color:#888;">${d.element}</div>
-            </div>`;
+            html += `<div onclick="toggleMove(this)" class="skill-card ${eq?'equipped':''}" data-id="${mid}"><div style="font-weight:bold; color:#fff;">${d.name}</div><div style="font-size:0.6rem; color:#888;">${d.element}</div></div>`;
         });
         html += `</div><div style="display:flex; gap:10px; margin-top:15px;"><button onclick="openPokemon()" class="btn-cancel" style="margin:0;">Voltar</button><button onclick="saveMoves()" class="btn-success" style="flex:1;">Salvar</button></div>`;
         document.getElementById('pokemonListContent').innerHTML = html;
@@ -471,69 +386,27 @@
         await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); openPokemon();
     }
 
-
-    // === MOCHILA & USO DE ITENS ===
     async function openBag() { 
         document.getElementById('modalBag').style.display='flex'; 
         const r = await fetch(`/api/me?userId=${USER_ID}`); 
         const d = await r.json(); 
-        
-        const itemRow = (icon, nome, qtd, action) => `
-            <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
-                <div style="font-size:1.5rem; margin-right:15px;">${icon}</div>
-                <div style="flex:1;"><div style="font-weight:bold;">${nome}</div><div style="font-size:0.8rem; color:#aaa;">Qtd: ${qtd}</div></div>
-                ${action ? action : ''}
-            </div>`;
-
+        const itemRow = (icon, nome, qtd, action) => `<div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);"><div style="font-size:1.5rem; margin-right:15px;">${icon}</div><div style="flex:1;"><div style="font-weight:bold;">${nome}</div><div style="font-size:0.8rem; color:#aaa;">Qtd: ${qtd}</div></div>${action ? action : ''}</div>`;
         let html = itemRow('📦', 'CatchCubes', d.pokeballs||0);
-        
-        if(d.rareCandy > 0) {
-            html += itemRow('🍬', 'Rare Candy', d.rareCandy, `<button onclick="startRareCandySelection()" class="btn-success" style="padding:6px 12px; font-size:0.75rem;">USAR</button>`);
-        } else {
-            html += itemRow('🍬', 'Rare Candy', 0);
-        }
+        if(d.rareCandy > 0) html += itemRow('🍬', 'Rare Candy', d.rareCandy, `<button onclick="startRareCandySelection()" class="btn-success" style="padding:6px 12px; font-size:0.75rem;">USAR</button>`);
+        else html += itemRow('🍬', 'Rare Candy', 0);
         document.getElementById('bagItemsContent').innerHTML = html;
     }
 
-    // --- FUNÇÕES RARE CANDY (SEM SETTIMEOUT) ---
-    function startRareCandySelection() {
-        closeModal('modalBag');
-        isSelectingMode = true; 
-        openPokemon(); 
-    }
-
-    function cancelSelection() {
-        isSelectingMode = false;
-        openPokemon(); 
-    }
-
+    function startRareCandySelection() { closeModal('modalBag'); isSelectingMode = true; openPokemon(); }
+    function cancelSelection() { isSelectingMode = false; openPokemon(); }
     async function applyRareCandy(pokeId) {
         if(!confirm('Dar Rare Candy para este monstro?')) return;
-        
         try {
             document.getElementById('pokemonListContent').innerHTML = '<div style="text-align:center; padding:20px;">Aplicando item...</div>';
-            
-            const res = await fetch('/api/use-item', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ userId: USER_ID, itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) 
-            });
+            const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: USER_ID, itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) });
             const data = await res.json();
-            
-            if(data.success) {
-                alert(data.evolved ? '✨ O Pokémon Evoluiu! ✨' : '🆙 Subiu de Nível!');
-                isSelectingMode = false;
-                openPokemon(); 
-            } else {
-                alert(data.error || 'Erro ao usar item.');
-                isSelectingMode = false;
-                openPokemon();
-            }
-        } catch(e) {
-            alert("Erro de conexão.");
-            isSelectingMode = false;
-            openPokemon();
-        }
+            if(data.success) { alert(data.evolved ? '✨ O Pokémon Evoluiu! ✨' : '🆙 Subiu de Nível!'); isSelectingMode = false; openPokemon(); } 
+            else { alert(data.error || 'Erro ao usar item.'); isSelectingMode = false; openPokemon(); }
+        } catch(e) { alert("Erro de conexão."); isSelectingMode = false; openPokemon(); }
     }
-
 </script>
