@@ -1,20 +1,19 @@
-<!-- FONTES (Necessário para o estilo funcionar bem) -->
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<!-- FONTES -->
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 
-<!-- POLYFILL PARA DRAG AND DROP (MANTIDO) -->
+<!-- POLYFILL PARA DRAG AND DROP MOBILE -->
 <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
 
-<!-- ESTILOS OTIMIZADOS MOBILE -->
+<!-- ESTILOS -->
 <style>
     :root {
         --bg-dark: #0f172a;
         --bg-card: #1e293b;
         --border-color: rgba(255, 255, 255, 0.1);
-        --accent-color: #38bdf8; /* Azul Neon */
+        --accent-color: #38bdf8;
         --accent-gold: #fbbf24;
         --danger: #ef4444;
         --success: #22c55e;
-        --glass: rgba(15, 23, 42, 0.95);
         --radius: 12px;
     }
 
@@ -22,16 +21,17 @@
     * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; }
     body { font-family: 'Rajdhani', sans-serif; background: #000; color: #fff; margin: 0; }
     
-    /* SCROLLBAR MODERNA */
+    /* SCROLLBAR */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
 
-    /* MODAL BASE */
+    /* --- MODAIS (Design Glassmorphism Mantido) --- */
+    /* Z-INDEX: 11000 para garantir que fique acima do menu (que é 9999) */
     .modal-overlay { 
         position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-        background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); 
-        z-index: 1000; display: none; justify-content: center; align-items: center; 
+        background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); 
+        z-index: 11000; display: none; justify-content: center; align-items: center; 
         animation: fadeIn 0.2s ease-out; 
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -47,22 +47,17 @@
     .modal-header {
         padding: 16px; background: rgba(255,255,255,0.03);
         border-bottom: 1px solid var(--border-color);
-        display: flex; justify-content: space-between; align-items: center;
-        flex-shrink: 0;
+        display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
     }
     .modal-header h2 { 
-        margin: 0; font-family: 'Press Start 2P', cursive; font-size: 0.75rem; 
+        margin: 0; font-family: 'Press Start 2P'; font-size: 0.75rem; 
         color: var(--accent-gold); letter-spacing: 1px; text-transform: uppercase;
-        text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
     }
-    
-    /* Close button - Maior para toque */
     .close-btn { 
         background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #fff; 
         width: 36px; height: 36px; border-radius: 8px; font-size: 1rem; cursor: pointer; 
-        display:flex; align-items:center; justify-content:center; transition: 0.2s; 
+        display:flex; align-items:center; justify-content:center;
     }
-    .close-btn:active { background: var(--danger); border-color: var(--danger); }
 
     .modal-body { 
         padding: 16px; overflow-y: auto; flex: 1; 
@@ -70,210 +65,138 @@
         position: relative; -webkit-overflow-scrolling: touch;
     }
 
-    /* FLOATING ACTION BUTTON (FAB) */
+    /* --- RESTAURAÇÃO DO MENU ORIGINAL --- */
+    /* Z-INDEX: 9999 (Menor que o Modal 11000) */
     .float-container { 
-        position: fixed; right: 20px; bottom: 90px; z-index: 2000; 
-        display: flex; flex-direction: column-reverse; align-items: center; gap: 12px; 
+        position: fixed; right: 20px; bottom: 100px; z-index: 9999; 
+        display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; 
     }
     .float-btn { 
-        width: 56px; height: 56px; border-radius: 20px; 
-        background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255,255,255,0.2); 
-        backdrop-filter: blur(4px); color: #fff; font-size: 1.5rem; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer; 
+        width: 55px; height: 55px; border-radius: 50%; 
+        background: #1e293b; border: 2px solid rgba(255,255,255,0.1); 
+        color: #f1c40f; font-size: 1.4rem; cursor: pointer; 
+        box-shadow: 0 8px 20px rgba(0,0,0,0.4); transition: 0.3s; 
         display: flex; align-items: center; justify-content: center;
-        transition: transform 0.2s, background 0.2s;
-        -webkit-tap-highlight-color: transparent;
     }
-    .float-btn.main-toggle { background: var(--accent-color); border:none; box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); color: #000; }
-    .float-btn:active { transform: scale(0.92); }
+    .float-btn:hover { transform: scale(1.1); border-color: #f1c40f; }
     
-    .float-menu-items { opacity: 0; visibility: hidden; transform: translateY(10px); transition: 0.3s; display: flex; flex-direction: column-reverse; gap: 10px; }
-    .float-menu-items.show { opacity: 1; visibility: visible; transform: translateY(0); }
+    /* Mecânica original: display none/flex */
+    .float-menu-items { display: none; flex-direction: column-reverse; gap: 12px; }
+    .float-menu-items.show { display: flex; animation: slideUp 0.3s; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* UTILS & BADGES */
-    .pixel-icon { width: 24px; height: 24px; image-rendering: pixelated; object-fit: contain; }
-    .btn-success { background: var(--success); color: #fff; border:none; padding:12px 20px; border-radius:8px; font-weight:700; font-family:'Rajdhani'; cursor:pointer; text-transform:uppercase; letter-spacing:1px; box-shadow: 0 4px 0 #15803d; transition:0.1s; }
-    .btn-success:active { transform:translateY(4px); box-shadow: none; }
+    /* --- UTILS --- */
+    .pixel-icon { width: 17px !important; height: 17px !important; min-width: 17px; image-rendering: pixelated; object-fit: contain; }
     
-    .type-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; background: #333; color: #fff; border: 1px solid rgba(255,255,255,0.2); display: inline-block; }
+    .btn-success { background: var(--success); color: #fff; border:none; padding:10px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-family: 'Rajdhani'; text-transform: uppercase; }
+    .btn-cancel { background: #333; color: #ccc; border:none; padding:10px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-family: 'Rajdhani'; text-transform: uppercase; width: 100%; margin-top: 10px; }
+    
+    .type-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); background: #222; }
     .type-fire { color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.15); }
     .type-water { color:#3b82f6; border-color:#3b82f6; background:rgba(59,130,246,0.15); }
     .type-grass { color:#22c55e; border-color:#22c55e; background:rgba(34,197,94,0.15); }
-    .type-electric { color:#fbbf24; border-color:#fbbf24; background:rgba(251,191,36,0.15); }
-    
-    /* --- PC SYSTEM --- */
+    .type-normal { color:#94a3b8; border-color:#94a3b8; background:rgba(148,163,184,0.15); }
+
+    /* --- ESTILOS DO PC --- */
     .pc-layout { display: flex; flex-direction: column; height: 100%; gap: 10px; }
-    .pc-section-header { 
-        font-size: 0.8rem; font-weight: bold; color: #94a3b8; 
-        padding: 8px 4px; text-transform: uppercase; display: flex; justify-content: space-between;
-    }
-    
     .pc-grid-box {
         background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px;
         padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); 
         gap: 8px; flex: 1; overflow-y: auto; align-content: flex-start;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
     }
     .pc-team-row {
         background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px;
         height: 75px; padding: 8px; display: flex; gap: 8px; overflow-x: auto; flex-shrink: 0;
     }
-    .pc-grid-box.drag-over, .pc-team-row.drag-over { border-color: var(--accent-gold); background: rgba(251, 191, 36, 0.1); }
-
     .pc-slot {
-        aspect-ratio: 1/1; width: 100%; max-width: 55px; min-width: 55px; height: 55px;
-        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 6px; position: relative; cursor: grab; display: flex; justify-content: center; align-items: center;
+        aspect-ratio: 1/1; width: 55px; height: 55px; background: rgba(255,255,255,0.05); 
+        border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; 
+        display: flex; justify-content: center; align-items: center; position: relative;
     }
     .pc-slot img { width: 38px; height: 38px; image-rendering: pixelated; pointer-events: none; }
-    .pc-slot .lvl-badge { 
-        position: absolute; bottom: -2px; right: -2px; font-size: 0.55rem; 
-        background: #000; color: #fbbf24; padding: 1px 3px; border-radius: 4px; font-weight:bold;
-    }
-    .pc-slot:active { cursor: grabbing; transform: scale(1.1); z-index:100; border-color:var(--accent-color); }
-    .pc-slot.dragging { opacity: 0.3; }
+    .pc-slot .lvl-badge { position: absolute; bottom: -2px; right: -2px; font-size: 0.55rem; background: #000; color: #fbbf24; padding: 1px 3px; border-radius: 4px; }
+    .pc-slot.dragging { opacity: 0.3; } .drag-over { border-color: var(--accent-gold) !important; background: rgba(251, 191, 36, 0.1) !important; }
 
-    /* --- TEAM CARDS --- */
+    /* --- CARDS DE POKEMON --- */
     .poke-card { 
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
         border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
         padding: 12px; margin-bottom: 12px; display: flex; align-items: stretch; gap: 15px;
-        position: relative; overflow: hidden;
+        position: relative; overflow: hidden; transition: transform 0.2s, border-color 0.2s;
     }
-    .poke-card.leader { border: 1px solid rgba(251, 191, 36, 0.5); box-shadow: 0 0 15px rgba(251, 191, 36, 0.1); }
-    .poke-card.leader::before { content: 'LEADER'; position: absolute; top:0; left:0; font-size:0.5rem; background:var(--accent-gold); color:#000; padding:2px 6px; font-weight:bold; }
-
+    .poke-card.leader { border: 1px solid rgba(251, 191, 36, 0.5); box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.05); }
     .poke-img-container { 
         width: 60px; min-width: 60px; background: rgba(0,0,0,0.3); border-radius: 8px; 
-        display: flex; align-items: center; justify-content: center; 
-        border: 1px solid rgba(255,255,255,0.05); 
+        display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.05); 
     }
-    
     .poke-info-main { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-    .poke-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .poke-name { font-weight: 700; color: #fff; font-size: 1rem; }
-    .poke-lvl { color: var(--accent-gold); font-size: 0.8rem; font-weight: bold; }
-
+    .poke-name { font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
     .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
     .stat-icon { font-size: 0.6rem; color: #64748b; width: 15px; font-weight: bold; }
     .progress-track { flex:1; height:6px; background:rgba(0,0,0,0.5); border-radius:3px; overflow:hidden; }
     .progress-fill { height:100%; border-radius:3px; }
-    
     .action-row { display: flex; gap: 8px; margin-top: 8px; }
-    .action-btn { 
-        flex: 1; padding: 8px; border: 1px solid rgba(255,255,255,0.1); 
-        background: rgba(255,255,255,0.03); border-radius: 6px; 
-        font-size: 0.9rem; cursor: pointer; color: #ccc;
-    }
-    .action-btn:active { background: rgba(255,255,255,0.1); transform: translateY(1px); }
+    .action-btn { flex: 1; padding: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer; color: #ccc; }
 
-    /* --- SKILLS GRID --- */
-    .skills-wrapper h3 { text-align: center; color: var(--accent-color); font-weight: 300; border-bottom:1px solid #333; padding-bottom:10px; }
-    .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-bottom: 10px; }
-    .skill-card { 
-        background: #0f1218; padding: 12px; border-radius: 8px; border: 1px solid #333; position: relative; transition: 0.2s;
-        display: flex; flex-direction: column; gap: 4px;
+    /* MODO SELEÇÃO (RARE CANDY) */
+    .poke-card.selection-mode { 
+        border: 2px dashed var(--accent-gold); 
+        background: rgba(251, 191, 36, 0.05); 
+        cursor: pointer; 
     }
-    .skill-card.equipped { border-color: var(--success); background: rgba(34, 197, 94, 0.05); }
-    .skill-card.equipped::after { 
-        content: 'EQUIPADO'; position: absolute; bottom: 8px; right: 8px; 
-        font-size: 0.5rem; color: var(--success); letter-spacing: 1px; font-weight: bold;
-    }
+    .poke-card.selection-mode:active { transform: scale(0.98); background: rgba(251, 191, 36, 0.15); }
 
-    /* --- POKEDEX RESPONSIVE --- */
+    /* --- POKEDEX --- */
     #modalPokedex .modal-content { max-width: 800px; height: 90vh; }
-    .dex-layout { display: flex; width: 100%; height: 100%; position: relative; overflow: hidden; }
-    
-    .dex-sidebar { 
-        width: 100%; max-width: 320px; display: flex; flex-direction: column; 
-        border-right: 1px solid var(--border-color); background: #0b1120; flex-shrink:0;
-    }
-    .dex-search-box { padding: 12px; background: #0f172a; border-bottom: 1px solid #333; }
-    .dex-search-input { 
-        width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; 
-        border-radius: 8px; font-family: 'Rajdhani'; font-size: 1rem; 
-    }
+    .dex-layout { display: flex; width: 100%; height: 100%; position: relative; }
+    .dex-sidebar { width: 100%; max-width: 320px; display: flex; flex-direction: column; border-right: 1px solid var(--border-color); background: #0b1120; }
     .dex-grid { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; align-content: flex-start; }
-
-    .dex-item { 
-        aspect-ratio: 1; cursor: pointer; background: rgba(255,255,255,0.03); 
-        border: 1px solid transparent; border-radius: 12px; display: flex; 
-        flex-direction: column; align-items: center; justify-content: center; position: relative; 
-    }
+    .dex-item { aspect-ratio: 1; cursor: pointer; background: rgba(255,255,255,0.03); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border: 1px solid transparent; }
     .dex-item.selected { border-color: var(--accent-gold); background: rgba(251, 191, 36, 0.1); }
     .dex-item.locked { opacity: 0.4; filter: grayscale(1); }
-    .dex-id { font-size: 0.6rem; color: #555; position: absolute; top: 4px; left: 6px; }
-
-    /* Dex Details (Sliding Pane on Mobile) */
-    .dex-main-view { 
-        flex: 1; background: #131c2e; padding: 0; position: relative; display: flex; flex-direction: column;
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    }
     
-    /* Responsive Switch */
+    .dex-main-view { flex: 1; background: #131c2e; position: relative; display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    
     @media (max-width: 768px) {
         .dex-sidebar { width: 100%; max-width: 100%; }
-        .dex-main-view { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; 
-            transform: translateX(110%); border-left: 1px solid #000;
-        }
+        .dex-main-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; transform: translateX(105%); background: #0f172a; }
         .dex-main-view.active { transform: translateX(0); }
     }
-    
-    .dex-top-bar { 
-        padding: 10px; display: flex; align-items: center; gap: 10px; 
-        background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border-color); 
-    }
-    .back-btn-dex { 
-        background: transparent; color: #fff; border: 1px solid #444; border-radius: 8px;
-        padding: 8px 12px; display: none; align-items: center; gap: 5px; cursor: pointer; font-size: 0.8rem;
-    }
-    @media (max-width: 768px) { .back-btn-dex { display: flex; } }
+    .back-btn-dex { padding: 10px; background: rgba(0,0,0,0.2); color: #fff; border: none; width: 100%; text-align: left; cursor: pointer; display: none; }
+    @media (max-width: 768px) { .back-btn-dex { display: block; } }
 
-    /* Move Table Beautification */
-    .move-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; }
-    .move-table th { font-size:0.7rem; color:#64748b; text-align: left; padding: 8px; border-bottom: 2px solid #333; }
-    .move-table td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
-    .move-table tr:hover td { background: rgba(255,255,255,0.02); }
-
-    /* STATS BARS POKEDEX */
-    .stat-display { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-    .stat-name { width:35px; font-weight:bold; color:#888; font-size:0.75rem; }
-    .stat-bar-bg { flex:1; background:#0f172a; height:8px; border-radius:4px; overflow:hidden; }
-    .stat-val { width:25px; text-align:right; font-size:0.75rem; }
+    /* SKILLS */
+    .skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .skill-card { background: #0f1218; padding: 10px; border-radius: 8px; border: 1px solid #333; cursor: pointer; }
+    .skill-card.equipped { border-color: var(--success); background: rgba(34, 197, 94, 0.05); }
 
 </style>
 
-<!-- MENU FLUTUANTE -->
+<!-- MENU FLUTUANTE (ESTRUTURA ORIGINAL RESTAURADA) -->
 <div class="float-container" id="floatMenu">
     <div id="menuItems" class="float-menu-items">
-        <button class="float-btn" onclick="openBag()" title="Mochila" style="color:#f97316; border-color:#f97316;">🎒</button>
-        <button class="float-btn" onclick="openPokemon()" title="Monstros">
-            <img src="/uploads/catchcube.gif" class="pixel-icon">
+        <button class="float-btn" onclick="openBag()" title="Mochila" style="color:#e67e22; border-color:#e67e22;">🎒</button>
+        <button class="float-btn" onclick="openPokemon()" title="Monstros" style="color:#fff; border-color:#aaa;">
+            <img src="/uploads/catchcube.gif" class="pixel-icon" style="width:24px; height:24px;">
         </button>
-        <button class="float-btn" onclick="openPC()" title="PC" style="color:#4ade80; border-color:#4ade80;">💻</button>
-        <button class="float-btn" onclick="openPokedex()" title="Dex" style="color:#38bdf8; border-color:#38bdf8;">📚</button>
+        <button class="float-btn" onclick="openPC()" title="PC" style="color:#33ff33; border-color:#33ff33;">💻</button>
+        <button class="float-btn" onclick="openPokedex()" title="Dex" style="color:#00d2ff; border-color:#00d2ff;">📚</button>
     </div>
-    <button class="float-btn main-toggle" onclick="toggleFloatMenu()">
-        <span style="font-size:1.8rem; line-height:0; margin-top:-4px;">☰</span>
-    </button>
+    <button class="float-btn main-toggle" onclick="toggleFloatMenu()">☰</button>
 </div>
 
-<!-- MODAL PC -->
+<!-- Modal PC -->
 <div class="modal-overlay" id="modalPC">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2>Sistema PC</h2>
-            <button class="close-btn" onclick="closeModal('modalPC')">✕</button>
-        </div>
-        <div class="modal-body" style="padding:0; display:flex; flex-direction:column; background:var(--bg-card);">
+        <div class="modal-header"><h2>Storage System</h2><button class="close-btn" onclick="closeModal('modalPC')">✕</button></div>
+        <div class="modal-body" style="padding:0; display:flex; flex-direction:column;">
             <div class="pc-layout">
-                <div style="flex: 1; display:flex; flex-direction: column; overflow: hidden; padding: 10px;">
-                    <div class="pc-section-header"><span>Storage</span> <span>Arraste para mover</span></div>
+                <div style="flex:1; padding:10px; overflow:hidden; display:flex; flex-direction:column;">
+                    <div style="font-size:0.8rem; color:#888; margin-bottom:5px;">BOX 01</div>
                     <div class="pc-grid-box" id="pcStorageArea" ondrop="handleDrop(event, 'pc')" ondragover="handleDragOver(event)"></div>
                 </div>
-                <div style="flex-shrink: 0; padding: 15px 10px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border-color);">
-                    <div class="pc-section-header" style="color:var(--success);">Equipe Ativa</div>
+                <div style="padding:10px; background:rgba(0,0,0,0.3); border-top:1px solid #333;">
+                    <div style="font-size:0.8rem; color:#22c55e; margin-bottom:5px;">PARTY</div>
                     <div class="pc-team-row" id="pcTeamArea" ondrop="handleDrop(event, 'team')" ondragover="handleDragOver(event)"></div>
                 </div>
             </div>
@@ -281,130 +204,113 @@
     </div>
 </div>
 
-<!-- MODAL DEX -->
+<!-- Modal Dex -->
 <div class="modal-overlay" id="modalPokedex">
     <div class="modal-content">
         <div class="dex-layout">
-            <button class="close-btn" onclick="closeModal('modalPokedex')" style="position: absolute; top: 10px; right: 10px; z-index: 50; width:30px; height:30px; background:#000;">✕</button>
-            
+            <button class="close-btn" onclick="closeModal('modalPokedex')" style="position:absolute; top:10px; right:10px; z-index:50;">✕</button>
             <div class="dex-sidebar">
-                <div class="dex-search-box">
-                    <input type="text" id="dexSearch" class="dex-search-input" placeholder="🔍 Buscar ID ou Nome..." onkeyup="filterDex()">
-                </div>
+                <div style="padding:10px; border-bottom:1px solid #333;"><input type="text" id="dexSearch" placeholder="🔍 Buscar..." onkeyup="filterDex()" style="width:100%; padding:10px; border-radius:6px; border:1px solid #333; background:#000; color:#fff;"></div>
                 <div id="dexGrid" class="dex-grid"></div>
             </div>
-            
             <div id="dexDetailsView" class="dex-main-view">
-                <div class="dex-top-bar">
-                    <button class="back-btn-dex" onclick="closeDexDetails()">❮ Lista</button>
-                    <span style="font-weight:bold; color:#777;">Database Info</span>
-                </div>
-                <div id="dexContentInner" style="height:100%; overflow-y:auto; padding:20px; text-align:center;">
-                    <div style="margin-top:50px; color:#555;">Selecione um Pokémon para ver os dados.</div>
-                </div>
+                <button class="back-btn-dex" onclick="closeDexDetails()">⬅ Voltar</button>
+                <div id="dexContentInner" style="padding:20px; text-align:center; flex:1; overflow-y:auto;">Selecione um Pokémon</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL MONSTROS (TEAM) -->
+<!-- Modal Pokemon (Equipe) -->
 <div class="modal-overlay" id="modalPokemon">
     <div class="modal-content">
-        <div class="modal-header"><h2>Gerenciar Equipe</h2><button class="close-btn" onclick="closeModal('modalPokemon')">✕</button></div>
+        <div class="modal-header"><h2>Meus Monstros</h2><button class="close-btn" onclick="closeModal('modalPokemon')">✕</button></div>
         <div class="modal-body">
-            <div id="pokemonListContent">Carregando dados...</div>
+            <div id="pokemonListContent">Carregando...</div>
         </div>
     </div>
 </div>
 
-<!-- MODAL MOCHILA -->
+<!-- Modal Mochila -->
 <div class="modal-overlay" id="modalBag">
     <div class="modal-content" style="max-height:60vh;">
         <div class="modal-header"><h2>Inventário</h2><button class="close-btn" onclick="closeModal('modalBag')">✕</button></div>
-        <div class="modal-body" style="display:flex; flex-direction:column; justify-content:center;">
-            <div id="bagItemsContent">Verificando bolsos...</div>
-        </div>
+        <div class="modal-body"><div id="bagItemsContent">Carregando...</div></div>
     </div>
 </div>
 
+
+<!-- LÓGICA E SCRIPTS -->
 <script>
-    // --- LÓGICA & DADOS (INALTERADOS NO NÚCLEO, SÓ FORMATADA VISUALIZAÇÃO) ---
+    // === ESTADO GLOBAL ===
     const USER_ID = '<%= user._id %>';
+    let isSelectingMode = false;
     let currentMonId = null;
     let GLOBAL_MOVES_LIB = {};
-    
-    // Injeções
+
+    // Dados Iniciais
     const RAW_ENTITIES = <%- JSON.stringify(entities || []) %>;
     const RAW_TEAM = <%- JSON.stringify(user.pokemonTeam || []) %>;
     const RAW_PC = <%- JSON.stringify(user.pc || []) %>;
-    
-    const UNLOCKED_IDS = new Set([
-        ...RAW_TEAM.map(p => String(p.baseId || p.id)),
-        ...RAW_PC.map(p => String(p.baseId || p.id))
-    ]);
-
+    const UNLOCKED_IDS = new Set([...RAW_TEAM.map(p => String(p.baseId||p.id)), ...RAW_PC.map(p => String(p.baseId||p.id))]);
     const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
 
-    // --- FUNÇÕES UX ---
-    function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-    // --- PC ---
-    async function openPC() { 
-        document.getElementById('modalPC').style.display='flex'; 
-        loadPCData(); 
+    // === UTILITÁRIOS UX ===
+    // Restaura a lógica original do toggle
+    function toggleFloatMenu() { 
+        document.getElementById('menuItems').classList.toggle('show'); 
     }
+    
+    function closeModal(id) { 
+        document.getElementById(id).style.display = 'none';
+        if (id === 'modalPokemon') {
+            isSelectingMode = false; 
+        }
+    }
+
+    // === SISTEMA PC ===
+    async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
     
     async function loadPCData() {
         try {
-            const res = await fetch(`/api/pc?userId=${USER_ID}`); 
-            const data = await res.json(); 
+            const res = await fetch(`/api/pc?userId=${USER_ID}`);
+            const data = await res.json();
             renderDragPC(data.team, data.pc);
-        } catch(e) { document.getElementById('pcStorageArea').innerHTML = 'Erro de conexão.'; }
+        } catch(e) {}
     }
 
     function renderDragPC(team, pc) {
         const createSlot = (p, from) => `
             <div class="pc-slot" draggable="true" ondragstart="handleDragStart(event, '${p.instanceId}', '${from}')">
                 <img src="${_resImg(p.sprite)}">
-                <div class="lvl-badge">L.${p.level}</div>
+                <div class="lvl-badge">Lv.${p.level}</div>
             </div>`;
         
         document.getElementById('pcTeamArea').innerHTML = team.map(p => createSlot(p, 'team')).join('') 
             + (team.length < 6 ? '<div class="pc-slot" style="opacity:0.2; border:1px dashed #777;"></div>' : '');
             
-        document.getElementById('pcStorageArea').innerHTML = pc.map(p => createSlot(p, 'pc')).join('') 
-            + Array(5).fill('<div class="pc-slot" style="border:none; pointer-events:none;"></div>').join(''); // spacers
+        document.getElementById('pcStorageArea').innerHTML = pc.map(p => createSlot(p, 'pc')).join('')
+            + Array(5).fill('<div class="pc-slot" style="border:none;"></div>').join('');
     }
 
     function handleDragStart(ev, pokeId, source) { ev.dataTransfer.setData("text/plain", JSON.stringify({ pokeId, source })); ev.currentTarget.classList.add('dragging'); }
     function handleDragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
-    
-    document.getElementById('pcStorageArea').addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drag-over'));
-    document.getElementById('pcTeamArea').addEventListener('dragleave', (e) => e.currentTarget.classList.remove('drag-over'));
+    document.querySelectorAll('.pc-grid-box, .pc-team-row').forEach(el => el.addEventListener('dragleave', e => e.currentTarget.classList.remove('drag-over')));
 
     async function handleDrop(ev, targetContainer) {
-        ev.preventDefault(); 
-        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        ev.preventDefault(); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
         const dataRaw = ev.dataTransfer.getData("text/plain"); if(!dataRaw) return;
         const { pokeId, source } = JSON.parse(dataRaw); if (source === targetContainer) return; 
 
-        try {
-            const res = await fetch('/api/pc/move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) });
-            const data = await res.json(); 
-            if(data.success) loadPCData(); else alert(data.error);
-        } catch(e) {}
+        await fetch('/api/pc/move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) });
+        loadPCData();
     }
 
-    // --- POKEDEX REFEITA ---
+    // === POKÉDEX ===
     async function openPokedex() {
-        document.getElementById('modalPokedex').style.display = 'flex';
-        if (Object.keys(GLOBAL_MOVES_LIB).length === 0) {
-            try {
-                const res = await fetch(`/api/me?userId=${USER_ID}`);
-                const data = await res.json();
-                if(data.allMoves) GLOBAL_MOVES_LIB = data.allMoves;
-            } catch(e) {}
+        document.getElementById('modalPokedex').style.display='flex';
+        if(Object.keys(GLOBAL_MOVES_LIB).length === 0) {
+            try { const r = await fetch(`/api/me?userId=${USER_ID}`); const d = await r.json(); if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; } catch(e){}
         }
         renderDexGrid();
     }
@@ -412,264 +318,222 @@
     function renderDexGrid() {
         const grid = document.getElementById('dexGrid'); grid.innerHTML = '';
         RAW_ENTITIES.forEach((p, index) => {
-            const idString = String(p.id || p._id);
-            const isUnlocked = UNLOCKED_IDS.has(idString);
-            const sprite = _resImg(p.sprite);
-            const name = isUnlocked ? p.name : '???';
-            const displayId = (index + 1).toString().padStart(3, '0');
-            
-            grid.innerHTML += `
-                <div class="dex-item ${!isUnlocked ? 'locked' : ''}" onclick="selectDexMonster('${idString}', this)" data-name="${(p.name||'').toLowerCase()}">
-                    <span class="dex-id">#${displayId}</span>
-                    <img src="${sprite}" style="width:40px; height:40px; image-rendering:pixelated; margin-top:8px;">
-                </div>`;
+            const id = String(p.id||p._id);
+            const unlocked = UNLOCKED_IDS.has(id);
+            grid.innerHTML += `<div class="dex-item ${!unlocked?'locked':''}" onclick="selectDexMonster('${id}', this)" data-name="${(p.name||'').toLowerCase()}">
+                <span style="font-size:0.6rem; color:#555; position:absolute; top:2px; left:4px;">#${(index+1).toString().padStart(3,'0')}</span>
+                <img src="${_resImg(p.sprite)}" style="width:36px; height:36px; image-rendering:pixelated; margin-top:5px;">
+            </div>`;
         });
     }
 
-    function selectDexMonster(idString, el) {
-        document.querySelectorAll('.dex-item').forEach(e => e.classList.remove('selected'));
+    function selectDexMonster(idStr, el) {
+        document.querySelectorAll('.dex-item').forEach(e=>e.classList.remove('selected'));
         if(el) el.classList.add('selected');
         document.getElementById('dexDetailsView').classList.add('active');
-
-        const m = RAW_ENTITIES.find(x => String(x.id || x._id) === idString);
-        const contentDiv = document.getElementById('dexContentInner');
-
-        if(!m || !UNLOCKED_IDS.has(idString)) {
-            contentDiv.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; opacity:0.5; margin-top:40px;"><div style="font-size:3rem;">🔒</div><h2>Não Descoberto</h2></div>`;
-            return;
-        }
-
-        const movesList = m.movePool || m.learnset || [];
-        const s = m.baseStats || { hp:0, attack:0, defense:0, speed:0 };
-        const sortedMoves = movesList.sort((a,b) => a.level - b.level);
         
-        let movesHtml = ``;
-        sortedMoves.forEach(moveItem => {
-            const moveId = moveItem.moveId || moveItem.move;
-            const moveData = GLOBAL_MOVES_LIB[moveId] || { name: moveId, element: 'normal' };
-            const typeLower = (moveData.element || 'normal').toLowerCase();
-            
-            movesHtml += `
-                <tr>
-                    <td style="color:var(--accent-gold); font-weight:bold;">Lv ${moveItem.level}</td>
-                    <td style="font-weight:600;">${moveData.name}</td>
-                    <td style="text-align:right;"><span class="type-badge type-${typeLower}">${typeLower}</span></td>
-                </tr>`;
+        const m = RAW_ENTITIES.find(x => String(x.id||x._id) === idStr);
+        const div = document.getElementById('dexContentInner');
+        
+        if(!m || !UNLOCKED_IDS.has(idStr)) { div.innerHTML = '<br><br><h1>🔒</h1><p>Não descoberto.</p>'; return; }
+
+        let movesHtml = '<table style="width:100%; text-align:left; margin-top:15px; border-collapse:collapse;">';
+        const pool = (m.movePool || m.learnset || []).sort((a,b)=>a.level-b.level);
+        pool.forEach(mv => {
+            const d = GLOBAL_MOVES_LIB[mv.moveId||mv.move] || {name:mv.moveId||mv.move, element:'normal'};
+            movesHtml += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px; color:#fbbf24;">Lv.${mv.level}</td><td style="padding:6px;">${d.name}</td><td><span class="type-badge type-${(d.element||'normal').toLowerCase()}">${d.element}</span></td></tr>`;
         });
+        movesHtml += '</table>';
 
-        contentDiv.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center;">
-                <div style="width:100px; height:100px; background:radial-gradient(circle, #334155, transparent); border-radius:50%; display:flex; justify-content:center; align-items:center; margin-bottom:15px; border:2px solid rgba(255,255,255,0.1);">
-                    <img src="${_resImg(m.sprite)}" style="width:80px; height:80px; image-rendering:pixelated; transform:scale(1.2);">
-                </div>
-                <h1 style="margin:0; font-family:'Press Start 2P'; font-size:1.1rem; color:#fff;">${m.name}</h1>
-                <span class="type-badge type-${(m.type||'normal').toLowerCase()}" style="margin-top:10px; font-size:0.8rem;">${m.type}</span>
-
-                <div style="width:100%; max-width:400px; background:rgba(0,0,0,0.2); padding:20px; border-radius:12px; margin-top:20px;">
-                    ${renderStatDex('HP', s.hp, '#22c55e')}
-                    ${renderStatDex('ATK', s.attack, '#ef4444')}
-                    ${renderStatDex('DEF', s.defense, '#fbbf24')}
-                    ${renderStatDex('SPD', s.speed, '#3b82f6')}
-                </div>
-                
-                <h3 style="width:100%; max-width:400px; text-align:left; font-size:0.9rem; margin-top:20px; color:#aaa; border-bottom:1px solid #333; padding-bottom:5px;">MOVE POOL</h3>
-                <table class="move-table" style="max-width:400px;">
-                    ${movesHtml}
-                </table>
+        div.innerHTML = `
+            <div style="width:100px; height:100px; margin:0 auto; background:radial-gradient(circle, #333, transparent); border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #444;">
+                <img src="${_resImg(m.sprite)}" style="width:80px; image-rendering:pixelated; transform:scale(1.3);">
             </div>
+            <h1 style="margin:10px 0 0; font-family:'Press Start 2P'; font-size:1rem;">${m.name}</h1>
+            <span class="type-badge type-${(m.type||'normal').toLowerCase()}" style="margin-bottom:15px; display:inline-block; margin-top:5px;">${m.type}</span>
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-top:10px; text-align:left;">
+                ${renderDexStat('HP', m.baseStats.hp, '#22c55e')}
+                ${renderDexStat('ATK', m.baseStats.attack, '#ef4444')}
+                ${renderDexStat('DEF', m.baseStats.defense, '#fbbf24')}
+                ${renderDexStat('SPD', m.baseStats.speed, '#3b82f6')}
+            </div>
+            <div style="text-align:left; margin-top:20px; font-size:0.8rem; color:#888; border-bottom:1px solid #333;">MOVE POOL</div>
+            ${movesHtml}
         `;
     }
     
-    function renderStatDex(label, val, color) {
-        const p = Math.min(100, (val/150)*100);
-        return `<div class="stat-display"><span class="stat-name">${label}</span><div class="stat-bar-bg"><div style="width:${p}%; background:${color}; height:100%;"></div></div><span class="stat-val">${val}</span></div>`;
+    function renderDexStat(l, v, c) {
+        return `<div style="display:flex; align-items:center; margin-bottom:4px; font-size:0.8rem;">
+            <span style="width:30px; font-weight:bold; color:#777;">${l}</span>
+            <div style="flex:1; height:6px; background:#111; border-radius:3px; overflow:hidden; margin:0 8px;"><div style="width:${Math.min(100, (v/150)*100)}%; height:100%; background:${c};"></div></div>
+            <span style="width:25px; text-align:right;">${v}</span>
+        </div>`;
     }
 
     function filterDex() {
         const v = document.getElementById('dexSearch').value.toLowerCase();
-        document.querySelectorAll('.dex-item').forEach(el => el.style.display = el.getAttribute('data-name').includes(v) ? 'flex' : 'none');
+        document.querySelectorAll('.dex-item').forEach(e => e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none');
     }
-    function closeDexDetails() { 
-        document.getElementById('dexDetailsView').classList.remove('active'); 
-    }
+    function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); }
 
-    // --- MONSTROS & SKILLS ---
+
+    // === MONSTROS & EQUIPE (CORREÇÃO RARE CANDY) ===
     async function openPokemon() { 
         document.getElementById('modalPokemon').style.display='flex'; 
-        const content = document.getElementById('pokemonListContent');
         try { 
-            const res = await fetch(`/api/me?userId=${USER_ID}`); 
-            const data = await res.json(); 
-            if(data.allMoves) GLOBAL_MOVES_LIB = data.allMoves;
-            renderPokemonList(data.team); 
-        } catch(e) { content.innerHTML = 'Erro ao carregar time.'; } 
+            const r = await fetch(`/api/me?userId=${USER_ID}`); 
+            const d = await r.json(); 
+            if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves;
+            renderPokemonList(d.team); 
+        } catch(e) { document.getElementById('pokemonListContent').innerHTML = 'Erro de conexão.'; } 
     }
 
     function renderPokemonList(team) {
-        const content = document.getElementById('pokemonListContent'); 
-        if (!team || team.length === 0) { content.innerHTML = '<p style="text-align:center; padding:20px;">Equipe vazia.</p>'; return; }
+        const content = document.getElementById('pokemonListContent');
         
+        // Verifica se o modal ainda está aberto para validar o modo
+        if(document.getElementById('modalPokemon').style.display === 'none') {
+            isSelectingMode = false;
+        }
+
+        if(!team || team.length === 0) { content.innerHTML='Vazio'; return; }
+
         let html = '';
-        team.forEach((p, index) => {
-            const hpPct = Math.min(100, (p.hp / p.maxHp) * 100);
-            const xpPct = (p.xp && p.xpToNext) ? Math.min(100, (p.xp / p.xpToNext) * 100) : 0;
-            const movesStr = JSON.stringify(p.moves || []).replace(/"/g, '&quot;');
-            const learnedStr = JSON.stringify(p.learnedMoves || []).replace(/"/g, '&quot;');
+        if(isSelectingMode) {
+            html += `<div style="background:#fbbf24; color:#000; padding:10px; text-align:center; border-radius:8px; font-weight:bold; margin-bottom:15px; animation:fadeIn 0.3s;">
+                SELECIONE UM MONSTRO PARA USAR O ITEM
+            </div>`;
+        }
+
+        team.forEach((p, idx) => {
+            const hp = Math.min(100, (p.hp/p.maxHp)*100);
+            
+            // Lógica Condicional
+            let cardClass = isSelectingMode ? 'poke-card selection-mode' : `poke-card ${idx===0?'leader':''}`;
+            let clickAction = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
+            let actionButtonsStyle = isSelectingMode ? 'display:none;' : 'display:flex;';
+            
+            const mStr = JSON.stringify(p.moves||[]).replace(/"/g, '&quot;');
+            const lStr = JSON.stringify(p.learnedMoves||[]).replace(/"/g, '&quot;');
 
             html += `
-            <div class="poke-card ${index === 0 ? 'leader' : ''}">
-                <div class="poke-img-container">
-                    <img src="${_resImg(p.sprite)}" class="pixel-icon" style="width:48px; height:48px;">
-                </div>
+            <div class="${cardClass}" ${clickAction}>
+                <div class="poke-img-container"><img src="${_resImg(p.sprite)}" class="pixel-icon" style="width:48px;"></div>
                 <div class="poke-info-main">
-                    <div class="poke-header">
-                        <div class="poke-name">${p.name}</div>
-                        <div class="poke-lvl">Lv.${p.level}</div>
+                    <div class="poke-name">
+                        ${p.name} 
+                        <span style="font-size:0.8rem; color:${isSelectingMode?'#fbbf24':'var(--accent-gold)'};">Lv.${p.level}</span>
                     </div>
-                    
                     <div class="stat-row">
                         <span class="stat-icon">HP</span>
-                        <div class="progress-track"><div class="progress-fill" style="width:${hpPct}%; background:#22c55e;"></div></div>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-icon">XP</span>
-                        <div class="progress-track" style="background:#000;"><div class="progress-fill" style="width:${xpPct}%; background:#3b82f6;"></div></div>
+                        <div class="progress-track"><div class="progress-fill" style="width:${hp}%; background:#22c55e;"></div></div>
                     </div>
                     
-                    <div class="action-row">
-                        ${index !== 0 ? `<button onclick="setLead('${p.instanceId}')" class="action-btn" title="Lider">⭐</button>` : ''}
-                        <button onclick="showMoveEditor('${p.instanceId}', '${p.name}', ${movesStr}, ${learnedStr})" class="action-btn">⚔️ Skills</button>
-                        <button onclick="abandonPokemon('${p.instanceId}')" class="action-btn" style="color:#ef4444; border-color:rgba(239,68,68,0.3);">🗑️</button>
+                    <div class="action-row" style="${actionButtonsStyle}">
+                        ${idx!==0 ? `<button onclick="setLead('${p.instanceId}')" class="action-btn">⭐</button>` : ''}
+                        <button onclick="showMoveEditor('${p.instanceId}','${p.name}',${mStr},${lStr})" class="action-btn">⚔️</button>
+                        <button onclick="abandonPokemon('${p.instanceId}')" class="action-btn" style="color:#ef4444;">🗑️</button>
                     </div>
                 </div>
             </div>`;
         });
+
+        if(isSelectingMode) {
+            html += `<button onclick="cancelSelection()" class="btn-cancel">CANCELAR</button>`;
+        }
         content.innerHTML = html;
     }
 
-    // ACTIONS
     async function setLead(id) { await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); }
-    async function abandonPokemon(id) { if(confirm('Libertar esta criatura permanentemente?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
-    
+    async function abandonPokemon(id) { if(confirm('Libertar?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
+
     function showMoveEditor(id, name, equipped, learned) {
         currentMonId = id;
-        const pool = (learned && learned.length > 0) ? learned : equipped;
-        
-        let html = `
-            <div class="skills-wrapper">
-                <h3>${name} <span style="color:#666; font-size:0.8rem;">(Max 4)</span></h3>
-                <div class="skills-grid">`; 
-                
-        pool.forEach(moveId => { 
-            const isEquipped = equipped.includes(moveId); 
-            const moveData = GLOBAL_MOVES_LIB[moveId] || { name: moveId, element: 'normal' };
-            const type = (moveData.element||'normal').toLowerCase();
-            
-            html += `
-                <div onclick="toggleMove(this)" class="skill-card ${isEquipped ? 'equipped' : ''}" data-id="${moveId}">
-                    <div style="font-weight:bold; color:#fff;">${moveData.name}</div>
-                    <div style="font-size:0.6rem; text-transform:uppercase; color:#888;">${type}</div>
-                </div>`; 
-        }); 
-
-        html += `</div>
-            <div style="margin-top:20px; display:flex; gap:10px;">
-                <button onclick="openPokemon()" style="flex:1; padding:12px; background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:8px;">Voltar</button>
-                <button onclick="saveMoves()" class="btn-success" style="flex:1;">SALVAR</button>
-            </div>
-        </div>`;
-        document.getElementById('pokemonListContent').innerHTML = html; 
+        const pool = (learned && learned.length>0) ? learned : equipped;
+        let html = `<h3 style="color:#38bdf8; margin-bottom:10px;">${name} (Max 4)</h3><div class="skills-grid">`;
+        pool.forEach(mid => {
+            const eq = equipped.includes(mid);
+            const d = GLOBAL_MOVES_LIB[mid] || {name:mid, element:'normal'};
+            html += `<div onclick="toggleMove(this)" class="skill-card ${eq?'equipped':''}" data-id="${mid}">
+                <div style="font-weight:bold; color:#fff;">${d.name}</div>
+                <div style="font-size:0.6rem; color:#888;">${d.element}</div>
+            </div>`;
+        });
+        html += `</div><div style="display:flex; gap:10px; margin-top:15px;"><button onclick="openPokemon()" class="btn-cancel" style="margin:0;">Voltar</button><button onclick="saveMoves()" class="btn-success" style="flex:1;">Salvar</button></div>`;
+        document.getElementById('pokemonListContent').innerHTML = html;
     }
-    
     function toggleMove(el) {
-        if(el.classList.contains('equipped')) { 
-            if(document.querySelectorAll('.skill-card.equipped').length <= 1) return alert('Mínimo 1 skill.'); 
-            el.classList.remove('equipped'); 
-        } else { 
-            if(document.querySelectorAll('.skill-card.equipped').length >= 4) return alert('Máximo 4 skills.'); 
-            el.classList.add('equipped'); 
-        }
+        if(el.classList.contains('equipped')) { if(document.querySelectorAll('.skill-card.equipped').length <= 1) return alert('Mínimo 1'); el.classList.remove('equipped'); }
+        else { if(document.querySelectorAll('.skill-card.equipped').length >= 4) return alert('Máximo 4'); el.classList.add('equipped'); }
     }
     async function saveMoves() {
         const moves = Array.from(document.querySelectorAll('.skill-card.equipped')).map(c => c.getAttribute('data-id'));
         await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); openPokemon();
     }
 
-    // --- BAG & ITEMS ---
+
+    // === MOCHILA & USO DE ITENS ===
     async function openBag() { 
         document.getElementById('modalBag').style.display='flex'; 
-        const res = await fetch(`/api/me?userId=${USER_ID}`); 
-        const data = await res.json(); 
+        const r = await fetch(`/api/me?userId=${USER_ID}`); 
+        const d = await r.json(); 
         
-        const renderItem = (emoji, name, qty, btnHtml='') => `
-            <div style="background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:10px; padding:15px; display:flex; align-items:center; margin-bottom:10px;">
-                <div style="font-size:1.8rem; margin-right:15px;">${emoji}</div>
-                <div style="flex:1;">
-                    <div style="font-size:1rem; font-weight:bold;">${name}</div>
-                    <div style="color:var(--accent-color);">Qtd: ${qty}</div>
-                </div>
-                <div>${btnHtml}</div>
+        const itemRow = (icon, nome, qtd, action) => `
+            <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.1);">
+                <div style="font-size:1.5rem; margin-right:15px;">${icon}</div>
+                <div style="flex:1;"><div style="font-weight:bold;">${nome}</div><div style="font-size:0.8rem; color:#aaa;">Qtd: ${qtd}</div></div>
+                ${action ? action : ''}
             </div>`;
 
-        let itemsHtml = renderItem('📦', 'CatchCubes', data.pokeballs || 0);
+        let html = itemRow('📦', 'CatchCubes', d.pokeballs||0);
         
-        if (data.rareCandy > 0) {
-            itemsHtml += renderItem('🍬', 'Rare Candy', data.rareCandy, 
-                `<button onclick="startRareCandySelection()" class="btn-success" style="padding:8px 15px; font-size:0.8rem;">USAR</button>`);
+        if(d.rareCandy > 0) {
+            html += itemRow('🍬', 'Rare Candy', d.rareCandy, `<button onclick="startRareCandySelection()" class="btn-success" style="padding:6px 12px; font-size:0.75rem;">USAR</button>`);
         } else {
-            itemsHtml += renderItem('🍬', 'Rare Candy', 0);
+            html += itemRow('🍬', 'Rare Candy', 0);
         }
-
-        document.getElementById('bagItemsContent').innerHTML = itemsHtml;
+        document.getElementById('bagItemsContent').innerHTML = html;
     }
 
-    // UX: Usar Item - Fluxo de Seleção
-    async function startRareCandySelection() {
+    // --- FUNÇÕES RARE CANDY (SEM SETTIMEOUT) ---
+    function startRareCandySelection() {
         closeModal('modalBag');
+        isSelectingMode = true; 
         openPokemon(); 
-        setTimeout(() => {
-            alert("Selecione qual monstro vai receber o item.");
-            const cards = document.querySelectorAll('#pokemonListContent .poke-card');
-            
-            cards.forEach(card => {
-                card.style.border = '2px dashed var(--accent-gold)';
-                card.style.background = 'rgba(251, 191, 36, 0.05)';
-                card.style.cursor = 'pointer';
-                const actions = card.querySelector('.action-row');
-                if(actions) actions.style.display = 'none';
-                
-                // Extrai ID do HTML (manter compatibilidade)
-                const html = card.innerHTML;
-                const match = html.match(/setLead\('([^']+)'\)/) || html.match(/abandonPokemon\('([^']+)'\)/) || html.match(/showMoveEditor\('([^']+)'/);
-                
-                if(match) {
-                    const pokeId = match[1];
-                    card.onclick = (e) => { e.stopPropagation(); applyRareCandy(pokeId); };
-                }
-            });
-            // Cria um aviso flutuante
-            const tip = document.createElement('div');
-            tip.innerHTML = 'TAP NO MONSTRO';
-            tip.style.cssText = 'position:fixed; top:20%; left:50%; transform:translate(-50%,0); background:var(--accent-gold); color:#000; padding:10px 20px; border-radius:20px; font-weight:bold; z-index:9999; pointer-events:none; box-shadow:0 10px 30px rgba(0,0,0,0.5);';
-            document.body.appendChild(tip);
-            setTimeout(() => tip.remove(), 4000);
-            
-        }, 500);
+    }
+
+    function cancelSelection() {
+        isSelectingMode = false;
+        openPokemon(); 
     }
 
     async function applyRareCandy(pokeId) {
-        if(!confirm('Dar Rare Candy?')) { openPokemon(); return; }
+        if(!confirm('Dar Rare Candy para este monstro?')) return;
+        
         try {
+            document.getElementById('pokemonListContent').innerHTML = '<div style="text-align:center; padding:20px;">Aplicando item...</div>';
+            
             const res = await fetch('/api/use-item', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ userId: USER_ID, itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) 
             });
             const data = await res.json();
+            
             if(data.success) {
-                alert(data.evolved ? 'EVOLUIU!' : 'LEVEL UP!');
+                alert(data.evolved ? '✨ O Pokémon Evoluiu! ✨' : '🆙 Subiu de Nível!');
+                isSelectingMode = false;
                 openPokemon(); 
-            } else { alert(data.error); }
-        } catch(e) { alert("Erro de rede."); }
+            } else {
+                alert(data.error || 'Erro ao usar item.');
+                isSelectingMode = false;
+                openPokemon();
+            }
+        } catch(e) {
+            alert("Erro de conexão.");
+            isSelectingMode = false;
+            openPokemon();
+        }
     }
+
 </script>
