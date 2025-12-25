@@ -10,15 +10,14 @@
         --bg-core: #0f172a;
         --bg-glass: rgba(30, 41, 59, 0.7);
         --border-glass: rgba(255, 255, 255, 0.08);
-        --accent-primary: #3b82f6; /* Azul Tech */
-        --accent-secondary: #8b5cf6; /* Roxo */
+        --accent-primary: #3b82f6;
+        --accent-secondary: #8b5cf6;
         --accent-gold: #fbbf24;
         --text-main: #f1f5f9;
         --text-muted: #94a3b8;
         --danger: #ef4444;
         --success: #10b981;
         --radius-lg: 16px;
-        --radius-sm: 8px;
     }
 
     /* RESET & BASE */
@@ -31,7 +30,7 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 
-    /* --- MODAIS (Redesenhados) --- */
+    /* --- MODAIS --- */
     .modal-overlay { 
         position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
         background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); 
@@ -66,10 +65,7 @@
         color: var(--text-main); letter-spacing: 0.5px; text-transform: uppercase;
         display: flex; align-items: center; gap: 10px;
     }
-    .close-btn { 
-        background: transparent; border: none; color: var(--text-muted); 
-        font-size: 1.5rem; cursor: pointer; padding: 5px;
-    }
+    .close-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; padding: 5px; }
 
     .modal-body { 
         padding: 20px; overflow-y: auto; flex: 1; 
@@ -77,7 +73,7 @@
         position: relative;
     }
 
-    /* --- CARDS DOS MONSTROS (Estilo App) --- */
+    /* --- CARDS DOS MONSTROS --- */
     .mon-card { 
         background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border-glass);
         border-radius: var(--radius-lg); padding: 12px; margin-bottom: 12px;
@@ -98,7 +94,6 @@
     .mon-name { font-weight: 700; font-size: 1.1rem; color: #fff; }
     .mon-lvl { font-size: 0.75rem; color: var(--accent-gold); background: rgba(251,191,36,0.1); padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
     
-    /* BARRAS DE STATUS E XP */
     .bar-wrapper { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; color: var(--text-muted); font-weight: 600; }
     .bar-track { flex: 1; height: 6px; background: rgba(0,0,0,0.6); border-radius: 3px; overflow: hidden; position: relative; }
     .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
@@ -114,49 +109,20 @@
 
     /* --- POKEDEX MODERNA --- */
     .dex-container { display: flex; height: 100%; overflow: hidden; position: relative; }
-    
-    /* SEARCH BAR */
     .dex-search-box { padding: 0 0 15px 0; }
     .dex-input { width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.4); border: 1px solid var(--border-glass); border-radius: 12px; color: #fff; font-family: 'Inter', sans-serif; }
-
-    /* GRID */
-    .dex-grid { 
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); 
-        gap: 10px; overflow-y: auto; padding-bottom: 20px; 
-    }
-    .dex-entry { 
-        aspect-ratio: 1; background: rgba(255,255,255,0.03); 
-        border-radius: 12px; border: 1px solid transparent;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        cursor: pointer; position: relative; transition: 0.2s;
-    }
+    .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 10px; overflow-y: auto; padding-bottom: 20px; }
+    .dex-entry { aspect-ratio: 1; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: 0.2s; }
     .dex-entry.unlocked { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); }
     .dex-entry.locked img { filter: grayscale(100%) contrast(0.5) brightness(0.7); opacity: 0.6; }
     .dex-entry .dex-num { position: absolute; top: 4px; left: 6px; font-size: 0.6rem; color: rgba(255,255,255,0.3); font-family: monospace; }
     
-    /* DEX DETAILS (OVERLAY) */
-    .dex-details { 
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-        background: #111827; z-index: 10; transform: translateX(110%); 
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex; flex-direction: column;
-    }
+    .dex-details { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111827; z-index: 10; transform: translateX(110%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; }
     .dex-details.active { transform: translateX(0); }
-    
-    .dex-header-img { 
-        height: 180px; background: radial-gradient(circle at center, rgba(59, 130, 246, 0.2), transparent);
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
+    .dex-header-img { height: 180px; background: radial-gradient(circle at center, rgba(59, 130, 246, 0.2), transparent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .dex-header-img img { width: 100px; height: 100px; filter: drop-shadow(0 0 20px rgba(59,130,246,0.3)); transform: scale(1.5); }
     .dex-info-scroll { flex: 1; overflow-y: auto; padding: 20px; }
-    
-    .type-badge { 
-        display: inline-block; padding: 4px 12px; border-radius: 20px; 
-        font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
-        background: #333; color: #fff; margin-top: 5px;
-    }
-
-    /* STATS BARS NA DEX */
+    .type-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; background: #333; color: #fff; margin-top: 5px; }
     .stat-row-dex { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.8rem; }
     .stat-label { width: 40px; color: var(--text-muted); font-weight: 600; }
     .stat-val { width: 30px; text-align: right; font-family: monospace; }
@@ -174,11 +140,19 @@
     .pc-slot img { width: 40px; }
     .drag-over { border-color: var(--accent-gold); background: rgba(251, 191, 36, 0.1); }
 
+    /* MOCHILA ITEM ROW (Layout Novo) */
+    .bag-item-row { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--border-glass); }
+    .bag-icon { font-size: 1.6rem; margin-right: 15px; }
+    .bag-info { flex: 1; }
+    .bag-name { font-weight: 700; color: #fff; font-size: 1rem; }
+    .bag-qty { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
+    .btn-use-item { background: var(--accent-primary); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; cursor: pointer; min-width: 80px; text-transform: uppercase; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2); transition: 0.2s; }
+    .btn-use-item:active { transform: scale(0.95); }
+
     /* SKILL SELECTOR */
     .skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .skill-item { padding: 12px; background: #1f2937; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
     .skill-item.active { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
-
     .btn-block { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: 700; font-family: 'Rajdhani'; text-transform: uppercase; font-size: 1rem; cursor: pointer; margin-top: 10px; }
     .btn-save { background: var(--success); color: #fff; }
     .btn-cancel { background: #374151; color: #fff; }
@@ -215,20 +189,15 @@
 <div class="modal-overlay" id="modalPokedex">
     <div class="modal-content" style="max-width:800px; height:90vh;">
         <div class="dex-container">
-            <!-- LISTA LATERAL / PRINCIPAL -->
             <div style="flex:1; display:flex; flex-direction:column; padding:20px;">
                 <div class="dex-search-box">
                     <input type="text" id="dexSearch" class="dex-input" placeholder="🔍 Pesquisar na Database..." onkeyup="filterDex()">
                 </div>
                 <div id="dexGrid" class="dex-grid"></div>
             </div>
-
-            <!-- DETALHES (OVERLAY ANIMADO) -->
             <div id="dexDetailsView" class="dex-details">
                 <button onclick="closeDexDetails()" style="position:absolute; top:15px; left:15px; z-index:20; background:rgba(0,0,0,0.5); border:none; color:#fff; padding:8px 16px; border-radius:20px; cursor:pointer;">⬅ Voltar</button>
-                <div id="dexContentInner" style="display:flex; flex-direction:column; height:100%;">
-                    <!-- Conteúdo via JS -->
-                </div>
+                <div id="dexContentInner" style="display:flex; flex-direction:column; height:100%;"></div>
             </div>
         </div>
     </div>
@@ -274,13 +243,13 @@
     let isSelectingMode = false;
     let currentMonId = null;
     let GLOBAL_MOVES_LIB = {};
+    let CACHED_PC_DATA = null; // Cache para o PC
     
     // DADOS INICIAIS
     const RAW_ENTITIES = <%- JSON.stringify(entities || []) %>;
     const RAW_TEAM = <%- JSON.stringify(user.pokemonTeam || []) %>;
     const RAW_PC = <%- JSON.stringify(user.pc || []) %>;
     
-    // LISTA DE IDs JÁ CAPTURADOS (Para saber quem mostrar colorido)
     const UNLOCKED_IDS = new Set([
         ...RAW_TEAM.map(p => String(p.baseId||p.id)), 
         ...RAW_PC.map(p => String(p.baseId||p.id))
@@ -288,7 +257,6 @@
 
     const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
 
-    /* --- FUNÇÕES GERAIS --- */
     function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
     
     function closeModal(id) { 
@@ -296,7 +264,7 @@
         if (id === 'modalPokemon') isSelectingMode = false; 
     }
 
-    /* --- SISTEMA DE MONSTROS E XP CORRIGIDO --- */
+    /* --- EQUIPE / MONSTROS --- */
     async function openPokemon() { 
         document.getElementById('modalPokemon').style.display='flex'; 
         try { 
@@ -305,7 +273,7 @@
             if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; 
             renderPokemonList(d.team); 
         } catch(e) { 
-            document.getElementById('pokemonListContent').innerHTML = '<div style="color:#aaa; text-align:center;">Erro ao carregar time.</div>'; 
+            document.getElementById('pokemonListContent').innerHTML = '<div style="color:#aaa; text-align:center;">Erro ao carregar equipe.</div>'; 
         } 
     }
 
@@ -317,51 +285,33 @@
         if(isSelectingMode) html += `<div style="background:rgba(251,191,36,0.2); color:#fbbf24; padding:12px; text-align:center; border-radius:8px; font-weight:bold; margin-bottom:15px; border:1px solid #fbbf24;">SELECIONE PARA USAR O ITEM</div>`;
         
         team.forEach((p, idx) => {
-            // CÁLCULOS DE BARRA
             const hpPct = Math.min(100, (p.hp/p.maxHp)*100);
-            
-            // CORREÇÃO: Cálculo e exibição do XP
-            // Se xpToNext não vier, assume 100 para evitar erro de divisão
             const xpMax = p.xpToNext || 100;
             const xpPct = Math.min(100, (p.xp / xpMax) * 100);
 
             const cardClass = isSelectingMode ? 'mon-card leader' : `mon-card ${idx===0?'leader':''}`;
             const clickAction = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
             const actionStyle = isSelectingMode ? 'visibility:hidden;' : '';
-
-            // STRINGS SEGURAS
             const mStr = JSON.stringify(p.moves||[]).replace(/"/g, '&quot;');
             const lStr = JSON.stringify(p.learnedMoves||[]).replace(/"/g, '&quot;');
 
             html += `
             <div class="${cardClass}" ${clickAction}>
-                <div class="mon-avatar">
-                    <img src="${_resImg(p.sprite)}" class="pixel-art" style="width:48px;">
-                </div>
-                
+                <div class="mon-avatar"><img src="${_resImg(p.sprite)}" class="pixel-art" style="width:48px;"></div>
                 <div class="mon-stats">
                     <div style="display:flex; align-items:center;">
                         <span class="mon-name">${p.name}</span>
                         <span class="mon-lvl">Lv.${p.level}</span>
                     </div>
-                    
-                    <!-- BARRA DE HP -->
                     <div class="bar-wrapper">
                         <span style="width:20px;">HP</span>
-                        <div class="bar-track">
-                            <div class="bar-fill hp-fill" style="width:${hpPct}%;"></div>
-                        </div>
+                        <div class="bar-track"><div class="bar-fill hp-fill" style="width:${hpPct}%;"></div></div>
                     </div>
-                    
-                    <!-- CORREÇÃO: BARRA DE XP VISÍVEL -->
                     <div class="bar-wrapper">
                         <span style="width:20px;">XP</span>
-                        <div class="bar-track">
-                            <div class="bar-fill xp-fill" style="width:${xpPct}%;"></div>
-                        </div>
+                        <div class="bar-track"><div class="bar-fill xp-fill" style="width:${xpPct}%;"></div></div>
                     </div>
                 </div>
-
                 <div class="mon-actions" style="${actionStyle}">
                     <div class="icon-btn" onclick="showMoveEditor('${p.instanceId}','${p.name}',${mStr},${lStr})">⚔️</div>
                     ${idx!==0 ? `<div class="icon-btn" onclick="setLead('${p.instanceId}')">⭐</div>` : ''}
@@ -374,16 +324,11 @@
         content.innerHTML = html;
     }
 
-    /* --- SISTEMA DE POKEDEX (DEX) MELHORADO --- */
+    /* --- POKEDEX (OTIMIZADA) --- */
     async function openPokedex() {
         document.getElementById('modalPokedex').style.display='flex';
-        // Carrega golpes se não tiver
         if(Object.keys(GLOBAL_MOVES_LIB).length === 0) { 
-            try { 
-                const r = await fetch(`/api/me?userId=${USER_ID}`); 
-                const d = await r.json(); 
-                if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; 
-            } catch(e){} 
+            try { const r = await fetch(`/api/me?userId=${USER_ID}`); const d = await r.json(); if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; } catch(e){} 
         }
         renderDexGrid();
     }
@@ -391,18 +336,14 @@
     function renderDexGrid() {
         const grid = document.getElementById('dexGrid'); 
         grid.innerHTML = '';
-        
         RAW_ENTITIES.forEach((p, index) => {
             const id = String(p.id||p._id);
-            // CORREÇÃO: Não esconde mais se não tiver capturado. Apenas muda o estilo visual.
             const isUnlocked = UNLOCKED_IDS.has(id);
-            
+            // loading="lazy" ADICIONADO AQUI
             grid.innerHTML += `
-            <div class="dex-entry ${isUnlocked ? 'unlocked' : 'locked'}" 
-                 onclick="selectDexMonster('${id}')" 
-                 data-name="${(p.name||'').toLowerCase()}">
+            <div class="dex-entry ${isUnlocked ? 'unlocked' : 'locked'}" onclick="selectDexMonster('${id}')" data-name="${(p.name||'').toLowerCase()}">
                 <span class="dex-num">#${(index+1).toString().padStart(3,'0')}</span>
-                <img src="${_resImg(p.sprite)}" class="pixel-art" style="width:40px; height:40px;">
+                <img src="${_resImg(p.sprite)}" loading="lazy" class="pixel-art" style="width:40px; height:40px;">
             </div>`;
         });
     }
@@ -410,11 +351,9 @@
     function selectDexMonster(idStr) {
         const m = RAW_ENTITIES.find(x => String(x.id||x._id) === idStr);
         if(!m) return;
-        
         const isUnlocked = UNLOCKED_IDS.has(idStr);
         const container = document.getElementById('dexContentInner');
         
-        // GERA TABELA DE GOLPES
         let movesHtml = '';
         const pool = (m.movePool || m.learnset || []).sort((a,b)=>a.level-b.level);
         if(pool.length > 0) {
@@ -422,15 +361,11 @@
             pool.forEach(mv => {
                 const d = GLOBAL_MOVES_LIB[mv.moveId||mv.move] || {name:mv.moveId||mv.move, element:'normal'};
                 movesHtml += `<div style="display:flex; justify-content:space-between; font-size:0.8rem; background:rgba(255,255,255,0.03); padding:8px; border-radius:6px;">
-                    <span style="color:var(--accent-gold);">Lv.${mv.level}</span>
-                    <span>${d.name}</span>
-                    <span style="color:#888; text-transform:uppercase; font-size:0.7rem;">${d.element}</span>
-                </div>`;
+                    <span style="color:var(--accent-gold);">Lv.${mv.level}</span><span>${d.name}</span><span style="color:#888; text-transform:uppercase; font-size:0.7rem;">${d.element}</span></div>`;
             });
             movesHtml += '</div></div>';
         }
 
-        // MONTA O HTML DETALHADO
         let html = `
             <div class="dex-header-img" style="${!isUnlocked ? 'filter:grayscale(1); opacity:0.8;' : ''}">
                 <img src="${_resImg(m.sprite)}" class="pixel-art">
@@ -443,48 +378,46 @@
                         ${isUnlocked ? '● REGISTRADO' : '● NÃO CAPTURADO'}
                     </div>
                 </div>
-
                 <div style="margin-top:25px; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px;">
                     <h4 style="margin:0 0 10px 0; color:#aaa;">STATS BASE</h4>
-                    ${renderDexStat('HP', m.baseStats.hp, '#10b981')}
-                    ${renderDexStat('ATK', m.baseStats.attack, '#ef4444')}
-                    ${renderDexStat('DEF', m.baseStats.defense, '#fbbf24')}
-                    ${renderDexStat('SPD', m.baseStats.speed, '#3b82f6')}
+                    ${renderDexStat('HP', m.baseStats.hp, '#10b981')} ${renderDexStat('ATK', m.baseStats.attack, '#ef4444')}
+                    ${renderDexStat('DEF', m.baseStats.defense, '#fbbf24')} ${renderDexStat('SPD', m.baseStats.speed, '#3b82f6')}
                 </div>
-                
-                ${movesHtml}
-                <div style="height:50px;"></div> <!-- Spacer -->
-            </div>
-        `;
-
+                ${movesHtml} <div style="height:50px;"></div>
+            </div>`;
         container.innerHTML = html;
         document.getElementById('dexDetailsView').classList.add('active');
     }
 
     function renderDexStat(label, val, color) {
         const pct = Math.min(100, (val/150)*100);
-        return `
-        <div class="stat-row-dex">
-            <div class="stat-label">${label}</div>
-            <div class="bar-track" style="background:rgba(255,255,255,0.1);">
-                <div class="bar-fill" style="width:${pct}%; background:${color};"></div>
-            </div>
-            <div class="stat-val">${val}</div>
-        </div>`;
+        return `<div class="stat-row-dex"><div class="stat-label">${label}</div><div class="bar-track" style="background:rgba(255,255,255,0.1);"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div><div class="stat-val">${val}</div></div>`;
     }
-
     function filterDex() { 
         const v = document.getElementById('dexSearch').value.toLowerCase(); 
-        document.querySelectorAll('.dex-entry').forEach(e => {
-            e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none';
-        }); 
+        document.querySelectorAll('.dex-entry').forEach(e => { e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none'; }); 
     }
-    
     function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); }
 
-    /* --- PC SYSTEM --- */
-    async function openPC() { document.getElementById('modalPC').style.display='flex'; loadPCData(); }
-    async function loadPCData() { try { const r = await fetch(`/api/pc?userId=${USER_ID}`); const d = await r.json(); renderDragPC(d.team, d.pc); } catch(e){} }
+    /* --- PC SYSTEM (COM CACHE) --- */
+    async function openPC(forceRefresh = false) { 
+        document.getElementById('modalPC').style.display = 'flex'; 
+        
+        // Verifica se tem cache
+        if (CACHED_PC_DATA && !forceRefresh) {
+            renderDragPC(CACHED_PC_DATA.team, CACHED_PC_DATA.pc);
+            return;
+        }
+
+        // Se não, busca do servidor
+        try { 
+            const r = await fetch(`/api/pc?userId=${USER_ID}`); 
+            const d = await r.json(); 
+            CACHED_PC_DATA = d; // Salva no cache
+            renderDragPC(d.team, d.pc); 
+        } catch(e) { console.error(e); }
+    }
+
     function renderDragPC(team, pc) {
         const createSlot = (p, from) => `
             <div class="pc-slot" draggable="true" ondragstart="handleDragStart(event, '${p.instanceId}', '${from}')">
@@ -492,14 +425,10 @@
                 <div style="position:absolute; bottom:0; right:0; background:#000; color:#fbbf24; font-size:0.6rem; padding:1px 3px; border-radius:4px;">Lv.${p.level}</div>
             </div>`;
         
-        document.getElementById('pcTeamArea').innerHTML = team.map(p => createSlot(p, 'team')).join('') 
-            + (team.length < 6 ? '<div class="pc-slot" style="opacity:0.3; border:1px dashed #555;"></div>' : '');
-            
-        document.getElementById('pcStorageArea').innerHTML = pc.map(p => createSlot(p, 'pc')).join('')
-            + Array(10).fill('<div class="pc-slot" style="border:1px dashed rgba(255,255,255,0.05); background:transparent;"></div>').join('');
+        document.getElementById('pcTeamArea').innerHTML = team.map(p => createSlot(p, 'team')).join('') + (team.length < 6 ? '<div class="pc-slot" style="opacity:0.3; border:1px dashed #555;"></div>' : '');
+        document.getElementById('pcStorageArea').innerHTML = pc.map(p => createSlot(p, 'pc')).join('') + Array(10).fill('<div class="pc-slot" style="border:1px dashed rgba(255,255,255,0.05); background:transparent;"></div>').join('');
     }
     
-    /* DRAG AND DROP LOGIC */
     function handleDragStart(ev, pokeId, source) { ev.dataTransfer.setData("text/plain", JSON.stringify({ pokeId, source })); ev.currentTarget.style.opacity = '0.5'; }
     function handleDragOver(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
     document.querySelectorAll('.pc-grid, #pcTeamArea').forEach(el => el.addEventListener('dragleave', e => e.currentTarget.classList.remove('drag-over')));
@@ -508,74 +437,57 @@
         ev.preventDefault(); document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
         const dataRaw = ev.dataTransfer.getData("text/plain"); if(!dataRaw) return;
         const { pokeId, source } = JSON.parse(dataRaw); if (source === targetContainer) return; 
+        
+        // Faz o movimento
         await fetch('/api/pc/move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) });
-        loadPCData();
+        
+        // Força recarregar os dados (True)
+        openPC(true);
     }
 
     /* --- EDITAR GOLPES --- */
     function showMoveEditor(id, name, equipped, learned) {
         currentMonId = id;
         const pool = (learned && learned.length>0) ? learned : equipped;
-        
-        let html = `
-            <h3 style="color:#fff; margin-bottom:15px; text-align:center;">${name} <span style="color:#666; font-size:0.8rem;">(Escolha até 4)</span></h3>
-            <div class="skill-grid">`;
-            
+        let html = `<h3 style="color:#fff; margin-bottom:15px; text-align:center;">${name} <span style="color:#666; font-size:0.8rem;">(Escolha até 4)</span></h3><div class="skill-grid">`;
         pool.forEach(mid => {
             const eq = equipped.includes(mid);
             const d = GLOBAL_MOVES_LIB[mid] || {name:mid, element:'normal'};
-            html += `<div onclick="toggleMove(this)" class="skill-item ${eq?'active':''}" data-id="${mid}">
-                <div style="font-weight:700; color:#fff;">${d.name}</div>
-                <div style="font-size:0.7rem; color:#aaa; text-transform:uppercase; margin-top:4px;">${d.element}</div>
-            </div>`;
+            html += `<div onclick="toggleMove(this)" class="skill-item ${eq?'active':''}" data-id="${mid}"><div style="font-weight:700; color:#fff;">${d.name}</div><div style="font-size:0.7rem; color:#aaa; text-transform:uppercase; margin-top:4px;">${d.element}</div></div>`;
         });
-        
-        html += `</div>
-            <button onclick="saveMoves()" class="btn-block btn-save">SALVAR MUDANÇAS</button>
-            <button onclick="openPokemon()" class="btn-block btn-cancel">VOLTAR</button>`;
-        
+        html += `</div><button onclick="saveMoves()" class="btn-block btn-save">SALVAR MUDANÇAS</button><button onclick="openPokemon()" class="btn-block btn-cancel">VOLTAR</button>`;
         document.getElementById('pokemonListContent').innerHTML = html;
     }
-
     function toggleMove(el) {
         if(el.classList.contains('active')) { 
-            if(document.querySelectorAll('.skill-item.active').length <= 1) return alert('É necessário ter pelo menos 1 golpe.'); 
-            el.classList.remove('active'); 
+            if(document.querySelectorAll('.skill-item.active').length <= 1) return alert('Mínimo 1'); el.classList.remove('active'); 
         } else { 
-            if(document.querySelectorAll('.skill-item.active').length >= 4) return alert('Máximo de 4 golpes permitidos.'); 
-            el.classList.add('active'); 
+            if(document.querySelectorAll('.skill-item.active').length >= 4) return alert('Máximo 4'); el.classList.add('active'); 
         }
     }
-
     async function saveMoves() {
         const moves = Array.from(document.querySelectorAll('.skill-item.active')).map(c => c.getAttribute('data-id'));
-        await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); 
-        openPokemon();
+        await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) }); openPokemon();
     }
 
-    /* --- OUTRAS AÇÕES --- */
-    async function setLead(id) { await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); }
-    async function abandonPokemon(id) { if(confirm('Tem certeza que deseja libertar essa criatura?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
-
-    /* --- MOCHILA --- */
+    /* --- MOCHILA (ITEM ROW MELHORADO) --- */
     async function openBag() { 
         document.getElementById('modalBag').style.display='flex'; 
         const r = await fetch(`/api/me?userId=${USER_ID}`); 
         const d = await r.json(); 
         
         const itemRow = (icon, nome, qtd, action) => `
-        <div style="display:flex; align-items:center; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; margin-bottom:10px; border:1px solid var(--border-glass);">
-            <div style="font-size:1.8rem; margin-right:15px;">${icon}</div>
-            <div style="flex:1;">
-                <div style="font-weight:700; color:#fff; font-size:1.1rem;">${nome}</div>
-                <div style="font-size:0.8rem; color:#aaa;">Quantidade: ${qtd}</div>
+        <div class="bag-item-row">
+            <div class="bag-icon">${icon}</div>
+            <div class="bag-info">
+                <div class="bag-name">${nome}</div>
+                <div class="bag-qty">Quantidade: ${qtd}</div>
             </div>
             ${action ? action : ''}
         </div>`;
         
         let html = itemRow('📦', 'CatchCubes', d.pokeballs||0);
-        
-        const candyBtn = `<button onclick="startRareCandySelection()" style="background:var(--accent-primary); border:none; color:#fff; padding:8px 16px; border-radius:8px; font-weight:700; cursor:pointer;">USAR</button>`;
+        const candyBtn = `<button onclick="startRareCandySelection()" class="btn-use-item">USAR</button>`;
         if(d.rareCandy > 0) html += itemRow('🍬', 'Rare Candy', d.rareCandy, candyBtn);
         else html += itemRow('🍬', 'Rare Candy', 0);
         
@@ -585,13 +497,16 @@
     function startRareCandySelection() { closeModal('modalBag'); isSelectingMode = true; openPokemon(); }
     function cancelSelection() { isSelectingMode = false; openPokemon(); }
     
+    /* --- OUTROS --- */
+    async function setLead(id) { await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); }
+    async function abandonPokemon(id) { if(confirm('Tem certeza?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
     async function applyRareCandy(pokeId) {
-        if(!confirm('Usar Rare Candy nesta criatura?')) return;
+        if(!confirm('Usar Rare Candy?')) return;
         try {
             const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: USER_ID, itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) });
             const data = await res.json();
-            if(data.success) { alert(data.evolved ? '✨ Criatura Evoluiu! ✨' : '🆙 Subiu de Nível!'); isSelectingMode = false; openPokemon(); } 
-            else { alert(data.error || 'Erro ao usar item.'); isSelectingMode = false; openPokemon(); }
-        } catch(e) { alert("Erro de conexão."); isSelectingMode = false; openPokemon(); }
+            if(data.success) { alert(data.evolved ? '✨ Evoluiu! ✨' : '🆙 Level Up!'); isSelectingMode = false; openPokemon(); } 
+            else { alert(data.error); isSelectingMode = false; openPokemon(); }
+        } catch(e) { alert("Erro."); isSelectingMode = false; openPokemon(); }
     }
 </script>
