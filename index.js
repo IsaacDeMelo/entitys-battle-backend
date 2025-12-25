@@ -57,8 +57,14 @@ const players = {};
 let matchmakingQueue = []; 
 const roomSpectators = {}; 
 
-const GRASS_PATCHES = ['grass1', 'grass2'];
-const GRASS_CHANCE = { grass1: 0.35, grass2: 0.35 };
+// --- CONFIGURAÇÃO DE GRAMA (Matinhos) ---
+// Adicionei os IDs da cidade aqui
+const GRASS_PATCHES = ['grass1', 'grass2', 'city_grass1', 'city_grass2'];
+// Chance de encontro (35% em todos)
+const GRASS_CHANCE = { 
+    grass1: 0.35, grass2: 0.35, 
+    city_grass1: 0.35, city_grass2: 0.35 
+};
 
 // --- FUNÇÕES AUXILIARES ---
 function pickWeightedPokemon(pokemonList) {
@@ -173,7 +179,7 @@ app.post('/register', async (req, res) => {
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
 app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
 
-// --- ROTA CORRIGIDA: CITY ---
+// --- ROTA DA CIDADE ---
 app.get('/city', async (req, res) => {
     const { userId, from } = req.query;
     const user = await User.findById(userId);
@@ -183,10 +189,9 @@ app.get('/city', async (req, res) => {
     const startX = (from === 'forest') ? 50 : 50;
     const startY = (from === 'forest') ? 95 : 50;
     
-    // Busca entidades para o menu/pokedex
     const allPokes = await BasePokemon.find().lean();
     
-    // Opcional: Carrega o time formatado caso o menu precise (igual ao lobby)
+    // Opcional: Carrega o time formatado para o menu
     const teamData = []; 
     for(let p of user.pokemonTeam) { 
         const base = await BasePokemon.findOne({id: p.baseId}); 
@@ -201,8 +206,8 @@ app.get('/city', async (req, res) => {
         skinCount: SKIN_COUNT,
         startX,
         startY,
-        entities: allPokes, // AQUI ESTAVA O ERRO (Faltava essa linha)
-        team: teamData      // Adicionei isso também por precaução
+        entities: allPokes,
+        team: teamData
     }); 
 });
 
@@ -276,14 +281,19 @@ app.post('/api/use-item', async (req, res) => {
     return res.json({ error: 'Item cannot be used here' }); 
 });
 
-// --- CRIAÇÃO DE BATALHAS ---
+// --- CRIAÇÃO DE BATALHAS (WILD) ---
 app.post('/battle/wild', async (req, res) => { 
     const { userId, currentMap, currentX, currentY } = req.body; 
     const user = await User.findById(userId); 
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; 
     if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Monstros estão desmaiados!" }); 
-    const possibleSpawns = await BasePokemon.find({ spawnLocation: 'forest' }); 
-    if(possibleSpawns.length === 0) return res.json({ error: "Nenhum monstro." }); 
+    
+    // AQUI ESTÁ A MÁGICA: USA O MAPA ATUAL PARA FILTRAR OS MONSTROS
+    // Se não vier mapa, assume forest por padrão
+    const mapName = currentMap || 'forest';
+    const possibleSpawns = await BasePokemon.find({ spawnLocation: mapName }); 
+    
+    if(possibleSpawns.length === 0) return res.json({ error: "Nenhum monstro aqui." }); 
     const wildBase = pickWeightedPokemon(possibleSpawns); 
     const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
     const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
@@ -299,7 +309,7 @@ app.post('/battle/wild', async (req, res) => {
         type: 'wild', 
         userId: user._id, 
         turn: 1,
-        returnMap: currentMap || 'forest',
+        returnMap: mapName, // Retorna para o mapa correto
         returnX: currentX || 10,
         returnY: currentY || 50
     }; 
@@ -649,7 +659,14 @@ io.on('connection', (socket) => {
     });
     socket.on('move_player', (data) => { if (players[socket.id]) { const p = players[socket.id]; const dx = data.x - p.x; const dy = data.y - p.y; let dir = p.direction; if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up'; p.x = data.x; p.y = data.y; p.direction = dir; io.to(p.map).emit('player_moved', { id: socket.id, x: data.x, y: data.y, direction: dir }); } });
     socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
-    socket.on('check_encounter', (data) => { if (data.grassId && GRASS_PATCHES.includes(data.grassId) && Math.random() < GRASS_CHANCE[data.grassId]) socket.emit('encounter_found'); });
+    
+    // VERIFICA ENCONTRO DE MATINHO (Corrigido para aceitar gramas da cidade)
+    socket.on('check_encounter', (data) => { 
+        if (data.grassId && GRASS_PATCHES.includes(data.grassId) && Math.random() < GRASS_CHANCE[data.grassId]) {
+            socket.emit('encounter_found'); 
+        }
+    });
+    
     socket.on('disconnect', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if (players[socket.id]) { const map = players[socket.id].map; delete players[socket.id]; io.to(map).emit('player_left', socket.id); } });
     socket.on('cancel_match', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if(players[socket.id]) { players[socket.id].isSearching = false; io.emit('player_updated', players[socket.id]); } });
     
