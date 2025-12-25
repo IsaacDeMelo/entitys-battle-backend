@@ -12,7 +12,7 @@
     <style>
         :root {
             --bg-core: #0f172a;
-            --bg-glass: rgba(30, 41, 59, 0.95); /* Mais escuro para leitura */
+            --bg-glass: rgba(30, 41, 59, 0.95);
             --border-glass: rgba(255, 255, 255, 0.1);
             --accent-primary: #3b82f6;
             --accent-gold: #fbbf24;
@@ -30,16 +30,16 @@
         /* UTILS */
         .pixel-art { image-rendering: pixelated; }
         
-        /* TOAST NOTIFICATION (FEEDBACK) */
+        /* TOAST NOTIFICATION */
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 20000; pointer-events: none; width: 90%; max-width: 300px; text-align: center; }
         .toast { background: rgba(16, 185, 129, 0.95); color: #fff; padding: 12px 20px; border-radius: 50px; margin-bottom: 10px; font-weight: 600; box-shadow: 0 5px 15px rgba(0,0,0,0.5); animation: toastPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); backdrop-filter: blur(4px); font-family: 'Inter', sans-serif; font-size: 0.9rem; }
         @keyframes toastPop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        /* --- MODAIS (Estilo App Nativo) --- */
+        /* MODAIS */
         .modal-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); 
-            z-index: 11000; display: none; justify-content: center; align-items: flex-end; /* Mobile: Bottom Sheet */
+            z-index: 11000; display: none; justify-content: center; align-items: flex-end;
             animation: fadeIn 0.2s ease-out;
         }
         @media(min-width: 768px) { .modal-overlay { align-items: center; } }
@@ -49,7 +49,7 @@
 
         .modal-content { 
             background: #111827; 
-            width: 100%; max-width: 600px; height: 90vh; /* Ocupa quase toda tela no mobile */
+            width: 100%; max-width: 600px; height: 90vh;
             border-radius: var(--radius-lg) var(--radius-lg) 0 0; 
             border-top: 1px solid var(--border-glass);
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5); 
@@ -80,7 +80,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* Footer com botão fechar grande */
         .modal-footer-close {
             padding: 15px 20px;
             background: #0f172a;
@@ -95,7 +94,7 @@
         }
         .btn-big-close:active { background: #475569; transform: scale(0.98); }
 
-        /* --- CARDS DOS MONSTROS --- */
+        /* CARDS */
         .mon-card { 
             background: rgba(30, 41, 59, 0.6); border: 1px solid var(--border-glass);
             border-radius: 16px; padding: 12px; margin-bottom: 12px;
@@ -130,16 +129,13 @@
             display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
 
-        /* --- PC SYSTEM (Redesenhado para Toque) --- */
+        /* PC SYSTEM */
         .pc-layout { display: flex; flex-direction: column; gap: 15px; height: 100%; }
-        
         .pc-box-container {
             background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 12px;
             padding: 10px; flex: 1; overflow-y: auto; display: flex; flex-direction: column;
         }
         .pc-header { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 700; display:flex; justify-content:space-between; }
-        
-        /* Grid maior para dedos gordos */
         .pc-grid { 
             display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); 
             gap: 10px; padding-bottom: 20px; 
@@ -160,7 +156,7 @@
             flex-shrink: 0; min-height: 90px; align-items: center;
         }
 
-        /* --- ACTION MENU DO PC (Popup) --- */
+        /* ACTION MENU PC */
         #pcActionMenu {
             position: absolute; bottom: 0; left: 0; width: 100%; 
             background: #1e293b; border-top: 2px solid var(--accent-primary);
@@ -178,10 +174,9 @@
         }
         .btn-move-team { background: var(--success); color: #fff; }
         .btn-move-box { background: var(--accent-primary); color: #fff; }
-        .btn-release { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
         .btn-cancel-action { background: #334155; color: #fff; }
 
-        /* --- POKEDEX GRID --- */
+        /* POKEDEX */
         .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; overflow-y: auto; padding: 10px; }
         .dex-entry { aspect-ratio: 1; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; }
         .dex-entry.unlocked { background: rgba(59, 130, 246, 0.15); border-color: var(--accent-primary); }
@@ -194,13 +189,18 @@
         .float-menu-items { display: none; flex-direction: column-reverse; gap: 15px; }
         .float-menu-items.show { display: flex; animation: slideUp 0.3s; }
 
-        /* Outros */
+        /* DEX DETAILS */
         .dex-details { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111827; z-index: 20; transform: translateX(110%); transition: transform 0.3s; display: flex; flex-direction: column; }
         .dex-details.active { transform: translateX(0); }
         .back-btn-dex { padding: 15px; background: rgba(0,0,0,0.3); color: #fff; border:none; text-align:left; font-size:1rem; font-weight:bold; cursor:pointer; }
 
-        /* BAG ROW */
+        /* BAG */
+        .bag-header-money { text-align:center; padding:15px; font-size:1.2rem; color:#fbbf24; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:15px; background: rgba(0,0,0,0.2); border-radius: 12px; }
         .bag-item-row { display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border-glass); }
+        
+        /* SKILL EDITOR */
+        .skill-item { background:#1f2937; padding:12px; border-radius:8px; border:1px solid transparent; cursor:pointer; transition: 0.2s; }
+        .skill-item.active { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
     </style>
 </head>
 <body>
@@ -258,7 +258,7 @@
         </div>
     </div>
 
-    <!-- MODAL: PC STORAGE (Otimizado Mobile) -->
+    <!-- MODAL: PC STORAGE -->
     <div class="modal-overlay" id="modalPC">
         <div class="modal-content">
             <div class="modal-header">
@@ -314,6 +314,7 @@
         let isSelectingMode = false;
         let currentMonId = null;
         let GLOBAL_MOVES_LIB = {};
+        let CURRENT_TEAM_DATA = []; // Cache do time para acesso seguro
         let CACHED_PC_DATA = null;
         
         // DADOS E HISTÓRICO
@@ -328,7 +329,9 @@
             ...RAW_PC.map(p => String(p.baseId||p.id))
         ]);
 
-        const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
+        function resolveImg(s) {
+            return s ? s : '/uploads/placeholder.png'; // Fallback se imagem faltar
+        }
 
         // UTILS
         function showToast(msg) {
@@ -350,6 +353,7 @@
                 const r = await fetch(`/api/me?userId=${USER_ID}`); 
                 const d = await r.json(); 
                 if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; 
+                CURRENT_TEAM_DATA = d.team; // Salvar time no cache global
                 renderPokemonList(d.team); 
             } catch(e) { document.getElementById('pokemonListContent').innerHTML = 'Erro de conexão.'; } 
         }
@@ -364,15 +368,13 @@
                 const hpPct = Math.min(100, (p.hp/p.maxHp)*100);
                 const xpMax = p.xpToNext || 100;
                 const xpPct = Math.min(100, (p.xp / xpMax) * 100);
-                const mStr = JSON.stringify(p.moves||[]).replace(/"/g, '&quot;');
-                const lStr = JSON.stringify(p.learnedMoves||[]).replace(/"/g, '&quot;');
                 
                 const clickAttr = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
                 const cardClass = isSelectingMode ? 'mon-card leader' : `mon-card ${idx===0?'leader':''}`;
 
                 html += `
                 <div class="${cardClass}" ${clickAttr}>
-                    <div class="mon-avatar"><img src="${_resImg(p.sprite)}" class="pixel-art"></div>
+                    <div class="mon-avatar"><img src="${resolveImg(p.sprite)}" class="pixel-art"></div>
                     <div class="mon-stats">
                         <div style="display:flex; align-items:center;">
                             <span class="mon-name">${p.name}</span>
@@ -383,7 +385,7 @@
                     </div>
                     ${!isSelectingMode ? `
                     <div class="mon-actions">
-                        <div class="icon-btn" onclick="showMoveEditor('${p.instanceId}','${p.name}',${mStr},${lStr})">⚔️</div>
+                        <div class="icon-btn" onclick="prepareMoveEditor('${p.instanceId}')">⚔️</div>
                         ${idx!==0 ? `<div class="icon-btn" onclick="setLead('${p.instanceId}')">⭐</div>` : ''}
                         <div class="icon-btn" onclick="abandonPokemon('${p.instanceId}')" style="color:#ef4444; border-color:rgba(239,68,68,0.3);">✕</div>
                     </div>` : ''}
@@ -406,7 +408,7 @@
                 const isUnlocked = UNLOCKED_IDS.has(id);
                 grid.innerHTML += `<div class="dex-entry ${isUnlocked ? 'unlocked' : 'locked'}" onclick="selectDexMonster('${id}')" data-name="${(p.name||'').toLowerCase()}">
                     <span class="dex-num">#${(index+1).toString().padStart(3,'0')}</span>
-                    <img src="${_resImg(p.sprite)}" loading="lazy" class="pixel-art" style="width:40px; height:40px;">
+                    <img src="${resolveImg(p.sprite)}" loading="lazy" class="pixel-art" style="width:40px; height:40px;">
                 </div>`;
             });
         }
@@ -429,7 +431,7 @@
             
             document.getElementById('dexContentInner').innerHTML = `
                 <div style="text-align:center; padding-bottom:20px;">
-                    <div style="width:100px; height:100px; margin:0 auto 15px; background:rgba(0,0,0,0.3); border-radius:20px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.1);"><img src="${_resImg(m.sprite)}" class="pixel-art" style="transform:scale(1.5); filter:${!isUnlocked?'grayscale(1) brightness(0.5)':''}"></div>
+                    <div style="width:100px; height:100px; margin:0 auto 15px; background:rgba(0,0,0,0.3); border-radius:20px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.1);"><img src="${resolveImg(m.sprite)}" class="pixel-art" style="transform:scale(1.5); filter:${!isUnlocked?'grayscale(1) brightness(0.5)':''}"></div>
                     <h1 style="margin:0; font-size:1.6rem; text-transform:uppercase;">${m.name}</h1>
                     <span style="display:inline-block; margin-top:5px; padding:4px 12px; background:#333; border-radius:20px; font-size:0.7rem; font-weight:bold; text-transform:uppercase;">${m.type}</span>
                     <div style="margin-top:10px; font-size:0.8rem; color:${isUnlocked?'#10b981':'#64748b'}; font-weight:bold;">${isUnlocked?'● REGISTRADO':'● NÃO CAPTURADO'}</div>
@@ -447,7 +449,7 @@
         function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); }
         function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-entry').forEach(e => e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
 
-        /* --- PC SYSTEM (TAP TO MOVE) --- */
+        /* --- PC SYSTEM --- */
         async function openPC(forceRefresh = false) { 
             document.getElementById('modalPC').style.display = 'flex'; 
             closePCAction();
@@ -461,30 +463,26 @@
         }
 
         function renderPCLayout(team, pc) {
-            // RENDER BOX
             const boxHtml = pc.map(p => `
                 <div class="pc-slot" onclick="openPCAction('${p.instanceId}', '${p.name}', 'pc')">
-                    <img src="${_resImg(p.sprite)}" class="pixel-art">
+                    <img src="${resolveImg(p.sprite)}" class="pixel-art">
                     <div class="lvl-badge">Lv.${p.level}</div>
                 </div>`).join('') + Array(10).fill('<div class="pc-slot" style="opacity:0.2; cursor:default;"></div>').join('');
             document.getElementById('pcStorageArea').innerHTML = boxHtml;
 
-            // RENDER TEAM
             const teamHtml = team.map(p => `
                 <div class="pc-slot" style="min-width:60px; border-color:#10b981;" onclick="openPCAction('${p.instanceId}', '${p.name}', 'team')">
-                    <img src="${_resImg(p.sprite)}" class="pixel-art">
+                    <img src="${resolveImg(p.sprite)}" class="pixel-art">
                     <div class="lvl-badge">Lv.${p.level}</div>
                 </div>`).join('') + (team.length < 6 ? '<div class="pc-slot" style="min-width:60px; border:1px dashed #555; opacity:0.5;"></div>' : '');
             document.getElementById('pcTeamArea').innerHTML = teamHtml;
         }
 
-        // AÇÃO DO CLIQUE NO PC
         let selectedPCData = null;
         function openPCAction(pokeId, name, source) {
             selectedPCData = { pokeId, source };
             document.getElementById('pcActionTitle').innerText = name;
             const btnContainer = document.getElementById('pcActionButtons');
-            
             if (source === 'pc') {
                 btnContainer.innerHTML = `<button class="btn-pc-action btn-move-team" onclick="confirmPCMove('team')">📥 MOVER PARA O TIME</button>`;
             } else {
@@ -499,64 +497,110 @@
             if (!selectedPCData) return;
             const { pokeId, source } = selectedPCData;
             closePCAction();
-            
-            // Feedback otimista
             showToast("Movendo...");
-            
             try {
                 const res = await fetch('/api/pc/move', { 
                     method: 'POST', headers: {'Content-Type':'application/json'}, 
                     body: JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) 
                 });
                 const data = await res.json();
-                
-                if(data.success) {
-                    showToast("Sucesso!");
-                    openPC(true); // Recarrega
-                } else {
-                    alert(data.error || "Erro ao mover.");
-                }
+                if(data.success) { showToast("Sucesso!"); openPC(true); } 
+                else { alert(data.error || "Erro ao mover."); }
             } catch(e) { alert("Erro de conexão"); }
         }
 
-        /* --- MOCHILA --- */
+        /* --- MOCHILA (AGORA COM DINHEIRO) --- */
         async function openBag() { 
             document.getElementById('modalBag').style.display='flex'; 
-            const r = await fetch(`/api/me?userId=${USER_ID}`); 
-            const d = await r.json(); 
-            const itemRow = (icon, nome, qtd, action) => `<div class="bag-item-row"><div style="font-size:1.8rem; margin-right:15px;">${icon}</div><div style="flex:1;"><div style="font-weight:700; font-size:1.1rem; color:#fff;">${nome}</div><div style="color:#aaa; font-size:0.8rem;">Qtd: ${qtd}</div></div>${action?action:''}</div>`;
-            let html = itemRow('📦', 'CatchCubes', d.pokeballs||0);
-            const btn = `<button onclick="startRareCandySelection()" style="background:var(--accent-primary); border:none; padding:8px 16px; border-radius:8px; color:white; font-weight:bold;">USAR</button>`;
-            html += itemRow('🍬', 'Rare Candy', d.rareCandy||0, (d.rareCandy>0 ? btn : ''));
-            document.getElementById('bagItemsContent').innerHTML = html;
+            try {
+                const r = await fetch(`/api/me?userId=${USER_ID}`); 
+                const d = await r.json(); 
+                
+                // HEADER COM DINHEIRO
+                let html = `<div class="bag-header-money">💰 Dinheiro: <b>$${d.money || 0}</b></div>`;
+                
+                const itemRow = (icon, nome, qtd, action) => `<div class="bag-item-row"><div style="font-size:1.8rem; margin-right:15px;">${icon}</div><div style="flex:1;"><div style="font-weight:700; font-size:1.1rem; color:#fff;">${nome}</div><div style="color:#aaa; font-size:0.8rem;">Qtd: ${qtd}</div></div>${action?action:''}</div>`;
+                
+                html += itemRow('📦', 'CatchCubes', d.pokeballs||0);
+                const btn = `<button onclick="startRareCandySelection()" style="background:var(--accent-primary); border:none; padding:8px 16px; border-radius:8px; color:white; font-weight:bold;">USAR</button>`;
+                html += itemRow('🍬', 'Rare Candy', d.rareCandy||0, (d.rareCandy>0 ? btn : ''));
+                
+                document.getElementById('bagItemsContent').innerHTML = html;
+            } catch(e) {
+                document.getElementById('bagItemsContent').innerHTML = "Erro ao carregar mochila.";
+            }
         }
         function startRareCandySelection() { closeModal('modalBag'); isSelectingMode = true; openPokemon(); }
         function cancelSelection() { isSelectingMode = false; openPokemon(); }
 
-        /* --- SKILLS & OUTROS --- */
-        function showMoveEditor(id, name, equipped, learned) {
-            currentMonId = id;
-            const pool = (learned && learned.length>0) ? learned : equipped;
-            let html = `<div style="text-align:center; margin-bottom:15px;"><h3 style="margin:0; color:#fff;">${name}</h3><small style="color:#aaa;">Selecione até 4 golpes</small></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">`;
+        /* --- SKILLS & EDITOR --- */
+        // Nova função segura para preparar o editor
+        function prepareMoveEditor(instanceId) {
+            // Busca o Pokémon nos dados carregados
+            const pokemon = CURRENT_TEAM_DATA.find(p => p.instanceId === instanceId);
+            if (!pokemon) return alert("Erro ao carregar Pokémon.");
+            
+            showMoveEditor(pokemon);
+        }
+
+        function showMoveEditor(p) {
+            currentMonId = p.instanceId;
+            // Se learnedMoves estiver vazio (legado), usa moves como base
+            const pool = (p.learnedMoves && p.learnedMoves.length > 0) ? p.learnedMoves : p.moves;
+            const equipped = p.moves;
+
+            let html = `<div style="text-align:center; margin-bottom:15px;">
+                <h3 style="margin:0; color:#fff;">${p.name}</h3>
+                <small style="color:#aaa;">Selecione de 1 a 4 golpes</small>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">`;
+            
             pool.forEach(mid => {
-                const eq = equipped.includes(mid);
-                const d = GLOBAL_MOVES_LIB[mid] || {name:mid, element:'normal'};
-                html += `<div onclick="toggleMove(this)" class="skill-item ${eq?'active':''}" data-id="${mid}" style="background:#1f2937; padding:12px; border-radius:8px; border:1px solid ${eq?'#10b981':'transparent'}; cursor:pointer;"><div style="font-weight:bold; color:#fff;">${d.name}</div><div style="font-size:0.7rem; color:#888; text-transform:uppercase;">${d.element}</div></div>`;
+                const isEquipped = equipped.includes(mid);
+                const d = GLOBAL_MOVES_LIB[mid] || {name: mid, element: 'normal'};
+                html += `
+                <div onclick="toggleMove(this)" class="skill-item ${isEquipped?'active':''}" data-id="${mid}">
+                    <div style="font-weight:bold; color:#fff;">${d.name}</div>
+                    <div style="font-size:0.7rem; color:#888; text-transform:uppercase;">${d.element}</div>
+                </div>`;
             });
+            
             html += `</div><button onclick="saveMoves()" class="btn-big-close" style="background:#10b981; margin-top:15px;">SALVAR GOLPES</button>`;
             document.getElementById('pokemonListContent').innerHTML = html;
         }
+
         function toggleMove(el) {
-            if(el.classList.contains('active')) { if(document.querySelectorAll('.skill-item.active').length <= 1) return alert('Mínimo 1'); el.classList.remove('active'); }
-            else { if(document.querySelectorAll('.skill-item.active').length >= 4) return alert('Máximo 4'); el.classList.add('active'); }
+            if(el.classList.contains('active')) { 
+                if(document.querySelectorAll('.skill-item.active').length <= 1) return alert('Mínimo 1 golpe!'); 
+                el.classList.remove('active'); 
+            } else { 
+                if(document.querySelectorAll('.skill-item.active').length >= 4) return alert('Máximo 4 golpes!'); 
+                el.classList.add('active'); 
+            }
         }
+
         async function saveMoves() {
             const moves = Array.from(document.querySelectorAll('.skill-item.active')).map(c => c.getAttribute('data-id'));
-            await fetch('/api/equip-move', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) });
-            openPokemon();
+            showToast("Salvando...");
+            await fetch('/api/equip-move', { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) 
+            });
+            showToast("Salvo!");
+            openPokemon(); // Recarrega a lista
         }
-        async function setLead(id) { await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); }
-        async function abandonPokemon(id) { if(confirm('Tem certeza?')) { await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); openPokemon(); } }
+
+        async function setLead(id) { 
+            await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); 
+            openPokemon(); 
+        }
+        async function abandonPokemon(id) { 
+            if(confirm('Tem certeza? Isso é permanente.')) { 
+                await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); 
+                openPokemon(); 
+            } 
+        }
         async function applyRareCandy(pokeId) {
             if(!confirm('Usar Rare Candy?')) return;
             try {
