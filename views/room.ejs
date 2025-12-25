@@ -34,55 +34,13 @@
         
         .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 500; }
         
-        /* --- NOVO DESIGN DO PLANETA/BUSCA --- */
-        .searching-indicator {
-            position: absolute;
-            top: -75px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 40px;
-            height: 40px;
-            z-index: 600;
-            pointer-events: none;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .planet-icon {
-            font-size: 24px;
-            /* Brilho azul ciano para parecer holográfico */
-            filter: drop-shadow(0 0 8px #00e5ff);
-            animation: float-planet 2s ease-in-out infinite alternate;
-            z-index: 2;
-        }
-
-        .radar-ring {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            border: 2px solid rgba(0, 229, 255, 0.8);
-            border-radius: 50%;
-            width: 10px; height: 10px;
-            box-sizing: border-box;
-            opacity: 0;
-            animation: radar-expand 1.5s infinite linear;
-            z-index: 1;
-        }
-        
-        /* Segundo anel com delay para criar efeito contínuo */
+        /* INDICADOR DE BUSCA (PLANETA) */
+        .searching-indicator { position: absolute; top: -75px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; z-index: 600; pointer-events: none; display: flex; justify-content: center; align-items: center; }
+        .planet-icon { font-size: 24px; filter: drop-shadow(0 0 8px #00e5ff); animation: float-planet 2s ease-in-out infinite alternate; z-index: 2; }
+        .radar-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px solid rgba(0, 229, 255, 0.8); border-radius: 50%; width: 10px; height: 10px; box-sizing: border-box; opacity: 0; animation: radar-expand 1.5s infinite linear; z-index: 1; }
         .radar-ring:nth-child(2) { animation-delay: 0.75s; }
-
-        @keyframes float-planet {
-            from { transform: translateY(0) scale(1); }
-            to { transform: translateY(-5px) scale(1.1); }
-        }
-
-        @keyframes radar-expand {
-            0% { width: 10px; height: 10px; opacity: 1; border-width: 2px; }
-            100% { width: 50px; height: 50px; opacity: 0; border-width: 0px; }
-        }
-        /* ------------------------------------ */
+        @keyframes float-planet { from { transform: translateY(0) scale(1); } to { transform: translateY(-5px) scale(1.1); } }
+        @keyframes radar-expand { 0% { width: 10px; height: 10px; opacity: 1; border-width: 2px; } 100% { width: 50px; height: 50px; opacity: 0; border-width: 0px; } }
 
         .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
@@ -105,7 +63,7 @@
         .forest-exit { position: absolute; top: 40%; left: 0; width: 40px; height: 20%; background: rgba(46, 204, 113, 0.0); border-right: 2px dashed rgba(46,204,113,0.5); z-index: 0; display: flex; align-items: center; }
         .forest-exit::after { content: 'FLORESTA 🌲'; position: absolute; left: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #2ecc71; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; text-shadow: 1px 1px 0 #000; }
         
-        /* MODAIS EXTRAS */
+        /* ESTILOS DOS MODAIS */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
@@ -131,15 +89,120 @@
         <% if(isAdmin) { %> <div class="machine" id="pc-lab" onclick="moveToAndInteract(event, this, 'admin')"></div> <% } %>
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
     </div>
+    
     <div id="toastContainer"></div>
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
-    <!-- MODAL ONLINE/BATTLE -->
-    <div class="modal-overlay" id="modalOnline"><div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;"><div style="display:flex; border-bottom:1px solid #333;"><button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button><button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button><button class="close-btn" onclick="closeModal('modalOnline')">X</button></div><div id="tab-play" class="tab-content" style="padding:20px; flex:1;"><select id="onlineFighter"><% if(team.length > 0) { team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }); } else { %><option>Sem Pokemons</option><% } %></select><div style="margin-top:10px; display:flex; gap:8px; align-items:center;"><label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label><input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;"></div><button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button><button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button><div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div></div><div id="tab-watch" class="tab-content" style="display:none; padding:10px;"><div id="battlesList"></div></div></div></div>
-    <div class="modal-overlay" id="modalBattle"><div class="modal-content" style="padding:18px; display:block; max-width:420px;"><button class="close-btn" onclick="closeModal('modalBattle')">X</button><h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2><form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;"><input type="hidden" name="userId" value="<%= user._id %>"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"><input type="hidden" name="mode" value="manual"><div style="display:flex; gap:12px; align-items:center;"><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div><div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div><div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div></div><div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;"><div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div><div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div><div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div></div></div><label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label><select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;"><option value="" disabled selected>Escolha...</option><% if(team.length === 0) { %><option value="" disabled>Sem Pokémons</option><% } else { %><% team.forEach(p => { %><option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option><% }) %><% } %></select><div style="display:flex; gap:8px;"><button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button><button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button></div></form></div></div>
+    <!-- MODAL LOJA -->
+    <div class="modal-overlay" id="modalShop">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal('modalShop')">X</button>
+            <h2 style="text-align:center; color:#f1c40f; font-family:'Press Start 2P'; margin-bottom:20px;">LOJA</h2>
+            
+            <div style="background:#0b1220; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; gap:10px;">
+                <img src="/uploads/catchcube.gif" style="width:40px; height:40px;">
+                <div style="flex:1;">
+                    <div style="font-weight:bold; color:#fff;">CatchCube</div>
+                    <div style="font-size:0.8rem; color:#aaa;">Captura monstros selvagens.</div>
+                    <div style="color:#f1c40f; margin-top:5px;">$50 moedas</div>
+                </div>
+                <button onclick="buyItem('pokeball')" style="width:auto; background:#27ae60;">COMPRAR</button>
+            </div>
+
+            <div style="background:#0b1220; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; gap:10px;">
+                <div style="font-size:30px;">🍬</div>
+                <div style="flex:1;">
+                    <div style="font-weight:bold; color:#fff;">Rare Candy</div>
+                    <div style="font-size:0.8rem; color:#aaa;">Sobe 1 nível.</div>
+                    <div style="color:#f1c40f; margin-top:5px;">$2000 moedas</div>
+                </div>
+                <button onclick="buyItem('rareCandy')" style="width:auto; background:#27ae60;">COMPRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ONLINE/WATCH -->
+    <div class="modal-overlay" id="modalOnline">
+        <div class="modal-content" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="display:flex; border-bottom:1px solid #333;">
+                <button class="tab-btn active" onclick="switchTab('tab-play')">JOGAR</button>
+                <button class="tab-btn" onclick="openWatchTab()">ASSISTIR</button>
+                <button class="close-btn" onclick="closeModal('modalOnline')">X</button>
+            </div>
+            <div id="tab-play" class="tab-content" style="padding:20px; flex:1;">
+                <select id="onlineFighter">
+                    <% if(team.length > 0) { team.forEach(p => { %>
+                        <option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option>
+                    <% }); } else { %>
+                        <option>Sem Pokemons</option>
+                    <% } %>
+                </select>
+                <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.75rem; color:#ccc; min-width:70px;">Aposta</label>
+                    <input id="betAmount" type="number" min="0" value="0" style="flex:1; padding:8px; border-radius:6px; background:#07101a; color:#fff; border:1px solid #233;">
+                </div>
+                <button id="btnSearch" onclick="startSearch()" style="margin-top:20px;">PROCURAR</button>
+                <button id="btnCancelSearch" onclick="cancelSearch()" style="margin-top:20px; background:#e74c3c; display:none;">CANCELAR</button>
+                <div id="searchStatus" style="display:none; margin-top:15px; color:#f1c40f;">Procurando oponente...</div>
+            </div>
+            <div id="tab-watch" class="tab-content" style="display:none; padding:10px;">
+                <div id="battlesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BATALHA (TREINO/CPU) -->
+    <div class="modal-overlay" id="modalBattle">
+        <div class="modal-content" style="padding:18px; display:block; max-width:420px;">
+            <button class="close-btn" onclick="closeModal('modalBattle')">X</button>
+            <h2 style="text-align:center; color:#e74c3c; font-family:'Press Start 2P';">ARENA - TREINO</h2>
+            <form action="/battle" method="POST" onsubmit="return validateBattleForm()" style="display:flex; flex-direction:column; gap:12px;">
+                <input type="hidden" name="userId" value="<%= user._id %>">
+                <input type="hidden" name="playerName" value="<%= playerName %>">
+                <input type="hidden" name="playerSkin" value="<%= playerSkin %>">
+                <input type="hidden" name="mode" value="manual">
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
+                        <div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div>
+                        <div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div>
+                        <div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div>
+                    </div>
+                    <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
+                        <div style="font-size:0.7rem; color:#ff9fb8; margin-bottom:6px;">Adversário</div>
+                        <div class="arena-char" style="background-image: url('/uploads/char2.png'); background-position: 0% 0%;"></div>
+                        <div style="margin-top:6px; font-weight:bold; color:#f39c12;">CPU</div>
+                    </div>
+                </div>
+                <label style="font-size:0.75rem; color:#ccc;">Seu Lutador</label>
+                <select name="fighterId" id="f1" required style="padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #2b3b4a;">
+                    <option value="" disabled selected>Escolha...</option>
+                    <% if(team.length === 0) { %>
+                        <option value="" disabled>Sem Pokémons</option>
+                    <% } else { %>
+                        <% team.forEach(p => { %>
+                            <option value="<%= p.instanceId %>"><%= p.name %> (Lv.<%= p.level %>)</option>
+                        <% }) %>
+                    <% } %>
+                </select>
+                <div style="display:flex; gap:8px;">
+                    <button type="submit" style="flex:1; background:linear-gradient(135deg,#e74c3c,#c0392b); border:none; padding:12px; border-radius:8px; font-weight:bold;">INICIAR</button>
+                    <button type="button" onclick="openModal('modalOnline'); closeModal('modalBattle');" style="flex:1; background:linear-gradient(135deg,#3498db,#2a80b9); border:none; padding:12px; border-radius:8px; font-weight:bold; color:#fff;">ONLINE</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;"><input type="hidden" name="roomId" id="specRoomId"><input type="hidden" name="playerName" value="<%= playerName %>"><input type="hidden" name="playerSkin" value="<%= playerSkin %>"></form>
-    <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;"><input type="hidden" name="roomId" id="formRoomId"><input type="hidden" name="meData" id="formMeData"><input type="hidden" name="opponentData" id="formOpponentData"></form>
+    <!-- FORMS OCULTOS -->
+    <form id="spectateForm" action="/battle/spectate" method="POST" style="display:none;">
+        <input type="hidden" name="roomId" id="specRoomId">
+        <input type="hidden" name="playerName" value="<%= playerName %>">
+        <input type="hidden" name="playerSkin" value="<%= playerSkin %>">
+    </form>
+    <form id="onlineRedirectForm" action="/battle/online" method="POST" style="display:none;">
+        <input type="hidden" name="roomId" id="formRoomId">
+        <input type="hidden" name="meData" id="formMeData">
+        <input type="hidden" name="opponentData" id="formOpponentData">
+    </form>
 
     <script>
         const socket = io();
@@ -231,16 +294,45 @@
             }, travelTime); 
         }
 
-        async function healTeam() { try { const res = await fetch('/api/heal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: '<%= user._id %>' }) }); const data = await res.json(); if (data && data.success) { showToast(data.message || 'Equipe curada!'); if (document.getElementById('modalTeam').style.display === 'flex') openBag(); } else { showToast(data.error || 'Erro ao curar'); } } catch (e) { showToast('Erro ao conectar ao servidor'); } }
+        async function healTeam() { 
+            try { 
+                const res = await fetch('/api/heal', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ userId: '<%= user._id %>' }) 
+                }); 
+                const data = await res.json(); 
+                if (data && data.success) { 
+                    showToast(data.message || 'Equipe curada!'); 
+                    // Tenta abrir a bolsa se o modal de time estiver visível (requer common.js ou menu)
+                    const modalTeam = document.getElementById('modalTeam');
+                    if (modalTeam && modalTeam.style.display === 'flex' && typeof openBag === 'function') openBag(); 
+                } else { 
+                    showToast(data.error || 'Erro ao curar'); 
+                } 
+            } catch (e) { showToast('Erro ao conectar ao servidor'); } 
+        }
+
+        // --- FUNÇÕES DE LOJA ---
+        function openShop() { openModal('modalShop'); }
+        async function buyItem(itemId) {
+            try {
+                const res = await fetch('/api/buy-item', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: '<%= user._id %>', itemId: itemId, qty: 1 })
+                });
+                const data = await res.json();
+                if (data.success) showToast('Compra realizada!');
+                else showToast(data.error || 'Erro na compra.');
+            } catch (e) { showToast('Erro de conexão.'); }
+        }
+
         async function updateBattleSelect() { try { const res = await fetch('/api/me?userId=<%= user._id %>'); const data = await res.json(); const team = data.team || []; const select1 = document.getElementById('f1'); const selectOnline = document.getElementById('onlineFighter'); let html = '<option value="" disabled selected>Escolha...</option>'; if(team.length === 0) html = '<option value="" disabled>Sem Pokémons</option>'; else team.forEach(p => { html += `<option value="${p.instanceId}">${p.name} (Lv.${p.level})</option>`; }); if(select1) select1.innerHTML = html; if(selectOnline) selectOnline.innerHTML = html; } catch(e) { console.error("Erro ao atualizar select de batalha", e); } }
         
         function startSearch() { const fid = document.getElementById('onlineFighter').value; if(!fid) { showToast("Escolha um Pokémon!"); return; } const bet = Number(document.getElementById('betAmount') ? document.getElementById('betAmount').value : 0) || 0; socket.emit('find_match', fid, '<%= user._id %>', myName, mySkin, bet); document.getElementById('searchStatus').style.display='block'; document.getElementById('btnSearch').style.display='none'; document.getElementById('btnCancelSearch').style.display='block'; }
         
-        // TRATAMENTO DE ERRO DE BUSCA (Mantido)
-        socket.on('search_error', (msg) => {
-            showToast('Erro: ' + msg);
-            cancelSearch();
-        });
+        socket.on('search_error', (msg) => { showToast('Erro: ' + msg); cancelSearch(); });
 
         function openWatchTab() { switchTab('tab-watch'); socket.emit('request_active_battles'); }
         socket.on('active_battles_list', (list) => { const container = document.getElementById('battlesList'); if(!container) return; if(!list || list.length === 0) { container.innerHTML = '<div style="text-align:center; color:#aaa;">Sem lutas ativas</div>'; return; } let html = ''; list.forEach(b => { html += `<div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #222;"><div style="flex:1;"><div style="font-weight:bold; color:#f1c40f">${b.p1Name} vs ${b.p2Name}</div><div style="font-size:0.8rem; color:#aaa">Sala: ${b.id}</div></div><div><button onclick="spectate('${b.id}')" style="padding:8px; background:#2ecc71; border:none; border-radius:6px; color:#000">ESPECTAR</button></div></div>`; }); container.innerHTML = html; });
@@ -264,27 +356,15 @@
             } 
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); 
             
-            // --- CÓDIGO DO PLANETA ATUALIZADO ---
+            // Ícone do planeta para busca online
             if(p.isSearching) { 
-                const container = document.createElement('div');
-                container.className = 'searching-indicator';
-                
-                // Anéis do radar
+                const container = document.createElement('div'); container.className = 'searching-indicator';
                 const ring1 = document.createElement('div'); ring1.className = 'radar-ring';
                 const ring2 = document.createElement('div'); ring2.className = 'radar-ring';
-                
-                // Ícone do planeta
-                const icon = document.createElement('div');
-                icon.className = 'planet-icon';
-                icon.innerText = '🌎';
-
-                container.appendChild(ring1);
-                container.appendChild(ring2);
-                container.appendChild(icon);
+                const icon = document.createElement('div'); icon.className = 'planet-icon'; icon.innerText = '🌎';
+                container.appendChild(ring1); container.appendChild(ring2); container.appendChild(icon);
                 div.appendChild(container);
-            } 
-            // ------------------------------------
-
+            }
             gameArea.appendChild(div); if (p.id === myId) playerElement = div; 
         }
         
