@@ -24,13 +24,17 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: #2ecc71;
+            background: #2ecc71; /* Cor da grama para evitar fundo preto */
         }
 
         #game-world {
             position: absolute;
+            /* CORREÇÃO DE PROPORÇÃO:
+               A imagem parece ter proporção de largura 1 para altura 2.1 aprox.
+               Se a largura é 200vw, a altura deve ser aprox 425vw.
+               Usar vw na altura garante que a imagem não achate. */
             width: 200vw; 
-            height: 480vh; 
+            height: 425vw; 
             
             background-image: url('/uploads/city_map_large.png'); 
             background-size: 100% 100%;
@@ -38,7 +42,6 @@
             
             transition: transform 0.1s linear;
             transform-origin: 0 0;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
         }
 
         /* --- JOGADOR --- */
@@ -63,39 +66,41 @@
             position: absolute; top: -25px; left: 50%; transform: translateX(-50%); 
             background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; 
             border-radius: 4px; font-size: 0.6rem; white-space: nowrap; pointer-events: none; 
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'Press Start 2P', cursive; text-shadow: 1px 1px 0 #000;
         }
 
         /* --- ZONAS DE INTERAÇÃO & GRAMA --- */
         .interaction-zone {
             position: absolute;
-            background: rgba(255, 255, 0, 0.0); /* Mude para 0.3 para debug */
+            background: rgba(255, 255, 0, 0.0); /* Deixe 0.0 para invisível */
             cursor: pointer;
             z-index: 50;
         }
         
-        /* Matinhos (Transparente pois já estão na imagem, mas precisamos da div para clicar) */
+        /* Matinhos (Transparente pois já estão na imagem) */
         .grass-patch {
             position: absolute;
             z-index: 5;
             cursor: pointer;
-            background: transparent;
+            background: rgba(0, 255, 0, 0.0);
         }
 
+        /* POSIÇÕES BASEADAS NA SUA IMAGEM */
+        
         /* Grama Grande (Topo Esquerdo) */
-        #city_grass1 { top: 2%; left: 25%; width: 15%; height: 5%; }
+        #city_grass1 { top: 2%; left: 26%; width: 14%; height: 10%; }
         
         /* Grama Grande (Fundo Esquerdo) */
-        #city_grass2 { top: 90%; left: 5%; width: 15%; height: 5%; }
+        #city_grass2 { top: 90%; left: 4%; width: 14%; height: 8%; }
 
         /* Prédio Azul (Loja) */
-        #interaction-shop { top: 35%; left: 24%; width: 15%; height: 5%; }
+        #interaction-shop { top: 39%; left: 24%; width: 16%; height: 6%; }
         
         /* Prédio Vermelho (Centro/Cura) */
-        #interaction-heal { top: 6%; left: 60%; width: 15%; height: 5%; }
+        #interaction-heal { top: 6.5%; left: 60%; width: 15%; height: 6%; }
 
-        /* Saída para Floresta */
-        #interaction-exit { top: 97%; left: 45%; width: 25%; height: 3%; }
+        /* Saída para Floresta (Rodapé do caminho central) */
+        #interaction-exit { top: 98%; left: 45%; width: 25%; height: 2%; }
 
         /* --- UI LAYER --- */
         #ui-layer { 
@@ -103,8 +108,9 @@
             pointer-events: none; z-index: 100; 
         }
 
+        /* CORREÇÃO DO CLIQUE NO MENU */
         .menu-wrapper {
-            pointer-events: auto; 
+            pointer-events: auto; /* Isso reabilita o clique */
             position: absolute; top: 0; left: 0; width: 100%;
         }
 
@@ -127,7 +133,7 @@
         }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 
-        /* --- MODAIS --- */
+        /* --- MODAIS (Estilo Completo) --- */
         .modal-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.85); z-index: 3000; display: none; 
@@ -187,10 +193,9 @@
         </div>
     </div>
     
-    <!-- LOADER E TOAST -->
+    <!-- LOADER -->
     <div id="loader" class="loader-overlay show"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
-    <div id="toastContainer" style="position:fixed; top:20px; width:100%; display:flex; justify-content:center; z-index:2000; pointer-events:none;"></div>
-
+    
     <!-- MODAL LOJA -->
     <div class="modal-overlay" id="modalShop">
         <div class="modal-content">
@@ -219,11 +224,13 @@
         </div>
     </div>
 
+    <!-- VARIAVEIS -->
     <script>
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
+        window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         
         let socketId = null;
         const viewport = document.getElementById('camera-viewport');
@@ -233,7 +240,14 @@
         // Dados iniciais
         const startX = <%= startX %>;
         const startY = <%= startY %>;
+        window.isPlayerMoving = false;
+        window.isInteracting = false;
+    </script>
 
+    <!-- CARREGA O COMMON.JS (Para Toasts e Dialogos) -->
+    <script src="/scripts/common.js"></script>
+
+    <script>
         // --- CÂMERA ---
         function updateCamera(playerXPercent, playerYPercent) {
             const vpW = viewport.clientWidth;
@@ -269,7 +283,8 @@
             });
             setTimeout(() => {
                 updateCamera(startX, startY);
-                document.getElementById('loader').classList.remove('show');
+                if(typeof hideLoading === 'function') hideLoading();
+                else document.getElementById('loader').classList.remove('show');
             }, 100);
         });
 
@@ -319,6 +334,7 @@
 
             if (data.id === socketId) {
                 updateCamera(data.x, data.y);
+                window.isPlayerMoving = false;
                 
                 if (data.y > 98 && data.x > 35 && data.x < 65) {
                     goToForest();
@@ -360,21 +376,23 @@
 
         // --- ENCONTRO DE MATINHOS ---
         socket.on('encounter_found', () => {
-            showToast("🌿 Pokémon selvagem apareceu!", "#27ae60");
-            document.getElementById('loader').classList.add('show');
+            window.isPlayerMoving = true;
+            // Usa o Toast do common.js se disponivel
+            if(typeof showToast === 'function') showToast("🌿 Pokémon selvagem apareceu!", { color: '#2ecc71' });
+            
+            if(document.getElementById('loader')) document.getElementById('loader').classList.add('show');
             
             const p = document.getElementById(`p-${socketId}`);
             const cx = p ? parseFloat(p.style.left) : 50;
             const cy = p ? parseFloat(p.style.top) : 50;
 
-            // Inicia batalha enviando 'city' como mapa atual
             setTimeout(() => { 
                 fetch('/battle/wild', { 
                     method: 'POST', 
                     headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ 
                         userId: '<%= user._id %>',
-                        currentMap: 'city', // IMPORTANTE: Define que estamos na cidade
+                        currentMap: 'city', // IMPORTANTE: Define o mapa como CITY
                         currentX: cx,
                         currentY: cy
                     }) 
@@ -383,8 +401,9 @@
                 .then(data => { 
                     if(data.battleId) window.location.href = '/battle/' + data.battleId; 
                     else { 
-                        document.getElementById('loader').classList.remove('show');
-                        showToast(data.error || "Nada encontrado.", "#e74c3c"); 
+                        if(document.getElementById('loader')) document.getElementById('loader').classList.remove('show');
+                        if(typeof showToast === 'function') showToast(data.error || "Nada encontrado.", { color: '#e74c3c' });
+                        window.isPlayerMoving = false;
                     } 
                 }); 
             }, 1000);
@@ -394,6 +413,7 @@
         world.addEventListener('click', (e) => {
             if (e.target.classList.contains('interaction-zone') || e.target.closest('#ui-layer')) return;
             if (e.target.closest('.modal-content')) return; 
+            if (window.isPlayerMoving) return;
 
             const rect = world.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -403,6 +423,7 @@
 
             if (targetX < 1 || targetX > 99 || targetY < 1 || targetY > 99) return;
 
+            window.isPlayerMoving = true;
             socket.emit('move_player', { x: targetX, y: targetY });
 
             // Detecta se clicou/andou no mato da cidade
@@ -423,13 +444,13 @@
         }
 
         async function healTeam() {
-            showToast('Curando equipe...', '#3498db');
+            if(typeof showToast === 'function') showToast('Curando equipe...', { color: '#3498db' });
             await fetch('/api/heal', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify({ userId: '<%= user._id %>' }) 
             });
-            showToast('Equipe curada!', '#2ecc71');
+            if(typeof showToast === 'function') showToast('Equipe curada!', { color: '#2ecc71' });
         }
 
         async function buyItem(item) {
@@ -439,34 +460,42 @@
                     body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty: 1 })
                 });
                 const d = await res.json();
-                if(d.success) showToast('Compra realizada!', '#2ecc71');
-                else showToast(d.error || 'Erro', '#e74c3c');
-            } catch(e) { showToast('Erro conexão', '#e74c3c'); }
+                if(d.success) { if(typeof showToast === 'function') showToast('Compra realizada!', { color: '#2ecc71' }); }
+                else { if(typeof showToast === 'function') showToast(d.error || 'Erro', { color: '#e74c3c' }); }
+            } catch(e) { if(typeof showToast === 'function') showToast('Erro conexão', { color: '#e74c3c' }); }
         }
 
         function goToForest() {
-            document.getElementById('loader').classList.add('show');
+            if(document.getElementById('loader')) document.getElementById('loader').classList.add('show');
             setTimeout(() => {
                 window.location.href = '/forest?from=city&userId=<%= user._id %>';
             }, 200);
         }
+        
+        // --- SISTEMA DE NPCS ---
+        socket.on('npcs_list', (npcs) => {
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
+            npcs.forEach(npc => {
+                const div = document.createElement('div');
+                div.className = 'player npc-entity'; 
+                div.id = `npc-${npc._id}`;
+                div.style.left = npc.x + '%';
+                div.style.top = npc.y + '%';
+                div.style.zIndex = Math.floor(npc.y); 
+                
+                if (npc.isCustomSkin && npc.skin) div.style.backgroundImage = `url('${npc.skin}')`;
+                else div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`;
 
-        function showToast(msg, color='#333') {
-            const t = document.getElementById('toastContainer');
-            const d = document.createElement('div');
-            d.style.background = color;
-            d.style.color = '#fff';
-            d.style.padding = '10px 15px';
-            d.style.borderRadius = '8px';
-            d.style.fontFamily = 'Press Start 2P';
-            d.style.fontSize = '0.7rem';
-            d.style.boxShadow = '0 4px 10px rgba(0,0,0,0.5)';
-            d.style.animation = 'popIn 0.3s forwards';
-            d.innerText = msg;
-            t.innerHTML = '';
-            t.appendChild(d);
-            setTimeout(() => d.remove(), 2500);
-        }
+                const label = document.createElement('div');
+                label.className = 'player-name';
+                label.innerText = npc.name;
+                label.style.color = '#f1c40f'; 
+                div.appendChild(label);
+
+                div.onclick = (e) => { e.stopPropagation(); interactWithNPC(npc); };
+                document.getElementById('game-world').appendChild(div);
+            });
+        });
     </script>
 </body>
 </html>
