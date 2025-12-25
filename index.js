@@ -75,9 +75,7 @@ async function seedDatabase() { try { const count = await BasePokemon.countDocum
 function calculateStats(base, level) { 
     const mult = 1 + (level * 0.025); 
     return { 
-        // MUDEI DE + 55 PARA + 10 AQUI EMBAIXO:
         hp: Math.floor((base.hp * 1.5 * level / 100) + level + 10), 
-        
         energy: Math.floor(base.energy + (level * 0.1)), 
         attack: Math.floor(base.attack * mult), 
         defense: Math.floor(base.defense * mult), 
@@ -148,7 +146,7 @@ function performEnemyTurn(attacker, defender, events) { const move = attacker.mo
 
 app.get('/', async (req, res) => { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: null, skinCount: SKIN_COUNT, starters }); });
 app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/lobby?userId=' + user._id); } else { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
-app.post('/register', async (req, res) => { const { username, password, skin, starterId } = req.body; try { let starterTeam = []; if (starterId) { const starter = await BasePokemon.findOne({ id: starterId, isStarter: true }); if (starter) { const initialStats = calculateStats(starter.baseStats, 1); let initialMoves = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); if(initialMoves.length === 0) initialMoves = ['tackle']; starterTeam.push({ baseId: starter.id, nickname: starter.name, level: 1, currentHp: initialStats.hp, stats: initialStats, moves: initialMoves, learnedMoves: initialMoves }); } } const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [] }); await newUser.save(); res.redirect('/lobby?userId=' + newUser._id); } catch (e) { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } });
+app.post('/register', async (req, res) => { const { username, password, skin, starterId } = req.body; try { let starterTeam = []; let dex = []; if (starterId) { const starter = await BasePokemon.findOne({ id: starterId, isStarter: true }); if (starter) { const initialStats = calculateStats(starter.baseStats, 1); let initialMoves = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); if(initialMoves.length === 0) initialMoves = ['tackle']; starterTeam.push({ baseId: starter.id, nickname: starter.name, level: 1, currentHp: initialStats.hp, stats: initialStats, moves: initialMoves, learnedMoves: initialMoves }); dex.push(starter.id); } } const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [], dex: dex }); await newUser.save(); res.redirect('/lobby?userId=' + newUser._id); } catch (e) { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } });
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
 app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
 app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
@@ -159,22 +157,75 @@ app.post('/lab/create-npc', upload.single('npcSkinFile'), async (req, res) => { 
 app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
 
 app.get('/api/pc', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if (!user) return res.json({ error: 'User not found' }); const formatList = async (list) => { const output = []; for (let p of list) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) output.push(userPokemonToEntity(p, base)); } return output; }; const pcList = user.pc || []; const team = await formatList(user.pokemonTeam); const pc = await formatList(pcList); res.json({ team, pc }); });
-app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, to } = req.body; const user = await User.findById(userId); if (!user) return res.json({ error: 'Usuário não encontrado.' }); if (!user.pc) user.pc = []; const sourceList = from === 'team' ? user.pokemonTeam : user.pc; const destList = to === 'team' ? user.pokemonTeam : user.pc; if (from === to) return res.json({ success: true }); if (to === 'team' && destList.length >= 6) return res.json({ error: 'Sua equipe já tem 6 Pokémons!' }); if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Você não pode ficar sem Pokémons na equipe!' }); const index = sourceList.findIndex(p => p._id.toString() === pokemonId); if (index === -1) return res.json({ error: 'Pokémon não encontrado.' }); const [poke] = sourceList.splice(index, 1); destList.push(poke); await user.save(); res.json({ success: true }); });
+app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, to } = req.body; const user = await User.findById(userId); if (!user) return res.json({ error: 'Usuário não encontrado.' }); if (!user.pc) user.pc = []; const sourceList = from === 'team' ? user.pokemonTeam : user.pc; const destList = to === 'team' ? user.pokemonTeam : user.pc; if (from === to) return res.json({ success: true }); if (to === 'team' && destList.length >= 6) return res.json({ error: 'Sua equipe já tem 6 Monstros!' }); if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Você não pode ficar sem Monstros na equipe!' }); const index = sourceList.findIndex(p => p._id.toString() === pokemonId); if (index === -1) return res.json({ error: 'Monstro não encontrado.' }); const [poke] = sourceList.splice(index, 1); destList.push(poke); await user.save(); res.json({ success: true }); });
 app.get('/api/me', async (req, res) => { const { userId } = req.query; if(!userId) return res.status(400).json({ error: 'No ID' }); const user = await User.findById(userId); if(!user) return res.status(404).json({ error: 'User not found' }); const teamWithSprites = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); const nextXp = getXpForNextLevel(p.level); const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves; teamWithSprites.push({ instanceId: p._id, name: p.nickname, level: p.level, hp: p.currentHp, maxHp: p.stats.hp, xp: p.xp, xpToNext: nextXp, sprite: base ? base.sprite : '', moves: p.moves, learnedMoves: allLearned }); } res.json({ team: teamWithSprites, allMoves: MOVES_LIBRARY, money: user.money || 0, pokeballs: user.pokeballs || 0, rareCandy: user.rareCandy || 0 }); });
-app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Pokémons curados!` }); });
+app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Monstros curados!` }); });
 app.post('/api/equip-move', async (req, res) => { const { userId, pokemonId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.pokemonTeam.id(pokemonId); if(!poke) return res.json({error: "Pokemon not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
 app.post('/api/set-lead', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.pokemonTeam.findIndex(p => p._id.toString() === pokemonId); if (index > 0) { const poke = user.pokemonTeam.splice(index, 1)[0]; user.pokemonTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
-app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.pokemonTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último pokémon.' }); const index = user.pokemonTeam.findIndex(p => p._id.toString() === pokemonId); if(index === -1) return res.json({ error: 'Pokemon not found' }); user.pokemonTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
+app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.pokemonTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último monstro.' }); const index = user.pokemonTeam.findIndex(p => p._id.toString() === pokemonId); if(index === -1) return res.json({ error: 'Pokemon not found' }); user.pokemonTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
 app.post('/api/buy-item', async (req, res) => { const { userId, itemId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const prices = { pokeball: 50, rareCandy: 2000 }; if(!prices[itemId]) return res.json({ error: 'Item inválido' }); const cost = prices[itemId] * q; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' }); user.money = (user.money || 0) - cost; if(itemId === 'pokeball') user.pokeballs = (user.pokeballs || 0) + q; if(itemId === 'rareCandy') user.rareCandy = (user.rareCandy || 0) + q; await user.save(); res.json({ success: true, money: user.money, pokeballs: user.pokeballs, rareCandy: user.rareCandy }); });
-app.post('/api/use-item', async (req, res) => { const { userId, itemId, pokemonId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(itemId === 'rareCandy') { if(!pokemonId) return res.json({ error: 'pokemonId required' }); let poke = null; try { poke = user.pokemonTeam.id(pokemonId); } catch(e) { poke = user.pokemonTeam.find(p => p._id.toString() === (pokemonId || '')); } if(!poke) return res.json({ error: 'Pokemon not found' }); if((user.rareCandy || 0) < q) return res.json({ error: 'Not enough RareCandy' }); const oldLevel = poke.level || 1; poke.level = Math.min(100, oldLevel + q); user.rareCandy = (user.rareCandy || 0) - q; let base = await BasePokemon.findOne({ id: poke.baseId }); let evolved = false; if (base) { if (base.movePool) { const newMove = base.movePool.find(m => m.level === poke.level); if (newMove) { if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves]; if (!poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } } } if (base.evolution && poke.level >= base.evolution.level) { const nextPoke = await BasePokemon.findOne({ id: base.evolution.targetId }); if (nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; base = nextPoke; evolved = true; } } poke.stats = calculateStats(base.baseStats, poke.level); poke.currentHp = poke.stats.hp; } await user.save(); return res.json({ success: true, rareCandy: user.rareCandy, evolved: evolved, pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname } }); } return res.json({ error: 'Item cannot be used here' }); });
+
+app.post('/api/use-item', async (req, res) => { 
+    const { userId, itemId, pokemonId, qty } = req.body; 
+    const q = Math.max(1, parseInt(qty) || 1); 
+    const user = await User.findById(userId); 
+    if(!user) return res.json({ error: 'User not found' }); 
+    
+    if(itemId === 'rareCandy') { 
+        if(!pokemonId) return res.json({ error: 'pokemonId required' }); 
+        let poke = null; 
+        try { poke = user.pokemonTeam.id(pokemonId); } catch(e) { poke = user.pokemonTeam.find(p => p._id.toString() === (pokemonId || '')); } 
+        if(!poke) return res.json({ error: 'Pokemon not found' }); 
+        if((user.rareCandy || 0) < q) return res.json({ error: 'Not enough RareCandy' }); 
+        
+        const oldLevel = poke.level || 1; 
+        poke.level = Math.min(100, oldLevel + q); 
+        user.rareCandy = (user.rareCandy || 0) - q; 
+        let base = await BasePokemon.findOne({ id: poke.baseId }); 
+        let evolved = false; 
+        
+        if (base) { 
+            if (base.movePool) { 
+                const newMove = base.movePool.find(m => m.level === poke.level); 
+                if (newMove) { 
+                    if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves]; 
+                    if (!poke.learnedMoves.includes(newMove.moveId)) { 
+                        poke.learnedMoves.push(newMove.moveId); 
+                        if(poke.moves.length < 4) poke.moves.push(newMove.moveId); 
+                    } 
+                } 
+            } 
+            if (base.evolution && poke.level >= base.evolution.level) { 
+                const nextPoke = await BasePokemon.findOne({ id: base.evolution.targetId }); 
+                if (nextPoke) { 
+                    poke.baseId = nextPoke.id; 
+                    poke.nickname = nextPoke.name; 
+                    base = nextPoke; 
+                    evolved = true; 
+                    
+                    // ATUALIZAR DEX NA EVOLUÇÃO
+                    if (!user.dex) user.dex = [];
+                    if (!user.dex.includes(nextPoke.id)) {
+                        user.dex.push(nextPoke.id);
+                    }
+                } 
+            } 
+            poke.stats = calculateStats(base.baseStats, poke.level); 
+            poke.currentHp = poke.stats.hp; 
+        } 
+        await user.save(); 
+        return res.json({ success: true, rareCandy: user.rareCandy, evolved: evolved, pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname } }); 
+    } 
+    return res.json({ error: 'Item cannot be used here' }); 
+});
 
 app.post('/battle/wild', async (req, res) => { 
     const { userId, currentMap, currentX, currentY } = req.body; 
     const user = await User.findById(userId); 
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; 
-    if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Pokémons estão desmaiados!" }); 
+    if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Monstros estão desmaiados!" }); 
     const possibleSpawns = await BasePokemon.find({ spawnLocation: 'forest' }); 
-    if(possibleSpawns.length === 0) return res.json({ error: "Nenhum pokemon." }); 
+    if(possibleSpawns.length === 0) return res.json({ error: "Nenhum monstro." }); 
     const wildBase = pickWeightedPokemon(possibleSpawns); 
     const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
     const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
@@ -204,7 +255,7 @@ app.post('/battle/npc', async (req, res) => {
     if (!user || !npc) return res.json({ error: "Erro: NPC/Usuário não encontrado." });
 
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0];
-    if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Pokémons estão desmaiados!" });
+    if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Monstros estão desmaiados!" });
     
     const userBase = await BasePokemon.findOne({ id: userPokeData.baseId });
     const p1Entity = userPokemonToEntity(userPokeData, userBase); 
@@ -212,7 +263,7 @@ app.post('/battle/npc', async (req, res) => {
     p1Entity.skin = user.skin;
 
     const npcTeamInstances = [];
-    if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Pokémons!" });
+    if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Monstros!" });
 
     for (let member of npc.team) {
         const base = await BasePokemon.findOne({ id: member.baseId });
@@ -321,117 +372,9 @@ app.post('/battle', async (req, res) => {
     res.redirect('/battle/' + battleId); 
 });
 
-app.get('/battle/:id', async (req, res) => { 
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
-    const battle = activeBattles[req.params.id]; 
-    if(!battle) return res.redirect('/'); 
-    
-    let switchable = []; 
-    if (battle.userId) { 
-        const user = await User.findById(battle.userId); 
-        if (user) { 
-            for (let p of user.pokemonTeam) { 
-                if (p._id.toString() !== battle.p1.instanceId && p.currentHp > 0) { 
-                    const b = await BasePokemon.findOne({ id: p.baseId }); 
-                    if(b) switchable.push(userPokemonToEntity(p, b)); 
-                } 
-            } 
-        } 
-    } 
-    const bg = battle.type === 'wild' ? 'forest_bg.png' : 'battle_bg.png'; 
-    let returnUrl = '/lobby';
-    if(battle.returnMap) {
-        returnUrl = `/${battle.returnMap}?userId=${battle.userId}`;
-        if(battle.returnX) returnUrl += `&x=${battle.returnX}`;
-        if(battle.returnY) returnUrl += `&y=${battle.returnY}`;
-    } else {
-        returnUrl = `/lobby?userId=${battle.userId}`;
-    }
-
-    res.render('battle', { 
-        p1: battle.p1, p2: battle.p2, 
-        battleId: req.params.id, 
-        battleMode: battle.type === 'local' ? 'manual' : battle.type, 
-        isSpectator: false, 
-        myRoleId: battle.p1.instanceId, 
-        realUserId: battle.userId, 
-        playerName: battle.p1.playerName, 
-        playerSkin: battle.p1.skin, 
-        bgImage: bg, 
-        battleData: JSON.stringify({ log: [{type: 'INIT'}] }), 
-        switchable,
-        returnUrl
-    }); 
-});
-
-// --- ROTA DE ADMINISTRAÇÃO JSON (BULK EDIT) ---
-
-// 1. Página de visualização/edição
-app.get('/admin', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        // Verifica segurança básica
-        if (!userId) return res.send("Acesso negado: userId necessário.");
-        const user = await User.findById(userId);
-        if (!user || !user.isAdmin) return res.send("Acesso negado: Apenas Admins.");
-
-        // Busca todos os pokemons, removendo o _id e __v do mongo para o JSON ficar limpo
-        const pokemons = await BasePokemon.find({}, '-_id -__v').sort({ id: 1 }).lean();
-
-        // Renderiza o EJS passando o JSON formatado
-        res.render('admin', { 
-            pokemonsJSON: JSON.stringify(pokemons, null, 4),
-            userId: user._id
-        });
-    } catch (e) {
-        res.send("Erro: " + e.message);
-    }
-});
-
-// 2. Rota que salva as alterações
-app.post('/admin/save', async (req, res) => {
-    try {
-        const { userId, jsonData } = req.body;
-        
-        // Verificação de segurança
-        const user = await User.findById(userId);
-        if (!user || !user.isAdmin) return res.status(403).json({ error: "Não autorizado" });
-
-        let data;
-        try {
-            data = JSON.parse(jsonData);
-        } catch (e) {
-            return res.status(400).json({ error: "JSON Inválido: " + e.message });
-        }
-
-        if (!Array.isArray(data)) return res.status(400).json({ error: "O JSON deve ser uma lista [...]" });
-
-        // 1. Identificar IDs presentes no JSON enviado
-        const incomingIds = data.map(p => p.id).filter(id => id);
-
-        // 2. Excluir do banco qualquer Pokemon que NÃO esteja no JSON (foi removido pelo admin)
-        await BasePokemon.deleteMany({ id: { $nin: incomingIds } });
-
-        // 3. Preparar operações em lote (Bulk Write) para alta performance
-        const bulkOps = data.map(p => ({
-            updateOne: {
-                filter: { id: p.id },
-                update: { $set: p },
-                upsert: true // Cria se não existir
-            }
-        }));
-
-        if (bulkOps.length > 0) {
-            await BasePokemon.bulkWrite(bulkOps);
-        }
-
-        res.json({ success: true, count: bulkOps.length, message: "Banco de dados sincronizado com sucesso!" });
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: "Erro interno: " + e.message });
-    }
-});
+// ADMINISTRAÇÃO E ROTAS BATTLE
+app.get('/admin', async (req, res) => { try { const { userId } = req.query; if (!userId) return res.send("Acesso negado."); const user = await User.findById(userId); if (!user || !user.isAdmin) return res.send("Acesso negado."); const pokemons = await BasePokemon.find({}, '-_id -__v').sort({ id: 1 }).lean(); res.render('admin', { pokemonsJSON: JSON.stringify(pokemons, null, 4), userId: user._id }); } catch (e) { res.send("Erro: " + e.message); } });
+app.post('/admin/save', async (req, res) => { try { const { userId, jsonData } = req.body; const user = await User.findById(userId); if (!user || !user.isAdmin) return res.status(403).json({ error: "Não autorizado" }); let data; try { data = JSON.parse(jsonData); } catch (e) { return res.status(400).json({ error: "JSON Inválido" }); } if (!Array.isArray(data)) return res.status(400).json({ error: "O JSON deve ser uma lista" }); const incomingIds = data.map(p => p.id).filter(id => id); await BasePokemon.deleteMany({ id: { $nin: incomingIds } }); const bulkOps = data.map(p => ({ updateOne: { filter: { id: p.id }, update: { $set: p }, upsert: true } })); if (bulkOps.length > 0) { await BasePokemon.bulkWrite(bulkOps); } res.json({ success: true, count: bulkOps.length }); } catch (e) { res.status(500).json({ error: "Erro interno" }); } });
 
 app.post('/api/turn', async (req, res) => {
     const { battleId, action, moveId, isForced } = req.body; const battle = activeBattles[battleId]; if(!battle) { return res.json({ finished: true }); }
@@ -457,7 +400,39 @@ app.post('/api/turn', async (req, res) => {
             return res.json({ events, p1State: { hp: p1.hp, maxHp: p1.maxHp, energy: p1.energy, maxEnergy: p1.maxEnergy, name: p1.name, level: p1.level, sprite: p1.sprite, moves: p1.moves }, p2State: { hp: p2.hp }, switched: true, newP1Id: p1.instanceId }); 
         }
 
-        if (action === 'catch') { if (battle.type !== 'wild') { events.push({ type: 'MSG', text: 'Não pode capturar.' }); return res.json({ events }); } try { const user = await User.findById(battle.userId); if((user.pokeballs || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem CatchCubes!' }); return res.json({ events }); } user.pokeballs--; threwPokeball = true; const chance = (p2.catchRate * (1 - (p2.hp / p2.maxHp))) + 0.15 + (p2.status ? 0.2 : 0); if (Math.random() < chance) { const activeP1Index = user.pokemonTeam.findIndex(p => p._id.toString() === p1.instanceId); if (activeP1Index !== -1) user.pokemonTeam[activeP1Index].currentHp = p1.hp; const newStats = calculateStats(p2.stats, p2.level); const newPokeObj = { baseId: p2.baseId, nickname: p2.name, level: p2.level, currentHp: newStats.hp, stats: newStats, moves: p2.moves.map(m => m.id), learnedMoves: p2.moves.map(m => m.id) }; let sentToPC = false; if (!user.pc) user.pc = []; if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPokeObj); else { user.pc.push(newPokeObj); sentToPC = true; } await user.save(); delete activeBattles[battleId]; return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwPokeball }); } else { await user.save(); events.push({ type: 'MSG', text: `${p2.name} escapou!` }); performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } } catch (e) { events.push({ type: 'MSG', text: 'Erro.' }); return res.json({ events }); } } 
+        if (action === 'catch') { 
+            if (battle.type !== 'wild') { events.push({ type: 'MSG', text: 'Não pode capturar.' }); return res.json({ events }); } 
+            try { 
+                const user = await User.findById(battle.userId); 
+                if((user.pokeballs || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem CatchCubes!' }); return res.json({ events }); } 
+                user.pokeballs--; threwPokeball = true; 
+                const chance = (p2.catchRate * (1 - (p2.hp / p2.maxHp))) + 0.15 + (p2.status ? 0.2 : 0); 
+                
+                if (Math.random() < chance) { 
+                    const activeP1Index = user.pokemonTeam.findIndex(p => p._id.toString() === p1.instanceId); 
+                    if (activeP1Index !== -1) user.pokemonTeam[activeP1Index].currentHp = p1.hp; 
+                    const newStats = calculateStats(p2.stats, p2.level); 
+                    const newPokeObj = { baseId: p2.baseId, nickname: p2.name, level: p2.level, currentHp: newStats.hp, stats: newStats, moves: p2.moves.map(m => m.id), learnedMoves: p2.moves.map(m => m.id) }; 
+                    let sentToPC = false; 
+                    if (!user.pc) user.pc = []; 
+                    if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPokeObj); else { user.pc.push(newPokeObj); sentToPC = true; }
+                    
+                    // ATUALIZAR DEX NA CAPTURA
+                    if (!user.dex) user.dex = [];
+                    if (!user.dex.includes(p2.baseId)) {
+                        user.dex.push(p2.baseId);
+                    }
+
+                    await user.save(); 
+                    delete activeBattles[battleId]; 
+                    return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwPokeball }); 
+                } else { 
+                    await user.save(); 
+                    events.push({ type: 'MSG', text: `${p2.name} escapou!` }); 
+                    performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); 
+                } 
+            } catch (e) { events.push({ type: 'MSG', text: 'Erro.' }); return res.json({ events }); } 
+        } 
         else if (action === 'run') { if (Math.random() > 0.4) { delete activeBattles[battleId]; return res.json({ events: [{type:'MSG', text:'Fugiu!'}], finished: true, fled: true }); } else { events.push({ type: 'MSG', text: `Falha ao fugir!` }); performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } } 
         else if (action === 'move') { const p1Move = p1.moves.find(m => m.id === moveId); if (p1.stats.speed >= p2.stats.speed) { processAction(p1, p2, p1Move, events); if (p2.hp > 0) performEnemyTurn(p2, p1, events); } else { performEnemyTurn(p2, p1, events); if (p1.hp > 0) processAction(p1, p2, p1Move, events); } if (p1.hp > 0) applyStatusDamage(p1, events); if (p2.hp > 0) applyStatusDamage(p2, events); }
         if (p1.hp <= 0) { const user = await User.findById(battle.userId); if(user) { const poke = user.pokemonTeam.find(p => p._id.toString() === p1.instanceId); if(poke) { poke.currentHp = 0; await user.save(); } const hasAlive = user.pokemonTeam.some(p => p.currentHp > 0); if (hasAlive) { events.push({ type: 'MSG', text: `${p1.name} desmaiou!` }); let switchable = []; for (let p of user.pokemonTeam) { if (p.currentHp > 0) { const b = await BasePokemon.findOne({ id: p.baseId }); if(b) switchable.push(userPokemonToEntity(p, b)); } } return res.json({ events, forceSwitch: true, switchable }); } } delete activeBattles[battleId]; return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwPokeball }); }
@@ -476,7 +451,17 @@ app.post('/api/turn', async (req, res) => {
                         poke.level++; poke.xp = 0; events.push({ type: 'MSG', text: `${poke.nickname} subiu para o nível ${poke.level}!` });
                         const baseData = await BasePokemon.findOne({ id: poke.baseId });
                         if (baseData.movePool) { const newMove = baseData.movePool.find(m => m.level === poke.level); if(newMove && !poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); events.push({ type: 'MSG', text: `Aprendeu ${MOVES_LIBRARY[newMove.moveId].name}!` }); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } }
-                        if (baseData.evolution && poke.level >= baseData.evolution.level) { const nextPoke = await BasePokemon.findOne({ id: baseData.evolution.targetId }); if(nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; events.push({ type: 'MSG', text: `Evoluiu para ${nextPoke.name}!` }); } }
+                        if (baseData.evolution && poke.level >= baseData.evolution.level) { 
+                            const nextPoke = await BasePokemon.findOne({ id: baseData.evolution.targetId }); 
+                            if(nextPoke) { 
+                                poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; 
+                                events.push({ type: 'MSG', text: `Evoluiu para ${nextPoke.name}!` }); 
+                                
+                                // ATUALIZAR DEX NA EVOLUÇÃO (Batalha)
+                                if (!user.dex) user.dex = [];
+                                if (!user.dex.includes(nextPoke.id)) { user.dex.push(nextPoke.id); }
+                            } 
+                        }
                         const currentBase = await BasePokemon.findOne({ id: poke.baseId }); poke.stats = calculateStats(currentBase.baseStats, poke.level);
                     }
                     poke.currentHp = p1.hp; await user.save(); 
@@ -531,6 +516,11 @@ app.post('/api/turn', async (req, res) => {
                                     let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['tackle'];
                                     const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves };
                                     if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPoke); else user.pc.push(newPoke);
+                                    
+                                    // ATUALIZAR DEX NPC
+                                    if (!user.dex) user.dex = [];
+                                    if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); }
+
                                     events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` });
                                 }
                             }
