@@ -1,822 +1,1022 @@
-const express = require('express');
-const path = require('path');
-const bodyParser = require('body-parser');
-const multer = require('multer');
-const http = require('http');
-const { Server } = require("socket.io");
-const mongoose = require('mongoose');
-
-const { BasePokemon, User, NPC } = require('./models');
-const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
-const { MONGO_URI } = require('./config'); 
-
-const SKIN_COUNT = 12; 
-
-mongoose.connect(MONGO_URI)
-    .then(async () => {
-        console.log('✅ MongoDB Conectado');
-        await fixLegacyUsers();
-    })
-    .catch(e => console.log('❌ Erro no Mongo:', e));
-
-async function fixLegacyUsers() {
-    try {
-        const users = await mongoose.connection.db.collection('users').find({}).toArray();
-        for (let u of users) {
-            if (u.defeatedNPCs && u.defeatedNPCs.length > 0) {
-                if (typeof u.defeatedNPCs[0] === 'string') {
-                    const newFormat = u.defeatedNPCs.map(id => ({ npcId: id, defeatedAt: 0 }));
-                    await mongoose.connection.db.collection('users').updateOne({ _id: u._id }, { $set: { defeatedNPCs: newFormat } });
-                    console.log(`Migrado usuário ${u.username}`);
-                }
-            }
-        }
-    } catch (e) { console.error("Erro migração:", e); }
-}
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-process.on('uncaughtException', (err) => { console.error('UNCAUGHT EXCEPTION:', err); });
-process.on('unhandledRejection', (reason, promise) => { console.error('UNHANDLED REJECTION:', reason); });
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
-
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-app.use(express.static('public'));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
-
-const activeBattles = {}; 
-const onlineBattles = {}; 
-const players = {}; 
-let matchmakingQueue = []; 
-const roomSpectators = {}; 
-
-const GRASS_PATCHES = ['grass1', 'grass2'];
-const GRASS_CHANCE = { grass1: 0.35, grass2: 0.35 };
-
-function pickWeightedPokemon(pokemonList) {
-    let totalWeight = 0; pokemonList.forEach(p => totalWeight += (p.spawnChance || 1));
-    let random = Math.random() * totalWeight;
-    for (let i = 0; i < pokemonList.length; i++) {
-        const weight = pokemonList[i].spawnChance || 1;
-        if (random < weight) return pokemonList[i];
-        random -= weight;
-    }
-    return pokemonList[0]; 
-}
-
-async function seedDatabase() { try { const count = await BasePokemon.countDocuments(); if (count === 0) console.log('🌱 Banco vazio.'); } catch (e) { console.error(e); } }
-
-function calculateStats(base, level) { 
-    const mult = 1 + (level * 0.025); 
-    return { 
-        // MUDEI DE + 55 PARA + 10 AQUI EMBAIXO:
-        hp: Math.floor((base.hp * 1.5 * level / 100) + level + 10), 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Batalha - Goofymon</title>
+    <link rel="preload" as="image" href="/uploads/catchcube.gif">
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/scripts/common.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
+        #global-loader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.1); border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        .loading-text { font-family: 'Press Start 2P', cursive; font-size: 0.8rem; color: #f1c40f; animation: pulse 1.5s infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .arena { flex: 1; background: url('/uploads/<%= bgImage %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden; z-index: 10; image-rendering: pixelated; }
+        .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 8px 12px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: 170px; font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .hud-p1 { left: 10px; border-left: 5px solid #3498db; text-align: left; }
+        .hud-p2 { right: 10px; border-right: 5px solid #e74c3c; text-align: right; }
+        .poke-name { font-size: 0.6rem; margin-bottom: 6px; color: #fff; text-shadow: 1px 1px 0 #000; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .poke-lv { font-size: 0.5rem; color: #f1c40f; margin-left: 4px; }
+        .trainer-sub { font-size: 0.5rem; color: #bbb; margin-bottom: 6px; text-transform: uppercase; font-family: sans-serif; font-weight: bold; letter-spacing: 1px; }
+        .bar-container { width: 100%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; border: 1px solid #000; margin-bottom: 4px; position: relative; }
+        .hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); transition: width 0.5s ease-out; }
+        .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
+        .stat-text { font-size: 0.55rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; margin-top: 2px; }
+        .fighter { position: absolute; width: 300px; height: 150px; display: flex; align-items: flex-end; z-index: 20; pointer-events: none; top: 45%; transform: translateY(-50%); transition: opacity 0.5s; }
+        .fighter.p2-position { right: 5%; justify-content: flex-end; }
+        .fighter.p2-position .trainer { order: 2; margin-left: -30px; z-index: 23; background-position-y: 33.33%; } 
+        .fighter.p2-position .sprite { order: 1; z-index: 22; }
+        .fighter.p1-position { left: 5%; justify-content: flex-start; }
+        .fighter.p1-position .trainer { order: 1; margin-right: -30px; z-index: 23; background-position-y: 66.66%; }
+        .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
         
-        energy: Math.floor(base.energy + (level * 0.1)), 
-        attack: Math.floor(base.attack * mult), 
-        defense: Math.floor(base.defense * mult), 
-        speed: Math.floor(base.speed * mult) 
-    }; 
-}
-
-async function createBattleInstance(baseId, level) { 
-    const base = await BasePokemon.findOne({ id: baseId }).lean(); if(!base) return null; 
-    const stats = calculateStats(base.baseStats, level); 
-    let moves = base.movePool ? base.movePool.filter(m => m.level <= level).map(m => m.moveId) : []; 
-    if(moves.length === 0) moves = ['tackle']; 
-    if(moves.length > 4) moves = moves.sort(() => 0.5 - Math.random()).slice(0, 4); 
-    return { 
-        instanceId: 'wild_' + Date.now(), 
-        baseId: base.id, name: base.name, type: base.type, level: level, 
-        maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
-        moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
-        sprite: base.sprite, catchRate: base.catchRate || 0.5, xpYield: Math.max(5, Math.floor(level * 25)), 
-        isWild: true, status: null 
-    }; 
-}
-
-function userPokemonToEntity(userPoke, baseData) { 
-    const movesObj = userPoke.moves.map(mid => { const libMove = MOVES_LIBRARY[mid]; return libMove ? { ...libMove, id: mid } : null; }).filter(m => m !== null); 
-    return { 
-        instanceId: userPoke._id.toString(), baseId: userPoke.baseId, name: userPoke.nickname || baseData.name, 
-        type: baseData.type, level: userPoke.level, maxHp: userPoke.stats.hp, hp: userPoke.currentHp > 0 ? userPoke.currentHp : 0, 
-        maxEnergy: userPoke.stats.energy, energy: userPoke.stats.energy, stats: userPoke.stats, 
-        moves: movesObj, sprite: baseData.sprite, isWild: false, xp: userPoke.xp, xpToNext: getXpForNextLevel(userPoke.level), status: null 
-    }; 
-}
-
-function applyStatusDamage(pokemon, events) {
-    if (!pokemon.status || pokemon.hp <= 0) return;
-    if (pokemon.status.type === 'poison') {
-        const dmg = Math.max(1, Math.floor(pokemon.maxHp / 8)); pokemon.hp -= dmg; if (pokemon.hp < 0) pokemon.hp = 0; pokemon.status.turns--;
-        events.push({ type: 'STATUS_DAMAGE', targetId: pokemon.instanceId || 'wild', damage: dmg, newHp: pokemon.hp, status: 'poison', text: `${pokemon.name} sofreu pelo veneno!` });
-        if (pokemon.status.turns <= 0) { pokemon.status = null; events.push({ type: 'STATUS_END', targetId: pokemon.instanceId || 'wild', text: `O veneno de ${pokemon.name} passou.` }); }
-    }
-}
-
-function processAction(attacker, defender, move, logArray) {
-    if(!move) { logArray.push({ type: 'MSG', text: `${attacker.name} hesitou!` }); return; }
-    if (attacker.energy >= move.cost) attacker.energy -= move.cost; else { logArray.push({ type: 'MSG', text: `${attacker.name} cansou!` }); return; }
-    logArray.push({ type: 'USE_MOVE', actorId: attacker.instanceId || 'wild', moveName: move.name, moveIcon: move.icon, moveElement: move.element || 'normal', moveCategory: move.category || 'physical', moveType: move.type, cost: move.cost, newEnergy: attacker.energy });
-    
-    if(move.type === 'heal') { 
-        const oldHp = attacker.hp; 
-        const healAmount = move.power + Math.floor(attacker.maxHp * 0.1); 
-        attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount); 
-        logArray.push({ type: 'HEAL', actorId: attacker.instanceId || 'wild', amount: attacker.hp - oldHp, newHp: attacker.hp }); 
-    } 
-    else if (move.type === 'defend') { logArray.push({ type: 'MSG', text: `${attacker.name} se protegeu!` }); } 
-    else { 
-        const multiplier = getTypeEffectiveness(move.element, defender.type);
-        const level = attacker.level || 1; const atk = attacker.stats.attack; const def = defender.stats.defense;
-        const random = (Math.floor(Math.random() * 16) + 85) / 100;
-        let damage = Math.floor((((level * 0.2 + 1.5) * move.power * (atk / def)) / 65 + 2) * multiplier * random);
-        if (damage < 1) damage = 1; 
-        defender.hp -= damage; if (defender.hp < 0) defender.hp = 0;
-        logArray.push({ type: 'ATTACK_HIT', attackerId: attacker.instanceId || 'wild', targetId: defender.instanceId || 'wild', damage, newHp: defender.hp, isEffective: multiplier > 1, isNotEffective: multiplier < 1 && multiplier > 0, isBlocked: multiplier === 0 }); 
-        if (move.element === 'poison' && !defender.status && defender.hp > 0 && Math.random() < 0.25) { defender.status = { type: 'poison', turns: 2 }; logArray.push({ type: 'STATUS_APPLIED', targetId: defender.instanceId || 'wild', status: 'poison', text: `${defender.name} foi envenenado!` }); }
-    }
-}
-
-function performEnemyTurn(attacker, defender, events) { const move = attacker.moves[Math.floor(Math.random() * attacker.moves.length)]; processAction(attacker, defender, move, events); }
-
-app.get('/', async (req, res) => { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: null, skinCount: SKIN_COUNT, starters }); });
-app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/lobby?userId=' + user._id); } else { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
-app.post('/register', async (req, res) => { const { username, password, skin, starterId } = req.body; try { let starterTeam = []; if (starterId) { const starter = await BasePokemon.findOne({ id: starterId, isStarter: true }); if (starter) { const initialStats = calculateStats(starter.baseStats, 1); let initialMoves = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); if(initialMoves.length === 0) initialMoves = ['tackle']; starterTeam.push({ baseId: starter.id, nickname: starter.name, level: 1, currentHp: initialStats.hp, stats: initialStats, moves: initialMoves, learnedMoves: initialMoves }); } } const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [] }); await newUser.save(); res.redirect('/lobby?userId=' + newUser._id); } catch (e) { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } });
-app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
-app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
-app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
-
-app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), spawnChance: parseFloat(spawnChance) || 10, isStarter: isStarter === 'on', evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool }; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } res.redirect(req.header('Referer') || '/'); });
-app.post('/lab/delete', async (req, res) => { try { const { id } = req.body; if (id) await BasePokemon.deleteOne({ id }); res.redirect(req.get('referer')); } catch (e) { res.send('Erro ao excluir: ' + e.message); } });
-app.post('/lab/create-npc', upload.single('npcSkinFile'), async (req, res) => { try { const { npcId, name, map, x, y, direction, skinSelect, dialogue, winDialogue, cooldownDialogue, money, teamJson, rewardType, rewardVal, rewardQty, cooldownMinutes, userId } = req.body; let finalSkin = skinSelect; let isCustom = false; if (req.file) { finalSkin = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; isCustom = true; } else if (npcId) { if(!skinSelect && !req.file) { const old = await NPC.findById(npcId); if(old) { finalSkin = old.skin; isCustom = old.isCustomSkin; } } } let team = []; try { team = JSON.parse(teamJson); } catch (e) {} const reward = { type: rewardType || 'none', value: rewardVal || '', qty: parseInt(rewardQty) || 1, level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1 }; const npcData = { name, map, x: parseInt(x)||50, y: parseInt(y)||50, direction: direction||'down', skin: finalSkin, isCustomSkin: isCustom, dialogue, winDialogue, cooldownDialogue, moneyReward: parseInt(money)||0, cooldownMinutes: parseInt(cooldownMinutes) || 0, team, reward }; if (npcId) { if (!req.file && skinSelect && !skinSelect.startsWith('data:')) { npcData.skin = skinSelect; npcData.isCustomSkin = false; } await NPC.findByIdAndUpdate(npcId, npcData); } else { await new NPC(npcData).save(); } res.redirect('/lab?userId=' + userId); } catch (e) { console.error(e); res.send("Erro: " + e.message); } });
-app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
-
-app.get('/api/pc', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if (!user) return res.json({ error: 'User not found' }); const formatList = async (list) => { const output = []; for (let p of list) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) output.push(userPokemonToEntity(p, base)); } return output; }; const pcList = user.pc || []; const team = await formatList(user.pokemonTeam); const pc = await formatList(pcList); res.json({ team, pc }); });
-app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, to } = req.body; const user = await User.findById(userId); if (!user) return res.json({ error: 'Usuário não encontrado.' }); if (!user.pc) user.pc = []; const sourceList = from === 'team' ? user.pokemonTeam : user.pc; const destList = to === 'team' ? user.pokemonTeam : user.pc; if (from === to) return res.json({ success: true }); if (to === 'team' && destList.length >= 6) return res.json({ error: 'Sua equipe já tem 6 Pokémons!' }); if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Você não pode ficar sem Pokémons na equipe!' }); const index = sourceList.findIndex(p => p._id.toString() === pokemonId); if (index === -1) return res.json({ error: 'Pokémon não encontrado.' }); const [poke] = sourceList.splice(index, 1); destList.push(poke); await user.save(); res.json({ success: true }); });
-app.get('/api/me', async (req, res) => { const { userId } = req.query; if(!userId) return res.status(400).json({ error: 'No ID' }); const user = await User.findById(userId); if(!user) return res.status(404).json({ error: 'User not found' }); const teamWithSprites = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); const nextXp = getXpForNextLevel(p.level); const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves; teamWithSprites.push({ instanceId: p._id, name: p.nickname, level: p.level, hp: p.currentHp, maxHp: p.stats.hp, xp: p.xp, xpToNext: nextXp, sprite: base ? base.sprite : '', moves: p.moves, learnedMoves: allLearned }); } res.json({ team: teamWithSprites, allMoves: MOVES_LIBRARY, money: user.money || 0, pokeballs: user.pokeballs || 0, rareCandy: user.rareCandy || 0 }); });
-app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Pokémons curados!` }); });
-app.post('/api/equip-move', async (req, res) => { const { userId, pokemonId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.pokemonTeam.id(pokemonId); if(!poke) return res.json({error: "Pokemon not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
-app.post('/api/set-lead', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.pokemonTeam.findIndex(p => p._id.toString() === pokemonId); if (index > 0) { const poke = user.pokemonTeam.splice(index, 1)[0]; user.pokemonTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
-app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.pokemonTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último pokémon.' }); const index = user.pokemonTeam.findIndex(p => p._id.toString() === pokemonId); if(index === -1) return res.json({ error: 'Pokemon not found' }); user.pokemonTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
-app.post('/api/buy-item', async (req, res) => { const { userId, itemId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const prices = { pokeball: 50, rareCandy: 2000 }; if(!prices[itemId]) return res.json({ error: 'Item inválido' }); const cost = prices[itemId] * q; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' }); user.money = (user.money || 0) - cost; if(itemId === 'pokeball') user.pokeballs = (user.pokeballs || 0) + q; if(itemId === 'rareCandy') user.rareCandy = (user.rareCandy || 0) + q; await user.save(); res.json({ success: true, money: user.money, pokeballs: user.pokeballs, rareCandy: user.rareCandy }); });
-app.post('/api/use-item', async (req, res) => { const { userId, itemId, pokemonId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(itemId === 'rareCandy') { if(!pokemonId) return res.json({ error: 'pokemonId required' }); let poke = null; try { poke = user.pokemonTeam.id(pokemonId); } catch(e) { poke = user.pokemonTeam.find(p => p._id.toString() === (pokemonId || '')); } if(!poke) return res.json({ error: 'Pokemon not found' }); if((user.rareCandy || 0) < q) return res.json({ error: 'Not enough RareCandy' }); const oldLevel = poke.level || 1; poke.level = Math.min(100, oldLevel + q); user.rareCandy = (user.rareCandy || 0) - q; let base = await BasePokemon.findOne({ id: poke.baseId }); let evolved = false; if (base) { if (base.movePool) { const newMove = base.movePool.find(m => m.level === poke.level); if (newMove) { if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves]; if (!poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } } } if (base.evolution && poke.level >= base.evolution.level) { const nextPoke = await BasePokemon.findOne({ id: base.evolution.targetId }); if (nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; base = nextPoke; evolved = true; } } poke.stats = calculateStats(base.baseStats, poke.level); poke.currentHp = poke.stats.hp; } await user.save(); return res.json({ success: true, rareCandy: user.rareCandy, evolved: evolved, pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname } }); } return res.json({ error: 'Item cannot be used here' }); });
-
-app.post('/battle/wild', async (req, res) => { 
-    const { userId, currentMap, currentX, currentY } = req.body; 
-    const user = await User.findById(userId); 
-    const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; 
-    if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Pokémons estão desmaiados!" }); 
-    const possibleSpawns = await BasePokemon.find({ spawnLocation: 'forest' }); 
-    if(possibleSpawns.length === 0) return res.json({ error: "Nenhum pokemon." }); 
-    const wildBase = pickWeightedPokemon(possibleSpawns); 
-    const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
-    const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
-    const userBase = await BasePokemon.findOne({ id: userPokeData.baseId }); 
-    const userEntity = userPokemonToEntity(userPokeData, userBase); 
-    userEntity.playerName = user.username; 
-    userEntity.skin = user.skin; 
-    
-    const battleId = `wild_${Date.now()}`; 
-    activeBattles[battleId] = { 
-        p1: userEntity, 
-        p2: wildEntity, 
-        type: 'wild', 
-        userId: user._id, 
-        turn: 1,
-        returnMap: currentMap || 'forest',
-        returnX: currentX || 10,
-        returnY: currentY || 50
-    }; 
-    res.json({ battleId }); 
-});
-
-app.post('/battle/npc', async (req, res) => {
-    const { userId, npcId, currentMap, currentX, currentY } = req.body; 
-    const user = await User.findById(userId); 
-    const npc = await NPC.findById(npcId);
-    if (!user || !npc) return res.json({ error: "Erro: NPC/Usuário não encontrado." });
-
-    const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0];
-    if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Pokémons estão desmaiados!" });
-    
-    const userBase = await BasePokemon.findOne({ id: userPokeData.baseId });
-    const p1Entity = userPokemonToEntity(userPokeData, userBase); 
-    p1Entity.playerName = user.username; 
-    p1Entity.skin = user.skin;
-
-    const npcTeamInstances = [];
-    if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Pokémons!" });
-
-    for (let member of npc.team) {
-        const base = await BasePokemon.findOne({ id: member.baseId });
-        if (base) {
-            const stats = calculateStats(base.baseStats, member.level);
-            let moves = base.movePool ? base.movePool.filter(m => m.level <= member.level).map(m => m.moveId) : ['tackle'];
-            if(moves.length > 4) moves = moves.sort(() => 0.5 - Math.random()).slice(0, 4);
-            
-            npcTeamInstances.push({
-                instanceId: 'npc_mon_' + Math.random().toString(36).substr(2, 9) + Date.now(), 
-                baseId: base.id, 
-                name: base.name, 
-                type: base.type, 
-                level: member.level, 
-                maxHp: stats.hp, 
-                hp: stats.hp, 
-                maxEnergy: stats.energy, 
-                energy: stats.energy, 
-                stats: stats, 
-                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
-                sprite: base.sprite, 
-                playerName: npc.name, 
-                skin: npc.skin, 
-                isCustomSkin: npc.isCustomSkin, 
-                isWild: false, 
-                status: null
-            });
-        }
-    }
-
-    const battleId = `npc_${Date.now()}`; 
-    activeBattles[battleId] = { 
-        p1: p1Entity, 
-        p2: npcTeamInstances[0], 
-        npcReserve: npcTeamInstances, 
-        type: 'local', 
-        userId: user._id, 
-        turn: 1, 
-        npcId: npc._id,
-        returnMap: currentMap || 'lobby',
-        returnX: currentX || 50,
-        returnY: currentY || 50
-    }; 
-    
-    res.json({ battleId });
-});
-
-app.post('/battle/online', (req, res) => { 
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
-    const { roomId, meData, opponentData } = req.body; 
-    
-    if (!onlineBattles[roomId]) return res.redirect('/'); 
-    
-    const me = JSON.parse(meData); 
-    const op = JSON.parse(opponentData); 
-    
-    res.render('battle', { 
-        p1: me, 
-        p2: op, 
-        battleMode: 'online', 
-        battleId: roomId, 
-        myRoleId: me.id, 
-        realUserId: me.userId, 
-        playerName: me.playerName, 
-        playerSkin: me.skin, 
-        isSpectator: false, 
-        bgImage: 'battle_bg.png', 
-        battleData: JSON.stringify({ log: [{type: 'INIT'}] }), 
-        switchable: [], 
-        returnUrl: '/lobby' 
-    }); 
-});
-
-app.post('/battle', async (req, res) => { 
-    const { fighterId, playerName, playerSkin, userId } = req.body; 
-    const user = await User.findById(userId); 
-    if(!user) return res.redirect('/'); 
-    
-    const userPokeData = user.pokemonTeam.id(fighterId); 
-    if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/lobby?userId=' + userId); 
-    
-    const b1Base = await BasePokemon.findOne({ id: userPokeData.baseId }); 
-    const p1 = userPokemonToEntity(userPokeData, b1Base); 
-    p1.playerName = playerName; 
-    p1.skin = playerSkin; 
-    
-    const allBases = await BasePokemon.find(); 
-    if(allBases.length === 0) return res.redirect('/lobby?userId=' + userId); 
-    
-    const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; 
-    const cpuLevel = Math.max(1, p1.level); 
-    const s2 = calculateStats(randomBase.baseStats, cpuLevel); 
-    let cpuMoves = randomBase.movePool ? randomBase.movePool.filter(m => m.level <= cpuLevel).map(m => m.moveId) : []; 
-    if(cpuMoves.length === 0) cpuMoves = ['tackle']; 
-    if(cpuMoves.length > 4) cpuMoves = cpuMoves.sort(() => 0.5 - Math.random()).slice(0, 4); 
-    
-    const p2 = { 
-        instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, 
-        hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, 
-        moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), 
-        sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null 
-    }; 
-    
-    const battleId = 'local_' + Date.now(); 
-    activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'lobby' }; 
-    res.redirect('/battle/' + battleId); 
-});
-
-app.get('/battle/:id', async (req, res) => { 
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
-    const battle = activeBattles[req.params.id]; 
-    if(!battle) return res.redirect('/'); 
-    
-    let switchable = []; 
-    if (battle.userId) { 
-        const user = await User.findById(battle.userId); 
-        if (user) { 
-            for (let p of user.pokemonTeam) { 
-                if (p._id.toString() !== battle.p1.instanceId && p.currentHp > 0) { 
-                    const b = await BasePokemon.findOne({ id: p.baseId }); 
-                    if(b) switchable.push(userPokemonToEntity(p, b)); 
-                } 
-            } 
-        } 
-    } 
-    const bg = battle.type === 'wild' ? 'forest_bg.png' : 'battle_bg.png'; 
-    let returnUrl = '/lobby';
-    if(battle.returnMap) {
-        returnUrl = `/${battle.returnMap}?userId=${battle.userId}`;
-        if(battle.returnX) returnUrl += `&x=${battle.returnX}`;
-        if(battle.returnY) returnUrl += `&y=${battle.returnY}`;
-    } else {
-        returnUrl = `/lobby?userId=${battle.userId}`;
-    }
-
-    res.render('battle', { 
-        p1: battle.p1, p2: battle.p2, 
-        battleId: req.params.id, 
-        battleMode: battle.type === 'local' ? 'manual' : battle.type, 
-        isSpectator: false, 
-        myRoleId: battle.p1.instanceId, 
-        realUserId: battle.userId, 
-        playerName: battle.p1.playerName, 
-        playerSkin: battle.p1.skin, 
-        bgImage: bg, 
-        battleData: JSON.stringify({ log: [{type: 'INIT'}] }), 
-        switchable,
-        returnUrl
-    }); 
-});
-
-// --- ROTA DE ADMINISTRAÇÃO JSON (BULK EDIT) ---
-
-// 1. Página de visualização/edição
-app.get('/admin', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        // Verifica segurança básica
-        if (!userId) return res.send("Acesso negado: userId necessário.");
-        const user = await User.findById(userId);
-        if (!user || !user.isAdmin) return res.send("Acesso negado: Apenas Admins.");
-
-        // Busca todos os pokemons, removendo o _id e __v do mongo para o JSON ficar limpo
-        const pokemons = await BasePokemon.find({}, '-_id -__v').sort({ id: 1 }).lean();
-
-        // Renderiza o EJS passando o JSON formatado
-        res.render('admin', { 
-            pokemonsJSON: JSON.stringify(pokemons, null, 4),
-            userId: user._id
-        });
-    } catch (e) {
-        res.send("Erro: " + e.message);
-    }
-});
-
-// 2. Rota que salva as alterações
-app.post('/admin/save', async (req, res) => {
-    try {
-        const { userId, jsonData } = req.body;
+        /* CORREÇÃO: margin-bottom: 5px adicionado para subir o sprite */
+        .sprite { position: relative; width: 140px; height: 140px; transition: transform 0.2s; margin-bottom: 5px; }
         
-        // Verificação de segurança
-        const user = await User.findById(userId);
-        if (!user || !user.isAdmin) return res.status(403).json({ error: "Não autorizado" });
-
-        let data;
-        try {
-            data = JSON.parse(jsonData);
-        } catch (e) {
-            return res.status(400).json({ error: "JSON Inválido: " + e.message });
-        }
-
-        if (!Array.isArray(data)) return res.status(400).json({ error: "O JSON deve ser uma lista [...]" });
-
-        // 1. Identificar IDs presentes no JSON enviado
-        const incomingIds = data.map(p => p.id).filter(id => id);
-
-        // 2. Excluir do banco qualquer Pokemon que NÃO esteja no JSON (foi removido pelo admin)
-        await BasePokemon.deleteMany({ id: { $nin: incomingIds } });
-
-        // 3. Preparar operações em lote (Bulk Write) para alta performance
-        const bulkOps = data.map(p => ({
-            updateOne: {
-                filter: { id: p.id },
-                update: { $set: p },
-                upsert: true // Cria se não existir
-            }
-        }));
-
-        if (bulkOps.length > 0) {
-            await BasePokemon.bulkWrite(bulkOps);
-        }
-
-        res.json({ success: true, count: bulkOps.length, message: "Banco de dados sincronizado com sucesso!" });
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: "Erro interno: " + e.message });
-    }
-});
-
-app.post('/api/turn', async (req, res) => {
-    const { battleId, action, moveId, isForced } = req.body; const battle = activeBattles[battleId]; if(!battle) { return res.json({ finished: true }); }
-    try {
-        let p1 = battle.p1; const p2 = battle.p2; const events = []; let threwPokeball = false;
+        .sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); animation: breathe 3s infinite ease-in-out; opacity: 0; transition: opacity 0.2s ease-out; }
         
-        if (action === 'switch') { 
-            const user = await User.findById(battle.userId); if (!user) return res.json({ events: [{type:'MSG', text:'Erro'}]}); 
-            if (!isForced) { const prevPoke = user.pokemonTeam.find(p => p._id.toString() === p1.instanceId); if(prevPoke) prevPoke.currentHp = p1.hp; } 
-            const newPokeData = user.pokemonTeam.find(p => p._id.toString() === moveId); 
-            if (!newPokeData || newPokeData.currentHp <= 0) return res.json({ events: [{type:'MSG', text:'Desmaiado!'}]}); 
-            const base = await BasePokemon.findOne({ id: newPokeData.baseId }); 
-            const newEntity = userPokemonToEntity(newPokeData, base); newEntity.playerName = p1.playerName; newEntity.skin = p1.skin; 
-            
-            battle.p1 = newEntity; p1 = battle.p1; await user.save(); 
-            events.push({ type: 'MSG', text: `Vai, ${p1.name}!` }); 
-            
-            if (p2.hp > 0 && !isForced) { 
-                performEnemyTurn(p2, p1, events); 
-                applyStatusDamage(p1, events); 
-                applyStatusDamage(p2, events); 
-            } 
-            return res.json({ events, p1State: { hp: p1.hp, maxHp: p1.maxHp, energy: p1.energy, maxEnergy: p1.maxEnergy, name: p1.name, level: p1.level, sprite: p1.sprite, moves: p1.moves }, p2State: { hp: p2.hp }, switched: true, newP1Id: p1.instanceId }); 
+        /* CORREÇÃO: Animação de ataque físico adicionada */
+        .sprite img.attack { animation: attackBump 0.3s ease-in-out; }
+        @keyframes attackBump {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(20px); }
+            50% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
         }
 
-        if (action === 'catch') { if (battle.type !== 'wild') { events.push({ type: 'MSG', text: 'Não pode capturar.' }); return res.json({ events }); } try { const user = await User.findById(battle.userId); if((user.pokeballs || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem CatchCubes!' }); return res.json({ events }); } user.pokeballs--; threwPokeball = true; const chance = (p2.catchRate * (1 - (p2.hp / p2.maxHp))) + 0.15 + (p2.status ? 0.2 : 0); if (Math.random() < chance) { const activeP1Index = user.pokemonTeam.findIndex(p => p._id.toString() === p1.instanceId); if (activeP1Index !== -1) user.pokemonTeam[activeP1Index].currentHp = p1.hp; const newStats = calculateStats(p2.stats, p2.level); const newPokeObj = { baseId: p2.baseId, nickname: p2.name, level: p2.level, currentHp: newStats.hp, stats: newStats, moves: p2.moves.map(m => m.id), learnedMoves: p2.moves.map(m => m.id) }; let sentToPC = false; if (!user.pc) user.pc = []; if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPokeObj); else { user.pc.push(newPokeObj); sentToPC = true; } await user.save(); delete activeBattles[battleId]; return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwPokeball }); } else { await user.save(); events.push({ type: 'MSG', text: `${p2.name} escapou!` }); performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } } catch (e) { events.push({ type: 'MSG', text: 'Erro.' }); return res.json({ events }); } } 
-        else if (action === 'run') { if (Math.random() > 0.4) { delete activeBattles[battleId]; return res.json({ events: [{type:'MSG', text:'Fugiu!'}], finished: true, fled: true }); } else { events.push({ type: 'MSG', text: `Falha ao fugir!` }); performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } } 
-        else if (action === 'move') { const p1Move = p1.moves.find(m => m.id === moveId); if (p1.stats.speed >= p2.stats.speed) { processAction(p1, p2, p1Move, events); if (p2.hp > 0) performEnemyTurn(p2, p1, events); } else { performEnemyTurn(p2, p1, events); if (p1.hp > 0) processAction(p1, p2, p1Move, events); } if (p1.hp > 0) applyStatusDamage(p1, events); if (p2.hp > 0) applyStatusDamage(p2, events); }
-        if (p1.hp <= 0) { const user = await User.findById(battle.userId); if(user) { const poke = user.pokemonTeam.find(p => p._id.toString() === p1.instanceId); if(poke) { poke.currentHp = 0; await user.save(); } const hasAlive = user.pokemonTeam.some(p => p.currentHp > 0); if (hasAlive) { events.push({ type: 'MSG', text: `${p1.name} desmaiou!` }); let switchable = []; for (let p of user.pokemonTeam) { if (p.currentHp > 0) { const b = await BasePokemon.findOne({ id: p.baseId }); if(b) switchable.push(userPokemonToEntity(p, b)); } } return res.json({ events, forceSwitch: true, switchable }); } } delete activeBattles[battleId]; return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwPokeball }); }
+        @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        .sprite img.hurt { filter: brightness(2) saturate(0) sepia(1) hue-rotate(-50deg); animation: shake 0.4s; }
+        .sprite img.status-dmg { filter: brightness(0.8) sepia(1) hue-rotate(240deg) saturate(3); }
+        .trainer { position: relative; width: 64px; height: 64px; background-size: 400% auto; image-rendering: pixelated; margin-bottom: 20px; top: 10px; transition: transform 0.2s; }
+        <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
+        .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
+        .trainer.frame-1 { background-position-x: -100%; }
+        .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); }
+        @keyframes particleFly { 0% { transform: translate(0,0) scale(0.2); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(2); opacity: 0; } }
+        .impact-effect { position: absolute; width: 100px; height: 100px; z-index: 2000; pointer-events: none; border-radius: 50%; opacity: 0; }
+        .impact-pop { animation: impactPop 0.4s forwards; }
+        @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+        .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 20px #e67e22; }
+        .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 20px #3498db; }
+        .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 20px #2ecc71; }
+        .effect-normal { background: radial-gradient(circle, #fff, #bbb); box-shadow: 0 0 10px #fff; }
+        .effect-electric { background: radial-gradient(circle, #f1c40f, #fff); box-shadow: 0 0 20px #f1c40f; }
+        .effect-ice { background: radial-gradient(circle, #74b9ff, #fff); box-shadow: 0 0 20px #74b9ff; }
+        .effect-poison { background: radial-gradient(circle, #8e44ad, #9b59b6); box-shadow: 0 0 15px #8e44ad; }
+        .effect-ground { background: radial-gradient(circle, #d35400, #e67e22); box-shadow: 0 0 15px #d35400; }
+        .effect-flying { background: radial-gradient(circle, #ecf0f1, #95a5a6); box-shadow: 0 0 15px #fff; }
+        .effect-psychic { background: radial-gradient(circle, #e056fd, #be2edd); box-shadow: 0 0 15px #e056fd; }
+        .effect-bug { background: radial-gradient(circle, #badc58, #6ab04c); box-shadow: 0 0 15px #badc58; }
+        .effect-rock { background: radial-gradient(circle, #95a5a6, #7f8c8d); box-shadow: 0 0 15px #95a5a6; }
+        .effect-ghost { background: radial-gradient(circle, #4834d4, #686de0); box-shadow: 0 0 15px #4834d4; }
+        .effect-dragon { background: radial-gradient(circle, #30336b, #130f40); box-shadow: 0 0 15px #30336b; }
+        .effect-dark { background: radial-gradient(circle, #2d3436, #000); box-shadow: 0 0 15px #000; }
+        .effect-steel { background: radial-gradient(circle, #bdc3c7, #95a5a6); box-shadow: 0 0 15px #bdc3c7; }
+        .effect-fairy { background: radial-gradient(circle, #ff9ff3, #f368e0); box-shadow: 0 0 15px #ff9ff3; }
+        .command-bubble { position: absolute; top: -50px; left: 50%; transform: translateX(-50%) scale(0); background: #fff; color: #000; padding: 10px 15px; border-radius: 20px; border: 2px solid #000; font-family: 'Press Start 2P'; font-size: 0.6rem; white-space: nowrap; z-index: 100; opacity: 0; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
+        .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); top: -70px; }
+        .floating-text { font-family: 'Press Start 2P'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; text-shadow: 3px 3px 0 #000; animation: popUp 1.2s forwards; z-index: 100; pointer-events: none; width: 300px; text-align: center; }
+        @keyframes popUp { 0% { opacity: 0; margin-top: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; margin-top: -150px; transform: translate(-50%, -50%) scale(1); } }
+        .damage-text { color: #ff4757; -webkit-text-stroke: 1px #800; } 
+        .heal-text { color: #2ed573; -webkit-text-stroke: 1px #050; } 
+        .resist-text { color: #bdc3c7; font-size: 0.9rem; margin-top: -30px !important; }
+        .super-text { color: #f1c40f; font-size: 1rem; margin-top: -30px !important; text-shadow: 2px 2px 0 #c0392b; }
+        .status-text { color: #9b59b6; font-size: 1rem; margin-top: -50px !important; text-shadow: 2px 2px 0 #000; }
+        .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 4px solid #3498db; z-index: 50; padding-bottom: env(safe-area-inset-bottom); position: relative; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+        .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
+        .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 14px; color: #ecf0f1; height: 180px; background: #111; line-height: 1.5; }
+        .log-entry { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .move-btn { background: linear-gradient(180deg, #2c3e50, #1a252f); border: 2px solid #34495e; color: white; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; padding: 12px; position: relative; overflow: hidden; }
+        .move-btn strong { font-size: 0.9rem; margin-bottom: 2px; text-transform: uppercase; }
+        .move-btn small { font-size: 0.7rem; color: #f1c40f; font-weight: bold; }
+        .move-btn:active { transform: scale(0.96); border-color: #f1c40f; background: #1a252f; }
+        .move-btn:disabled { opacity: 0.5; pointer-events: none; filter: grayscale(1); }
+        .rest-btn { grid-column: span 2; background: linear-gradient(180deg, #27ae60, #1e8449); border-color: #2ecc71; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.5s; }
+        #overlay h1 { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; text-shadow: 0 4px 0 #c27c0e; margin-bottom: 40px; font-size: 1.8rem; }
+        .podium { display: flex; align-items: flex-end; gap: 40px; margin-bottom: 40px; }
+        .winner-box { display: flex; flex-direction: column; align-items: center; transform: scale(1.3); z-index: 2; position: relative; }
+        .loser-box { display: flex; flex-direction: column; align-items: center; opacity: 0.6; filter: grayscale(1) contrast(1.2); transform: scale(0.9); }
+        .podium-avatar-group { position: relative; width: 140px; height: 140px; }
+        .podium-trainer { width: 64px; height: 64px; background-size: 400% auto; background-position: 0 0; image-rendering: pixelated; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 2; }
+        .podium-monster { width: 120px; height: 120px; object-fit: contain; image-rendering: pixelated; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.9; }
+        .crown { font-size: 2.5rem; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); z-index: 3; text-shadow: 0 0 15px gold; animation: float 2s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-8px); } }
+        .podium-base { height: 15px; width: 120%; border-radius: 50%; margin-top: -10px; z-index: 0; }
+        .winner-box .podium-base { background: radial-gradient(#f1c40f, transparent); box-shadow: 0 0 30px #f1c40f; }
+        .loser-box .podium-base { background: radial-gradient(#555, transparent); }
+        .name-tag { font-family: 'Press Start 2P'; font-size: 0.7rem; margin-top: 20px; color: white; text-align: center; background: #333; padding: 8px 12px; border-radius: 6px; border: 1px solid #777; width: 100%; white-space: nowrap; }
+        .btn-restart { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 18px 40px; border-radius: 40px; border: none; font-family: 'Press Start 2P'; font-size: 0.9rem; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 0 #1c5980; text-transform: uppercase; }
+        .btn-restart:active { transform: translateY(4px); box-shadow: none; }
+        .spectator-banner { position: absolute; bottom: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.8); color: #f1c40f; padding: 10px; font-family: 'Press Start 2P'; font-size: 0.8rem; pointer-events: none; z-index: 50; letter-spacing: 2px; }
+        .catchball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 2000; pointer-events: none; transform-origin: center center; }
+        .flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; opacity: 0; pointer-events: none; z-index: 500; transition: opacity 0.15s; }
+        .flash-overlay.active { opacity: 0.9; }
+        .absorbed-state { filter: brightness(10) sepia(1) hue-rotate(-50deg) saturate(5) !important; transform: scale(0) !important; transition: transform 0.4s ease-in, filter 0.1s !important; }
+        .catchball.captured-lock { filter: brightness(0.6); }
+        .capture-star { position: absolute; font-size: 30px; color: gold; text-shadow: 0 0 5px orange; animation: star-pop 0.6s ease-out forwards; z-index: 2200; }
+        @keyframes star-pop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1) translateY(-30px); opacity: 0; } }
+        #switchModal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .switch-box { background: #2c3e50; border: 2px solid #e74c3c; padding: 25px; border-radius: 15px; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .switch-title { font-family: 'Press Start 2P'; color: #f1c40f; margin-bottom: 25px; font-size: 0.9rem; line-height: 1.6; text-shadow: 2px 2px 0 #000; }
+        .switch-item { display: flex; align-items: center; gap: 15px; padding: 12px; border: 1px solid #444; background: #222; margin-bottom: 10px; cursor: pointer; border-radius: 8px; transition: 0.2s; text-align: left; }
+        .switch-item:hover { background: #333; border-color: #3498db; transform: translateX(5px); }
+        .switch-sprite { width: 50px; height: 50px; image-rendering: pixelated; object-fit: contain; }
+        #floatingBagPanel { position: fixed; right: 15px; bottom: 220px; width: 280px; background: rgba(15, 20, 30, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; z-index: 80; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: none; color: #ddd; backdrop-filter: blur(10px); }
+        #floatingBagPanel h4 { margin: 0 0 12px 0; font-size: 0.8rem; color: #f1c40f; font-family: 'Press Start 2P'; border-bottom: 1px solid #333; padding-bottom: 8px; }
+        #floatingBagPanel .bag-row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; }
+        #floatingBagPanel .bag-item { flex:1; background: rgba(255,255,255,0.05); padding:10px; border-radius: 8px; font-size:0.9rem; text-align:center; border: 1px solid #333; }
+        #floatingBagPanel .bag-actions { display:flex; gap:8px; margin-top:8px; }
+        #floatingBagPanel .btn-small { flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size: 0.8rem; text-transform: uppercase; }
+        #floatingBagPanel .btn-small.use { background:#e67e22; color:#fff; box-shadow: 0 3px 0 #d35400; }
+        #floatingBagPanel .btn-small.item { background:#f1c40f; color:#111; }
+        #floatingBagPanel .close-x { position:absolute; right:10px; top:10px; background:transparent; border:none; color:#e74c3c; font-weight:900; cursor:pointer; font-size: 1.2rem; }
+        .floating-bag-button { position: fixed; right: 20px; bottom: 100px; z-index: 75; width:55px; height:55px; border-radius:50%; background: linear-gradient(135deg, #f39c12, #e67e22); border: 2px solid #fff; display:flex; align-items:center; justify-content:center; font-size: 24px; box-shadow:0 8px 25px rgba(0,0,0,0.6); cursor:pointer; transition: transform 0.2s; }
+        .floating-bag-button:active { transform: scale(0.9); }
+        .floating-hud-money { position: fixed; right: 20px; bottom: 165px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:12px; text-align:center; text-shadow: 2px 2px 0 #000; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
+        .deploy-ball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 100; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="global-loader">
+        <div class="spinner"></div>
+        <div class="loading-text">PREPARANDO ARENA...</div>
+    </div>
+
+    <div class="arena">
+        <div class="flash-overlay" id="flashOverlay"></div>
+        <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff; font-family:'Press Start 2P'; font-size:0.8rem; text-shadow:2px 2px 0 #000; z-index:500;">Aguardando...</div>
+        <% if(isSpectator) { %> <div class="spectator-banner">MODO ESPECTADOR - APENAS OBSERVANDO</div> <% } %>
+
+        <div class="hud-panel hud-p1">
+            <div class="poke-name"><span id="p1-name"><%= p1.name %></span> <span class="poke-lv">Lv.<span id="p1-lv"><%= p1.level %></span></span></div>
+            <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
+            <div class="bar-container"><div class="hp-fill" id="hp-bar-p1"></div></div>
+            <div class="stat-text"><span id="hp-val-p1"><%= p1.hp %></span>/<span id="max-hp-p1"><%= p1.maxHp %></span></div>
+            <% if(!isSpectator) { %>
+                <div class="bar-container" style="height:5px; margin-top:4px; border-color:#555;"><div class="en-fill" id="en-bar-p1"></div></div>
+                <div class="stat-text" style="color:#f1c40f; font-size:0.5rem;">EN: <span id="en-val-p1"><%= p1.energy %></span></div>
+            <% } %>
+        </div>
+
+        <div class="hud-panel hud-p2">
+            <div class="poke-name"><span id="p2-name"><%= p2.name %></span> <span class="poke-lv">Lv.<span id="p2-lv"><%= p2.level %></span></span></div>
+            <% if(battleMode !== 'wild') { %> <div class="trainer-sub"><%= p2.playerName || 'Oponente' %></div>
+            <% } else { %> <div class="trainer-sub">Selvagem</div> <% } %>
+            <div class="bar-container"><div class="hp-fill" id="hp-bar-p2"></div></div>
+            <div class="stat-text" style="text-align:right"><span id="hp-val-p2"><%= p2.hp %></span>/<span id="max-hp-p2"><%= p2.maxHp %></span></div>
+        </div>
+
+        <div class="fighter p2-position" id="fighter-p2">
+            <div class="command-bubble" id="bubble-p2"></div>
+            <div class="trainer" id="trainer-p2" 
+                 data-skin="<%= p2.skin || 'char1' %>" 
+                 style="<%= (p2.isCustomSkin || (p2.skin && (p2.skin.startsWith('http') || p2.skin.startsWith('data:')))) ? 'background-image: url(\'' + p2.skin + '\')' : '' %><%= battleMode === 'wild' ? ';opacity:0;' : '' %>">
+            </div>
+            <div class="sprite" id="sprite-p2">
+                <img src="<%= (p2.sprite.startsWith('http') || p2.sprite.startsWith('data:')) ? p2.sprite : '/uploads/' + p2.sprite %>">
+            </div>
+        </div>
+
+        <div class="fighter p1-position" id="fighter-p1">
+            <div class="command-bubble" id="bubble-p1"></div>
+            <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>"></div>
+            <div class="sprite" id="sprite-p1">
+                <img src="<%= (p1.sprite.startsWith('http') || p1.sprite.startsWith('data:')) ? p1.sprite : '/uploads/' + p1.sprite %>">
+            </div>
+        </div>
+
+        <% if(battleMode === 'wild') { %>
+            <div id="floatingBagBtn">
+                <div id="floatingBagIcon" class="floating-bag-button" onclick="openBattleBag()">🎒</div>
+                <div id="hud-money" class="floating-hud-money">0</div>
+            </div>
+        <% } %>
+
+        <div id="overlay">
+            <div id="result-content">
+                <h1 id="result-title">RESULTADO</h1>
+                <div class="podium">
+                    <div class="winner-box">
+                        <div class="crown">👑</div>
+                        <div class="podium-avatar-group">
+                            <img id="win-mon-img" class="podium-monster" src="">
+                            <div id="win-trainer-div" class="podium-trainer"></div>
+                        </div>
+                        <div class="podium-base"></div>
+                        <div class="name-tag" id="win-name"></div>
+                    </div>
+                    <div class="loser-box">
+                        <div class="podium-avatar-group">
+                            <img id="lose-mon-img" class="podium-monster" src="">
+                            <div id="lose-trainer-div" class="podium-trainer"></div>
+                        </div>
+                        <div class="podium-base"></div>
+                        <div class="name-tag" id="lose-name"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn-restart" onclick="window.location.href='<%= returnUrl %>'">VOLTAR AO JOGO</button>
+            </div>
+        </div>
+    </div>
+
+    <% if(isSpectator) { %>
+        <div id="bleachers"></div>
+        <div id="chat-container">
+            <input type="text" id="chatInput" placeholder="Chat..." style="width:80%; padding:10px;">
+            <button id="chatSend">OK</button>
+        </div>
+    <% } else { %>
+        <div class="bottom-panel">
+            <% if (battleMode === 'online' || battleMode === 'manual' || battleMode === 'wild') { %>
+                <div class="controls-panel" id="controlsPanel">
+                    <% if (battleMode === 'wild') { %>
+                        <button class="move-btn" style="background:linear-gradient(180deg, #e67e22, #d35400); border-color:#a04000" onclick="sendAction('catch')">
+                            <strong><img src="/uploads/catchcube.gif" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"> Capturar</strong>
+                        </button>
+                        <button class="move-btn" style="background:linear-gradient(180deg, #95a5a6, #7f8c8d); border-color:#505a5b" onclick="sendAction('run')"><strong>🏃 Fugir</strong></button>
+                    <% } %>
+                    <div id="moves-container" style="display:contents;">
+                        <% p1.moves.forEach(move => { %>
+                            <button class="move-btn" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
+                                <strong><%= move.icon %> <%= move.name %></strong>
+                                <small><%= move.cost %> EN</small>
+                            </button>
+                        <% }) %>
+                    </div>
+                    <button class="move-btn rest-btn" onclick="sendAction('move', 'rest')">💤 Descansar (+5 EN)</button>
+                </div>
+            <% } else { %>
+                <div class="battle-log" id="logBox"></div>
+            <% } %>
+        </div>
+    <% } %>
+
+    <div id="switchModal">
+        <div class="switch-box">
+            <div class="switch-title" id="switchTitle">SEU POKÉMON DESMAIOU!<br>Escolha outro ou desista.</div>
+            <div id="switchList" style="text-align:left;"></div>
+            <button class="btn-restart" style="background:linear-gradient(180deg, #e74c3c, #c0392b); margin-top:20px; width:100%; box-shadow:none; border:2px solid #900;" onclick="forfeitBattle()">DESISTIR DA BATALHA</button>
+        </div>
+    </div>
+
+    <div id="floatingBagPanel" aria-hidden="true">
+        <button class="close-x" aria-label="Fechar" onclick="closeBattleBag()">✕</button>
+        <h4>MOCHILA</h4>
+        <div id="battleBagContent">Carregando...</div>
+    </div>
+
+    <script>
+        history.pushState(null, null, location.href); window.onpopstate = function () { history.go(1); }; window.onpageshow = function(event) { if (event.persisted) { window.location.reload(); } };
         
-        if (p2.hp <= 0) {
-            let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30; 
-            events.push({ type: 'MSG', text: `${p2.name} desmaiou!` }); 
-            events.push({ type: 'MSG', text: `Ganhou ${xpGained} XP!` });
-            
-            const user = await User.findById(battle.userId); 
-            if(user) {
-                let poke = user.pokemonTeam.find(p => p._id.toString() === p1.instanceId);
-                if (poke) { 
-                    poke.xp += xpGained; const xpNext = getXpForNextLevel(poke.level);
-                    if (poke.xp >= xpNext && poke.level < 100) {
-                        poke.level++; poke.xp = 0; events.push({ type: 'MSG', text: `${poke.nickname} subiu para o nível ${poke.level}!` });
-                        const baseData = await BasePokemon.findOne({ id: poke.baseId });
-                        if (baseData.movePool) { const newMove = baseData.movePool.find(m => m.level === poke.level); if(newMove && !poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); events.push({ type: 'MSG', text: `Aprendeu ${MOVES_LIBRARY[newMove.moveId].name}!` }); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } }
-                        if (baseData.evolution && poke.level >= baseData.evolution.level) { const nextPoke = await BasePokemon.findOne({ id: baseData.evolution.targetId }); if(nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; events.push({ type: 'MSG', text: `Evoluiu para ${nextPoke.name}!` }); } }
-                        const currentBase = await BasePokemon.findOne({ id: poke.baseId }); poke.stats = calculateStats(currentBase.baseStats, poke.level);
-                    }
-                    poke.currentHp = p1.hp; await user.save(); 
-                }
-            }
+        const socket = io();
+        const battleMode = "<%= battleMode %>";
+        const battleId = "<%= battleId %>";
+        const initialData = <%- battleData %>;
+        const myRoleId = "<%= myRoleId %>"; 
+        const realUserId = "<%= realUserId %>"; 
+        const isSpectator = <%= isSpectator ? 'true' : 'false' %>;
+        const returnUrl = "<%= returnUrl %>"; 
+        
+        let p1RawId = "<%= p1.instanceId %>"; 
+        let p2RawId = "<%= p2.instanceId %>";
+        let p1Mon = "<%= p1.name %>"; 
+        let p2Mon = "<%= p2.name %>";
+        
+        let p1CurHp = Number(<%= p1.hp %>); 
+        let p2CurHp = Number(<%= p2.hp %>);
+        let p1MaxHp = Number(<%= p1.maxHp %>);
+        let p2MaxHp = Number(<%= p2.maxHp %>);
 
-            if (battle.npcReserve) {
-                const currentInReserve = battle.npcReserve.find(p => p.instanceId === p2.instanceId);
-                if (currentInReserve) currentInReserve.hp = 0;
-                const nextNpcPoke = battle.npcReserve.find(p => p.hp > 0);
-                if (nextNpcPoke) {
-                    battle.p2 = nextNpcPoke;
-                    events.push({ type: 'MSG', text: `${battle.p2.playerName} vai usar ${nextNpcPoke.name}!` });
-                    return res.json({ events, switched: true, p2Switched: true, newP1Id: p1.instanceId, p1State: p1, p2State: nextNpcPoke });
-                }
-            }
+        let currentEnergy = parseInt("<%= p1.energy %>");
+        let canAct = true; 
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
-            if (battle.type === 'local' && battle.npcId) { 
-                try { 
-                    const npc = await NPC.findById(battle.npcId);
-                    if (user) { 
-                        let reward = 0;
-                        if(npc && npc.moneyReward > 0) reward = npc.moneyReward;
-                        else reward = Math.max(5, (p2.level || 1) * 5 * (battle.npcReserve ? battle.npcReserve.length : 1));
+        let p1Data = { name: "<%= p1.playerName %>", skin: "<%= p1.skin %>", sprite: resolveImg("<%= p1.sprite %>"), mon: "<%= p1.name %>" };
+        let p2Data = { name: "<%= p2.playerName %>", skin: "<%= p2.skin %>", sprite: resolveImg("<%= p2.sprite %>"), mon: "<%= p2.name %>", isCustom: <%= p2.isCustomSkin ? 'true' : 'false' %> };
 
-                        user.money = (user.money || 0) + reward; 
-                        
-                        if (!user.defeatedNPCs) user.defeatedNPCs = [];
-                        const npcIdStr = String(battle.npcId);
-                        const recordIndex = user.defeatedNPCs.findIndex(r => String(r.npcId) === npcIdStr);
-                        if (recordIndex !== -1) {
-                            user.defeatedNPCs[recordIndex].defeatedAt = Date.now();
-                        } else {
-                            user.defeatedNPCs.push({ npcId: npcIdStr, defeatedAt: Date.now() });
-                        }
+        if (isSpectator) { socket.emit('join_spectator', { roomId: battleId }); }
+        if(battleMode === 'online' && !isSpectator) { socket.emit('join_room', battleId); }
 
-                        events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); 
-
-                        if (npc && npc.reward && npc.reward.type !== 'none') {
-                            if (npc.reward.type === 'item') {
-                                const itemMap = { 'pokeball': 'pokeballs', 'rareCandy': 'rareCandy' };
-                                const field = itemMap[npc.reward.value];
-                                if (field) {
-                                    user[field] = (user[field] || 0) + (npc.reward.qty || 1);
-                                    events.push({ type: 'MSG', text: `Recebeu ${npc.reward.qty}x ${npc.reward.value}!` });
-                                }
-                            } else if (npc.reward.type === 'pokemon') {
-                                const rewardBase = await BasePokemon.findOne({ id: npc.reward.value });
-                                if (rewardBase) {
-                                    const rewardLvl = npc.reward.level || 1;
-                                    const rStats = calculateStats(rewardBase.baseStats, rewardLvl);
-                                    let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['tackle'];
-                                    const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves };
-                                    if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPoke); else user.pc.push(newPoke);
-                                    events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` });
-                                }
-                            }
-                        }
-                        await user.save(); 
-                    } 
-                } catch (e) { console.error(e); } 
-            }
-            delete activeBattles[battleId]; 
-            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwPokeball });
+        function getSide(actorId) {
+            const aid = String(actorId || '');
+            if (aid === String(p1RawId)) return 'p1';
+            if (aid === String(p2RawId)) return 'p2';
+            if (aid.startsWith('wild_') || aid.startsWith('npc_')) return 'p2';
+            return 'p1';
         }
-        return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp }, threw: threwPokeball });
-    } catch (err) { console.error(err); return res.json({ events: [{ type: 'MSG', text: 'Erro interno.' }], finished: true }); }
-});
 
-io.on('connection', (socket) => {
-    socket.on('join_room', (roomId) => { socket.join(roomId); });
-    socket.on('enter_map', async (data) => { 
-        if (data && data.userId) { const existing = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString()); if (existing) { const prevId = existing[0]; try { io.sockets.sockets.get(prevId)?.disconnect(true); } catch(e){} delete players[prevId]; } } 
-        socket.join(data.map); 
-        const mapNpcs = await NPC.find({ map: data.map }).lean(); socket.emit('npcs_list', mapNpcs);
-        const startX = data.x || 50; const startY = data.y || 50; 
-        players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; 
-        const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
-        socket.emit('map_state', mapPlayers); 
-        socket.to(data.map).emit('player_joined', players[socket.id]); 
-    });
-    socket.on('move_player', (data) => { if (players[socket.id]) { const p = players[socket.id]; const dx = data.x - p.x; const dy = data.y - p.y; let dir = p.direction; if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up'; p.x = data.x; p.y = data.y; p.direction = dir; io.to(p.map).emit('player_moved', { id: socket.id, x: data.x, y: data.y, direction: dir }); } });
-    socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
-    socket.on('check_encounter', (data) => { if (data.grassId && GRASS_PATCHES.includes(data.grassId) && Math.random() < GRASS_CHANCE[data.grassId]) socket.emit('encounter_found'); });
-    socket.on('disconnect', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if (players[socket.id]) { const map = players[socket.id].map; delete players[socket.id]; io.to(map).emit('player_left', socket.id); } });
-    socket.on('cancel_match', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if(players[socket.id]) { players[socket.id].isSearching = false; io.emit('player_updated', players[socket.id]); } });
-    
-    socket.on('find_match', async (fighterId, userId, playerName, playerSkin, bet = 0) => { 
-        if(matchmakingQueue.find(u => u.socket.id === socket.id)) return; 
-        if(players[socket.id]) { players[socket.id].isSearching = true; io.emit('player_updated', players[socket.id]); } 
-        try { 
-            const user = await User.findById(userId); 
-            if(!user) { socket.emit('search_error', 'User error'); return; } 
-            if(bet && user.money < bet) { socket.emit('search_error', 'Saldo insuficiente'); if(players[socket.id]) { players[socket.id].isSearching = false; io.emit('player_updated', players[socket.id]); } return; } 
-            const userPokeData = user.pokemonTeam.id(fighterId); 
-            if(!userPokeData || userPokeData.currentHp <= 0) { if(players[socket.id]) { players[socket.id].isSearching = false; io.emit('player_updated', players[socket.id]); } socket.emit('search_error', 'Pokémon inválido!'); return; } 
-            const base = await BasePokemon.findOne({ id: userPokeData.baseId }); 
-            const playerEntity = userPokemonToEntity(userPokeData, base); playerEntity.userId = userId; playerEntity.id = socket.id; playerEntity.playerName = playerName; playerEntity.skin = playerSkin; 
-            matchmakingQueue.push({ socket, entity: playerEntity, bet: Number(bet) || 0, userId }); 
-            if (matchmakingQueue.length >= 2) { 
-                let pairIndex = -1; let p1 = null; let p2 = null; 
-                for (let i = 0; i < matchmakingQueue.length; i++) { 
-                    for (let j = i+1; j < matchmakingQueue.length; j++) { 
-                        const a = matchmakingQueue[i]; const b = matchmakingQueue[j]; 
-                        const betToUse = Math.min(a.bet || 0, b.bet || 0); 
-                        try { const userA = await User.findById(a.userId); const userB = await User.findById(b.userId); if(userA && userB && userA.money >= betToUse && userB.money >= betToUse) { p1 = a; p2 = b; pairIndex = i; break; } } catch(e) { continue; } 
-                    } 
-                    if(pairIndex !== -1) break; 
-                } 
-                if(p1 && p2) { 
-                    matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== p1.socket.id && u.socket.id !== p2.socket.id); 
-                    if(players[p1.socket.id]) { players[p1.socket.id].isSearching = false; io.emit('player_updated', players[p1.socket.id]); } 
-                    if(players[p2.socket.id]) { players[p2.socket.id].isSearching = false; io.emit('player_updated', players[p2.socket.id]); } 
-                    const roomId = `room_${Date.now()}`; const betAmount = Math.min(p1.bet || 0, p2.bet || 0); 
-                    onlineBattles[roomId] = { p1: p1.entity, p2: p2.entity, turn: 1, bet: betAmount }; 
-                    p1.socket.emit('match_found', { roomId, me: p1.entity, opponent: p2.entity, bet: betAmount }); 
-                    p2.socket.emit('match_found', { roomId, me: p2.entity, opponent: p1.entity, bet: betAmount }); 
-                } 
-            } 
-        } catch(e) { console.error(e); } 
-    });
-    
-    socket.on('join_spectator', ({ roomId, name, skin }) => { socket.join(roomId); if (!roomSpectators[roomId]) roomSpectators[roomId] = {}; roomSpectators[roomId][socket.id] = { id: socket.id, name, skin, x: Math.random() * 90, y: Math.random() * 80 }; socket.emit('spectators_update', roomSpectators[roomId]); io.to(roomId).emit('spectator_joined', roomSpectators[roomId][socket.id]); });
-    socket.on('spectator_move', ({ roomId, x, y }) => { if (roomSpectators[roomId] && roomSpectators[roomId][socket.id]) { roomSpectators[roomId][socket.id].x = x; roomSpectators[roomId][socket.id].y = y; io.to(roomId).emit('spectator_moved', { id: socket.id, x, y }); } });
-    socket.on('request_active_battles', () => { const list = Object.keys(onlineBattles).map(roomId => { const b = onlineBattles[roomId]; return { id: roomId, p1Name: b.p1.playerName, p1Skin: b.p1.skin, p2Name: b.p2.playerName, p2Skin: b.p2.skin, turn: b.turn }; }); socket.emit('active_battles_list', list); });
-    
-    socket.on('online_action', async ({ roomId, action, value, playerId }) => { 
-        const battle = onlineBattles[roomId]; 
-        if (!battle || battle.processing) return; 
+        async function speak(actorId, moveName) {
+            const side = getSide(actorId);
+            const bubble = document.getElementById(`bubble-${side}`);
+            const trainer = document.getElementById(`trainer-${side}`);
+            const monName = (side === 'p1') ? p1Mon : p2Mon;
+            if(bubble) {
+                bubble.innerText = (moveName === 'rest') ? `${monName}, volte!` : `${monName}, ${moveName}!`;
+                bubble.classList.add('show');
+            }
+            if(trainer) { animateTrainerCommand(trainer).catch(()=>{}); }
+            await wait(1000); 
+            if(bubble) bubble.classList.remove('show');
+        }
 
-        const isP1 = (String(playerId) === String(battle.p1.userId)); 
-        const actor = isP1 ? battle.p1 : battle.p2; 
+        async function animateTrainerCommand(trainerEl) {
+            try {
+                trainerEl.classList.add('frame-1'); await wait(180);
+                trainerEl.classList.remove('frame-1'); await wait(120);
+                trainerEl.classList.add('frame-1'); await wait(180);
+                trainerEl.classList.remove('frame-1');
+            } catch (e) {}
+        }
         
-        if (actor.hp <= 0 && action === 'switch') {
-            const user = await User.findById(actor.userId);
-            const newPokeData = user.pokemonTeam.find(p => p._id.toString() === value);
+        async function animateThrow(trainerEl) {
+            if (!trainerEl) return;
+            trainerEl.classList.add('frame-1');
+            await wait(250); 
+            trainerEl.classList.remove('frame-1'); 
+        }
+
+        async function returnPokemon(side) {
+            const fighterDiv = document.getElementById(`fighter-${side}`);
+            const spriteImg = document.querySelector(`#sprite-${side} img`);
+            const trainer = document.getElementById(`trainer-${side}`);
+            const sprite = document.getElementById(`sprite-${side}`);
             
-            if (newPokeData && newPokeData.currentHp > 0) {
-                const base = await BasePokemon.findOne({ id: newPokeData.baseId });
-                const newEntity = userPokemonToEntity(newPokeData, base);
-                newEntity.userId = actor.userId;
-                newEntity.id = actor.id;
-                newEntity.playerName = actor.playerName;
-                newEntity.skin = actor.skin;
-                newEntity.ready = false;
+            if(!spriteImg || !fighterDiv || !trainer || !sprite) return;
 
-                if (isP1) battle.p1 = newEntity; else battle.p2 = newEntity;
-
-                const events = [
-                    { type: 'MSG', text: `${actor.playerName} trocou para ${newEntity.name}!` },
-                    { 
-                        type: 'SWITCH_ANIM', 
-                        side: isP1 ? 'p1' : 'p2', 
-                        newSprite: newEntity.sprite,
-                        newHp: newEntity.hp,
-                        maxHp: newEntity.maxHp,
-                        newName: newEntity.name,
-                        newLevel: newEntity.level,
-                        newId: newEntity.instanceId
-                    }
-                ];
-                
-                const payload = { events, switched: true };
-                if (isP1) { payload.p1State = battle.p1; payload.newP1Id = battle.p1.instanceId; }
-                else { payload.p2State = battle.p2; payload.p2Switched = true; }
-
-                io.to(roomId).emit('turn_result', payload);
+            if (side === 'p2' && battleMode === 'wild') {
+                spriteImg.classList.add('anim-faint-wild');
+                await wait(1000);
                 return;
             }
+
+            spriteImg.style.opacity = ''; spriteImg.style.transform = '';
+            void spriteImg.offsetWidth;
+            spriteImg.classList.add('anim-recall'); 
+            
+            await wait(600);
+
+            const ball = document.createElement('div'); ball.className = 'deploy-ball';
+            fighterDiv.appendChild(ball);
+
+            const tRect = trainer.getBoundingClientRect(); const mRect = sprite.getBoundingClientRect(); const fRect = fighterDiv.getBoundingClientRect();
+            const startX = (mRect.left - fRect.left) + (mRect.width / 2) - 10;
+            const startY = (mRect.top - fRect.top) + (mRect.height / 2) + 20;
+            const handOffsetX = (side === 'p1') ? (tRect.width * 0.8) : (tRect.width * 0.2);
+            const endX = (tRect.left - fRect.left) + handOffsetX;
+            const endY = (tRect.top - fRect.top) + (tRect.height * 0.5);
+
+            ball.style.left = startX + 'px'; ball.style.top = startY + 'px';
+
+            const deltaX = endX - startX; const deltaY = endY - startY;
+            await ball.animate([{ transform: 'translate(0,0) scale(0.6)', opacity: 1 }, { transform: `translate(${deltaX * 0.5}px, ${deltaY - 30}px) scale(0.6)`, offset: 0.5 }, { transform: `translate(${deltaX}px, ${deltaY}px) scale(0)`, opacity: 0 }], { duration: 550, easing: 'ease-in-out', fill: 'forwards' }).finished;
+            ball.remove();
         }
 
-        if (action === 'forfeit') {
-            const events = [{ type: 'MSG', text: `${actor.playerName} desistiu da batalha!` }];
-            io.to(roomId).emit('turn_result', { events, winnerId: isP1 ? battle.p2.userId : battle.p1.userId });
-            delete onlineBattles[roomId];
-            return;
-        }
+        // --- FUNÇÃO DE DEPLOY ROBUSTA ---
+        async function deployPokemon(side, isWild = false) {
+            const fighterDiv = document.getElementById(`fighter-${side}`);
+            const spriteDiv = document.getElementById(`sprite-${side}`);
+            const spriteImg = spriteDiv ? spriteDiv.querySelector('img') : null;
+            const trainerDiv = document.getElementById(`trainer-${side}`);
 
-        if (action === 'switch') {
-            const user = await User.findById(actor.userId);
-            const newPokeData = user.pokemonTeam.find(p => p._id.toString() === value);
-            if (newPokeData && newPokeData.currentHp > 0) {
-                actor.nextAction = { type: 'switch', data: newPokeData };
-                actor.ready = true;
+            if (!spriteImg || !fighterDiv) return;
+
+            try {
+                // Limpa estados anteriores
+                spriteImg.classList.remove('anim-pop-out', 'anim-wild-appear', 'anim-recall', 'anim-faint-wild');
+                spriteImg.style.opacity = '0'; 
+                spriteImg.style.filter = ''; spriteImg.style.transform = '';
+
+                if (isWild) {
+                    await wait(300);
+                    spriteImg.classList.add('anim-wild-appear');
+                    // Garante visibilidade no próximo frame
+                    requestAnimationFrame(() => spriteImg.style.opacity = '1'); 
+                    return;
+                }
+
+                if (trainerDiv) animateThrow(trainerDiv);
+                await wait(200);
+
+                const ball = document.createElement('div'); ball.className = 'deploy-ball';
+                fighterDiv.appendChild(ball);
+
+                const tRect = trainerDiv.getBoundingClientRect(); const mRect = spriteDiv.getBoundingClientRect(); const fRect = fighterDiv.getBoundingClientRect();
+                const handOffsetX = (side === 'p1') ? (tRect.width * 0.8) : (tRect.width * 0.2);
+                let startX = (tRect.left - fRect.left) + handOffsetX; 
+                let startY = (tRect.top - fRect.top) + (tRect.height * 0.5);
+                let endX = (mRect.left - fRect.left) + (mRect.width / 2) - 10;
+                let endY = (mRect.top - fRect.top) + (mRect.height / 2) + 20;
+
+                ball.style.left = startX + 'px'; ball.style.top = startY + 'px';
+                await wait(50);
+
+                const deltaX = endX - startX; const deltaY = endY - startY;
+                
+                // Animação da pokebola com tratamento de erro (caso falhe, não para o script)
+                try {
+                    await ball.animate([{ transform: 'translate(0, 0) scale(0.5)' }, { transform: `translate(${deltaX * 0.5}px, ${deltaY - 80}px) scale(0.8)`, offset: 0.5 }, { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.6)` }], { duration: 450, easing: 'linear', fill: 'forwards' }).finished;
+                } catch(e) {}
+                
+                ball.remove();
+                
+                createImpact(side, 'effect-normal', endX + 40, endY + 40); 
+                spriteImg.classList.add('anim-pop-out');
+            
+            } catch(e) {
+                console.error("Erro na animação deploy", e);
+            } finally {
+                // GARANTIA FINAL: Se algo der errado, torna o pokemon visível
+                setTimeout(() => { 
+                    if(spriteImg) spriteImg.style.opacity = '1'; 
+                }, 50);
             }
-        } 
-        else if (action === 'move') {
-            if (value === 'rest') {
-                actor.nextAction = { type: 'rest' };
+        }
+
+        function createProjectile(fromSide, toSide, cssClass) {
+            const fromEl = document.getElementById(`sprite-${fromSide}`);
+            const toEl = document.getElementById(`sprite-${toSide}`);
+            if(!fromEl || !toEl) return;
+            const rf = fromEl.getBoundingClientRect(); const rt = toEl.getBoundingClientRect();
+            const sX = rf.left + rf.width / 2, sY = rf.top + rf.height / 2;
+            const eX = rt.left + rt.width / 2, eY = rt.top + rt.height / 2;
+            const part = document.createElement('div'); part.className = `atk-particle ${cssClass}`;
+            part.style.left = sX + 'px'; part.style.top = sY + 'px';
+            part.style.setProperty('--tx', (eX - sX) + 'px'); part.style.setProperty('--ty', (eY - sY) + 'px');
+            document.body.appendChild(part); setTimeout(() => part.remove(), 500);
+        }
+
+        function createImpact(targetSide, cssClass, customX = null, customY = null) {
+            const toEl = document.getElementById(`sprite-${targetSide}`);
+            const fighterDiv = document.getElementById(`fighter-${targetSide}`);
+            if(!toEl && !fighterDiv) return;
+
+            const impact = document.createElement('div'); impact.className = `impact-effect impact-pop ${cssClass}`;
+            
+            if (customX !== null && customY !== null && fighterDiv) {
+                impact.style.left = (customX - 40) + 'px'; impact.style.top = (customY - 40) + 'px'; fighterDiv.appendChild(impact);
             } else {
-                const chosenMove = actor.moves.find(m => m.id === value);
-                if (chosenMove) actor.nextAction = { type: 'move', move: chosenMove };
+                const r = toEl.getBoundingClientRect();
+                impact.style.left = (r.left + r.width/2 - 40) + 'px'; impact.style.top = (r.top + r.height/2 - 40) + 'px';
+                document.body.appendChild(impact);
             }
-            if (actor.nextAction) actor.ready = true;
+            setTimeout(() => impact.remove(), 400);
         }
 
-        if (battle.p1.ready && battle.p2.ready) { 
-            battle.processing = true; 
-            const events = []; 
-            const p1 = battle.p1; 
-            const p2 = battle.p2; 
-            
-            const executeAction = async (act, opp, isP1Action) => {
-                const actionData = act.nextAction;
-                if (actionData.type === 'switch') {
-                    const base = await BasePokemon.findOne({ id: actionData.data.baseId });
-                    const user = await User.findById(act.userId);
-                    const prevPoke = user.pokemonTeam.find(p => p._id.toString() === act.instanceId);
-                    if(prevPoke) prevPoke.currentHp = act.hp;
-                    await user.save();
+        function playMoveAnimation(attackerSide, defenderSide, type, category, moveType) {
+            try { console.debug('[Anim]', { attackerSide, defenderSide, type }); } catch(e) {}
+            const atkSprite = document.getElementById(`sprite-${attackerSide}`);
+            const defSprite = document.getElementById(`sprite-${defenderSide}`);
+            if(!atkSprite) return;
+            const atkImg = atkSprite.querySelector('img');
+            const defImg = defSprite ? defSprite.querySelector('img') : null;
+            if(atkImg) {
+                atkImg.classList.remove('attack','hurt','shake');
+                atkImg.classList.add('attack');
+                setTimeout(() => { try { if(atkImg) atkImg.classList.remove('attack'); } catch(e){} }, 360);
+            }
+            if (category === 'special') {
+                const elemClass = `effect-${(type || 'normal').toLowerCase()}`;
+                setTimeout(() => { createProjectile(attackerSide, defenderSide, elemClass); }, 100);
+            }
+            if(defImg) {
+                setTimeout(() => {
+                    try {
+                        if(!defImg) return;
+                        defImg.classList.remove('hurt','shake');
+                        defImg.classList.add('shake'); 
+                        setTimeout(() => { try { if(defImg) { defImg.classList.remove('shake'); } } catch(e){} }, 420);
+                    } catch(e) {}
+                }, 220);
+            }
+        }
 
-                    const newEntity = userPokemonToEntity(actionData.data, base);
-                    newEntity.userId = act.userId;
-                    newEntity.id = act.id; 
-                    newEntity.playerName = act.playerName;
-                    newEntity.skin = act.skin;
-                    newEntity.ready = false;
-
-                    if (isP1Action) battle.p1 = newEntity; else battle.p2 = newEntity;
-                    events.push({ type: 'MSG', text: `${act.playerName} trocou para ${newEntity.name}!` });
-                    events.push({ 
-                        type: 'SWITCH_ANIM', 
-                        side: isP1Action ? 'p1' : 'p2', 
-                        newSprite: newEntity.sprite,
-                        newHp: newEntity.hp,
-                        maxHp: newEntity.maxHp,
-                        newName: newEntity.name,
-                        newLevel: newEntity.level,
-                        newId: newEntity.instanceId
-                    });
-                    return isP1Action ? battle.p1 : battle.p2;
-                } 
-                if (actionData.type === 'rest') {
-                    act.energy += 5; 
-                    events.push({ type: 'REST', actorId: act.instanceId, newEnergy: act.energy });
-                } 
-                if (actionData.type === 'move') {
-                    processAction(act, opp, actionData.move, events);
+        function updateBar(actorId, cur, max, type) { 
+            const side = getSide(actorId);
+            const pct = Math.max(0, (cur / max) * 100); 
+            const fill = document.getElementById(`${type}-bar-${side}`); 
+            if(fill) {
+                fill.style.width = pct + '%'; 
+                if(type === 'hp') {
+                    const txt = document.getElementById(`hp-val-${side}`);
+                    const maxTxt = document.getElementById(`max-hp-${side}`); 
+                    if(txt) txt.innerText = Math.max(0, cur);
+                    if(maxTxt) maxTxt.innerText = max;
                 }
-                return act; 
-            };
+            }
+            if(type === 'hp') { if(side === 'p1') p1CurHp = Number(cur); else p2CurHp = Number(cur); }
+            if(type === 'en' && side === 'p1' && !isSpectator) { currentEnergy = cur; document.getElementById('en-val-p1').innerText = cur; updateButtons(); } 
+        }
 
-            let activeP1 = p1;
-            let activeP2 = p2;
-            
-            if (p1.nextAction.type === 'switch') activeP1 = await executeAction(p1, p2, true);
-            if (p2.nextAction.type === 'switch') activeP2 = await executeAction(p2, activeP1, false);
+        function updateButtons() { 
+            if(isSpectator) return; 
+            document.querySelectorAll('.move-btn:not(.rest-btn)').forEach(btn => { 
+                const small = btn.querySelector('small');
+                if(small) { const cost = parseInt(small.innerText); btn.disabled = (currentEnergy < cost); }
+            }); 
+        }
+        
+        function setControlsState(enabled) { 
+            if(isSpectator) return; 
+            const panel = document.getElementById('controlsPanel'); if(!panel) return; 
+            panel.style.opacity = enabled ? "1" : "0.5"; 
+            const btns = panel.querySelectorAll('button'); btns.forEach(b => b.disabled = !enabled); 
+            canAct = !!enabled;
+            if(enabled) updateButtons(); 
+        }
+        
+        async function playEvents(events) { 
+            let lastMoveElement = 'normal';
+            for (let evt of events) { 
+                if (evt.type === 'INIT') continue; 
+                const actorIdRaw = evt.actorId || evt.attackerId || evt.attacker || evt.actor || null;
+                const targetIdRaw = evt.targetId || evt.target || evt.defenderId || evt.defender || null;
 
-            const p1Acted = p1.nextAction.type === 'switch';
-            const p2Acted = p2.nextAction.type === 'switch';
+                if (evt.type === 'MSG') {
+                    try { if(evt.text) showToast(evt.text); } catch(e) {}
+                    const lb = document.getElementById('logBox'); if(lb) { const div = document.createElement('div'); div.className = 'log-entry'; div.innerText = evt.text; lb.appendChild(div); lb.scrollTop = lb.scrollHeight; }
+                    await wait(200); continue;
+                }
+                const actorSide = getSide(actorIdRaw); const targetSide = getSide(targetIdRaw);
 
-            if (!p1Acted && !p2Acted) {
-                let first = activeP1.stats.speed >= activeP2.stats.speed ? activeP1 : activeP2; 
-                let second = first === activeP1 ? activeP2 : activeP1; 
-                await executeAction(first, second, first === activeP1);
-                if (second.hp > 0) await executeAction(second, first, second === activeP1);
+                if (evt.type === 'USE_MOVE') { 
+                    lastMoveElement = evt.moveElement || 'normal';
+                    if (battleMode === 'wild' && actorSide === 'p2') { await wait(500); } 
+                    else { await speak(actorIdRaw, evt.moveName); }
+                    playMoveAnimation(actorSide, targetSide, evt.moveElement || 'normal', evt.moveCategory, evt.moveType);
+                    if(!isSpectator && actorSide === 'p1') updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en'); 
+                    await wait(300); 
+                } else if (evt.type === 'ATTACK_HIT') { 
+                    createImpact(targetSide, `effect-${lastMoveElement.toLowerCase()}`);
+                    const damageTxt = document.createElement('div'); damageTxt.className = 'floating-text damage-text'; damageTxt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`;
+                    const rX = (Math.random() * 40 - 20) + '%', rY = (Math.random() * 20 - 10) + '%';
+                    damageTxt.style.transform = `translate(calc(-50% + ${rX}), calc(-50% + ${rY}))`;
+                    document.getElementById(`fighter-${targetSide}`).appendChild(damageTxt);
+                    if(evt.isEffective) { const t = document.createElement('div'); t.className = 'floating-text super-text'; t.innerText = "SUPER!"; t.style.marginTop = "30px"; document.getElementById(`fighter-${targetSide}`).appendChild(t); setTimeout(() => t.remove(), 1200); } 
+                    await wait(500); damageTxt.remove();
+                    const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
+                    updateBar(targetIdRaw, evt.newHp, maxHp, 'hp'); 
+                    if (evt.newHp <= 0) { await wait(200); await returnPokemon(targetSide); } await wait(500);
+                } else if (evt.type === 'HEAL') { 
+                    await speak(actorIdRaw, 'Cura'); updateBar(actorIdRaw, evt.newHp, (actorSide === 'p1' ? p1MaxHp : p2MaxHp), 'hp'); 
+                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${evt.amount}`; 
+                    document.getElementById(`fighter-${actorSide}`).appendChild(txt); setTimeout(() => txt.remove(), 1000); await wait(500); 
+                } 
+                else if (evt.type === 'STATUS_DAMAGE') {
+                    const fd = document.getElementById(`fighter-${targetSide}`);
+                    const t = document.createElement('div'); t.className = 'floating-text status-text'; t.innerText = `-${evt.damage}`; fd.appendChild(t); setTimeout(() => t.remove(), 1000);
+                    const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
+                    updateBar(targetIdRaw, evt.newHp, maxHp, 'hp');
+                    if (evt.newHp <= 0) { await wait(200); await returnPokemon(targetSide); } await wait(800);
+                }
+                else if (evt.type === 'REST') {
+                    await speak(actorIdRaw, 'rest');
+                    if(actorSide === 'p1' && !isSpectator) updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en');
+                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+5 EN`; txt.style.color = "#f1c40f";
+                    document.getElementById(`fighter-${actorSide}`).appendChild(txt); setTimeout(() => txt.remove(), 1000); await wait(500);
+                }
+                else if (evt.type === 'SWITCH_ANIM') {
+                    const side = (evt.side === 'p1') ? 'p1' : 'p2';
+                    const bubble = document.getElementById(`bubble-${side}`);
+                    if(bubble) {
+                        bubble.innerText = `Volte! Vai ${evt.newName}!`;
+                        bubble.classList.add('show');
+                        setTimeout(() => bubble.classList.remove('show'), 1500);
+                    }
+                    await returnPokemon(side);
+                    await wait(500);
+                }
             } 
-            else {
-                if (!p1Acted && activeP1.hp > 0) await executeAction(activeP1, activeP2, true);
-                if (!p2Acted && activeP2.hp > 0) await executeAction(activeP2, activeP1, false);
-            }
+        }
 
-            if (activeP1.hp > 0) applyStatusDamage(activeP1, events);
-            if (activeP2.hp > 0) applyStatusDamage(activeP2, events);
-            
-            battle.p1.ready = false; battle.p2.ready = false; 
-            delete battle.p1.nextAction; delete battle.p2.nextAction; 
-            battle.processing = false; 
+        function playCaptureAnimation(targetId, isSuccessful) {
+            return new Promise(async (resolve) => {
+                try {
+                    const side = getSide(targetId); const targetSprite = document.getElementById(`sprite-${side}`); const trainerEl = document.getElementById('trainer-p1');
+                    if(!targetSprite || !trainerEl) { resolve(); return; }
+                    const tRect = trainerEl.getBoundingClientRect(); const startX = tRect.left + (tRect.width * 0.8), startY = tRect.top + (tRect.height * 0.4);
+                    const mRect = targetSprite.getBoundingClientRect(); const targetX = mRect.left + (mRect.width / 2) - 10, targetY = mRect.top + (mRect.height / 2) - 10;
+                    animateThrow(trainerEl); await wait(150);
+                    const ball = document.createElement('div'); ball.className = 'catchball'; ball.style.left = startX + 'px'; ball.style.top = startY + 'px'; document.body.appendChild(ball);
+                    const deltaX = targetX - startX, deltaY = targetY - startY;
+                    
+                    await ball.animate([
+                        { transform: `translate(0, 0) rotate(0deg) scale(0.6)` }, 
+                        { transform: `translate(${deltaX * 0.6}px, ${deltaY - 150}px) rotate(360deg) scale(0.7)`, offset: 0.6 }, 
+                        { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` }
+                    ], { duration: 600, easing: 'cubic-bezier(0.2, 0.6, 0.4, 1)', fill: 'forwards' }).finished;
 
-            let winnerId = null;
-            let forceSwitch = null;
+                    if (!isSuccessful) {
+                        const bounceAnim = ball.animate([{ transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)`, opacity: 1 }, { transform: `translate(${deltaX - 80}px, ${deltaY - 100}px) rotate(600deg) scale(0.6)`, opacity: 0 }], { duration: 450, easing: 'ease-out', fill: 'forwards' });
+                        targetSprite.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg) saturate(5)"; setTimeout(() => targetSprite.style.filter = "", 150);
+                        await bounceAnim.finished; ball.remove(); resolve(); return;
+                    }
 
-            if (battle.p1.hp <= 0) {
-                 const user1 = await User.findById(battle.p1.userId);
-                 const hasAlive1 = user1.pokemonTeam.some(p => p.currentHp > 0 && p._id.toString() !== battle.p1.instanceId); 
-                 
-                 const deadPoke = user1.pokemonTeam.find(p => p._id.toString() === battle.p1.instanceId);
-                 if(deadPoke) { deadPoke.currentHp = 0; await user1.save(); }
+                    const flash = document.getElementById('flashOverlay'); if(flash) flash.classList.add('active'); setTimeout(() => flash && flash.classList.remove('active'), 150);
+                    targetSprite.classList.add('absorbed-state'); await wait(200);
+                    const groundY = mRect.bottom - 50; const dropDistY = groundY - targetY; 
+                    
+                    await ball.animate([
+                        { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` }, 
+                        { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` }
+                    ], { duration: 350, easing: 'ease-in', fill: 'forwards' }).finished;
+                    
+                    const finalTX = deltaX;
+                    const finalTY = deltaY + dropDistY;
 
-                 if (hasAlive1) {
-                     events.push({ type: 'MSG', text: `${battle.p1.name} desmaiou!` });
-                     forceSwitch = { target: battle.p1.userId }; 
-                 } else {
-                     winnerId = battle.p2.userId; 
-                 }
-            }
+                    const sf = [
+                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }, 
+                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(-25deg)`, offset: 0.25 }, 
+                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(25deg)`, offset: 0.75 }, 
+                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }
+                    ];
+                    
+                    await ball.animate(sf, { duration: 400 }).finished; await wait(500); 
+                    await ball.animate(sf, { duration: 400 }).finished; await wait(500); 
+                    await ball.animate(sf, { duration: 400 }).finished; await wait(500); 
+                    
+                    ball.classList.add('captured-lock');
+                    
+                    const ballVisualX = startX + finalTX;
+                    const ballVisualY = startY + finalTY;
 
-            if (!winnerId && battle.p2.hp <= 0) {
-                 const user2 = await User.findById(battle.p2.userId);
-                 const hasAlive2 = user2.pokemonTeam.some(p => p.currentHp > 0 && p._id.toString() !== battle.p2.instanceId);
-                 
-                 const deadPoke2 = user2.pokemonTeam.find(p => p._id.toString() === battle.p2.instanceId);
-                 if(deadPoke2) { deadPoke2.currentHp = 0; await user2.save(); }
+                    for(let i=0; i<3; i++) { 
+                        const s = document.createElement('div'); 
+                        s.className = 'capture-star'; 
+                        s.innerText = '★'; 
+                        s.style.left = (ballVisualX + 10 + (i*15 - 15)) + 'px'; 
+                        s.style.top = (ballVisualY - 20) + 'px'; 
+                        document.body.appendChild(s); 
+                        setTimeout(() => s.remove(), 700); 
+                        await wait(100); 
+                    }
+                    await wait(800); resolve();
 
-                 if (hasAlive2) {
-                     events.push({ type: 'MSG', text: `${battle.p2.name} desmaiou!` });
-                     if (!forceSwitch) forceSwitch = { target: battle.p2.userId }; 
-                 } else {
-                     winnerId = battle.p1.userId; 
-                 }
-            }
-            
-            if (winnerId) {
-                 const betAmount = (battle.bet) ? Number(battle.bet) : 0; 
-                if (betAmount > 0) { 
-                    try { 
-                        const winnerUser = (String(winnerId) === String(battle.p1.userId)) ? await User.findById(battle.p1.userId) : await User.findById(battle.p2.userId); 
-                        const loserUser = (String(winnerId) === String(battle.p1.userId)) ? await User.findById(battle.p2.userId) : await User.findById(battle.p1.userId); 
-                        if (winnerUser && loserUser) { 
-                            const actualDeduct = Math.min(loserUser.money || 0, betAmount); 
-                            loserUser.money = Math.max(0, (loserUser.money || 0) - actualDeduct); 
-                            winnerUser.money = (winnerUser.money || 0) + actualDeduct; 
-                            await loserUser.save(); await winnerUser.save(); 
-                            events.push({ type: 'MSG', text: `Aposta: ${winnerUser.username} ganhou ${actualDeduct}!` }); 
-                        } 
-                    } catch (e) { console.error(e); } 
+                } catch (e) { console.error(e); resolve(); }
+            });
+        }
+
+        async function sendAction(type, moveId) { 
+            if (!canAct) return; 
+            setControlsState(false); 
+            if (battleMode === 'online') { 
+                if (type === 'move') { 
+                    document.getElementById('statusMsg').innerText = "Aguardando oponente..."; 
+                    document.getElementById('statusMsg').style.display = "block"; 
+                    socket.emit('online_action', { roomId: battleId, action: 'move', value: moveId, playerId: realUserId }); 
+                } 
+            } else { 
+                const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
+                const data = await res.json(); 
+                
+                if (data.switched) {
+                    if (data.p2Switched) {
+                        if (data.events) await playEvents(data.events);
+                        await wait(500);
+                        p2RawId = data.p2State.instanceId;
+                        p2Mon = data.p2State.name;
+                        p2CurHp = data.p2State.hp;
+                        p2MaxHp = data.p2State.maxHp;
+                        p2Data.name = data.p2State.playerName;
+                        p2Data.sprite = resolveImg(data.p2State.sprite);
+                        p2Data.mon = data.p2State.name;
+                        p2Data.skin = data.p2State.skin;
+                        document.getElementById('p2-name').innerText = p2Mon;
+                        document.getElementById('p2-lv').innerText = data.p2State.level;
+                        document.getElementById('max-hp-p2').innerText = p2MaxHp;
+                        const s2 = document.querySelector('#sprite-p2 img');
+                        s2.src = resolveImg(data.p2State.sprite);
+                        deployPokemon('p2', false);
+                        updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
+                    } else {
+                        await wait(500);
+                        p1RawId = data.newP1Id; 
+                        p1Mon = data.p1State.name; 
+                        p1CurHp = data.p1State.hp; 
+                        p1MaxHp = data.p1State.maxHp; 
+                        currentEnergy = data.p1State.energy;
+                        document.getElementById('p1-name').innerText = p1Mon; 
+                        document.getElementById('p1-lv').innerText = data.p1State.level; 
+                        document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
+                        document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
+                        deployPokemon('p1', false); 
+                        updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
+                        updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                        const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
+                        data.p1State.moves.forEach(move => { 
+                            const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                            btn.onclick = () => sendAction('move', move.id); 
+                            btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                            mc.appendChild(btn); 
+                        });
+                        if (data.events) await playEvents(data.events); 
+                    }
+                    setControlsState(true); 
+                    return; 
                 }
-                delete onlineBattles[roomId];
-            }
+
+                if (type === 'catch' && data && data.threw) await playCaptureAnimation(p2RawId, data.captured);
+                if (data.events) await playEvents(data.events); 
+                if (data.forceSwitch) { showSwitchModal(data.switchable); return; }
+                if(data.captured) { showToast('Capturado!'); setTimeout(() => { window.location.href = returnUrl; }, 1000); return; }
+                else if (data.fled) { showToast("Fugiu!"); window.location.href = returnUrl; } 
+                else if(data.finished) { endGame(data.winnerId); } 
+                else { 
+                    // CORREÇÃO: Atualizando Energia e HP corretamente
+                    if (data.p1State) {
+                        updateBar(p1RawId, data.p1State.hp, p1MaxHp, 'hp'); 
+                        if(data.p1State.energy !== undefined) {
+                            updateBar(p1RawId, data.p1State.energy, <%= p1.maxEnergy %>, 'en');
+                        }
+                    }
+                    if (data.p2State) updateBar(p2RawId, data.p2State.hp, p2MaxHp, 'hp'); 
+                    setControlsState(true); 
+                } 
+            } 
+        }
+
+        function showSwitchModal(list) {
+            const modal = document.getElementById('switchModal');
+            const listDiv = document.getElementById('switchList');
+            listDiv.innerHTML = '';
             
-            const payload = { events, winnerId, forceSwitch };
-            if (p1Acted || p2Acted) {
-                payload.switched = true;
-                if(p1Acted) {
-                    payload.p1State = battle.p1;
-                    payload.newP1Id = battle.p1.instanceId;
+            list.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'switch-item';
+                item.innerHTML = `<img src="${resolveImg(p.sprite)}" class="switch-sprite"> <div><div style="color:#f1c40f;font-weight:bold;">${p.name} <span style="font-size:0.7rem;color:#ccc">Lv.${p.level}</span></div><div style="font-size:0.7rem;">HP: ${p.hp}/${p.maxHp}</div></div>`;
+                item.onclick = () => performSwitch(p.instanceId, true);
+                listDiv.appendChild(item);
+            });
+            modal.style.display = 'flex';
+        }
+
+        async function performSwitch(newPokeId, isForced = false) {
+            document.getElementById('switchModal').style.display = 'none';
+            
+            if (battleMode === 'online') {
+                socket.emit('online_action', { 
+                    roomId: battleId, 
+                    action: 'switch', 
+                    value: newPokeId, 
+                    playerId: realUserId 
+                });
+                document.getElementById('statusMsg').innerText = "Trocando..."; 
+                document.getElementById('statusMsg').style.display = "block";
+            } else {
+                const res = await fetch('/api/turn', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ battleId, action: 'switch', moveId: newPokeId, isForced }) 
+                }); 
+                const data = await res.json();
+                
+                if (data.switched) {
+                    await wait(500);
+                    p1RawId = data.newP1Id; p1Mon = data.p1State.name; p1CurHp = data.p1State.hp; p1MaxHp = data.p1State.maxHp; currentEnergy = data.p1State.energy;
+                    document.getElementById('p1-name').innerText = p1Mon; document.getElementById('p1-lv').innerText = data.p1State.level; document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
+                    document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
+                    deployPokemon('p1', false); 
+                    updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                    const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
+                    data.p1State.moves.forEach(move => { 
+                        const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                        btn.onclick = () => sendAction('move', move.id); 
+                        btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                        mc.appendChild(btn); 
+                    });
+                    if (data.events) await playEvents(data.events); 
+                    setControlsState(true);
                 }
-                if(p2Acted) {
-                    payload.p2State = battle.p2;
-                    payload.p2Switched = true;
+            }
+        }
+
+        function forfeitBattle() {
+            document.getElementById('switchModal').style.display = 'none';
+            if (battleMode === 'online') {
+                socket.emit('online_action', { 
+                    roomId: battleId, 
+                    action: 'forfeit', 
+                    playerId: realUserId 
+                });
+            } else {
+                endGame(p2RawId); 
+            }
+        }
+
+        let __battleEnded = false;
+        function endGame(winnerId) { 
+            if (__battleEnded) return;
+            __battleEnded = true;
+            if (battleMode === 'wild') { showToast("Batalha finalizada!"); window.location.href = returnUrl; return; }
+
+            const bottomPanel = document.querySelector('.bottom-panel'); if(bottomPanel) bottomPanel.style.display = 'none'; 
+            const overlay = document.getElementById('overlay'); 
+            const title = document.getElementById('result-title'); 
+            const winName = document.getElementById('win-name'); const loseName = document.getElementById('lose-name'); 
+            const winTrainer = document.getElementById('win-trainer-div'); const loseTrainer = document.getElementById('lose-trainer-div');
+            const winMon = document.getElementById('win-mon-img'); const loseMon = document.getElementById('lose-mon-img'); 
+            
+            let isP1Win = false;
+            if (battleMode === 'online') { isP1Win = (String(winnerId) === String(realUserId)); } 
+            else { isP1Win = (String(winnerId) === String(p1RawId)); }
+
+            const winner = isP1Win ? p1Data : p2Data; const loser = isP1Win ? p2Data : p1Data; 
+            winName.innerText = winner.name; loseName.innerText = loser.name; 
+            winMon.src = winner.sprite; loseMon.src = loser.sprite; 
+            
+            if(winner.isCustom || (winner.skin && winner.skin.startsWith('data:'))) winTrainer.style.backgroundImage = `url('${winner.skin}')`; else winTrainer.style.backgroundImage = `url('/uploads/${winner.skin}.png')`;
+            if(loser.isCustom || (loser.skin && loser.skin.startsWith('data:'))) loseTrainer.style.backgroundImage = `url('${loser.skin}')`; else loseTrainer.style.backgroundImage = `url('/uploads/${loser.skin}.png')`;
+            
+            if (isSpectator) { title.innerText = `VENCEDOR: ${winner.name}`; title.style.color = "#f1c40f"; } 
+            else { 
+                if (winnerId === 'draw') { title.innerText = "EMPATE!"; title.style.color = "#fff"; } 
+                else if (isP1Win) { title.innerText = "VITÓRIA!"; title.style.color = "#2ecc71"; } 
+                else { title.innerText = "DERROTA..."; title.style.color = "#e74c3c"; } 
+            } 
+            overlay.style.display = 'flex'; 
+        }
+
+        socket.on('turn_result', async (data) => { 
+            document.getElementById('statusMsg').style.display = "none"; 
+            await playEvents(data.events); 
+            
+            if (data.switched) { 
+                let newState = data.p1State || data.p2State; 
+                if (data.p2Switched) newState = data.p2State; 
+                else if (data.p1State) newState = data.p1State; 
+
+                const switchedUserId = newState.userId || ''; 
+                const iAmSwitching = (String(switchedUserId) === String(realUserId));
+
+                if (!iAmSwitching) {
+                    if (data.events) await playEvents(data.events);
+                    await wait(500);
+                    
+                    p2RawId = newState.instanceId;
+                    p2Mon = newState.name;
+                    p2CurHp = newState.hp;
+                    p2MaxHp = newState.maxHp;
+                    p2Data.name = newState.playerName;
+                    p2Data.sprite = resolveImg(newState.sprite);
+                    p2Data.mon = newState.name;
+                    p2Data.skin = newState.skin;
+                    
+                    document.getElementById('p2-name').innerText = p2Mon;
+                    document.getElementById('p2-lv').innerText = newState.level;
+                    document.getElementById('max-hp-p2').innerText = p2MaxHp;
+                    
+                    const s2 = document.querySelector('#sprite-p2 img');
+                    s2.src = resolveImg(newState.sprite);
+                    
+                    setTimeout(() => deployPokemon('p2', false), 50);
+                    updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
+                } else {
+                    await wait(500);
+                    
+                    p1RawId = newState.instanceId; 
+                    p1Mon = newState.name; 
+                    p1CurHp = newState.hp; 
+                    p1MaxHp = newState.maxHp; 
+                    currentEnergy = newState.energy;
+                    
+                    document.getElementById('p1-name').innerText = p1Mon; 
+                    document.getElementById('p1-lv').innerText = newState.level; 
+                    document.getElementById('max-hp-p1').innerText = newState.maxHp;
+                    document.querySelector('#sprite-p1 img').src = resolveImg(newState.sprite); 
+                    
+                    setTimeout(() => deployPokemon('p1', false), 50);
+                    updateBar(p1RawId, p1CurHp, newState.maxHp, 'hp'); 
+                    updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                    
+                    const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
+                    newState.moves.forEach(move => { 
+                        const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                        btn.onclick = () => sendAction('move', move.id); 
+                        btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                        mc.appendChild(btn); 
+                    });
+                    if (data.events) await playEvents(data.events); 
                 }
-                if(!payload.p1State) payload.p1State = battle.p1;
-                if(!payload.p2State) payload.p2State = battle.p2;
+                setControlsState(true); 
+                return; 
             }
 
-            io.to(roomId).emit('turn_result', payload);
-        } else { 
-            socket.to(roomId).emit('opponent_ready'); 
-        } 
-    });
-});
+            if (data.forceSwitch) {
+                if (data.forceSwitch.target === realUserId) {
+                     const res = await fetch('/api/me?userId=' + realUserId);
+                     const meData = await res.json();
+                     const switchables = meData.team.filter(p => p.hp > 0 && p.instanceId !== p1RawId); 
+                     showSwitchModal(switchables);
+                     document.getElementById('switchTitle').innerText = "SEU POKÉMON DESMAIOU!";
+                } else {
+                    document.getElementById('statusMsg').innerText = "Oponente trocando...";
+                    document.getElementById('statusMsg').style.display = "block";
+                }
+                return; 
+            }
 
-seedDatabase().then(() => { const PORT = process.env.PORT || 3000; server.listen(PORT, () => console.log(`Server ON Port ${PORT}`)); });
+            if(data.winnerId) endGame(data.winnerId); 
+            else if(!isSpectator) setControlsState(true); 
+        });
+        
+        socket.on('opponent_ready', () => { if(!isSpectator) { document.getElementById('statusMsg').style.display = "block"; document.getElementById('statusMsg').innerText = "Oponente pronto!"; } });
+        
+        window.onload = async () => { 
+            const loader = document.getElementById('global-loader');
+            loader.style.opacity = '0';
+            
+            if(battleMode === 'online') { if(!isSpectator) socket.emit('join_room', battleId); } 
+            
+            updateBar(p1RawId, <%= p1.hp %>, <%= p1.maxHp %>, 'hp'); 
+            updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
+            if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
+            
+            await wait(100); 
+            
+            deployPokemon('p1', false);
+            deployPokemon('p2', battleMode === 'wild');
+
+            await wait(400);
+            loader.style.display = 'none';
+
+            if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId)); } 
+            else if (!isSpectator) { setControlsState(true); } 
+
+            setTimeout(discoverSpriteAlts, 300);
+        };
+
+        (async function fetchInitialHud() { try { const res = await fetch('/api/me?userId=<%= realUserId %>'); const data = await res.json(); const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = data.money || 0; } catch(e) {} })();
+
+        async function probeAlternate(src) {
+            try {
+                const url = new URL(src, window.location.origin);
+                const path = url.pathname;
+                const m = path.match(/(.+)\.(png|gif|jpg|jpeg)$/i);
+                if(!m) return null;
+                const base = m[1]; const ext = m[2];
+                const candidates = [`${base}_atk.${ext}`, `${base}-atk.${ext}`, `${base}_1.${ext}`, `${base}-1.${ext}`];
+                for (let c of candidates) {
+                    try {
+                        const res = await fetch(c, { method: 'HEAD' });
+                        if (res && res.ok) return c;
+                    } catch(e) {}
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        async function discoverSpriteAlts() {
+            try {
+                ['p1','p2'].forEach(async side => {
+                    try {
+                        const img = document.querySelector(`#sprite-${side} img`);
+                        if(!img) return;
+                        const found = await probeAlternate(img.src);
+                        if(found) img.dataset.altSrc = found;
+                    } catch(e){}
+                });
+            } catch(e){}
+        }
+        
+        let __battleBagOutsideListener = null;
+        function closeBattleBag() { const panel = document.getElementById('floatingBagPanel'); if(panel) panel.style.display = 'none'; if(__battleBagOutsideListener) { document.removeEventListener('click', __battleBagOutsideListener); __battleBagOutsideListener = null; } }
+        async function openBattleBag() {
+            const panel = document.getElementById('floatingBagPanel'); if(!panel) return;
+            if(panel.style.display === 'block') { closeBattleBag(); return; }
+            panel.style.display = 'block';
+            const cont = document.getElementById('battleBagContent'); cont.innerHTML = 'Carregando...';
+            try { const res = await fetch('/api/me?userId=<%= realUserId %>'); const data = await res.json(); const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = money; let html = `<div class="bag-row"><div class="bag-item">Catchballs<br><strong>${pokeballs}</strong></div><div class="bag-item">RareCandy<br><strong>${rareCandy}</strong></div></div>`; html += `<div class="bag-actions"><button class="btn-small use" onclick="useCatchballFromBag()">Usar Catchball</button></div>`; cont.innerHTML = html; } catch(e) { cont.innerHTML = 'Erro.'; }
+            setTimeout(() => document.addEventListener('click', (ev) => { const p = document.getElementById('floatingBagPanel'); const b = document.getElementById('floatingBagIcon'); if(p && !p.contains(ev.target) && b && !b.contains(ev.target)) closeBattleBag(); }), 50);
+        }
+        async function useCatchballFromBag() {
+            if (battleMode !== 'wild') { showToast('Apenas em batalhas selvagens.'); return; }
+            if(!confirm('Usar uma Catchball agora?')) return; 
+            try { 
+                const res = await fetch('/api/turn', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ battleId, action: 'catch' }) }); 
+                const data = await res.json(); 
+                
+                if (data && data.threw) await playCaptureAnimation(p2RawId, data.captured);
+
+                if(data.events) await playEvents(data.events); 
+                
+                if(data.captured) { 
+                    if(data.sentToPC) showToast('Enviado para o PC!');
+                    else showToast('Capturado!');
+                    setTimeout(()=>{ window.location.href = returnUrl; }, 1000); 
+                    return; 
+                } 
+                closeBattleBag(); 
+            } catch(e) { showToast('Erro.'); }
+        }
+    </script>
+</body>
+</html>
