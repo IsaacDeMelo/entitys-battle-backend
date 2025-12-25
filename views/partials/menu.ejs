@@ -1,4 +1,3 @@
-<!-- FONTES -->
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
 <!-- POLYFILL PARA DRAG AND DROP MOBILE -->
@@ -243,16 +242,21 @@
     let isSelectingMode = false;
     let currentMonId = null;
     let GLOBAL_MOVES_LIB = {};
-    let CACHED_PC_DATA = null; // Cache para o PC
+    let CACHED_PC_DATA = null;
     
     // DADOS INICIAIS
     const RAW_ENTITIES = <%- JSON.stringify(entities || []) %>;
     const RAW_TEAM = <%- JSON.stringify(user.pokemonTeam || []) %>;
     const RAW_PC = <%- JSON.stringify(user.pc || []) %>;
     
+    // CORREÇÃO CRÍTICA PARA A DEX (HISTÓRICO PERMANENTE)
+    // Lê o campo "dex" do usuário se existir, senão usa array vazio.
+    const REGISTERED_DEX_HISTORY = <%- JSON.stringify(user.dex || []) %>;
+    
     const UNLOCKED_IDS = new Set([
-        ...RAW_TEAM.map(p => String(p.baseId||p.id)), 
-        ...RAW_PC.map(p => String(p.baseId||p.id))
+        ...REGISTERED_DEX_HISTORY,            // Histórico salvo no banco
+        ...RAW_TEAM.map(p => String(p.baseId||p.id)), // Time atual (garantia)
+        ...RAW_PC.map(p => String(p.baseId||p.id))    // PC atual (garantia)
     ]);
 
     const _resImg = (typeof resolveImg === 'function') ? resolveImg : (s) => s;
@@ -339,7 +343,7 @@
         RAW_ENTITIES.forEach((p, index) => {
             const id = String(p.id||p._id);
             const isUnlocked = UNLOCKED_IDS.has(id);
-            // loading="lazy" ADICIONADO AQUI
+            // loading="lazy" OTIMIZAÇÃO
             grid.innerHTML += `
             <div class="dex-entry ${isUnlocked ? 'unlocked' : 'locked'}" onclick="selectDexMonster('${id}')" data-name="${(p.name||'').toLowerCase()}">
                 <span class="dex-num">#${(index+1).toString().padStart(3,'0')}</span>
