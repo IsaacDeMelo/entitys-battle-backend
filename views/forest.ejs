@@ -15,8 +15,10 @@
         .grass-patch { position: absolute; z-index: 5; cursor: pointer; background-color: transparent; border: none; -webkit-tap-highlight-color: transparent; }
         #grass1 { top: 17%; left: 7%; width: 34%; height: 27%; }
         #grass2 { top: 51%; left: 50%; width: 41%; height: 24%; }
+        
         .lobby-exit { position: absolute; top: 40%; right: 0; width: 20px; height: 20%; z-index: 0; display: flex; align-items: center; justify-content: flex-end; }
         .lobby-exit::after { content: 'CIDADE 🏙️'; position: absolute; right: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #fff; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; text-shadow: 1px 1px 0 #000; }
+        
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4)); margin-left: -24px; margin-top: -40px; z-index: 10; transition: top 0s linear, left 0s linear; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
@@ -65,12 +67,10 @@
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         
-        // VARIÁVEIS GLOBAIS DE ESTADO
         window.isPlayerMoving = false;
         window.isInteracting = false;
     </script>
 
-    <!-- CARREGA O COMMON.JS (QUE AGORA FAZ TUDO DOS NPCS) -->
     <script src="/scripts/common.js"></script>
 
     <script>
@@ -95,7 +95,10 @@
             let initialY = returnY ? parseFloat(returnY) : 50; 
             let initialDir = 'left'; 
             
+            // Se veio do lobby, começa na direita
             if (!returnX && !returnY && spawnFrom === 'lobby') { initialX = 92; initialY = 50; initialDir = 'left'; } 
+            // Se veio da nova cidade (city), começa no topo
+            if (spawnFrom === 'city') { initialX = 50; initialY = 5; initialDir = 'down'; }
             
             socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'forest', x: initialX, y: initialY, direction: initialDir }); 
         });
@@ -119,11 +122,20 @@
                     el.walkTimeout = setTimeout(() => { 
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
-                            window.isPlayerMoving = false; // Atualiza global
+                            window.isPlayerMoving = false; 
                             gameArea.classList.remove('locked');
+                            
+                            // SAÍDA PARA O LOBBY (Direita)
                             if (data.x > 95) { 
                                 showLoading('Voltando para a cidade...', 'right'); 
                                 setTimeout(() => { window.location.href = '/lobby?from=forest&userId=<%= user._id %>'; }, 120); 
+                            }
+                            
+                            // SAÍDA PARA A CIDADE GRANDE (Topo)
+                            // Se estiver no topo (Y < 5) e no meio (X entre 40 e 60)
+                            if (data.y < 5 && data.x > 40 && data.x < 60) {
+                                showLoading('Entrando na Rota Norte...', 'up');
+                                setTimeout(() => { window.location.href = '/city?from=forest&userId=<%= user._id %>'; }, 120);
                             }
                         } 
                     }, duration * 1000); 
