@@ -20,7 +20,6 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .arena { flex: 1; background: url('/uploads/<%= bgImage %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden; z-index: 10; image-rendering: pixelated; }
     
-    /* HUD ajustado para não ficar muito grande em relação aos sprites menores */
     .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 6px 10px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: 150px; font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     .hud-p1 { left: 10px; border-left: 5px solid #3498db; text-align: left; }
     .hud-p2 { right: 10px; border-right: 5px solid #e74c3c; text-align: right; }
@@ -32,20 +31,21 @@
     .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
     .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; margin-top: 2px; }
     
-    /* --- AJUSTES DE TAMANHO E POSIÇÃO (EFEITO ARENA MAIOR) --- */
+    /* --- POSICIONAMENTO E TAMANHO --- */
     .fighter { 
         position: absolute; 
-        width: 240px; /* Reduzido de 300px */
-        height: 120px; /* Reduzido de 150px */
+        width: 240px; 
+        height: 120px; 
         display: flex; 
         align-items: flex-end; 
         z-index: 20; 
         pointer-events: none; 
-        top: 50%; /* Baixei um pouco (era 45%) para dar mais "céu" */
+        /* AQUI ESTÁ A MUDANÇA: Sobe 10px em relação ao centro exato */
+        top: calc(50% - 10px); 
         transform: translateY(-50%); 
         transition: opacity 0.5s; 
     }
-    /* Empurrei mais para os cantos (2% em vez de 5%) para abrir o campo */
+    
     .fighter.p2-position { right: 2%; justify-content: flex-end; }
     .fighter.p2-position .trainer { order: 2; margin-left: -20px; z-index: 23; background-position-y: 33.33%; } 
     .fighter.p2-position .sprite { order: 1; z-index: 22; }
@@ -55,7 +55,7 @@
 
     .sprite { 
         position: relative; 
-        width: 110px; /* Reduzido de 140px */
+        width: 110px; 
         height: 110px; 
         transition: transform 0.2s; 
         margin-bottom: 5px; 
@@ -74,7 +74,7 @@
     
     .trainer { 
         position: relative; 
-        width: 50px; /* Reduzido de 64px */
+        width: 50px; 
         height: 50px; 
         background-size: 400% auto; 
         image-rendering: pixelated; 
@@ -82,7 +82,7 @@
         top: 5px; 
         transition: transform 0.2s; 
     }
-    /* --------------------------------------------------------- */
+    /* ---------------------------------- */
 
     <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
     .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
@@ -93,7 +93,7 @@
     .impact-pop { animation: impactPop 0.4s forwards; }
     @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
     
-    /* CORES DOS TIPOS */
+    /* CORES DOS TIPOS CORRIGIDAS */
     .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 20px #e67e22; }
     .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 20px #3498db; }
     .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 20px #2ecc71; }
@@ -111,8 +111,7 @@
     .effect-dark { background: radial-gradient(circle, #2d3436, #000); box-shadow: 0 0 15px #000; }
     .effect-steel { background: radial-gradient(circle, #bdc3c7, #95a5a6); box-shadow: 0 0 15px #bdc3c7; }
     .effect-fairy { background: radial-gradient(circle, #ff9ff3, #f368e0); box-shadow: 0 0 15px #ff9ff3; }
-    /* --- CORREÇÃO DO TIPO LUTADOR ADICIONADA AQUI --- */
-    .effect-fighting { background: radial-gradient(circle, #e67e22, #d35400); box-shadow: 0 0 15px #d35400; }
+    .effect-fighter { background: radial-gradient(circle, #e67e22, #d35400); box-shadow: 0 0 15px #d35400; }
     
     .command-bubble { position: absolute; top: -50px; left: 50%; transform: translateX(-50%) scale(0); background: #fff; color: #000; padding: 10px 15px; border-radius: 20px; border: 2px solid #000; font-family: 'Press Start 2P'; font-size: 0.6rem; white-space: nowrap; z-index: 100; opacity: 0; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.3); }
     .command-bubble.show { opacity: 1; transform: translateX(-50%) scale(1); top: -70px; }
