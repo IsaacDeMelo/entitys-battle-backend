@@ -172,6 +172,28 @@ app.post('/register', async (req, res) => {
 
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
 app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
+
+// --- ROTA NOVA PARA CIDADE ---
+app.get('/city', async (req, res) => {
+    const { userId, from } = req.query;
+    const user = await User.findById(userId);
+    if (!user) return res.redirect('/');
+    
+    // Lógica de spawn: Se veio da floresta (from=forest), nasce embaixo. Caso contrário, no centro.
+    const startX = (from === 'forest') ? 50 : 50;
+    const startY = (from === 'forest') ? 95 : 50;
+    
+    res.render('city', { 
+        user, 
+        playerName: user.username, 
+        playerSkin: user.skin, 
+        isAdmin: user.isAdmin, 
+        skinCount: SKIN_COUNT,
+        startX,
+        startY
+    }); 
+});
+
 app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
 
 // --- ROTAS DO LAB ---
