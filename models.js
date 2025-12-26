@@ -69,7 +69,12 @@ const NPCSchema = new mongoose.Schema({
     moneyReward: Number,
     cooldownMinutes: Number,
     team: [{ baseId: String, level: Number }],
-    reward: { type: String, value: String, qty: Number, level: Number }
+reward: {
+        type: { type: String, default: 'none' }, // Note o aninhamento: type: { type: String }
+        value: String,
+        qty: Number,
+        level: Number
+    }
 });
 
 module.exports = {
