@@ -130,12 +130,10 @@
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from'); 
         
-        // Padrão: Nasce no topo (se vier do Lobby)
         let startX = 50; 
         let startY = 5; 
         let startDir = 'down';
 
-        // Se veio da Floresta (que fica "embaixo" no mapa mundi mental), nasce embaixo
         if(spawnFrom === 'forest') { startX = 50; startY = 92; startDir = 'up'; }
 
         // --- MAP DATA ---
@@ -146,6 +144,13 @@
     <script src="/scripts/common.js"></script>
 
     <script>
+        // --- CORREÇÃO 1: VARIÁVEIS DE ADMIN NO TOPO ---
+        let devMode = false; 
+        let currentTool = null; 
+        let isDrawing = false; 
+        let startPoint = {x:0, y:0}; 
+        let tempBox = null;
+
         const gameArea = document.getElementById('gameArea');
         let myId = null; 
         const MOVEMENT_SPEED = 55; 
@@ -204,8 +209,12 @@
                 div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
                 div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
                 
-                if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('/'))) div.style.backgroundImage = `url('${npc.skin}')`;
-                else div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`;
+                // --- CORREÇÃO 2: VERIFICAÇÃO DE IMAGEM BASE64 ---
+                if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:'))) {
+                    div.style.backgroundImage = `url('${npc.skin}')`;
+                } else {
+                    div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`;
+                }
                 
                 const label = document.createElement('div');
                 label.className = 'player-name'; label.innerText = npc.name;
@@ -272,12 +281,10 @@
         }
 
         function checkExits(x, y) {
-            // SAÍDA INFERIOR (Baixo) -> VAI PARA FLORESTA
             if (y > 95 && x > 30 && x < 70) {
                 if(typeof showLoading === 'function') showLoading('Entrando na Floresta...', 'down');
                 setTimeout(() => window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID, 200);
             }
-            // SAÍDA SUPERIOR (Cima) -> VAI PARA O LOBBY
             else if (y < 5 && x > 30 && x < 70) {
                 if(typeof showLoading === 'function') showLoading('Voltando para a cidade...', 'up');
                 setTimeout(() => window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID, 200);
@@ -302,7 +309,6 @@
             isMoving = true;
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
-            // Grama (Calcula chegada)
             const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
             const travelTime = (dist / MOVEMENT_SPEED) * 1000;
             
@@ -319,8 +325,7 @@
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
 
-        // --- LÓGICA DE ADMIN (Mantida) ---
-        let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null;
+        // --- LÓGICA DE ADMIN ---
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
         function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
         function selectTool(tool) { currentTool = tool; document.getElementById('btnToolCol').classList.remove('active'); document.getElementById('btnToolGrass').classList.remove('active'); if(tool === 'collision') document.getElementById('btnToolCol').classList.add('active'); if(tool === 'grass') document.getElementById('btnToolGrass').classList.add('active'); }
