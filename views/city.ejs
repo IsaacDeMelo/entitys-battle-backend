@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Mundo Aberto - Return Spot System</title>
+    <title>Mundo Aberto - RPG</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     
@@ -32,7 +32,8 @@
             image-rendering: pixelated; 
             cursor: crosshair; 
             z-index: 1; isolation: isolate; 
-            transition: width 0.5s, height 0.5s;
+            /* A transição suave de tamanho fica escondida pelo Fade agora */
+            transition: width 0s, height 0s; 
         }
 
         #gameArea.indoor-mode {
@@ -41,7 +42,21 @@
             box-shadow: 0 0 0 1000px rgba(0,0,0,0.85);
         }
 
-        /* --- CAMADAS --- */
+        /* --- CAMADA DE TRANSIÇÃO (FADE) --- */
+        #transition-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 99999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+        #transition-layer.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- CAMADAS LÓGICAS --- */
         #collision-container, #grass-container, #house-container, #dev-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; 
@@ -96,7 +111,6 @@
         .house-trigger { position: absolute; z-index: 6; background: transparent; }
         .house-exit { position: absolute; z-index: 6; background: transparent; }
         
-        /* Marcadores Visuais */
         .house-spawn-point { position: absolute; width: 20px; height: 20px; background: rgba(255, 255, 255, 0.8); border: 2px solid #000; border-radius: 50%; z-index: 50; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; pointer-events: none; }
         .house-spawn-point::after { content: 'S'; color: #000; }
         
@@ -140,6 +154,7 @@
     <% } %>
 
     <div id="gameViewport">
+        <div id="transition-layer"></div> <!-- CAMADA DE FADE -->
         <div id="gameArea">
             <div id="collision-container"></div>
             <div id="grass-container"></div>
@@ -156,6 +171,10 @@
     <script>
         let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null; let editingHouseId = null; 
 
+        // FLAGS
+        window.isMoving = false;
+        window.isTeleporting = false;
+
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
@@ -171,12 +190,10 @@
 
         if (urlParams.get('from') === 'forest') { startX = 50; startY = 92; startDir = 'up'; }
 
-        // ============================================================
-        // --- SEUS DADOS ATUALIZADOS COM RETURN SPOT ---
-        // ============================================================
-       let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
-let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[{"x":0.7,"y":29,"w":24,"h":13.2},{"x":38.4,"y":29.3,"w":24,"h":13.7},{"x":57.3,"y":1.1,"w":5.1,"h":41.9},{"x":75.3,"y":50.5,"w":24.4,"h":20.4},{"x":87.8,"y":69.7,"w":12,"h":10.9},{"x":0.7,"y":46.9,"w":11.1,"h":10.1},{"x":0.9,"y":87.8,"w":4.7,"h":11.6},{"x":13.3,"y":92.2,"w":23.6,"h":7.8},{"x":62.9,"y":1.6,"w":36.9,"h":7.2},{"x":75.3,"y":5.5,"w":6.7,"h":13.2},{"x":75.8,"y":9.1,"w":23.8,"h":9.8}],"exit":{"x":61.6,"y":91.9,"w":10.4,"h":8},"returnSpot":{"x":27.4,"y":68},"spawn":{"x":63.6,"y":86.5}}];
+        // --- SEUS DADOS ---
+        let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
+        let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
+        let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[{"x":0.7,"y":29,"w":24,"h":13.2},{"x":38.4,"y":29.3,"w":24,"h":13.7},{"x":57.3,"y":1.1,"w":5.1,"h":41.9},{"x":75.3,"y":50.5,"w":24.4,"h":20.4},{"x":87.8,"y":69.7,"w":12,"h":10.9},{"x":0.7,"y":46.9,"w":11.1,"h":10.1},{"x":0.9,"y":87.8,"w":4.7,"h":11.6},{"x":13.3,"y":92.2,"w":23.6,"h":7.8},{"x":62.9,"y":1.6,"w":36.9,"h":7.2},{"x":75.3,"y":5.5,"w":6.7,"h":13.2},{"x":75.8,"y":9.1,"w":23.8,"h":9.8}],"exit":{"x":61.6,"y":91.9,"w":10.4,"h":8}, "returnSpot": {"x": 27.4, "y": 68}}];
     </script>
 
     <script src="/scripts/common.js"></script>
@@ -184,10 +201,9 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
     <script>
         const gameViewport = document.getElementById('gameViewport');
         const gameArea = document.getElementById('gameArea');
-        let myId = null; 
+        const transitionLayer = document.getElementById('transition-layer');
+        window.myId = null; 
         const MOVEMENT_SPEED = 55; 
-        let isMoving = false;
-        let isTeleporting = false; 
 
         if (currentMapId !== 'city') {
             const house = housesData.find(h => h.id === currentMapId);
@@ -203,27 +219,51 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         }
 
         socket.on('connect', () => { 
-            myId = socket.id; 
+            window.myId = socket.id; 
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: startX, y: startY, direction: startDir }); 
         });
 
         socket.on('map_state', (players) => { 
-            document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); 
-            players.forEach(createPlayerElement); 
+            document.querySelectorAll('.player:not(.npc-entity)').forEach(el => {
+                if(el.id !== `p-${window.myId}`) el.remove();
+            });
+
+            players.forEach(p => {
+                if(p.id !== window.myId) createPlayerElement(p);
+                else {
+                    const myEl = document.getElementById(`p-${window.myId}`);
+                    if(myEl && !window.isMoving) {
+                        myEl.style.left = p.x + '%';
+                        myEl.style.top = p.y + '%';
+                    }
+                }
+            });
+            
+            // Client-Side Persistence
+            if (!document.getElementById(`p-${window.myId}`)) {
+                createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: 50, y: 50, direction: 'down' });
+            }
+
             const loader = document.getElementById('loader');
             if(loader) loader.classList.remove('show');
             if(typeof hideLoading === 'function') hideLoading(); 
-            isMoving = false; isTeleporting = false; 
+            
+            // Se o Fade estiver ativo, remove ele agora que carregou
+            if(transitionLayer.classList.contains('active')) {
+                setTimeout(() => transitionLayer.classList.remove('active'), 100);
+            }
+            
+            window.isMoving = false; 
+            window.isTeleporting = false; 
         });
         
-        socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
+        socket.on('player_joined', (p) => { if(p.id !== window.myId) createPlayerElement(p); });
         
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
-                const dx = data.x - currentLeft; const dy = data.y - currentTop;
-                const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
+                const duration = data.id === window.myId ? 0.05 : (Math.sqrt(Math.pow(data.x - currentLeft, 2) + Math.pow(data.y - currentTop, 2)) / MOVEMENT_SPEED);
                 
                 el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
                 void el.offsetWidth; 
@@ -231,14 +271,14 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                 el.style.zIndex = Math.floor(data.y); 
                 el.setAttribute('data-dir', data.direction);
                 
-                if (duration > 0) { 
+                if (duration > 0.1) { 
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
                     el.walkTimeout = setTimeout(() => { 
                         el.classList.remove('walking'); 
-                        if (data.id === myId) { isMoving = false; checkTriggers(data.x, data.y); }
+                        if (data.id === window.myId) { window.isMoving = false; checkTriggers(data.x, data.y); }
                     }, duration * 1000); 
-                } else if(data.id === myId) { isMoving = false; }
+                } else if(data.id === window.myId) { window.isMoving = false; }
             }
         });
         
@@ -259,14 +299,14 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         });
 
         socket.on('encounter_found', () => {
-             const p = document.getElementById(`p-${myId}`);
+             const p = document.getElementById(`p-${window.myId}`);
              const cx = p ? parseFloat(p.style.left) : 50;
              const cy = p ? parseFloat(p.style.top) : 50;
+             transitionLayer.classList.add('active'); // Efeito visual de batalha
              if(typeof showToast === 'function') showToast('🌿 Batalha Iniciada!');
-             if(typeof showLoading === 'function') showLoading('Batalha!', 'zoom');
              setTimeout(() => {
-                 fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: currentMapId, currentX: cx, currentY: cy }) }).then(r => r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; else { if(typeof hideLoading === 'function') hideLoading(); if(typeof showToast === 'function') showToast(d.error, {bg:'#e74c3c'}); } }).catch(() => { if(typeof hideLoading === 'function') hideLoading(); });
-             }, 1000);
+                 fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: currentMapId, currentX: cx, currentY: cy }) }).then(r => r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; else { transitionLayer.classList.remove('active'); if(typeof showToast === 'function') showToast(d.error, {bg:'#e74c3c'}); } }).catch(() => { transitionLayer.classList.remove('active'); });
+             }, 800);
         });
 
         renderMapObjects();
@@ -276,24 +316,19 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
             if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite; img.style.width='28px'; img.style.height='28px'; img.style.objectFit='contain'; div.appendChild(img); div.style.backgroundImage='none'; } else { div.style.backgroundImage = `url('/uploads/${p.skin || 'char1'}.png')`; }
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); 
-            gameArea.appendChild(div); if (p.id === myId) playerElement = div; 
+            gameArea.appendChild(div); 
         }
 
         function getSafeTarget(currX, currY, targetX, targetY) {
             const steps = 25;
             let activeCollisions = []; 
-
             if (currentMapId === 'city') {
                 activeCollisions = collisionMap;
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                if (house) {
-                    activeCollisions = house.collisions || [];
-                } else {
-                    activeCollisions = [];
-                }
+                if (house) { activeCollisions = house.collisions || []; } 
+                else { activeCollisions = []; }
             }
-
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
                 const px = currX + (targetX - currX) * t;
@@ -305,7 +340,7 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         }
 
         function checkTriggers(x, y) {
-            if (isTeleporting) return; 
+            if (window.isTeleporting) return; 
 
             if (currentMapId === 'city') {
                 if (y > 95 && x > 30 && x < 70) { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; return; }
@@ -318,108 +353,104 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                      if (x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
                          exitHouse(house);
                      }
-                } else if (y > 90) { 
-                    exitHouse(house); 
-                } 
+                } else if (y > 90) { exitHouse(house); } 
             }
         }
 
         function enterHouse(house) {
-            if (isTeleporting) return;
-            isTeleporting = true;
-            isMoving = false;
-            const myP = document.getElementById(`p-${myId}`);
+            if (window.isTeleporting) return;
+            window.isTeleporting = true;
+            window.isMoving = false;
+            
+            // Para o personagem
+            const myP = document.getElementById(`p-${window.myId}`);
             if(myP) { myP.classList.remove('walking'); if(myP.walkTimeout) clearTimeout(myP.walkTimeout); }
 
-            if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
-            document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
+            // 1. Inicia o FADE OUT (Preto)
+            transitionLayer.classList.add('active');
 
             setTimeout(() => {
+                // 2. Troca o Mapa (Enquanto está preto)
                 currentMapId = house.id; 
                 gameArea.style.backgroundImage = `url('${house.bg}')`;
                 gameArea.classList.add('indoor-mode');
+                document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
                 renderMapObjects(); 
                 
                 let spawnX = house.spawn ? house.spawn.x : 50; 
                 let spawnY = house.spawn ? house.spawn.y : 50; 
+
+                // Atualiza visualmente
+                if (myP) {
+                    myP.style.left = spawnX + '%';
+                    myP.style.top = spawnY + '%';
+                    myP.style.zIndex = Math.floor(spawnY);
+                    myP.setAttribute('data-dir', 'up'); // FORÇA OLHAR PRA CIMA AO ENTRAR
+                }
                 
+                // 3. Emite para o servidor (que vai responder com map_state e tirar o fade)
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
                 
-                setTimeout(() => { isTeleporting = false; }, 300);
-            }, 500);
+                // Fallback de segurança se o servidor demorar muito
+                setTimeout(() => { window.isTeleporting = false; transitionLayer.classList.remove('active'); }, 500);
+            }, 300); // Tempo para a tela ficar preta (sincronizado com CSS transition)
         }
 
         function exitHouse(house) {
-            if (isTeleporting) return;
-            isTeleporting = true;
-            isMoving = false;
-            const myP = document.getElementById(`p-${myId}`);
+            if (window.isTeleporting) return;
+            window.isTeleporting = true;
+            window.isMoving = false;
+            
+            const myP = document.getElementById(`p-${window.myId}`);
             if(myP) { myP.classList.remove('walking'); if(myP.walkTimeout) clearTimeout(myP.walkTimeout); }
 
-            if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
-            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
+            // 1. Inicia FADE OUT
+            transitionLayer.classList.add('active');
 
             setTimeout(() => {
+                // 2. Troca para Cidade
                 currentMapId = 'city';
                 gameArea.style.backgroundImage = `url('/uploads/route_map.png')`;
                 gameArea.classList.remove('indoor-mode');
+                document.querySelectorAll('.npc-entity').forEach(n => n.remove());
                 renderMapObjects(); 
                 
-                // === CORREÇÃO: LÓGICA DE RETORNO PRECISA ===
                 let exitX, exitY;
-
-                if (house && house.returnSpot) {
-                    // Se tiver ponto de retorno definido, usa ele (PERFEITO)
-                    exitX = house.returnSpot.x;
-                    exitY = house.returnSpot.y;
-                } else if (house) {
-                    // Matemática de emergência (Aumentei de +5 para +8 para garantir)
-                    exitX = house.trigger.x + (house.trigger.w / 2);
-                    exitY = house.trigger.y + house.trigger.h + 8; 
-                } else {
-                    exitX = 50; exitY = 50;
+                if (house && house.returnSpot) { exitX = house.returnSpot.x; exitY = house.returnSpot.y; } 
+                else if (house) { exitX = house.trigger.x + (house.trigger.w / 2); exitY = house.trigger.y + house.trigger.h + 8; } 
+                else { exitX = 50; exitY = 50; }
+                
+                if (myP) {
+                    myP.style.left = exitX + '%';
+                    myP.style.top = exitY + '%';
+                    myP.style.zIndex = Math.floor(exitY);
+                    myP.setAttribute('data-dir', 'down'); // FORÇA OLHAR PRA BAIXO AO SAIR
                 }
                 
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
-                setTimeout(() => { isTeleporting = false; }, 300);
-            }, 500);
+                
+                setTimeout(() => { window.isTeleporting = false; transitionLayer.classList.remove('active'); }, 500);
+            }, 300);
         }
 
         gameViewport.addEventListener('mousedown', (e) => {
-            // LÓGICA DE SPAWN e RETURN SPOT
             if (devMode && (currentTool === 'spawn' || currentTool === 'returnSpot')) {
                 e.stopPropagation();
                 const rect = gameArea.getBoundingClientRect(); 
                 const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
                 const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1)); 
-                
-                // LÓGICA PARA RETURN SPOT (NA CIDADE)
                 if (currentTool === 'returnSpot') {
-                    if (currentMapId !== 'city') {
-                        alert("O Ponto de Retorno (Return Spot) deve ser definido do lado de FORA (na cidade).");
-                        return;
-                    }
+                    if (currentMapId !== 'city') { alert("O Ponto de Retorno (Return Spot) deve ser definido do lado de FORA (na cidade)."); return; }
                     const houseId = prompt("Para qual casa é esse retorno? (ex: house1)");
                     if (houseId) {
                         const house = housesData.find(h => h.id === houseId);
-                        if (house) {
-                            house.returnSpot = { x: clickX, y: clickY };
-                            if(typeof showToast === 'function') showToast(`Retorno da ${houseId} definido!`);
-                            renderMapObjects();
-                        } else {
-                            alert("ID da casa não encontrado.");
-                        }
+                        if (house) { house.returnSpot = { x: clickX, y: clickY }; if(typeof showToast === 'function') showToast(`Retorno da ${houseId} definido!`); renderMapObjects(); } 
+                        else { alert("ID da casa não encontrado."); }
                     }
-                }
-                // LÓGICA PARA SPAWN (DENTRO DA CASA)
-                else if (currentTool === 'spawn') {
+                } else if (currentTool === 'spawn') {
                     if (editingHouseId) {
                         const house = housesData.find(h => h.id === editingHouseId);
-                        if (house) {
-                            house.spawn = { x: clickX, y: clickY };
-                            if(typeof showToast === 'function') showToast(`Spawn definido!`);
-                            renderMapObjects();
-                        }
+                        if (house) { house.spawn = { x: clickX, y: clickY }; if(typeof showToast === 'function') showToast(`Spawn definido!`); renderMapObjects(); }
                     } else { alert("Entre na edição de uma casa primeiro."); }
                 }
                 return;
@@ -429,55 +460,118 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             handleClick(e);
         });
 
+        function getStopPoint(currX, currY, targetX, targetY, stopDistance = 4.5) {
+    const dx = targetX - currX;
+    const dy = targetY - currY;
+    const totalDist = Math.sqrt(dx*dx + dy*dy);
+
+    // Se já estiver mais perto que a distância de parada, não move (ou move minúsculo para ajustar)
+    if (totalDist <= stopDistance) {
+        return { x: currX, y: currY }; 
+    }
+
+    // Calcula a proporção para parar antes do alvo
+    const ratio = (totalDist - stopDistance) / totalDist;
+    
+    return {
+        x: currX + (dx * ratio),
+        y: currY + (dy * ratio)
+    };
+}
+
         function handleClick(e, targetNpc = null) {
-            if (e.target.closest('#chatBar') || isMoving || isTeleporting) return;
-            const marker = document.createElement('div');
-            marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
-            marker.style.background = 'rgba(255,255,255,0.5)'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
-            marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px'; marker.style.pointerEvents = 'none';
-            document.body.appendChild(marker); setTimeout(() => marker.remove(), 300);
+    // Bloqueios padrões
+    if (e.target.closest('#chatBar') || window.isMoving || window.isTeleporting) return;
 
-            const rect = gameArea.getBoundingClientRect();
-            const rawX = ((e.clientX - rect.left) / rect.width) * 100;
-            const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+    // Marcador visual de clique (bolinha branca)
+    const marker = document.createElement('div');
+    marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
+    marker.style.background = 'rgba(255,255,255,0.5)'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
+    marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px'; marker.style.pointerEvents = 'none';
+    document.body.appendChild(marker); setTimeout(() => marker.remove(), 300);
 
-            let targetX = Math.max(0, Math.min(100, rawX));
-            let targetY = Math.max(0, Math.min(100, rawY));
-            const myPlayer = document.getElementById(`p-${myId}`);
-            if (!myPlayer) return;
-            const currX = parseFloat(myPlayer.style.left);
-            const currY = parseFloat(myPlayer.style.top);
+    // Cálculos de coordenadas
+    const rect = gameArea.getBoundingClientRect();
+    const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
-            if (targetNpc) { targetX = targetNpc.x; targetY = targetNpc.y; }
+    // Pega jogador
+    const myPlayer = document.getElementById(`p-${window.myId}`);
+    if (!myPlayer) {
+         createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: 50, y: 50 });
+         return;
+    }
+    const currX = parseFloat(myPlayer.style.left);
+    const currY = parseFloat(myPlayer.style.top);
 
-            const safeDest = getSafeTarget(currX, currY, targetX, targetY);
-            // Pequeno fix para evitar travar se clicar muito perto da parede
-            const distance = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
-            if (distance < 0.1) return;
+    let finalDestX = Math.max(0, Math.min(100, rawX));
+    let finalDestY = Math.max(0, Math.min(100, rawY));
 
-            if (targetNpc) {
-                const dist = Math.hypot(targetNpc.x - currX, targetNpc.y - currY);
-                if (dist <= 6) { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); return; }
-            }
-
-            isMoving = true;
-            setTimeout(() => isMoving = false, 2000); 
-            socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+    // --- CORREÇÃO: LÓGICA DE NPC ---
+    if (targetNpc) {
+        // 1. Verifica distância atual
+        const dist = Math.hypot(targetNpc.x - currX, targetNpc.y - currY);
+        
+        // Se já estiver perto (distância < 6), interage imediatamente sem andar
+        if (dist <= 6) { 
+            // Vira o personagem para o NPC antes de interagir
+            const dx = targetNpc.x - currX;
+            const dy = targetNpc.y - currY;
+            let faceDir = 'down';
+            if (Math.abs(dx) > Math.abs(dy)) faceDir = dx > 0 ? 'right' : 'left';
+            else faceDir = dy > 0 ? 'down' : 'up';
             
-            if (currentMapId === 'city') {
-                const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
-                const travelTime = (dist / MOVEMENT_SPEED) * 1000;
-                const finalScreenX = rect.left + (safeDest.x/100 * rect.width);
-                const finalScreenY = rect.top + (safeDest.y/100 * rect.height);
-                const testEl = document.elementFromPoint(finalScreenX, finalScreenY);
-                if (testEl && testEl.classList.contains('grass-patch')) { setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime); }
-            }
+            myPlayer.setAttribute('data-dir', faceDir);
+            socket.emit('move_player', { x: currX, y: currY, direction: faceDir }); // Atualiza rotação no server
 
-            if (targetNpc) {
-                const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
-                setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); }, (dist / MOVEMENT_SPEED) * 1000);
-            }
+            if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); 
+            return; 
         }
+
+        // 2. Se estiver longe, calcula o PONTO DE PARADA (não o ponto do NPC)
+        const stopPoint = getStopPoint(currX, currY, targetNpc.x, targetNpc.y, 5.0); // 5.0 é a distância segura
+        finalDestX = stopPoint.x;
+        finalDestY = stopPoint.y;
+    }
+
+    // Calcula rota segura (colisões) até o destino final (que agora é o ponto de parada)
+    const safeDest = getSafeTarget(currX, currY, finalDestX, finalDestY);
+    
+    // Evita movimentos micro (menos de 0.1 de distância)
+    const distanceToMove = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
+    if (distanceToMove < 0.1) return;
+
+    window.isMoving = true;
+    setTimeout(() => window.isMoving = false, 2000); // Timeout de segurança
+    
+    // Envia movimento
+    socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+    
+    // Lógica de Grama (Encontro Selvagem)
+    if (currentMapId === 'city') {
+        const travelTime = (distanceToMove / MOVEMENT_SPEED) * 1000;
+        const finalScreenX = rect.left + (safeDest.x/100 * rect.width);
+        const finalScreenY = rect.top + (safeDest.y/100 * rect.height);
+        const testEl = document.elementFromPoint(finalScreenX, finalScreenY);
+        if (testEl && testEl.classList.contains('grass-patch')) { 
+            setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime); 
+        }
+    }
+
+    // --- CORREÇÃO: INTERAÇÃO APÓS CHEGAR ---
+    if (targetNpc) {
+        const travelTime = (distanceToMove / MOVEMENT_SPEED) * 1000;
+        setTimeout(() => { 
+            // Verifica se chegou perto o suficiente após andar
+            // Pegamos a posição ATUALIZADA (estimada pelo safeDest)
+            const distAfterMove = Math.hypot(targetNpc.x - safeDest.x, targetNpc.y - safeDest.y);
+            
+            if (distAfterMove <= 6.5) { // Tolerância um pouco maior
+                if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc);
+            }
+        }, travelTime);
+    }
+}
 
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
@@ -529,7 +623,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             const targetHouseId = editingHouseId || (currentMapId !== 'city' ? currentMapId : null);
 
             if (targetHouseId) {
-                // RENDERIZANDO INTERIOR
                 const house = housesData.find(h => h.id === targetHouseId);
                 if (house) {
                     if (house.collisions) house.collisions.forEach(r => {
@@ -551,7 +644,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                     }
                 }
             } else {
-                // RENDERIZANDO CIDADE
                 collisionMap.forEach(r => { 
                     const d = document.createElement('div'); d.className = 'collision-box'; 
                     if(isAdmin && devMode) d.classList.add('dev-collision'); 
@@ -572,8 +664,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                     }
                     d.style.left = h.trigger.x+'%'; d.style.top = h.trigger.y+'%'; d.style.width = h.trigger.w+'%'; d.style.height = h.trigger.h+'%';
                     houseContainer.appendChild(d);
-
-                    // MOSTRA O PONTO DE RETORNO NA CIDADE
                     if (isAdmin && devMode && h.returnSpot) {
                         const s = document.createElement('div'); s.className = 'house-return-point';
                         s.style.left = h.returnSpot.x + '%'; s.style.top = h.returnSpot.y + '%';
@@ -630,7 +720,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             if(!isDrawing) return; isDrawing = false; 
             if(tempBox) { 
                 const newRect = { x: parseFloat(parseFloat(tempBox.style.left).toFixed(1)), y: parseFloat(parseFloat(tempBox.style.top).toFixed(1)), w: parseFloat(parseFloat(tempBox.style.width).toFixed(1)), h: parseFloat(parseFloat(tempBox.style.height).toFixed(1)) }; 
-                
                 if(newRect.w > 1 && newRect.h > 1) { 
                     if (editingHouseId) {
                         const house = housesData.find(h => h.id === editingHouseId);
@@ -650,128 +739,5 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             } 
         });
     </script>
-    <!-- ========================================== -->
-<!-- 🛠️ DEBUGGER SUPREMO (Cole antes de </body>) -->
-<!-- ========================================== -->
-<script>
-    (function installDebugger() {
-        console.warn("🛠️ DEBUGGER INICIADO 🛠️");
-
-        // 1. CRIAR PAINEL VISUAL
-        const debugPanel = document.createElement('div');
-        debugPanel.style.cssText = "position:fixed; top:10px; left:10px; background:rgba(0,0,0,0.9); color:#0f0; font-family:monospace; padding:10px; z-index:999999; border:2px solid #0f0; font-size:12px; pointer-events:none; min-width:250px;";
-        debugPanel.id = 'debug-panel';
-        document.body.appendChild(debugPanel);
-
-        // 2. INTERCEPTAR FUNÇÃO DE MOVIMENTO (Wrapper)
-        const originalGetSafeTarget = window.getSafeTarget;
-        window.getSafeTarget = function(currX, currY, targetX, targetY) {
-            console.groupCollapsed(`🔍 Análise de Movimento (${currX.toFixed(1)},${currY.toFixed(1)}) -> (${targetX.toFixed(1)},${targetY.toFixed(1)})`);
-            
-            // Verifica mapa atual
-            console.log("🗺️ Mapa Atual:", currentMapId);
-            
-            // Verifica colisões ativas
-            let activeCollisions = [];
-            if (currentMapId === 'city') {
-                activeCollisions = collisionMap;
-                console.log("🧱 Usando Colisões da: CIDADE");
-            } else {
-                const house = housesData.find(h => h.id === currentMapId);
-                if (house) {
-                    activeCollisions = house.collisions || [];
-                    console.log(`🏠 Usando Colisões da CASA (${house.id}) - Qtd Paredes: ${activeCollisions.length}`);
-                } else {
-                    console.error("❌ ERRO CRÍTICO: Mapa definido como '" + currentMapId + "' mas não existe no housesData!");
-                }
-            }
-
-            // Testa colisão imediata (Origem)
-            const stuckTest = activeCollisions.find(rect => currX >= rect.x && currX <= (rect.x + rect.w) && currY >= rect.y && currY <= (rect.y + rect.h));
-            if (stuckTest) {
-                console.error("⛔ PRESO! O jogador nasceu DENTRO de uma parede:", stuckTest);
-                document.getElementById('debug-panel').style.borderColor = "red";
-                // Desenha a parede problemática
-                const wall = document.createElement('div');
-                wall.style.cssText = `position:absolute; left:${stuckTest.x}%; top:${stuckTest.y}%; width:${stuckTest.w}%; height:${stuckTest.h}%; border: 2px solid red; background: rgba(255,0,0,0.5); z-index:9999; pointer-events:none;`;
-                document.getElementById('gameArea').appendChild(wall);
-                setTimeout(() => wall.remove(), 2000);
-            }
-
-            // Executa original
-            const result = originalGetSafeTarget(currX, currY, targetX, targetY);
-            
-            console.log("🎯 Resultado Final:", result);
-            if (result.x === currX && result.y === currY) {
-                console.warn("⚠️ Movimento BLOQUEADO (Target == Origin)");
-            }
-            console.groupEnd();
-            return result;
-        };
-
-        // 3. INTERCEPTAR CLIQUES (Para ver se algo bloqueia)
-        document.addEventListener('mousedown', (e) => {
-            console.log("🖱️ CLIQUE DETECTADO:", e.target);
-            const isClickBlocked = e.target.closest('#chatBar');
-            if(isClickBlocked) console.log("❌ Clique bloqueado pela UI");
-            
-            if (window.isTeleporting) console.warn("⛔ CLIQUE IGNORADO: isTeleporting = TRUE");
-            if (window.isMoving) console.warn("⛔ CLIQUE IGNORADO: isMoving = TRUE");
-        }, true); // Use Capture para pegar antes do jogo
-
-        // 4. LOOP DE MONITORAMENTO EM TEMPO REAL
-        setInterval(() => {
-            const myP = document.getElementById(`p-${window.myId || socket.id}`);
-            let posInfo = "JOGADOR NÃO ENCONTRADO";
-            
-            if (myP) {
-                const x = parseFloat(myP.style.left).toFixed(2);
-                const y = parseFloat(myP.style.top).toFixed(2);
-                posInfo = `X: ${x} | Y: ${y}`;
-            }
-
-            debugPanel.innerHTML = `
-                <strong>🕵️ DEBUGGER SUPREMO</strong><br>
-                -----------------------<br>
-                MAPA: <span style="color:yellow">${currentMapId}</span><br>
-                POSIÇÃO: ${posInfo}<br>
-                FLAGS:<br>
-                - isMoving: <span style="color:${window.isMoving ? 'red':'lime'}">${window.isMoving}</span><br>
-                - isTeleporting: <span style="color:${window.isTeleporting ? 'red':'lime'}">${window.isTeleporting}</span><br>
-                -----------------------<br>
-                <button onclick="forceUnstuck()" style="pointer-events:auto; cursor:pointer; background:red; color:white; border:none; padding:5px;">🚑 DESTRAVAR (FORCE)</button>
-                <button onclick="toggleGhost()" style="pointer-events:auto; cursor:pointer; background:blue; color:white; border:none; padding:5px;">👻 GHOST MODE</button>
-            `;
-        }, 100);
-
-        // FERRAMENTAS GLOBAIS
-        window.forceUnstuck = function() {
-            window.isTeleporting = false;
-            window.isMoving = false;
-            console.log("✅ Flags resetadas manualmente.");
-            
-            // Teleporta um pouco pro lado pra sair da parede
-            const myP = document.getElementById(`p-${window.myId || socket.id}`);
-            if(myP) {
-                const curX = parseFloat(myP.style.left);
-                socket.emit('move_player', { x: curX + 5, y: parseFloat(myP.style.top) });
-            }
-        };
-
-        window.ghostMode = false;
-        window.toggleGhost = function() {
-            window.ghostMode = !window.ghostMode;
-            if(window.ghostMode) {
-                window.oldGetSafe = window.getSafeTarget;
-                window.getSafeTarget = (cx, cy, tx, ty) => ({x: tx, y: ty}); // Atravessa tudo
-                alert("GHOST ATIVADO: Você atravessa paredes.");
-            } else {
-                window.getSafeTarget = window.oldGetSafe; // Restaura
-                alert("GHOST DESATIVADO.");
-            }
-        };
-
-    })();
-</script>
 </body>
 </html>
