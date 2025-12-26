@@ -86,7 +86,10 @@
         /* Zonas de Dev */
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; }
         .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; }
-        .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
+        
+        /* CORREÇÃO: Camada de desenho deve cobrir tudo quando ativa */
+        #dev-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
+        .drawing-box { position: absolute; z-index: 101; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -117,15 +120,12 @@
     <div id="toastContainer"></div>
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
-    <!-- VARS GLOBAIS -->
-    <script>
-        // Variáveis de Admin no topo para evitar erro de inicialização
-        let devMode = false; 
-        let currentTool = null; 
-        let isDrawing = false; 
-        let startPoint = {x:0, y:0}; 
-        let tempBox = null;
+    <!-- Importa Common.js -->
+    <script src="/scripts/common.js"></script>
 
+    <!-- SCRIPT PRINCIPAL UNIFICADO -->
+    <script>
+        // --- 1. VARIÁVEIS GLOBAIS ---
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
@@ -133,6 +133,13 @@
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
         
+        // Variáveis de Admin (Declaradas no topo para evitar erro)
+        let devMode = false; 
+        let currentTool = null; 
+        let isDrawing = false; 
+        let startPoint = {x:0, y:0}; 
+        let tempBox = null;
+
         // Dados de Spawn
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from'); 
@@ -143,14 +150,14 @@
 
         if(spawnFrom === 'forest') { startX = 50; startY = 92; startDir = 'up'; }
 
-        // --- MAP DATA ---
-      let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1}];
+        // ============================================================
+        // --- ÁREA DE COLAGEM (COLE O CÓDIGO GERADO AQUI EMBAIXO) ---
+        // ============================================================
+        
+       let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":0.6,"y":0,"w":98.8,"h":11.1},{"x":96.2,"y":67.4,"w":2,"h":2.5}];
 let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-    </script>
+        // ============================================================
 
-    <script src="/scripts/common.js"></script>
-
-    <script>
         const gameArea = document.getElementById('gameArea');
         let myId = null; 
         const MOVEMENT_SPEED = 55; 
@@ -219,31 +226,23 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
                 label.className = 'player-name'; label.innerText = npc.name;
                 div.appendChild(label);
 
-                // --- LÓGICA DE INTERAÇÃO POR PROXIMIDADE ---
                 div.onclick = (e) => { 
                     e.stopPropagation(); 
                     
-                    // 1. Pega posição do NPC
+                    // Lógica de andar até o NPC
                     const targetX = npc.x;
                     const targetY = npc.y;
-
-                    // 2. Pega posição atual do jogador
                     const myPlayer = document.getElementById(`p-${myId}`);
                     const currX = parseFloat(myPlayer.style.left);
                     const currY = parseFloat(myPlayer.style.top);
-
-                    // 3. Calcula destino seguro (respeitando paredes)
                     const safeDest = getSafeTarget(currX, currY, targetX, targetY);
 
-                    // 4. Move o jogador
                     isMoving = true;
                     socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
 
-                    // 5. Calcula tempo de viagem
                     const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
                     const travelTime = (dist / MOVEMENT_SPEED) * 1000;
 
-                    // 6. Interage APÓS chegar
                     setTimeout(() => {
                         if(typeof interactWithNPC === 'function') interactWithNPC(npc);
                     }, travelTime);
@@ -254,9 +253,7 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
 
         // --- BATALHA ---
         socket.on('encounter_found', () => {
-             // --- CORREÇÃO: REMOVIDO O ESTILO PERSONALIZADO PARA USAR O PADRÃO ---
              if(typeof showToast === 'function') showToast('🌿 Um Monstro selvagem apareceu!');
-             
              if(typeof showLoading === 'function') showLoading('Entrando em batalha...', 'zoom');
              setTimeout(() => {
                  fetch('/battle/wild', { 
