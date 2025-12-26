@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cidade</title>
+    <title>Rota Selvagem</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     
@@ -16,8 +16,10 @@
             position: relative; 
             width: 100%; max-width: 500px; 
             height: 100%; max-height: 900px; 
-            /* Imagem de Fundo */
-            background-image: url('/uploads/city_map_large.png'); 
+            
+            /* SUA NOVA IMAGEM DE MAPA AQUI */
+            background-image: url('/uploads/route_map.png'); 
+            
             background-size: 100% 100%; 
             background-position: center;
             background-repeat: no-repeat; 
@@ -28,24 +30,16 @@
             z-index: 1; isolation: isolate; 
         }
 
-        /* --- 2. JOGADOR (MENOR E COM EFEITOS) --- */
+        /* --- 2. JOGADOR --- */
         .player { 
             position: absolute; 
-            width: 28px; height: 28px; /* Tamanho reduzido */
+            width: 28px; height: 28px; 
             background-size: 400% auto; 
             image-rendering: pixelated; 
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); 
-            /* Pivô nos pés */
-            margin-left: -14px; margin-top: -26px; 
+            margin-left: -14px; margin-top: -26px; /* Pivô nos pés */
             z-index: 10; 
-            /* Transição suave de movimento e de opacidade para entrar nas casas */
-            transition: top 0s linear, left 0s linear, transform 0.3s ease, opacity 0.3s ease; 
-        }
-
-        /* Classe para sumir ao entrar */
-        .player.entering-building {
-            transform: scale(0.5) translateY(10px);
-            opacity: 0;
+            transition: top 0s linear, left 0s linear; 
         }
         
         <% for(let i = 1; i <= skinCount; i++) { %> 
@@ -66,31 +60,23 @@
             font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold;
         }
 
-        /* --- 3. COLISÃO VISUAL (DEBUG) --- */
-        /* IMPORTANTE: Mude 'rgba(255, 0, 0, 0.2)' para 'transparent' quando terminar de testar */
+        /* --- 3. COLISÃO VISUAL (PARA DEBUG) --- */
+        /* IMPORTANTE: Mude 'rgba(255, 0, 0, 0.3)' para 'transparent' quando terminar de testar */
         .collision-box {
             position: absolute;
-            background: rgba(255, 0, 0, 0.2); 
+            background: rgba(255, 0, 0, 0.3); 
             pointer-events: none;
             z-index: 5;
-            /* border: 1px solid rgba(255,0,0,0.5); */
+            border: 1px solid rgba(255,0,0,0.5);
         }
 
-        /* --- 4. GATILHOS (Áreas no Chão) --- */
-        .interaction-trigger { position: absolute; z-index: 20; cursor: pointer; background: transparent; }
-        
-        /* Ajustado para ficar na CALÇADA em frente à porta */
-        #trigger-shop { top: 43%; left: 30%; width: 8%; height: 5%; }
-        #trigger-heal { top: 64%; left: 63%; width: 8%; height: 5%; }
-        #trigger-exit { top: 96%; left: 40%; width: 20%; height: 4%; }
-
-        /* Matinhos */
+        /* --- 4. ÁREAS ESPECIAIS (Grama e Saídas) --- */
         .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
-        #grass-left { top: 39%; left: 0%; width: 14%; height: 17%; }
-        #grass-bottom { top: 89%; left: 0%; width: 15%; height: 11%; }
-        #grass-top { top: 3%; left: 28%; width: 15%; height: 10%; }
-
-        /* --- 5. UI (Chat, Toast, Loader) --- */
+        
+        /* Gatilhos de Saída de Mapa */
+        .map-exit { position: absolute; z-index: 20; background: transparent; }
+        
+        /* --- 5. UI ELEMENTS --- */
         .chat-bubble { position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 3px 6px; border-radius: 6px; border: 1px solid #333; font-size: 0.6rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         
@@ -105,11 +91,6 @@
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
         .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Modais */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; }
-        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold;}
     </style>
 </head>
 <body>
@@ -119,15 +100,18 @@
         <!-- Renderização das Caixas de Colisão -->
         <div id="collision-container"></div>
 
-        <!-- Gatilhos -->
-        <div id="trigger-shop" class="interaction-trigger"></div>
-        <div id="trigger-heal" class="interaction-trigger"></div>
-        <div id="trigger-exit" class="interaction-trigger" onclick="goToForest()"></div>
+        <!-- Matinhos (Locais de Batalha) -->
+        <!-- Ajuste as coordenadas (top, left, width, height) para sua imagem -->
+        <div id="grass-area-1" class="grass-patch" style="top: 15%; left: 15%; width: 25%; height: 30%;"></div>
+        <div id="grass-area-2" class="grass-patch" style="top: 45%; left: 5%; width: 10%; height: 5%;"></div>
+        <div id="grass-area-3" class="grass-patch" style="top: 10%; left: 65%; width: 20%; height: 10%;"></div>
+        <div id="grass-area-4" class="grass-patch" style="top: 75%; left: 10%; width: 15%; height: 10%;"></div>
+        <div id="grass-area-5" class="grass-patch" style="top: 85%; left: 60%; width: 20%; height: 10%;"></div>
 
-        <!-- Matinhos -->
-        <div id="grass-left" class="grass-patch" onclick="handleGrassClick(event, 'grass-left')"></div>
-        <div id="grass-bottom" class="grass-patch" onclick="handleGrassClick(event, 'grass-bottom')"></div>
-        <div id="grass-top" class="grass-patch" onclick="handleGrassClick(event, 'grass-top')"></div>
+        <!-- Saídas do Mapa -->
+        <!-- Ajuste as coordenadas conforme onde você quer as transições de mapa -->
+        <div id="exit-top" class="map-exit" style="top: 0; left: 40%; width: 20%; height: 5%;"></div>
+        <div id="exit-bottom" class="map-exit" style="bottom: 0; left: 40%; width: 20%; height: 5%;"></div>
 
         <!-- Chat -->
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..."><button id="chatSend">💬</button></div>
@@ -136,35 +120,6 @@
     <div id="toastContainer"></div>
     <div id="loader" class="loader-overlay show"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
-    <!-- MODAL LOJA -->
-    <div class="modal-overlay" id="modalShop">
-        <div class="modal-content">
-            <button class="close-btn" onclick="exitBuilding('modalShop')">X</button>
-            <h2 style="text-align:center; color:#f1c40f; font-family:'Press Start 2P'; margin-bottom:20px;">LOJA</h2>
-            <div style="text-align:center; color:#ccc; margin-bottom:20px; font-size:0.8rem;">Bem-vindo! O que deseja?</div>
-            
-            <div style="background:#0b1220; padding:15px; border-radius:8px; display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                <img src="/uploads/catchcube.gif" style="width:30px;">
-                <div style="flex:1;">
-                    <div style="font-weight:bold; color:#fff;">CatchCube</div>
-                    <div style="font-size:0.7rem; color:#aaa;">Captura monstros.</div>
-                    <div style="color:#f1c40f;">$50</div>
-                </div>
-                <button onclick="buyItem('pokeball')" style="background:#27ae60; border:none; padding:8px; color:white; border-radius:5px; cursor:pointer;">COMPRAR</button>
-            </div>
-            
-            <div style="background:#0b1220; padding:15px; border-radius:8px; display:flex; align-items:center; gap:10px;">
-                <div style="font-size:24px;">🍬</div>
-                <div style="flex:1;">
-                    <div style="font-weight:bold; color:#fff;">Rare Candy</div>
-                    <div style="font-size:0.7rem; color:#aaa;">+1 Nível.</div>
-                    <div style="color:#f1c40f;">$2000</div>
-                </div>
-                <button onclick="buyItem('rareCandy')" style="background:#27ae60; border:none; padding:8px; color:white; border-radius:5px; cursor:pointer;">COMPRAR</button>
-            </div>
-        </div>
-    </div>
-
     <!-- SCRIPTS -->
     <script>
         const socket = io();
@@ -172,51 +127,58 @@
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         
+        // As coordenadas iniciais do jogador ao entrar neste mapa
         const startX = <%= startX %>;
         const startY = <%= startY %>;
         let myId = null;
         const MOVEMENT_SPEED = 50; 
         let isMoving = false;
         
-        // --- 1. MAPEAMENTO DE COLISÃO CORRIGIDO ---
-        // As caixas param ANTES da porta (altura menor), permitindo andar no gatilho.
+        // --- 1. DEFINIÇÃO DE OBSTÁCULOS (baseado na sua nova imagem) ---
+        // As coordenadas são em porcentagem (%) do tamanho da gameArea.
+        // {x: left, y: top, w: width, h: height}
         const collisionMap = [
-            // COLUNA 1 (Esquerda)
-            {x: 2, y: 11, w: 11, h: 7},
-            {x: 2, y: 21, w: 11, h: 7},
-            {x: 2, y: 31, w: 11, h: 7},
-            {x: 2, y: 61, w: 11, h: 7},
-            {x: 2, y: 71, w: 11, h: 7},
-            {x: 2, y: 81, w: 11, h: 7},
+            // Bordas Superiores/Inferiores (para não sair do mapa por cima/baixo do cenário)
+            {x: 0, y: 0, w: 100, h: 1},   // Borda superior
+            {x: 0, y: 99, w: 100, h: 1},  // Borda inferior
 
-            // COLUNA 2 (Centro Esquerda)
-            {x: 25, y: 19, w: 15, h: 10}, 
-            {x: 25, y: 34, w: 15, h: 8},  // LOJA (Mais curto no Y para liberar a porta)
-            {x: 25, y: 53, w: 15, h: 10}, 
-            {x: 25, y: 69, w: 15, h: 10}, 
-            {x: 25, y: 89, w: 12, h: 6},  
+            // Árvores no topo
+            {x: 5, y: 0, w: 15, h: 10},   // Árvore Topo Esquerda
+            {x: 80, y: 0, w: 15, h: 10},  // Árvore Topo Direita
 
-            // COLUNA 3 (Centro Direita)
-            {x: 57, y: 4, w: 16, h: 10},  
-            {x: 57, y: 19, w: 15, h: 9}, 
-            {x: 57, y: 33, w: 15, h: 9}, 
-            {x: 57, y: 49, w: 15, h: 13}, // CENTRO POKEMON (Mais curto no Y para liberar a porta)
-            {x: 57, y: 67, w: 15, h: 9}, 
-            {x: 57, y: 81, w: 15, h: 9}, 
-
-            // COLUNA 4 (Direita)
-            {x: 87, y: 13, w: 10, h: 7},
-            {x: 87, y: 25, w: 10, h: 7},
-            {x: 87, y: 35, w: 10, h: 7},
-            {x: 87, y: 59, w: 10, h: 7},
-            {x: 87, y: 70, w: 10, h: 7},
-            {x: 87, y: 82, w: 10, h: 7},
+            // Casa Vermelha (esquerda)
+            {x: 10, y: 50, w: 20, h: 15}, 
             
-            // OBSTÁCULOS
-            {x: 0, y: 0, w: 100, h: 2}, // Topo
+            // Casa Azul (direita)
+            {x: 70, y: 50, w: 20, h: 15},
+            
+            // Casa Amarela (direita, abaixo da azul)
+            {x: 70, y: 65, w: 20, h: 15},
+            
+            // Cercas (analisando a imagem)
+            // A cerca é um conjunto de pequenos blocos. Vamos consolidar.
+            // Cerca Esquerda (próxima à casa vermelha)
+            {x: 30, y: 50, w: 10, h: 5},  // horizontal
+            {x: 30, y: 55, w: 10, h: 5},  // horizontal
+            {x: 30, y: 60, w: 10, h: 5},  // horizontal
+            
+            // Cerca Direita (próxima às casas azul/amarela)
+            {x: 60, y: 50, w: 10, h: 5},  // horizontal
+            {x: 60, y: 55, w: 10, h: 5},  // horizontal
+            {x: 60, y: 60, w: 10, h: 5},  // horizontal
+
+            // Postes da cerca (verticais no meio)
+            {x: 40, y: 50, w: 5, h: 15},  // Vertical esquerdo
+            {x: 55, y: 50, w: 5, h: 15},  // Vertical direito
+
+            // Rochas
+            {x: 65, y: 15, w: 5, h: 5},   // Rocha Topo Direita
+            {x: 65, y: 80, w: 5, h: 5},   // Rocha Baixo Direita
+            {x: 15, y: 80, w: 5, h: 5},   // Rocha Baixo Esquerda
+            {x: 75, y: 30, w: 5, h: 5}    // Rocha Meio Direita
         ];
 
-        // Renderiza as caixas vermelhas (Debug)
+        // Renderiza as caixas de colisão para DEBUG.
         const debugContainer = document.getElementById('collision-container');
         collisionMap.forEach(rect => {
             const div = document.createElement('div');
@@ -228,38 +190,32 @@
             debugContainer.appendChild(div);
         });
 
-        // --- 2. SISTEMA DE MOVIMENTO SAFE (RAYCAST) ---
+        // --- 2. SISTEMA DE MOVIMENTO (Raycast) ---
         function getSafeTarget(currX, currY, targetX, targetY) {
-            const steps = 25; // Precisão
-            
+            const steps = 20; // Número de "passos" para verificar colisões na linha
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
                 const px = currX + (targetX - currX) * t;
                 const py = currY + (targetY - currY) * t;
 
-                // Verifica colisão do ponto atual
                 const hit = collisionMap.some(rect => 
                     px >= rect.x && px <= (rect.x + rect.w) &&
                     py >= rect.y && py <= (rect.y + rect.h)
                 );
 
                 if (hit) {
-                    // Retorna o passo anterior (antes de bater)
+                    // Colidiu, retorna o ponto seguro anterior
                     const safeT = (i - 1) / steps;
-                    return {
-                        x: currX + (targetX - currX) * safeT,
-                        y: currY + (targetY - currY) * safeT
-                    };
+                    return { x: currX + (targetX - currX) * safeT, y: currY + (targetY - currY) * safeT };
                 }
             }
-            return { x: targetX, y: targetY };
+            return { x: targetX, y: targetY }; // Não colidiu, vai até o destino
         }
 
-        // --- 3. LÓGICA DE CLIQUE E JOGO ---
+        // --- 3. EVENTOS DE CLIQUE ---
         const gameArea = document.getElementById('gameArea');
-        
         gameArea.addEventListener('click', (e) => {
-            if (e.target.closest('#chatBar') || e.target.closest('.modal-content') || isMoving) return;
+            if (e.target.closest('#chatBar') || isMoving) return;
 
             const rect = gameArea.getBoundingClientRect();
             const rawX = ((e.clientX - rect.left) / rect.width) * 100;
@@ -270,21 +226,19 @@
 
             const currX = parseFloat(myPlayer.style.left);
             const currY = parseFloat(myPlayer.style.top);
-
-            // Calcula onde parar se houver parede no caminho
             const safeDest = getSafeTarget(currX, currY, rawX, rawY);
 
-            // Mover
             isMoving = true;
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
-
-            // Verificar se o destino (safeDest) interage com algo
-            checkInteractions(safeDest.x, safeDest.y);
+            
+            // Verifica saídas do mapa APÓS o movimento
+            checkExits(safeDest.x, safeDest.y);
         });
 
         // --- 4. SOCKETS ---
         socket.on('connect', () => { 
             myId = socket.id; 
+            // O 'map: 'city'' pode ser alterado para 'route1' ou similar se você renomear o arquivo
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: startX, y: startY, direction: 'down' }); 
         });
 
@@ -310,7 +264,6 @@
                 el.style.top = data.y + '%';
                 el.style.zIndex = Math.floor(data.y); 
 
-                // Sprite Direction
                 const dx = data.x - currX;
                 const dy = data.y - currY;
                 if(Math.abs(dx) > Math.abs(dy)) el.setAttribute('data-dir', dx > 0 ? 'right' : 'left');
@@ -323,9 +276,7 @@
                         el.classList.remove('walking');
                         if (data.id === myId) isMoving = false;
                     }, time * 1000);
-                } else if (data.id === myId) {
-                    isMoving = false;
-                }
+                } else if (data.id === myId) isMoving = false;
             }
         });
 
@@ -342,8 +293,8 @@
             gameArea.appendChild(div);
         }
 
-        // --- 5. INTERAÇÃO E EFEITOS ---
-        function checkInteractions(destX, destY) {
+        // --- 5. LÓGICA DE SAÍDA DE MAPA ---
+        function checkExits(destX, destY) {
             const myPlayer = document.getElementById(`p-${myId}`);
             if(!myPlayer) return;
             const currX = parseFloat(myPlayer.style.left);
@@ -352,78 +303,38 @@
             const timeMs = (dist / MOVEMENT_SPEED) * 1000;
 
             setTimeout(() => {
-                // SHOP (30, 43) - Tolerância de 6%
-                if (isNear(destX, destY, 30, 43, 6)) {
-                    enterBuilding('modalShop');
+                // Saída Topo (assumindo que leva para 'forest')
+                if (destY < 5 && destX > 30 && destX < 70) {
+                    changeMap('forest'); // Leva para /forest
                 }
-                // HEAL (63, 64) - Tolerância de 6%
-                else if (isNear(destX, destY, 63, 64, 6)) {
-                    const p = document.getElementById(`p-${myId}`);
-                    p.classList.add('entering-building');
-                    healTeam();
-                    setTimeout(() => p.classList.remove('entering-building'), 1200);
-                }
-                // SAÍDA SUL
-                else if (destY > 94 && destX > 35 && destX < 65) {
-                    goToForest();
+                // Saída Baixo (assumindo que leva para 'lobby' ou 'another_route')
+                else if (destY > 95 && destX > 30 && destX < 70) {
+                    changeMap('lobby'); // Leva para /lobby
                 }
             }, timeMs);
         }
 
-        function isNear(x1, y1, x2, y2, tol) {
-            return Math.abs(x1 - x2) < tol && Math.abs(y1 - y2) < tol;
-        }
-
-        function enterBuilding(modalId) {
-            const p = document.getElementById(`p-${myId}`);
-            if(p) p.classList.add('entering-building');
-            setTimeout(() => { document.getElementById(modalId).style.display = 'flex'; }, 300);
-        }
-
-        function exitBuilding(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-            const p = document.getElementById(`p-${myId}`);
-            if(p) {
-                p.classList.remove('entering-building');
-                // Pequeno ajuste para garantir que ele não reative o gatilho imediatamente
-                socket.emit('move_player', { x: parseFloat(p.style.left), y: parseFloat(p.style.top) + 2 });
-            }
-        }
-
-        // --- API CALLS ---
-        async function healTeam() {
-            showToast('Curando Pokémons...', {bg: '#3498db'});
-            try {
-                await fetch('/api/heal', { 
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({userId: window.CURRENT_USER_ID}) 
-                });
-                setTimeout(() => showToast('Equipe recuperada!', {bg: '#2ecc71'}), 800);
-            } catch(e) { showToast('Erro ao curar'); }
-        }
-
-        async function buyItem(item) {
-            try {
-                const res = await fetch('/api/buy-item', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: window.CURRENT_USER_ID, itemId: item, qty: 1 })
-                });
-                const d = await res.json();
-                if(d.success) showToast('Item comprado!', {bg:'#2ecc71'});
-                else showToast(d.error || 'Erro', {bg:'#e74c3c'});
-            } catch(e) {}
-        }
-
-        function goToForest() {
+        function changeMap(destination) {
             document.getElementById('loader').classList.add('show');
-            window.location.href = '/forest?userId=' + window.CURRENT_USER_ID;
+            // Ajuste o redirect conforme suas rotas reais no servidor (app.js/server.js)
+            if(destination === 'forest') window.location.href = '/forest?userId=' + window.CURRENT_USER_ID;
+            if(destination === 'lobby') window.location.href = '/lobby?userId=' + window.CURRENT_USER_ID;
+            // Exemplo: if(destination === 'route2') window.location.href = '/route2?userId=' + window.CURRENT_USER_ID;
         }
 
-        function handleGrassClick(e, grassId) {
-            socket.emit('check_encounter', { grassId: grassId });
-        }
-        
-        // Chat e Toast Helpers
+        // --- 6. GATILHOS DE BATALHA (Matinhos) ---
+        // A lógica de detecção de encontro agora é feita pelo clique na gameArea + elementsFromPoint.
+        // O `onclick` nos divs de grama não é estritamente necessário, mas mantido para clareza.
+        gameArea.addEventListener('click', (e) => {
+            // ... (código de movimento já está aqui) ...
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
+            if (grassEl) {
+                socket.emit('check_encounter', { grassId: grassEl.id });
+            }
+        });
+
+        // --- 7. UTILITÁRIOS (Chat, Toast, Loader) ---
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
         socket.on('chat_message', (d) => { const p = document.getElementById(`p-${d.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=d.msg; p.appendChild(b); setTimeout(()=>b.remove(), 4000); }});
