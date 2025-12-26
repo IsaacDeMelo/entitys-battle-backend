@@ -661,8 +661,9 @@ io.on('connection', (socket) => {
     socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
     
     // VERIFICA ENCONTRO DE MATINHO (Corrigido para aceitar gramas da cidade)
-    socket.on('check_encounter', (data) => { 
-        if (data.grassId && GRASS_PATCHES.includes(data.grassId) && Math.random() < GRASS_CHANCE[data.grassId]) {
+  socket.on('check_encounter', (data) => { 
+        // Verifica se existe ID e se ele contém a palavra "grass"
+        if (data.grassId && data.grassId.includes('grass') && Math.random() < GLOBAL_GRASS_CHANCE) {
             socket.emit('encounter_found'); 
         }
     });
