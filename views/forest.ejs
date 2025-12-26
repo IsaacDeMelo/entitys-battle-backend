@@ -148,7 +148,7 @@
         
         socket.on('encounter_found', () => {
             window.isPlayerMoving = true; showToast("🌿 Um Monstro selvagem apareceu!");
-            showLoading('Iniciando batalha...', 'left');
+            showLoading('Entrando em batalha...', 'left');
             
             const p = document.getElementById(`p-${myId}`);
             const cx = p ? parseFloat(p.style.left) : 50;
