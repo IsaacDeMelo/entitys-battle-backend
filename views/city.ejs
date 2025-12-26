@@ -27,13 +27,12 @@
         #gameArea { 
             position: relative; 
             width: 100%; height: 100%; 
-            /* Background definido via JS */
             background-size: 100% 100%; 
             background-position: center; background-repeat: no-repeat; 
             image-rendering: pixelated; 
             cursor: crosshair; 
             z-index: 1; isolation: isolate; 
-            transition: width 0.5s, height 0.5s, opacity 0.3s;
+            transition: width 0.5s, height 0.5s;
         }
 
         #gameArea.indoor-mode {
@@ -42,26 +41,37 @@
             box-shadow: 0 0 0 1000px rgba(0,0,0,0.85);
         }
 
+        /* --- CAMADAS (CORREÇÃO DE CLIQUE) --- */
+        #collision-container, #grass-container, #house-container, #dev-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Permite clicar através deles */
+            z-index: 5;
+        }
+
         /* --- 4. ENTIDADES --- */
         .player { 
             position: absolute; width: 28px; height: 28px; 
             background-size: 400% auto; image-rendering: pixelated; 
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); 
             margin-left: -14px; margin-top: -26px; z-index: 10; 
+            pointer-events: none; /* O personagem não bloqueia o clique */
             transition: top 0s linear, left 0s linear; 
         }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
+        
         .player-name { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 4px; border-radius: 4px; font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
-        .npc-entity { cursor: pointer; z-index: 11; }
+        
+        /* NPC precisa receber clique */
+        .npc-entity { pointer-events: auto !important; cursor: pointer; z-index: 11; }
         .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; background: rgba(0,0,0,0.8); }
 
         /* --- 5. UI --- */
         .chat-bubble { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
+        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); pointer-events: auto; }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
@@ -74,23 +84,31 @@
         .loader-text { font-size: 0.8rem; color:#f1c40f; }
 
         /* --- 6. ADMIN & ZONES --- */
-        #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto; }
         #adminToolbar button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: bold; border-radius: 6px; transition: 0.2s; }
         #adminToolbar button:hover { background: #334155; }
         #adminToolbar button.active { background: #f1c40f; color: #0f172a; border-color: #f39c12; }
         #adminOutput { width: 100%; height: 80px; background: #0b1120; color: #2ecc71; border: 1px solid #334155; font-family: monospace; font-size: 0.6rem; margin-top: 5px; display:none; border-radius: 4px; padding: 5px; resize: none; }
         
-        .collision-box { position: absolute; background: transparent; pointer-events: none; z-index: 5; }
-        .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
-        .house-trigger { position: absolute; z-index: 6; cursor: pointer; background: transparent; }
-        .house-exit { position: absolute; z-index: 6; cursor: pointer; background: transparent; }
+        .collision-box { position: absolute; background: transparent; z-index: 5; }
+        .grass-patch { position: absolute; z-index: 4; background: transparent; }
+        .house-trigger { position: absolute; z-index: 6; background: transparent; }
+        .house-exit { position: absolute; z-index: 6; background: transparent; }
 
-        /* Cores de Dev */
+        /* Cores de Dev (Ativa clicks se necessário) */
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; }
         .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; pointer-events: auto !important; }
-        .dev-house { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; }
+        .dev-house { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-exit { background: rgba(241, 196, 15, 0.4) !important; border: 1px dashed #f1c40f; z-index: 20; pointer-events: auto !important; }
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
+
+        /* DEBUG CLICK */
+        .click-marker {
+            position: absolute; width: 6px; height: 6px; background: red; border-radius: 50%; 
+            transform: translate(-50%, -50%); z-index: 9999; pointer-events: none; 
+            animation: fadeOut 0.5s forwards;
+        }
+        @keyframes fadeOut { to { opacity: 0; transform: translate(-50%, -50%) scale(2); } }
     </style>
 </head>
 <body>
@@ -135,8 +153,6 @@
     
     <div id="toastContainer"></div>
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
-
-    <!-- ... (Mantenha o HTML acima igual) ... -->
 
     <!-- VARS GLOBAIS -->
     <script>
@@ -183,14 +199,14 @@
         const MOVEMENT_SPEED = 55; 
         let isMoving = false;
 
-        // --- CORREÇÃO DE INICIALIZAÇÃO VISUAL ---
+        // --- INICIALIZAÇÃO CORRIGIDA ---
         if (currentMapId !== 'city') {
             const house = housesData.find(h => h.id === currentMapId);
             if (house) {
                 gameArea.style.backgroundImage = `url('${house.bg}')`;
                 gameArea.classList.add('indoor-mode');
             } else {
-                currentMapId = 'city'; // Fallback se ID da casa for inválido
+                currentMapId = 'city'; 
                 gameArea.style.backgroundImage = "url('/uploads/route_map.png')";
             }
         } else {
@@ -279,7 +295,7 @@
 
                     isMoving = true;
                     // Segurança para destravar se o servidor não responder
-                    setTimeout(() => isMoving = false, 2000);
+                    setTimeout(() => isMoving = false, 1500);
                     
                     socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
                     setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(npc); }, (Math.hypot(safeDest.x - currX, safeDest.y - currY) / MOVEMENT_SPEED) * 1000);
@@ -320,80 +336,47 @@
             gameArea.appendChild(div); if (p.id === myId) playerElement = div; 
         }
 
-        // --- FUNÇÃO CRÍTICA DE COLISÃO (CORRIGIDA) ---
+        // --- COLISÃO ---
         function getSafeTarget(currX, currY, targetX, targetY) {
             const steps = 25;
             let activeCollisions = [];
 
-            // Lógica explícita para definir quais paredes usar
             if (currentMapId === 'city') {
-                activeCollisions = collisionMap; // Paredes da cidade
+                activeCollisions = collisionMap; 
             } else {
-                // Se estiver em casa, busca as colisões dela
                 const house = housesData.find(h => h.id === currentMapId);
-                // Se a casa existir e tiver colisões, usa elas. Se não, lista vazia (anda livre).
-                if (house && house.collisions) {
-                    activeCollisions = house.collisions;
-                } else {
-                    activeCollisions = []; 
-                }
+                if (house && house.collisions) activeCollisions = house.collisions;
+                else activeCollisions = []; 
             }
 
-            // Loop de verificação de colisão
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
                 const px = currX + (targetX - currX) * t;
                 const py = currY + (targetY - currY) * t;
-                
-                // Verifica se bate em algum retângulo
-                const hit = activeCollisions.some(rect => 
-                    px >= rect.x && px <= (rect.x + rect.w) && 
-                    py >= rect.y && py <= (rect.y + rect.h)
-                );
-
-                if (hit) {
-                    // Se bateu, retorna a posição anterior (segura)
-                    return { 
-                        x: currX + (targetX - currX) * ((i - 1) / steps), 
-                        y: currY + (targetY - currY) * ((i - 1) / steps) 
-                    };
-                }
+                const hit = activeCollisions.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                if (hit) return { x: currX + (targetX - currX) * ((i - 1) / steps), y: currY + (targetY - currY) * ((i - 1) / steps) };
             }
             return { x: targetX, y: targetY };
         }
 
         function checkTriggers(x, y) {
             if (currentMapId === 'city') {
-                // Saídas da cidade
-                if (y > 95 && x > 30 && x < 70) {
-                    window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID;
-                    return;
-                }
-                if (y < 5 && x > 30 && x < 70) {
-                    window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID;
-                    return;
-                }
-                // Entrar na casa
-                const houseHit = housesData.find(h => 
-                    x >= h.trigger.x && x <= (h.trigger.x + h.trigger.w) &&
-                    y >= h.trigger.y && y <= (h.trigger.y + h.trigger.h)
-                );
+                if (y > 95 && x > 30 && x < 70) { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; return; }
+                if (y < 5 && x > 30 && x < 70) { window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID; return; }
+                
+                const houseHit = housesData.find(h => x >= h.trigger.x && x <= (h.trigger.x + h.trigger.w) && y >= h.trigger.y && y <= (h.trigger.y + h.trigger.h));
                 if (houseHit) enterHouse(houseHit);
             } else {
-                // Sair da casa
                 const house = housesData.find(h => h.id === currentMapId);
-                if (house && house.exit) {
-                    if (x >= house.exit.x && x <= (house.exit.x + house.exit.w) &&
-                        y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
-                        exitHouse(house);
-                    }
+                if (house && house.exit && x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
+                    exitHouse(house);
                 }
             }
         }
 
         function enterHouse(house) {
             if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
-            document.querySelectorAll('.npc-entity').forEach(n => n.remove()); // Limpa NPCs da rua
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
 
             setTimeout(() => {
                 currentMapId = house.id;
@@ -401,7 +384,6 @@
                 gameArea.classList.add('indoor-mode');
                 renderMapObjects(); 
                 
-                // Entra no centro da sala
                 const spawnX = 50; const spawnY = 80;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
                 
@@ -411,7 +393,7 @@
 
         function exitHouse(house) {
             if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
-            document.querySelectorAll('.npc-entity').forEach(n => n.remove()); // Limpa NPCs da casa
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
 
             setTimeout(() => {
                 currentMapId = 'city';
@@ -419,7 +401,6 @@
                 gameArea.classList.remove('indoor-mode');
                 renderMapObjects();
                 
-                // Sai na porta
                 const exitX = house.trigger.x + (house.trigger.w / 2);
                 const exitY = house.trigger.y + house.trigger.h + 5;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
@@ -430,39 +411,34 @@
 
         // --- CLIQUE PARA ANDAR (CORRIGIDO) ---
         gameArea.addEventListener('click', (e) => {
-            // Se estiver desenhando paredes (Admin), não anda
-            if (devMode && currentTool && currentTool !== 'house' && currentTool !== 'collision' && currentTool !== 'grass') {
-                // Verifica ferramentas específicas de desenho
-            }
-            // Se estiver no modo dev APENAS para desenhar, bloqueia. Se não tiver ferramenta selecionada, deixa andar.
             if (devMode && isDrawing) return;
-
             if (e.target.closest('#chatBar') || isMoving || e.target.classList.contains('npc-entity')) return;
 
+            // CRIA BOLINHA VERMELHA PARA DEBUG VISUAL DO CLIQUE
+            const marker = document.createElement('div'); marker.className = 'click-marker';
+            marker.style.left = e.clientX + 'px'; marker.style.top = e.clientY + 'px';
+            document.body.appendChild(marker); setTimeout(() => marker.remove(), 500);
+
             const rect = gameArea.getBoundingClientRect();
-            // IMPORTANTE: Calcula clique relativo à imagem (mesmo se estiver escalada/indoor)
+            // CALCULA POSIÇÃO RELATIVA AO MAPA (MESMO SE FOR CASA PEQUENA)
             const rawX = ((e.clientX - rect.left) / rect.width) * 100;
             const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
-            // Bloqueia clique fora da área útil (segurança)
             if (rawX < 0 || rawX > 100 || rawY < 0 || rawY > 100) return;
 
             const myPlayer = document.getElementById(`p-${myId}`);
-            if (!myPlayer) return;
+            if (!myPlayer) return console.log("Erro: Jogador não encontrado no DOM");
 
             const currX = parseFloat(myPlayer.style.left);
             const currY = parseFloat(myPlayer.style.top);
             
-            // Verifica colisões
             const safeDest = getSafeTarget(currX, currY, rawX, rawY);
 
             isMoving = true;
-            // Destrava movimento automaticamente após 2s caso o servidor falhe
-            setTimeout(() => isMoving = false, 2000);
+            setTimeout(() => isMoving = false, 1200); // Destrava se bugar
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
-            // Lógica de matinho apenas na cidade
             if (currentMapId === 'city') {
                 const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
                 const travelTime = (dist / MOVEMENT_SPEED) * 1000;
@@ -480,7 +456,7 @@
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
 
         // ============================================================
-        // --- LÓGICA DE ADMIN ---
+        // --- ADMIN ---
         // ============================================================
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
         
@@ -495,10 +471,7 @@
         function selectTool(tool) { 
             currentTool = tool; 
             document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active'));
-            const btnId = {
-                'collision': 'btnToolCol', 'grass': 'btnToolGrass', 'house': 'btnToolHouse',
-                'innerCollision': 'btnToolInnerCol', 'exit': 'btnToolExit'
-            }[tool];
+            const btnId = { 'collision': 'btnToolCol', 'grass': 'btnToolGrass', 'house': 'btnToolHouse', 'innerCollision': 'btnToolInnerCol', 'exit': 'btnToolExit' }[tool];
             if(btnId) document.getElementById(btnId).classList.add('active');
         }
 
@@ -592,6 +565,7 @@
             renderMapObjects();
         }
 
+        // --- DESENHO (DEV) ---
         gameArea.addEventListener('mousedown', (e) => { 
             if(!devMode || !currentTool) return; 
             e.stopPropagation(); isDrawing = true; 
@@ -634,9 +608,7 @@
                         else if(currentTool === 'house') {
                             const hId = prompt("ID da Casa (ex: house1):");
                             const bg = prompt("URL/Base64 do Fundo:");
-                            if(hId && bg) {
-                                housesData.push({ id: hId, bg: bg, trigger: newRect, collisions: [], exit: null });
-                            }
+                            if(hId && bg) housesData.push({ id: hId, bg: bg, trigger: newRect, collisions: [], exit: null });
                         }
                     }
                 } 
