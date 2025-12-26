@@ -648,13 +648,55 @@ app.post('/api/turn', async (req, res) => {
 io.on('connection', (socket) => {
     socket.on('join_room', (roomId) => { socket.join(roomId); });
     socket.on('enter_map', async (data) => { 
-        if (data && data.userId) { const existing = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString()); if (existing) { const prevId = existing[0]; try { io.sockets.sockets.get(prevId)?.disconnect(true); } catch(e){} delete players[prevId]; } } 
+        if (data && data.userId) { 
+            // Procura se esse usuário já tem um player na memória
+            const existingEntry = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString()); 
+            
+            if (existingEntry) { 
+                const [prevId, prevPlayer] = existingEntry;
+                
+                // --- CORREÇÃO AQUI ---
+                // Só deleta/desconecta se for um ID de socket DIFERENTE.
+                // Se for o mesmo socket.id, significa que é o mesmo jogador apenas mudando de sala.
+                if (prevId !== socket.id) {
+                    try { 
+                        io.sockets.sockets.get(prevId)?.disconnect(true); 
+                    } catch(e){} 
+                    delete players[prevId]; 
+                    
+                    // Avisa a sala antiga que ele saiu (para não ficar fantasma visual lá)
+                    if (prevPlayer.map && prevPlayer.map !== data.map) {
+                        io.to(prevPlayer.map).emit('player_left', prevId);
+                    }
+                }
+            } 
+        } 
+        
         socket.join(data.map); 
-        const mapNpcs = await NPC.find({ map: data.map }).lean(); socket.emit('npcs_list', mapNpcs);
-        const startX = data.x || 50; const startY = data.y || 50; 
-        players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; 
+        
+        // Pega NPCs
+        const mapNpcs = await NPC.find({ map: data.map }).lean(); 
+        socket.emit('npcs_list', mapNpcs);
+        
+        const startX = data.x || 50; 
+        const startY = data.y || 50; 
+        
+        // Atualiza ou Cria o jogador na memória
+        players[socket.id] = { 
+            id: socket.id, 
+            userId: data.userId, 
+            ...data, 
+            x: startX, 
+            y: startY, 
+            direction: 'down', 
+            isSearching: false 
+        }; 
+        
+        // Envia estado do mapa atualizado
         const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
         socket.emit('map_state', mapPlayers); 
+        
+        // Avisa os outros que você entrou
         socket.to(data.map).emit('player_joined', players[socket.id]); 
     });
     socket.on('move_player', (data) => { if (players[socket.id]) { const p = players[socket.id]; const dx = data.x - p.x; const dy = data.y - p.y; let dir = p.direction; if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up'; p.x = data.x; p.y = data.y; p.direction = dir; io.to(p.map).emit('player_moved', { id: socket.id, x: data.x, y: data.y, direction: dir }); } });
