@@ -16,13 +16,8 @@
             position: relative; 
             width: 100%; max-width: 500px; 
             height: 100%; max-height: 900px; 
-            
-            /* SUA NOVA IMAGEM DE MAPA AQUI */
             background-image: url('/uploads/route_map.png'); 
-            
-            background-size: 100% 100%; 
-            background-position: center;
-            background-repeat: no-repeat; 
+            background-size: 100% 100%; background-position: center; background-repeat: no-repeat; 
             image-rendering: pixelated; 
             cursor: pointer; 
             box-shadow: 0 0 50px rgba(0,0,0,0.8); 
@@ -32,88 +27,84 @@
 
         /* --- 2. JOGADOR --- */
         .player { 
-            position: absolute; 
-            width: 28px; height: 28px; 
-            background-size: 400% auto; 
-            image-rendering: pixelated; 
+            position: absolute; width: 28px; height: 28px; 
+            background-size: 400% auto; image-rendering: pixelated; 
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); 
-            margin-left: -14px; margin-top: -26px; /* Pivô nos pés */
-            z-index: 10; 
+            margin-left: -14px; margin-top: -26px; z-index: 10; 
             transition: top 0s linear, left 0s linear; 
         }
-        
-        <% for(let i = 1; i <= skinCount; i++) { %> 
-            .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } 
-        <% } %>
-        
+        <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.4s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
-        
-        .player[data-dir="down"] { background-position-y: 0%; } 
-        .player[data-dir="left"] { background-position-y: 33.33%; } 
-        .player[data-dir="right"] { background-position-y: 66.66%; } 
-        .player[data-dir="up"] { background-position-y: 100%; }
-        
-        .player-name { 
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
-            background: rgba(0,0,0,0.6); color: white; padding: 1px 4px; border-radius: 3px; 
-            font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold;
-        }
+        .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
+        .player-name { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 1px 4px; border-radius: 3px; font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
 
-        /* --- 3. COLISÃO VISUAL (PARA DEBUG) --- */
-        /* IMPORTANTE: Mude 'rgba(255, 0, 0, 0.3)' para 'transparent' quando terminar de testar */
-        .collision-box {
-            position: absolute;
-            background: rgba(255, 0, 0, 0.3); 
-            pointer-events: none;
-            z-index: 5;
-            border: 1px solid rgba(255,0,0,0.5);
-        }
-
-        /* --- 4. ÁREAS ESPECIAIS (Grama e Saídas) --- */
-        .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
-        
-        /* Gatilhos de Saída de Mapa */
-        .map-exit { position: absolute; z-index: 20; background: transparent; }
-        
-        /* --- 5. UI ELEMENTS --- */
+        /* --- 3. UI ELEMENTS --- */
         .chat-bubble { position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 3px 6px; border-radius: 6px; border: 1px solid #333; font-size: 0.6rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-        
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-        
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
-        
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
         .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- 4. ZONAS ESPECIAIS (Visuais Finais) --- */
+        .collision-box { position: absolute; background: transparent; pointer-events: none; z-index: 5; }
+        .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
+        .map-exit { position: absolute; z-index: 20; background: transparent; }
+
+        /* --- 5. ADMIN TOOL STYLES --- */
+        #adminToolbar {
+            position: fixed; top: 10px; right: 10px; z-index: 10000;
+            background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; border: 1px solid #f1c40f;
+            display: none; flex-direction: column; gap: 5px; color: white; font-size: 0.7rem;
+            max-width: 200px;
+        }
+        #adminToolbar button {
+            background: #333; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; font-family: 'Roboto';
+        }
+        #adminToolbar button.active { background: #f1c40f; color: black; font-weight: bold; }
+        #adminOutput { 
+            width: 100%; height: 100px; background: #111; color: #0f0; border: none; font-family: monospace; font-size: 0.6rem; margin-top: 5px; display:none; 
+        }
+        
+        /* Estilo visual durante edição */
+        .dev-collision { background: rgba(255, 0, 0, 0.4) !important; border: 1px dashed red; }
+        .dev-grass { background: rgba(0, 255, 0, 0.4) !important; border: 1px dashed green; }
+        .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
     </style>
 </head>
 <body>
     <%- include('partials/menu') %>
 
+    <!-- ADMIN TOOLBAR -->
+    <% if(user.isAdmin) { %>
+    <div id="adminToolbar">
+        <div style="text-align:center; font-weight:bold; color:#f1c40f; margin-bottom:5px;">DEV MODE</div>
+        <button id="btnDevMode" onclick="toggleDevMode()">Ativar Edição</button>
+        <div id="devTools" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
+            <button id="btnToolCol" onclick="selectTool('collision')">🔴 Add Colisão</button>
+            <button id="btnToolGrass" onclick="selectTool('grass')">🌿 Add Grama</button>
+            <button onclick="undoLast()">↩️ Desfazer</button>
+            <button onclick="exportData()" style="background:#2ecc71;">💾 Gerar Código</button>
+            <textarea id="adminOutput" readonly></textarea>
+        </div>
+    </div>
+    <% } %>
+
     <div id="gameArea">
-        <!-- Renderização das Caixas de Colisão -->
         <div id="collision-container"></div>
+        <div id="grass-container"></div>
+        <div id="dev-layer"></div> <!-- Onde desenhamos -->
 
-        <!-- Matinhos (Locais de Batalha) -->
-        <!-- Ajuste as coordenadas (top, left, width, height) para sua imagem -->
-        <div id="grass-area-1" class="grass-patch" style="top: 15%; left: 15%; width: 25%; height: 30%;"></div>
-        <div id="grass-area-2" class="grass-patch" style="top: 45%; left: 5%; width: 10%; height: 5%;"></div>
-        <div id="grass-area-3" class="grass-patch" style="top: 10%; left: 65%; width: 20%; height: 10%;"></div>
-        <div id="grass-area-4" class="grass-patch" style="top: 75%; left: 10%; width: 15%; height: 10%;"></div>
-        <div id="grass-area-5" class="grass-patch" style="top: 85%; left: 60%; width: 20%; height: 10%;"></div>
-
-        <!-- Saídas do Mapa -->
-        <!-- Ajuste as coordenadas conforme onde você quer as transições de mapa -->
+        <!-- SAÍDAS (Fixas ou adicionar ferramenta depois) -->
         <div id="exit-top" class="map-exit" style="top: 0; left: 40%; width: 20%; height: 5%;"></div>
         <div id="exit-bottom" class="map-exit" style="bottom: 0; left: 40%; width: 20%; height: 5%;"></div>
 
-        <!-- Chat -->
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..."><button id="chatSend">💬</button></div>
     </div>
     
@@ -126,73 +117,172 @@
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
-        
-        // As coordenadas iniciais do jogador ao entrar neste mapa
+        const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
+
         const startX = <%= startX %>;
         const startY = <%= startY %>;
         let myId = null;
         const MOVEMENT_SPEED = 50; 
         let isMoving = false;
+
+        // --- DADOS INICIAIS (COLE AQUI O QUE O GERADOR CRIAR) ---
+        // Se estiver vazio, use o modo Admin para criar e cole o resultado aqui.
+        let collisionMap = [
+             {x: 0, y: 0, w: 100, h: 1}, // Topo
+             {x: 0, y: 99, w: 100, h: 1} // Baixo
+        ]; 
         
-        // --- 1. DEFINIÇÃO DE OBSTÁCULOS (baseado na sua nova imagem) ---
-        // As coordenadas são em porcentagem (%) do tamanho da gameArea.
-        // {x: left, y: top, w: width, h: height}
-        const collisionMap = [
-            // Bordas Superiores/Inferiores (para não sair do mapa por cima/baixo do cenário)
-            {x: 0, y: 0, w: 100, h: 1},   // Borda superior
-            {x: 0, y: 99, w: 100, h: 1},  // Borda inferior
+        let grassMap = [];
 
-            // Árvores no topo
-            {x: 5, y: 0, w: 15, h: 10},   // Árvore Topo Esquerda
-            {x: 80, y: 0, w: 15, h: 10},  // Árvore Topo Direita
+        // --- RENDERIZAÇÃO INICIAL ---
+        function renderMapObjects() {
+            const colContainer = document.getElementById('collision-container');
+            const grassContainer = document.getElementById('grass-container');
+            colContainer.innerHTML = ''; 
+            grassContainer.innerHTML = '';
 
-            // Casa Vermelha (esquerda)
-            {x: 10, y: 50, w: 20, h: 15}, 
+            collisionMap.forEach(r => {
+                const d = document.createElement('div');
+                d.className = 'collision-box';
+                // Se for Admin, mostra vermelho pra saber onde está
+                if(isAdmin && devMode) d.classList.add('dev-collision');
+                d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
+                colContainer.appendChild(d);
+            });
+
+            grassMap.forEach((r, i) => {
+                const d = document.createElement('div');
+                d.className = 'grass-patch';
+                d.id = 'grass-' + i;
+                if(isAdmin && devMode) d.classList.add('dev-grass');
+                d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
+                grassContainer.appendChild(d);
+            });
+        }
+
+        // ==========================================
+        // SISTEMA DE ADMIN / DEV MODE
+        // ==========================================
+        let devMode = false;
+        let currentTool = null; // 'collision' | 'grass'
+        let isDrawing = false;
+        let startPoint = {x:0, y:0};
+        let tempBox = null;
+
+        if(isAdmin) {
+            document.getElementById('adminToolbar').style.display = 'flex';
+        }
+
+        function toggleDevMode() {
+            devMode = !devMode;
+            document.getElementById('devTools').style.display = devMode ? 'flex' : 'none';
+            document.getElementById('btnDevMode').innerText = devMode ? "Desativar Edição" : "Ativar Edição";
+            renderMapObjects(); // Atualiza visual das caixas
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            document.getElementById('btnToolCol').classList.remove('active');
+            document.getElementById('btnToolGrass').classList.remove('active');
+            if(tool === 'collision') document.getElementById('btnToolCol').classList.add('active');
+            if(tool === 'grass') document.getElementById('btnToolGrass').classList.add('active');
+        }
+
+        function undoLast() {
+            if(currentTool === 'collision' && collisionMap.length > 0) collisionMap.pop();
+            else if(currentTool === 'grass' && grassMap.length > 0) grassMap.pop();
+            renderMapObjects();
+        }
+
+        function exportData() {
+            const output = document.getElementById('adminOutput');
+            output.style.display = 'block';
             
-            // Casa Azul (direita)
-            {x: 70, y: 50, w: 20, h: 15},
+            let code = `// COPIE E SUBSTITUA AS VARIÁVEIS NO SCRIPT:\n`;
+            code += `let collisionMap = ${JSON.stringify(collisionMap)};\n\n`;
+            code += `let grassMap = ${JSON.stringify(grassMap)};`;
             
-            // Casa Amarela (direita, abaixo da azul)
-            {x: 70, y: 65, w: 20, h: 15},
+            output.value = code;
+            output.select();
+            document.execCommand('copy');
+            alert("Código copiado! Cole no seu arquivo city.ejs na área de variáveis.");
+        }
+
+        // LÓGICA DE DESENHO
+        const gameArea = document.getElementById('gameArea');
+
+        gameArea.addEventListener('mousedown', (e) => {
+            if(!devMode || !currentTool) return;
+            e.stopPropagation(); // Impede andar
+            isDrawing = true;
+
+            const rect = gameArea.getBoundingClientRect();
+            const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+            const yPct = ((e.clientY - rect.top) / rect.height) * 100;
             
-            // Cercas (analisando a imagem)
-            // A cerca é um conjunto de pequenos blocos. Vamos consolidar.
-            // Cerca Esquerda (próxima à casa vermelha)
-            {x: 30, y: 50, w: 10, h: 5},  // horizontal
-            {x: 30, y: 55, w: 10, h: 5},  // horizontal
-            {x: 30, y: 60, w: 10, h: 5},  // horizontal
+            startPoint = {x: xPct, y: yPct};
+
+            tempBox = document.createElement('div');
+            tempBox.className = 'drawing-box';
+            if(currentTool === 'collision') tempBox.classList.add('dev-collision');
+            else tempBox.classList.add('dev-grass');
             
-            // Cerca Direita (próxima às casas azul/amarela)
-            {x: 60, y: 50, w: 10, h: 5},  // horizontal
-            {x: 60, y: 55, w: 10, h: 5},  // horizontal
-            {x: 60, y: 60, w: 10, h: 5},  // horizontal
-
-            // Postes da cerca (verticais no meio)
-            {x: 40, y: 50, w: 5, h: 15},  // Vertical esquerdo
-            {x: 55, y: 50, w: 5, h: 15},  // Vertical direito
-
-            // Rochas
-            {x: 65, y: 15, w: 5, h: 5},   // Rocha Topo Direita
-            {x: 65, y: 80, w: 5, h: 5},   // Rocha Baixo Direita
-            {x: 15, y: 80, w: 5, h: 5},   // Rocha Baixo Esquerda
-            {x: 75, y: 30, w: 5, h: 5}    // Rocha Meio Direita
-        ];
-
-        // Renderiza as caixas de colisão para DEBUG.
-        const debugContainer = document.getElementById('collision-container');
-        collisionMap.forEach(rect => {
-            const div = document.createElement('div');
-            div.className = 'collision-box';
-            div.style.left = rect.x + '%';
-            div.style.top = rect.y + '%';
-            div.style.width = rect.w + '%';
-            div.style.height = rect.h + '%';
-            debugContainer.appendChild(div);
+            tempBox.style.left = xPct + '%';
+            tempBox.style.top = yPct + '%';
+            document.getElementById('dev-layer').appendChild(tempBox);
         });
 
-        // --- 2. SISTEMA DE MOVIMENTO (Raycast) ---
+        gameArea.addEventListener('mousemove', (e) => {
+            if(!isDrawing || !tempBox) return;
+            
+            const rect = gameArea.getBoundingClientRect();
+            const curX = ((e.clientX - rect.left) / rect.width) * 100;
+            const curY = ((e.clientY - rect.top) / rect.height) * 100;
+
+            const w = Math.abs(curX - startPoint.x);
+            const h = Math.abs(curY - startPoint.y);
+            const l = Math.min(curX, startPoint.x);
+            const t = Math.min(curY, startPoint.y);
+
+            tempBox.style.width = w + '%';
+            tempBox.style.height = h + '%';
+            tempBox.style.left = l + '%';
+            tempBox.style.top = t + '%';
+        });
+
+        gameArea.addEventListener('mouseup', (e) => {
+            if(!isDrawing) return;
+            isDrawing = false;
+            if(tempBox) {
+                // Salvar dados
+                const l = parseFloat(tempBox.style.left);
+                const t = parseFloat(tempBox.style.top);
+                const w = parseFloat(tempBox.style.width);
+                const h = parseFloat(tempBox.style.height);
+
+                // Evitar cliques acidentais minúsculos
+                if(w > 1 && h > 1) {
+                    const newRect = { x: parseFloat(l.toFixed(1)), y: parseFloat(t.toFixed(1)), w: parseFloat(w.toFixed(1)), h: parseFloat(h.toFixed(1)) };
+                    
+                    if(currentTool === 'collision') collisionMap.push(newRect);
+                    else grassMap.push(newRect);
+                }
+
+                tempBox.remove();
+                tempBox = null;
+                renderMapObjects();
+            }
+        });
+
+        // ==========================================
+        // LÓGICA DO JOGO (Normal)
+        // ==========================================
+        
+        // Renderizar mapa ao iniciar
+        renderMapObjects();
+
         function getSafeTarget(currX, currY, targetX, targetY) {
-            const steps = 20; // Número de "passos" para verificar colisões na linha
+            const steps = 20;
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
                 const px = currX + (targetX - currX) * t;
@@ -204,17 +294,15 @@
                 );
 
                 if (hit) {
-                    // Colidiu, retorna o ponto seguro anterior
                     const safeT = (i - 1) / steps;
                     return { x: currX + (targetX - currX) * safeT, y: currY + (targetY - currY) * safeT };
                 }
             }
-            return { x: targetX, y: targetY }; // Não colidiu, vai até o destino
+            return { x: targetX, y: targetY };
         }
 
-        // --- 3. EVENTOS DE CLIQUE ---
-        const gameArea = document.getElementById('gameArea');
         gameArea.addEventListener('click', (e) => {
+            if (devMode) return; // Se editando, não anda
             if (e.target.closest('#chatBar') || isMoving) return;
 
             const rect = gameArea.getBoundingClientRect();
@@ -231,14 +319,23 @@
             isMoving = true;
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
-            // Verifica saídas do mapa APÓS o movimento
+            // Checar batalha (apenas se clicou na grama)
+            // Usamos ElementsFromPoint para ver se clicou numa div .grass-patch
+            if(!isMoving) return; // Só checa se andar
+            
+            const elements = document.elementsFromPoint(e.clientX, e.clientY);
+            const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
+            if (grassEl) {
+                // Pequeno delay para chegar lá visualmente
+                setTimeout(() => socket.emit('check_encounter', { grassId: grassEl.id }), 500);
+            }
+
             checkExits(safeDest.x, safeDest.y);
         });
 
-        // --- 4. SOCKETS ---
+        // Socket e Players
         socket.on('connect', () => { 
             myId = socket.id; 
-            // O 'map: 'city'' pode ser alterado para 'route1' ou similar se você renomear o arquivo
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: startX, y: startY, direction: 'down' }); 
         });
 
@@ -293,48 +390,16 @@
             gameArea.appendChild(div);
         }
 
-        // --- 5. LÓGICA DE SAÍDA DE MAPA ---
+        // Saídas e Util
         function checkExits(destX, destY) {
-            const myPlayer = document.getElementById(`p-${myId}`);
-            if(!myPlayer) return;
-            const currX = parseFloat(myPlayer.style.left);
-            const currY = parseFloat(myPlayer.style.top);
-            const dist = Math.hypot(destX - currX, destY - currY);
-            const timeMs = (dist / MOVEMENT_SPEED) * 1000;
-
+            const timeMs = (Math.hypot(destX - parseFloat(document.getElementById(`p-${myId}`).style.left), destY - parseFloat(document.getElementById(`p-${myId}`).style.top)) / MOVEMENT_SPEED) * 1000;
             setTimeout(() => {
-                // Saída Topo (assumindo que leva para 'forest')
-                if (destY < 5 && destX > 30 && destX < 70) {
-                    changeMap('forest'); // Leva para /forest
-                }
-                // Saída Baixo (assumindo que leva para 'lobby' ou 'another_route')
-                else if (destY > 95 && destX > 30 && destX < 70) {
-                    changeMap('lobby'); // Leva para /lobby
-                }
+                if (destY < 5 && destX > 30 && destX < 70) changeMap('forest');
+                else if (destY > 95 && destX > 30 && destX < 70) changeMap('lobby');
             }, timeMs);
         }
-
-        function changeMap(destination) {
-            document.getElementById('loader').classList.add('show');
-            // Ajuste o redirect conforme suas rotas reais no servidor (app.js/server.js)
-            if(destination === 'forest') window.location.href = '/forest?userId=' + window.CURRENT_USER_ID;
-            if(destination === 'lobby') window.location.href = '/lobby?userId=' + window.CURRENT_USER_ID;
-            // Exemplo: if(destination === 'route2') window.location.href = '/route2?userId=' + window.CURRENT_USER_ID;
-        }
-
-        // --- 6. GATILHOS DE BATALHA (Matinhos) ---
-        // A lógica de detecção de encontro agora é feita pelo clique na gameArea + elementsFromPoint.
-        // O `onclick` nos divs de grama não é estritamente necessário, mas mantido para clareza.
-        gameArea.addEventListener('click', (e) => {
-            // ... (código de movimento já está aqui) ...
-            const elements = document.elementsFromPoint(e.clientX, e.clientY);
-            const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
-            if (grassEl) {
-                socket.emit('check_encounter', { grassId: grassEl.id });
-            }
-        });
-
-        // --- 7. UTILITÁRIOS (Chat, Toast, Loader) ---
+        function changeMap(d) { document.getElementById('loader').classList.add('show'); window.location.href = '/' + d + '?userId=' + window.CURRENT_USER_ID; }
+        
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
         socket.on('chat_message', (d) => { const p = document.getElementById(`p-${d.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=d.msg; p.appendChild(b); setTimeout(()=>b.remove(), 4000); }});
