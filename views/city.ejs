@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Mundo Aberto - Final Stable</title>
+    <title>Mundo Aberto - Fixed Collision</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     
@@ -221,7 +220,6 @@
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); 
             players.forEach(createPlayerElement); 
             
-            // --- CORREÇÃO DESTRAVAMENTO ---
             const loader = document.getElementById('loader');
             if(loader) loader.classList.remove('show');
             if(typeof hideLoading === 'function') hideLoading(); 
@@ -324,13 +322,20 @@
             const steps = 25;
             let activeCollisions = [];
 
-            if (currentMapId === 'city') {
-                activeCollisions = collisionMap; 
-            } else {
+            // === CORREÇÃO CRÍTICA AQUI ===
+            if (currentMapId !== 'city') {
+                // Se NÃO for cidade, usa SOMENTE colisão da casa
                 const house = housesData.find(h => h.id === currentMapId);
-                if (house && house.collisions) activeCollisions = house.collisions;
-                else activeCollisions = []; 
+                if (house && house.collisions) {
+                    activeCollisions = house.collisions;
+                } else {
+                    activeCollisions = []; // Casa sem colisão = livre
+                }
+            } else {
+                // Se for cidade, usa collisionMap
+                activeCollisions = collisionMap;
             }
+            // ============================
 
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
@@ -418,7 +423,6 @@
         });
 
         function handleClick(e, targetNpc = null) {
-            // Se já estiver andando ou teleportando, sai.
             if (e.target.closest('#chatBar') || isMoving || isTeleporting) return;
 
             // BOLINHA DE DEBUG
@@ -452,16 +456,12 @@
 
             const safeDest = getSafeTarget(currX, currY, targetX, targetY);
 
-            // === AQUI ESTÁ A CORREÇÃO DE "ABRAÇAR PAREDE" ===
-            // Se o destino seguro for quase igual ao atual, NÃO TRAVE O JOGO
+            // ANTI-TRAVAMENTO: Se for bater na parede, não trava
             const distance = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
             if (distance < 0.1) {
-                // Você está clicando numa parede e não sai do lugar.
-                // Não envie para o servidor e não trave o isMoving.
                 console.log("Movimento bloqueado pela parede. Ignorando.");
                 return;
             }
-            // =================================================
 
             // Lógica de distância NPC
             if (targetNpc) {
@@ -470,7 +470,6 @@
             }
 
             isMoving = true;
-            // Timeout de segurança caso o servidor não responda
             setTimeout(() => isMoving = false, 2000); 
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
@@ -489,7 +488,6 @@
                 }
             }
 
-            // Se for NPC, interage ao chegar
             if (targetNpc) {
                 const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
                 setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); }, (dist / MOVEMENT_SPEED) * 1000);
