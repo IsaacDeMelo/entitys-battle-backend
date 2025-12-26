@@ -41,10 +41,10 @@
             box-shadow: 0 0 0 1000px rgba(0,0,0,0.85);
         }
 
-        /* --- CAMADAS (CORREÇÃO DE CLIQUE) --- */
+        /* --- CAMADAS (IMPORTANTE: pointer-events none para não bloquear clique) --- */
         #collision-container, #grass-container, #house-container, #dev-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Permite clicar através deles */
+            pointer-events: none; 
             z-index: 5;
         }
 
@@ -54,7 +54,7 @@
             background-size: 400% auto; image-rendering: pixelated; 
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); 
             margin-left: -14px; margin-top: -26px; z-index: 10; 
-            pointer-events: none; /* O personagem não bloqueia o clique */
+            pointer-events: none; /* Personagem não bloqueia clique no chão */
             transition: top 0s linear, left 0s linear; 
         }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
@@ -95,20 +95,12 @@
         .house-trigger { position: absolute; z-index: 6; background: transparent; }
         .house-exit { position: absolute; z-index: 6; background: transparent; }
 
-        /* Cores de Dev (Ativa clicks se necessário) */
+        /* Cores de Dev */
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; }
         .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; pointer-events: auto !important; }
         .dev-house { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-exit { background: rgba(241, 196, 15, 0.4) !important; border: 1px dashed #f1c40f; z-index: 20; pointer-events: auto !important; }
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
-
-        /* DEBUG CLICK */
-        .click-marker {
-            position: absolute; width: 6px; height: 6px; background: red; border-radius: 50%; 
-            transform: translate(-50%, -50%); z-index: 9999; pointer-events: none; 
-            animation: fadeOut 0.5s forwards;
-        }
-        @keyframes fadeOut { to { opacity: 0; transform: translate(-50%, -50%) scale(2); } }
     </style>
 </head>
 <body>
@@ -156,20 +148,61 @@
 
     <!-- VARS GLOBAIS -->
     <script>
-        const gameViewport = document.getElementById('gameViewport'); // MUDANÇA: Usamos o Viewport agora
+        // --- VARIÁVEIS DE ADMIN E GLOBAIS ---
+        let devMode = false; 
+        let currentTool = null; 
+        let isDrawing = false; 
+        let startPoint = {x:0, y:0}; 
+        let tempBox = null;
+        let editingHouseId = null; 
+
+        // CRIA A VARIÁVEL SOCKET GLOBALMENTE
+        const socket = io();
+        const myName = "<%= playerName %>";
+        const mySkin = "<%= playerSkin %>";
+        window.CURRENT_USER_ID = "<%= user._id %>"; 
+        window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
+        const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
+        
+        // --- DADOS DE SPAWN E VAR MAPA ---
+        const urlParams = new URLSearchParams(window.location.search);
+        let startX = urlParams.get('x') ? parseFloat(urlParams.get('x')) : 50;
+        let startY = urlParams.get('y') ? parseFloat(urlParams.get('y')) : 5;
+        // CRIA A VARIÁVEL currentMapId GLOBALMENTE
+        let currentMapId = urlParams.get('map') || 'city';
+        let startDir = 'down';
+
+        if (urlParams.get('from') === 'forest') { 
+            startX = 50; startY = 92; startDir = 'up'; 
+        }
+
+        // ============================================================
+        // --- SEUS DADOS DE MAPA (COLE SUAS ATUALIZAÇÕES AQUI) ---
+        // ============================================================
+        let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
+        let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
+        let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[],"exit":null}];
+        // ============================================================
+    </script>
+
+    <script src="/scripts/common.js"></script>
+
+    <script>
+        // REFERÊNCIAS AO DOM
+        const gameViewport = document.getElementById('gameViewport');
         const gameArea = document.getElementById('gameArea');
         let myId = null; 
         const MOVEMENT_SPEED = 55; 
         let isMoving = false;
 
-        // --- INICIALIZAÇÃO VISUAL ---
+        // --- INICIALIZAÇÃO VISUAL E CORREÇÃO DO MAPA ---
         if (currentMapId !== 'city') {
             const house = housesData.find(h => h.id === currentMapId);
             if (house) {
                 gameArea.style.backgroundImage = `url('${house.bg}')`;
                 gameArea.classList.add('indoor-mode');
             } else {
-                currentMapId = 'city';
+                currentMapId = 'city'; 
                 gameArea.style.backgroundImage = "url('/uploads/route_map.png')";
             }
         } else {
@@ -239,10 +272,9 @@
                 label.className = 'player-name'; label.innerText = npc.name;
                 div.appendChild(label);
 
-                // Clique no NPC
                 div.onclick = (e) => { 
-                    e.stopPropagation(); // Impede andar ao clicar no NPC
-                    handleClick(e, npc); // Usa a mesma lógica de movimento para chegar perto
+                    e.stopPropagation(); 
+                    handleClick(e, npc); // Usa a lógica de clique centralizada
                 };
                 gameArea.appendChild(div);
             });
@@ -288,7 +320,7 @@
                 activeCollisions = collisionMap; 
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                // Garante que dentro da casa NÃO use colisão da cidade
+                // Garante que usa colisão da casa ou fica vazio (sem colisão)
                 if (house && house.collisions) activeCollisions = house.collisions;
                 else activeCollisions = []; 
             }
@@ -357,18 +389,16 @@
         // --- SISTEMA DE CLIQUE E MOVIMENTO CORRIGIDO ---
         // ==========================================================
         
-        // Agora ouvimos cliques no Viewport (a tela preta inteira)
+        // Agora ouvimos cliques no Viewport (a tela preta inteira) para evitar zonas mortas
         gameViewport.addEventListener('mousedown', (e) => {
-            // Se estiver desenhando no modo DEV, passamos o controle para o handler de desenho
-            if (devMode && currentTool) return; // Não anda se tiver ferramenta selecionada
-            
+            if (devMode && currentTool) return; // Se for ferramenta de dev, não anda
             handleClick(e);
         });
 
         function handleClick(e, targetNpc = null) {
             if (e.target.closest('#chatBar') || isMoving) return;
 
-            // BOLINHA VERMELHA DE DEBUG (Para ver onde clicou)
+            // BOLINHA VERMELHA DE DEBUG
             const marker = document.createElement('div');
             marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
             marker.style.background = 'red'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
@@ -377,14 +407,13 @@
             document.body.appendChild(marker);
             setTimeout(() => marker.remove(), 500);
 
-            // CÁLCULO RELATIVO AO MAPA (E NÃO À TELA)
+            // CÁLCULO RELATIVO AO MAPA
             const rect = gameArea.getBoundingClientRect();
             
-            // Posição do clique relativa à imagem do mapa
+            // Posição do clique relativa à imagem do mapa (0 a 100%)
             const rawX = ((e.clientX - rect.left) / rect.width) * 100;
             const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
-            // Limita o clique para não andar para o infinito se clicar muito fora
             let targetX = Math.max(0, Math.min(100, rawX));
             let targetY = Math.max(0, Math.min(100, rawY));
 
@@ -394,7 +423,6 @@
             const currX = parseFloat(myPlayer.style.left);
             const currY = parseFloat(myPlayer.style.top);
 
-            // Se for clique em NPC, ajusta destino para perto dele
             if (targetNpc) {
                 targetX = targetNpc.x;
                 targetY = targetNpc.y;
@@ -402,24 +430,22 @@
 
             const safeDest = getSafeTarget(currX, currY, targetX, targetY);
 
-            // Logica NPC
+            // Lógica de distância NPC
             if (targetNpc) {
                 const dist = Math.hypot(targetNpc.x - currX, targetNpc.y - currY);
                 if (dist <= 6) { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); return; }
             }
 
             isMoving = true;
-            // Destrava automaticamente se bugar
-            setTimeout(() => isMoving = false, 2000);
+            setTimeout(() => isMoving = false, 2000); // Destrava se bugar
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
-            // Check matinho (SÓ NA CIDADE)
+            // Checa matinho apenas na cidade
             if (currentMapId === 'city') {
                 const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
                 const travelTime = (dist / MOVEMENT_SPEED) * 1000;
                 
-                // Verifica elemento na posição final
                 const finalScreenX = rect.left + (safeDest.x/100 * rect.width);
                 const finalScreenY = rect.top + (safeDest.y/100 * rect.height);
                 const testEl = document.elementFromPoint(finalScreenX, finalScreenY);
@@ -550,7 +576,6 @@
         }
 
         // --- SISTEMA DE DESENHO (DEV MODE) ---
-        // Ouvintes específicos para desenho
         gameArea.addEventListener('mousedown', (e) => { 
             if(!devMode || !currentTool) return; 
             e.stopPropagation(); isDrawing = true; 
