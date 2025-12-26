@@ -460,118 +460,57 @@
             handleClick(e);
         });
 
-        function getStopPoint(currX, currY, targetX, targetY, stopDistance = 4.5) {
-    const dx = targetX - currX;
-    const dy = targetY - currY;
-    const totalDist = Math.sqrt(dx*dx + dy*dy);
-
-    // Se já estiver mais perto que a distância de parada, não move (ou move minúsculo para ajustar)
-    if (totalDist <= stopDistance) {
-        return { x: currX, y: currY }; 
-    }
-
-    // Calcula a proporção para parar antes do alvo
-    const ratio = (totalDist - stopDistance) / totalDist;
-    
-    return {
-        x: currX + (dx * ratio),
-        y: currY + (dy * ratio)
-    };
-}
-
         function handleClick(e, targetNpc = null) {
-    // Bloqueios padrões
-    if (e.target.closest('#chatBar') || window.isMoving || window.isTeleporting) return;
+            if (e.target.closest('#chatBar') || window.isMoving || window.isTeleporting) return;
+            const marker = document.createElement('div');
+            marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
+            marker.style.background = 'rgba(255,255,255,0.5)'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
+            marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px'; marker.style.pointerEvents = 'none';
+            document.body.appendChild(marker); setTimeout(() => marker.remove(), 300);
 
-    // Marcador visual de clique (bolinha branca)
-    const marker = document.createElement('div');
-    marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
-    marker.style.background = 'rgba(255,255,255,0.5)'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
-    marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px'; marker.style.pointerEvents = 'none';
-    document.body.appendChild(marker); setTimeout(() => marker.remove(), 300);
+            const rect = gameArea.getBoundingClientRect();
+            const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+            const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
-    // Cálculos de coordenadas
-    const rect = gameArea.getBoundingClientRect();
-    const rawX = ((e.clientX - rect.left) / rect.width) * 100;
-    const rawY = ((e.clientY - rect.top) / rect.height) * 100;
-
-    // Pega jogador
-    const myPlayer = document.getElementById(`p-${window.myId}`);
-    if (!myPlayer) {
-         createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: 50, y: 50 });
-         return;
-    }
-    const currX = parseFloat(myPlayer.style.left);
-    const currY = parseFloat(myPlayer.style.top);
-
-    let finalDestX = Math.max(0, Math.min(100, rawX));
-    let finalDestY = Math.max(0, Math.min(100, rawY));
-
-    // --- CORREÇÃO: LÓGICA DE NPC ---
-    if (targetNpc) {
-        // 1. Verifica distância atual
-        const dist = Math.hypot(targetNpc.x - currX, targetNpc.y - currY);
-        
-        // Se já estiver perto (distância < 6), interage imediatamente sem andar
-        if (dist <= 6) { 
-            // Vira o personagem para o NPC antes de interagir
-            const dx = targetNpc.x - currX;
-            const dy = targetNpc.y - currY;
-            let faceDir = 'down';
-            if (Math.abs(dx) > Math.abs(dy)) faceDir = dx > 0 ? 'right' : 'left';
-            else faceDir = dy > 0 ? 'down' : 'up';
-            
-            myPlayer.setAttribute('data-dir', faceDir);
-            socket.emit('move_player', { x: currX, y: currY, direction: faceDir }); // Atualiza rotação no server
-
-            if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); 
-            return; 
-        }
-
-        // 2. Se estiver longe, calcula o PONTO DE PARADA (não o ponto do NPC)
-        const stopPoint = getStopPoint(currX, currY, targetNpc.x, targetNpc.y, 5.0); // 5.0 é a distância segura
-        finalDestX = stopPoint.x;
-        finalDestY = stopPoint.y;
-    }
-
-    // Calcula rota segura (colisões) até o destino final (que agora é o ponto de parada)
-    const safeDest = getSafeTarget(currX, currY, finalDestX, finalDestY);
-    
-    // Evita movimentos micro (menos de 0.1 de distância)
-    const distanceToMove = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
-    if (distanceToMove < 0.1) return;
-
-    window.isMoving = true;
-    setTimeout(() => window.isMoving = false, 2000); // Timeout de segurança
-    
-    // Envia movimento
-    socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
-    
-    // Lógica de Grama (Encontro Selvagem)
-    if (currentMapId === 'city') {
-        const travelTime = (distanceToMove / MOVEMENT_SPEED) * 1000;
-        const finalScreenX = rect.left + (safeDest.x/100 * rect.width);
-        const finalScreenY = rect.top + (safeDest.y/100 * rect.height);
-        const testEl = document.elementFromPoint(finalScreenX, finalScreenY);
-        if (testEl && testEl.classList.contains('grass-patch')) { 
-            setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime); 
-        }
-    }
-
-    // --- CORREÇÃO: INTERAÇÃO APÓS CHEGAR ---
-    if (targetNpc) {
-        const travelTime = (distanceToMove / MOVEMENT_SPEED) * 1000;
-        setTimeout(() => { 
-            // Verifica se chegou perto o suficiente após andar
-            // Pegamos a posição ATUALIZADA (estimada pelo safeDest)
-            const distAfterMove = Math.hypot(targetNpc.x - safeDest.x, targetNpc.y - safeDest.y);
-            
-            if (distAfterMove <= 6.5) { // Tolerância um pouco maior
-                if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc);
+            let targetX = Math.max(0, Math.min(100, rawX));
+            let targetY = Math.max(0, Math.min(100, rawY));
+            const myPlayer = document.getElementById(`p-${window.myId}`);
+            if (!myPlayer) {
+                 createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: 50, y: 50 });
+                 return;
             }
-        }, travelTime);
-    }
-}
+            const currX = parseFloat(myPlayer.style.left);
+            const currY = parseFloat(myPlayer.style.top);
+
+            if (targetNpc) { targetX = targetNpc.x; targetY = targetNpc.y; }
+
+            const safeDest = getSafeTarget(currX, currY, targetX, targetY);
+            const distance = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
+            if (distance < 0.1) return;
+
+            if (targetNpc) {
+                const dist = Math.hypot(targetNpc.x - currX, targetNpc.y - currY);
+                if (dist <= 6) { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); return; }
+            }
+
+            window.isMoving = true;
+            setTimeout(() => window.isMoving = false, 2000); 
+            socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+            
+            if (currentMapId === 'city') {
+                const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+                const travelTime = (dist / MOVEMENT_SPEED) * 1000;
+                const finalScreenX = rect.left + (safeDest.x/100 * rect.width);
+                const finalScreenY = rect.top + (safeDest.y/100 * rect.height);
+                const testEl = document.elementFromPoint(finalScreenX, finalScreenY);
+                if (testEl && testEl.classList.contains('grass-patch')) { setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime); }
+            }
+
+            if (targetNpc) {
+                const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+                setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); }, (dist / MOVEMENT_SPEED) * 1000);
+            }
+        }
 
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
