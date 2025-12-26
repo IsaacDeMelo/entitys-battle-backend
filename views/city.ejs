@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Mundo Aberto</title>
+    <title>Mundo Aberto - Final Stable</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     
@@ -35,14 +36,13 @@
             transition: width 0.5s, height 0.5s;
         }
 
-        /* MODO INTERIOR: Reduz o tamanho da área jogável para parecer uma sala */
         #gameArea.indoor-mode {
             width: 90%; height: 60%;
             border: 4px solid #222;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); /* Escurece o resto */
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85);
         }
 
-        /* --- CAMADAS (IMPORTANTE: pointer-events none para não bloquear clique) --- */
+        /* --- CAMADAS --- */
         #collision-container, #grass-container, #house-container, #dev-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; 
@@ -65,7 +65,6 @@
         
         .player-name { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 4px; border-radius: 4px; font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
         
-        /* NPC precisa receber clique */
         .npc-entity { pointer-events: auto !important; cursor: pointer; z-index: 11; }
         .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; background: rgba(0,0,0,0.8); }
 
@@ -179,7 +178,7 @@
         }
 
         // ============================================================
-        // --- SEUS DADOS DE MAPA (COPIADOS DO SEU INPUT) ---
+        // --- SEUS DADOS DE MAPA ---
         // ============================================================
         let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
         let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
@@ -196,6 +195,7 @@
         let myId = null; 
         const MOVEMENT_SPEED = 55; 
         let isMoving = false;
+        let isTeleporting = false; 
 
         // --- INICIALIZAÇÃO VISUAL E CORREÇÃO DO MAPA ---
         if (currentMapId !== 'city') {
@@ -222,11 +222,12 @@
             players.forEach(createPlayerElement); 
             
             // --- CORREÇÃO DESTRAVAMENTO ---
-            // Remove o loader imediatamente para não bloquear clique
             const loader = document.getElementById('loader');
             if(loader) loader.classList.remove('show');
             if(typeof hideLoading === 'function') hideLoading(); 
+            
             isMoving = false; // Destrava movimento
+            isTeleporting = false; // Destrava teleporte
         });
         
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
@@ -327,7 +328,6 @@
                 activeCollisions = collisionMap; 
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                // Usa colisões da casa se existirem
                 if (house && house.collisions) activeCollisions = house.collisions;
                 else activeCollisions = []; 
             }
@@ -343,6 +343,8 @@
         }
 
         function checkTriggers(x, y) {
+            if (isTeleporting) return; 
+
             if (currentMapId === 'city') {
                 if (y > 95 && x > 30 && x < 70) { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; return; }
                 if (y < 5 && x > 30 && x < 70) { window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID; return; }
@@ -351,7 +353,6 @@
                 if (houseHit) enterHouse(houseHit);
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                // Trigger de saída (pela parte de baixo y > 90)
                 if (y > 90) { 
                     exitHouse(house);
                 } else if (house && house.exit && x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
@@ -361,7 +362,14 @@
         }
 
         function enterHouse(house) {
-            isMoving = false; // Destrava preventivamente
+            isTeleporting = true;
+            isMoving = false;
+            const myP = document.getElementById(`p-${myId}`);
+            if(myP) {
+                myP.classList.remove('walking'); 
+                if(myP.walkTimeout) clearTimeout(myP.walkTimeout); 
+            }
+
             if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
             document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
 
@@ -371,19 +379,20 @@
                 gameArea.classList.add('indoor-mode');
                 renderMapObjects(); 
                 
-                // Spawn safe zone no tapete
                 const spawnX = 50; const spawnY = 80;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
-                
-                const loader = document.getElementById('loader');
-                if(loader) loader.classList.remove('show');
-                if(typeof hideLoading === 'function') hideLoading();
-                isMoving = false;
             }, 500);
         }
 
         function exitHouse(house) {
-            isMoving = false; // Destrava preventivamente
+            isTeleporting = true;
+            isMoving = false;
+            const myP = document.getElementById(`p-${myId}`);
+            if(myP) {
+                myP.classList.remove('walking');
+                if(myP.walkTimeout) clearTimeout(myP.walkTimeout);
+            }
+
             if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
             document.querySelectorAll('.npc-entity').forEach(n => n.remove());
 
@@ -396,11 +405,6 @@
                 const exitX = house.trigger.x + (house.trigger.w / 2);
                 const exitY = house.trigger.y + house.trigger.h + 5;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
-                
-                const loader = document.getElementById('loader');
-                if(loader) loader.classList.remove('show');
-                if(typeof hideLoading === 'function') hideLoading();
-                isMoving = false;
             }, 500);
         }
 
@@ -409,13 +413,13 @@
         // ==========================================================
         
         gameViewport.addEventListener('mousedown', (e) => {
-            // Se estiver em modo edição com ferramenta selecionada, IGNORA MOVIMENTO
             if (devMode && currentTool) return; 
             handleClick(e);
         });
 
         function handleClick(e, targetNpc = null) {
-            if (e.target.closest('#chatBar') || isMoving) return;
+            // Se já estiver andando ou teleportando, sai.
+            if (e.target.closest('#chatBar') || isMoving || isTeleporting) return;
 
             // BOLINHA DE DEBUG
             const marker = document.createElement('div');
@@ -427,10 +431,8 @@
             setTimeout(() => marker.remove(), 300);
 
             // CÁLCULO RELATIVO AO MAPA
-            // gameArea.getBoundingClientRect() é essencial aqui porque no modo interior o mapa é menor
             const rect = gameArea.getBoundingClientRect();
             
-            // Posição do clique relativa à imagem do mapa (0 a 100%)
             const rawX = ((e.clientX - rect.left) / rect.width) * 100;
             const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
@@ -449,6 +451,17 @@
             }
 
             const safeDest = getSafeTarget(currX, currY, targetX, targetY);
+
+            // === AQUI ESTÁ A CORREÇÃO DE "ABRAÇAR PAREDE" ===
+            // Se o destino seguro for quase igual ao atual, NÃO TRAVE O JOGO
+            const distance = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
+            if (distance < 0.1) {
+                // Você está clicando numa parede e não sai do lugar.
+                // Não envie para o servidor e não trave o isMoving.
+                console.log("Movimento bloqueado pela parede. Ignorando.");
+                return;
+            }
+            // =================================================
 
             // Lógica de distância NPC
             if (targetNpc) {
@@ -598,11 +611,8 @@
 
         // --- SISTEMA DE DESENHO (DEV MODE) ---
         gameArea.addEventListener('mousedown', (e) => { 
-            // Se NÃO estiver em modo dev com ferramenta selecionada, sai da função
             if(!devMode || !currentTool) return; 
-            
-            e.stopPropagation(); // Impede clique de movimento
-            isDrawing = true; 
+            e.stopPropagation(); isDrawing = true; 
             const rect = gameArea.getBoundingClientRect(); 
             startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; 
             tempBox = document.createElement('div'); tempBox.className = 'drawing-box'; 
