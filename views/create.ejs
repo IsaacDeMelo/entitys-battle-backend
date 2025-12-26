@@ -51,134 +51,210 @@
 <body>
     <header>
         <div><h1>LABORATÓRIO</h1><small style="color:#777">Painel de Criação e Balanceamento</small></div>
-        <a href="/lobby?userId=<%= user._id %>" class="back-btn">VOLTAR AO JOGO</a>
+        <a href="/city?userId=<%= user._id %>" class="back-btn">VOLTAR À CIDADE</a>
     </header>
     <div class="main-layout">
+        <!-- SIDEBAR -->
         <div class="sidebar">
+            <!-- LISTA POKEMON -->
             <div id="list-poke" class="list-container active">
                 <div class="sidebar-header">POKEMONS (<%= pokemons.length %>)</div>
-                <div style="padding:10px;"><button class="btn-new" onclick="clearPokeForm()">+ NOVO</button></div>
+                <div style="padding:10px;"><button class="btn-new" onclick="clearPokeForm()">+ NOVO POKEMON</button></div>
                 <% pokemons.forEach(p => { %>
                     <div class="list-item" onclick="loadPokemon(<%= JSON.stringify(p) %>)">
                         <img src="<%= (p.sprite && (p.sprite.startsWith('http') || p.sprite.startsWith('data:'))) ? p.sprite : '/uploads/' + p.sprite %>">
-                        <div class="item-info"><div class="item-name"><%= p.name %></div><div class="item-sub">ID: <%= p.id %></div></div>
+                        <div class="item-info"><div class="item-name"><%= p.name %></div><div class="item-sub">Mapas: <%= p.spawnLocation || 'Nenhum' %></div></div>
                     </div>
                 <% }) %>
             </div>
+            <!-- LISTA NPC -->
             <div id="list-npc" class="list-container">
                 <div class="sidebar-header">NPCS (<%= npcs.length %>)</div>
-                <div style="padding:10px;"><button class="btn-new" onclick="clearNpcForm()">+ NOVO</button></div>
+                <div style="padding:10px;"><button class="btn-new" onclick="clearNpcForm()">+ NOVO NPC</button></div>
                 <% npcs.forEach(n => { %>
                     <div class="list-item" onclick="loadNpc(<%= JSON.stringify(n) %>)">
                         <% if(n.isCustomSkin) { %> <div class="npc-thumb" style="background-image: url('<%= n.skin %>')"></div>
                         <% } else { %> <div class="npc-thumb" style="background-image: url('/uploads/<%= n.skin %>.png')"></div> <% } %>
-                        <div class="item-info"><div class="item-name"><%= n.name %></div><div class="item-sub"><%= n.map %></div></div>
+                        <div class="item-info"><div class="item-name"><%= n.name %></div><div class="item-sub"><%= n.map %> (<%= n.x %>, <%= n.y %>)</div></div>
                     </div>
                 <% }) %>
             </div>
         </div>
+
+        <!-- EDITOR AREA -->
         <div class="editor-area">
             <div class="tabs">
                 <button id="btn-tab-poke" class="tab-btn active" onclick="switchMode('poke')">POKEMON</button>
                 <button id="btn-tab-npc" class="tab-btn" onclick="switchMode('npc')">NPC</button>
             </div>
+
+            <!-- FORM POKEMON -->
             <div id="tab-poke" class="tab-content">
                 <form id="pokeForm" action="/lab/create" method="POST" enctype="multipart/form-data" onsubmit="prepareMoves()">
                     <input type="hidden" name="existingId" id="existingId"><input type="hidden" name="movesJson" id="movesJson">
                     <div class="form-grid">
-                        <div><label>ID</label><input type="text" name="id" id="pokeId" disabled style="opacity:0.5;"></div>
+                        <div><label>ID (Auto se vazio)</label><input type="text" name="id" id="pokeId" disabled style="opacity:0.5;"></div>
                         <div class="full-width" style="grid-column: span 2;"><label>Nome</label><input type="text" name="name" id="pokeName" required></div>
                     </div>
                     <div class="form-grid">
                         <div><label>Tipo</label><select name="type" id="pokeType"><% Object.keys(types).forEach(t => { %> <option value="<%= t %>"><%= t.toUpperCase() %></option> <% }) %></select></div>
-                        <div><label>Chance</label><input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5"></div>
-                        <div><label>Spawn Chance</label><input type="number" name="spawnChance" id="pokeSpawn" value="10"></div>
+                        <div><label>Chance Captura (0-1)</label><input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5"></div>
+                        <div><label>Spawn Chance (%)</label><input type="number" name="spawnChance" id="pokeSpawn" value="10"></div>
                     </div>
-                    <h4>STATUS</h4>
+                    
+                    <h4>SPAWN & EVOLUÇÃO</h4>
+                    <div class="form-grid">
+                        <div>
+                            <label>Local de Spawn</label>
+                            <select name="location" id="pokeLoc">
+                                <option value="none">Nenhum (Apenas Evolução)</option>
+                                <option value="forest">Floresta (Início)</option>
+                                <option value="city">Cidade (Rota Selvagem)</option> <!-- ADICIONADO -->
+                            </select>
+                        </div>
+                        <div><label>Lv Mínimo</label><input type="number" name="minLvl" id="spawnMin" value="2"></div>
+                        <div><label>Lv Máximo</label><input type="number" name="maxLvl" id="spawnMax" value="5"></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="full-width"><label>Evolui Para (ID)</label><div style="display:flex; gap:10px;"><input type="text" name="evoTarget" id="evoTarget" placeholder="ex: charizard"><input type="number" name="evoLevel" id="evoLevel" placeholder="Lv 16" style="width:100px;"></div></div>
+                    </div>
+
+                    <h4>STATUS BASE</h4>
                     <div class="form-grid" style="grid-template-columns: repeat(5, 1fr);">
-                        <div><label>HP</label><input type="number" name="hp" id="statHp" required></div><div><label>EN</label><input type="number" name="energy" id="statEn" required></div><div><label>ATK</label><input type="number" name="atk" id="statAtk" required></div><div><label>DEF</label><input type="number" name="def" id="statDef" required></div><div><label>SPD</label><input type="number" name="spd" id="statSpd" required></div>
+                        <div><label>HP</label><input type="number" name="hp" id="statHp" required value="40"></div>
+                        <div><label>EN</label><input type="number" name="energy" id="statEn" required value="100"></div>
+                        <div><label>ATK</label><input type="number" name="atk" id="statAtk" required value="50"></div>
+                        <div><label>DEF</label><input type="number" name="def" id="statDef" required value="40"></div>
+                        <div><label>SPD</label><input type="number" name="spd" id="statSpd" required value="50"></div>
                     </div>
-                    <h4>GOLPES</h4>
+
+                    <h4>MOVEPOOL</h4>
                     <div class="moves-wrapper">
                         <% Object.keys(moves).forEach(moveKey => { const m = moves[moveKey]; %>
-                            <div class="move-option"><input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>"><span><%= m.name %></span><input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1"></div>
+                            <div class="move-option"><input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>"><span><%= m.name %></span><input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1" title="Nível para aprender"></div>
                         <% }) %>
                     </div>
+
                     <div class="form-grid" style="margin-top:20px;">
-                        <div><label>Spawn</label><select name="location" id="pokeLoc"><option value="none">Nenhum</option><option value="forest">Floresta</option></select></div>
-                        <div><label>Min Lv</label><input type="number" name="minLvl" id="spawnMin" value="1"></div><div><label>Max Lv</label><input type="number" name="maxLvl" id="spawnMax" value="5"></div>
+                        <div class="full-width"><label>Sprite (PNG/GIF)</label><input type="file" name="sprite" accept="image/*"><div id="imgPreview" style="margin-top:10px; height:60px; border:1px dashed #333; display:flex; align-items:center; justify-content:center;">Sem imagem</div></div>
                     </div>
-                    <div class="form-grid"><div class="full-width"><label>Evolução</label><div style="display:flex; gap:10px;"><input type="text" name="evoTarget" id="evoTarget" placeholder="ID Alvo"><input type="number" name="evoLevel" id="evoLevel" placeholder="Lv" style="width:80px;"></div></div></div>
-                    <div class="form-grid"><div class="full-width"><label>Sprite</label><input type="file" name="sprite" accept="image/*"><div id="imgPreview" style="margin-top:10px; height:50px;"></div></div></div>
-                    <label><input type="checkbox" name="isStarter" id="isStarter" style="width:auto;"> Inicial?</label>
+                    <label><input type="checkbox" name="isStarter" id="isStarter" style="width:auto;"> É Inicial?</label>
+                    
                     <div class="btn-row"><button type="submit" class="btn-save">SALVAR POKEMON</button><button type="button" class="btn-delete" onclick="deleteItem('deleteForm')">EXCLUIR</button></div>
                 </form>
                 <form id="deleteForm" action="/lab/delete" method="POST" style="display:none;"><input type="hidden" name="id" id="deleteId"></form>
             </div>
+
+            <!-- FORM NPC -->
             <div id="tab-npc" class="tab-content hidden">
                 <form id="npcForm" action="/lab/create-npc" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="userId" value="<%= user._id %>"><input type="hidden" name="npcId" id="npcId">
-                    <div class="form-grid"><div class="full-width"><label>Nome</label><input type="text" name="name" id="npcName" required></div></div>
+                    
+                    <div class="form-grid"><div class="full-width"><label>Nome do NPC</label><input type="text" name="name" id="npcName" required></div></div>
+                    
                     <div class="form-grid">
-                        <div><label>Mapa</label><select name="map" id="npcMap"><option value="lobby">Lobby</option><option value="forest">Floresta</option></select></div>
-                        <div><label>X (%)</label><input type="number" name="x" id="npcX" value="50"></div><div><label>Y (%)</label><input type="number" name="y" id="npcY" value="50"></div>
+                        <div>
+                            <label>Mapa</label>
+                            <select name="map" id="npcMap">
+                                <option value="lobby">Lobby (Início)</option>
+                                <option value="forest">Floresta</option>
+                                <option value="city">Cidade (Rota Selvagem)</option> <!-- ADICIONADO -->
+                            </select>
+                        </div>
+                        <div><label>X (0-100%)</label><input type="number" name="x" id="npcX" value="50"></div>
+                        <div><label>Y (0-100%)</label><input type="number" name="y" id="npcY" value="50"></div>
                     </div>
+
                     <div class="form-grid">
                         <div><label>Direção</label><select name="direction" id="npcDir"><option value="down">Baixo</option><option value="up">Cima</option><option value="left">Esquerda</option><option value="right">Direita</option></select></div>
+                        <div><label>Skin</label><select name="skinSelect" id="npcSkinSelect"><% for(let i=1; i<=12; i++){ %><option value="char<%=i%>">Char <%=i%></option><% } %></select></div>
                         <div><label>Recompensa ($)</label><input type="number" name="money" id="npcMoney" value="100"></div>
-                        <div><label>Skin Padrão</label><select name="skinSelect" id="npcSkinSelect"><% for(let i=1; i<=12; i++){ %><option value="char<%=i%>">Char <%=i%></option><% } %></select></div>
                     </div>
-                    <div style="margin-bottom:15px;"><label>Upload Skin</label><input type="file" name="npcSkinFile" accept="image/*"><div id="npcImgPreview" style="height:50px; margin-top:5px;"></div></div>
+                    
+                    <div style="margin-bottom:15px;"><label>Ou Upload Skin Própria</label><input type="file" name="npcSkinFile" accept="image/*"><div id="npcImgPreview" style="height:50px; margin-top:5px;"></div></div>
                     
                     <h4>DIÁLOGOS</h4>
-                    <label>Fala Inicial</label><input type="text" name="dialogue" id="npcDialogue" placeholder="Olá! Vamos batalhar!">
-                    
+                    <label>Fala Inicial (Antes da Luta)</label><input type="text" name="dialogue" id="npcDialogue" placeholder="Ei você! Vamos batalhar!" required>
                     <div class="form-grid" style="margin-top:10px;">
-                        <div class="full-width"><label>Fala Pós-Vitória (Tutorial / Único)</label><input type="text" name="winDialogue" id="npcWinDialogue"></div>
+                        <div class="full-width"><label>Fala de Vitória (Após vencer)</label><input type="text" name="winDialogue" id="npcWinDialogue" placeholder="Você é forte..."></div>
                     </div>
                     <div class="form-grid">
-                        <div class="full-width"><label>Fala de Carregando (Cooldown)</label><input type="text" name="cooldownDialogue" id="npcCdDialogue"></div>
+                        <div class="full-width"><label>Fala em Cooldown (Já venceu)</label><input type="text" name="cooldownDialogue" id="npcCdDialogue" placeholder="Volte mais tarde."></div>
                     </div>
 
-                    <h4 style="margin-top:20px;">CONFIGURAÇÕES AVANÇADAS</h4>
+                    <h4 style="margin-top:20px;">EQUIPE POKEMON</h4>
+                    <label style="margin-bottom:5px;">Formato JSON: <code>[{"baseId":"bulbasaur", "level":5}]</code></label>
+                    <textarea name="teamJson" id="npcTeam" style="height:80px; font-family:monospace; color:#2ecc71; background:#000; border:1px solid #333; padding:10px;" placeholder='[{"baseId":"bulbasaur", "level":5}, {"baseId":"charmander", "level":5}]'></textarea>
+
+                    <h4 style="margin-top:20px;">REGRAS & RECOMPENSAS</h4>
                     <div class="form-grid">
-                        <div class="full-width"><label>Tempo Cooldown (Minutos) - 0 = Nunca</label><input type="number" name="cooldownMinutes" id="npcCooldown" value="0"></div>
+                        <div><label>Cooldown (Minutos)</label><input type="number" name="cooldownMinutes" id="npcCooldown" value="0" title="0 = Único, >0 = Repetível"></div>
+                        <div><label>Item Extra (ID)</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: pokeball"></div>
+                        <div><label>Qtd Item</label><input type="number" name="rewardQty" id="npcRewQty" value="1"></div>
+                        <input type="hidden" name="rewardType" id="npcRewType" value="item"> <!-- Simplificado para item -->
                     </div>
 
-                    <h4 style="margin-top:20px;">RECOMPENSA ESPECIAL</h4>
-                    <div class="form-grid">
-                        <div><label>Tipo</label><select name="rewardType" id="npcRewType"><option value="none">Nenhuma</option><option value="item">Item</option><option value="pokemon">Pokemon</option></select></div>
-                        <div><label>ID / Nome</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="pokeball / charmander"></div>
-                        <div><label>Qtd / Lv</label><input type="number" name="rewardQty" id="npcRewQty" value="1"></div>
-                    </div>
-
-                    <label style="margin-top:15px;">Time (JSON)</label><textarea name="teamJson" id="npcTeam" style="height:60px; font-family:monospace; color:#2ecc71; background:#000;" placeholder='[{"baseId":"bulbasaur", "level":5}]'></textarea>
-                    
                     <div class="btn-row"><button type="submit" class="btn-save">SALVAR NPC</button><button type="button" class="btn-delete" onclick="deleteItem('deleteNpcForm')">EXCLUIR</button></div>
                 </form>
                 <form id="deleteNpcForm" action="/lab/delete-npc" method="POST" style="display:none;"><input type="hidden" name="id" id="deleteNpcId"></form>
             </div>
         </div>
     </div>
+    
     <script>
         function switchMode(mode) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('btn-tab-' + mode).classList.add('active');
             document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); document.getElementById('tab-' + mode).classList.remove('hidden');
             document.querySelectorAll('.list-container').forEach(l => l.classList.remove('active')); document.getElementById('list-' + mode).classList.add('active');
         }
-        function clearPokeForm() { document.getElementById('pokeForm').reset(); document.getElementById('existingId').value = ""; document.getElementById('imgPreview').innerHTML = ""; document.querySelectorAll('.move-check').forEach(c => c.checked = false); }
+        
+        function clearPokeForm() { 
+            document.getElementById('pokeForm').reset(); document.getElementById('existingId').value = ""; document.getElementById('imgPreview').innerHTML = "Sem imagem"; 
+            document.querySelectorAll('.move-check').forEach(c => c.checked = false); 
+        }
+        
         function loadPokemon(p) {
             switchMode('poke'); clearPokeForm(); document.getElementById('existingId').value = p.id; document.getElementById('pokeId').value = p.id;
             document.getElementById('pokeName').value = p.name; document.getElementById('pokeType').value = p.type;
             document.getElementById('statHp').value = p.baseStats.hp; document.getElementById('statEn').value = p.baseStats.energy; document.getElementById('statAtk').value = p.baseStats.attack; document.getElementById('statDef').value = p.baseStats.defense; document.getElementById('statSpd').value = p.baseStats.speed;
             document.getElementById('pokeRate').value = p.catchRate || 0.5; document.getElementById('pokeSpawn').value = p.spawnChance || 10; document.getElementById('pokeLoc').value = p.spawnLocation || 'none';
             document.getElementById('spawnMin').value = p.minSpawnLevel || 1; document.getElementById('spawnMax').value = p.maxSpawnLevel || 5; document.getElementById('isStarter').checked = !!p.isStarter;
+            
             if(p.evolution) { document.getElementById('evoTarget').value = p.evolution.targetId || ''; document.getElementById('evoLevel').value = p.evolution.level || ''; }
-            if(p.sprite) { const src = (p.sprite.startsWith('http') || p.sprite.startsWith('data:')) ? p.sprite : '/uploads/' + p.sprite; document.getElementById('imgPreview').innerHTML = `<img src="${src}" style="height:100%;">`; }
-            if(p.movePool) { p.movePool.forEach(mp => { const check = document.getElementById('chk_' + mp.moveId); const lvlInp = document.getElementById('lvl_' + mp.moveId); if(check) check.checked = true; if(lvlInp) lvlInp.value = mp.level; }); }
+            
+            if(p.sprite) { 
+                const src = (p.sprite.startsWith('http') || p.sprite.startsWith('data:')) ? p.sprite : '/uploads/' + p.sprite; 
+                document.getElementById('imgPreview').innerHTML = `<img src="${src}" style="height:100%; object-fit:contain;">`; 
+            }
+            
+            if(p.movePool) { 
+                p.movePool.forEach(mp => { 
+                    const check = document.getElementById('chk_' + mp.moveId); 
+                    const lvlInp = document.getElementById('lvl_' + mp.moveId); 
+                    if(check) check.checked = true; 
+                    if(lvlInp) lvlInp.value = mp.level; 
+                }); 
+            }
         }
-        function prepareMoves() { const moves = []; document.querySelectorAll('.move-check').forEach(chk => { if(chk.checked) { const id = chk.getAttribute('data-id'); const lvl = document.getElementById('lvl_' + id).value; moves.push({ moveId: id, level: parseInt(lvl) }); } }); document.getElementById('movesJson').value = JSON.stringify(moves); return true; }
-        function clearNpcForm() { document.getElementById('npcForm').reset(); document.getElementById('npcId').value = ""; document.getElementById('npcImgPreview').innerHTML = ""; document.getElementById('npcTeam').value = '[{"baseId":"bulbasaur", "level":5}]'; }
+        
+        function prepareMoves() { 
+            const moves = []; 
+            document.querySelectorAll('.move-check').forEach(chk => { 
+                if(chk.checked) { 
+                    const id = chk.getAttribute('data-id'); 
+                    const lvl = document.getElementById('lvl_' + id).value; 
+                    moves.push({ moveId: id, level: parseInt(lvl) }); 
+                } 
+            }); 
+            document.getElementById('movesJson').value = JSON.stringify(moves); 
+            return true; 
+        }
+        
+        function clearNpcForm() { 
+            document.getElementById('npcForm').reset(); document.getElementById('npcId').value = ""; document.getElementById('npcImgPreview').innerHTML = ""; 
+            document.getElementById('npcTeam').value = '[{"baseId":"bulbasaur", "level":5}]'; 
+        }
+        
         function loadNpc(n) {
             switchMode('npc'); clearNpcForm(); document.getElementById('npcId').value = n._id; document.getElementById('deleteNpcId').value = n._id;
             document.getElementById('npcName').value = n.name; document.getElementById('npcMap').value = n.map; document.getElementById('npcX').value = n.x; document.getElementById('npcY').value = n.y;
@@ -188,16 +264,30 @@
             document.getElementById('npcCdDialogue').value = n.cooldownDialogue || '';
             document.getElementById('npcCooldown').value = n.cooldownMinutes || 0;
             
-            if(n.team) { const cleanTeam = n.team.map(t => ({ baseId: t.baseId, level: t.level })); document.getElementById('npcTeam').value = JSON.stringify(cleanTeam); }
-            if(!n.isCustomSkin) document.getElementById('npcSkinSelect').value = n.skin; else document.getElementById('npcImgPreview').innerHTML = `<img src="${n.skin}" style="height:100%;">`;
+            if(n.team) { 
+                // Limpa o objeto team para exibir apenas o necessário no JSON
+                const cleanTeam = n.team.map(t => ({ baseId: t.baseId, level: t.level })); 
+                document.getElementById('npcTeam').value = JSON.stringify(cleanTeam); 
+            }
+            
+            if(!n.isCustomSkin) document.getElementById('npcSkinSelect').value = n.skin; 
+            else document.getElementById('npcImgPreview').innerHTML = `<img src="${n.skin}" style="height:100%;">`;
             
             if(n.reward) {
-                document.getElementById('npcRewType').value = n.reward.type || 'none';
                 document.getElementById('npcRewVal').value = n.reward.value || '';
-                document.getElementById('npcRewQty').value = n.reward.qty || n.reward.level || 1;
+                document.getElementById('npcRewQty').value = n.reward.qty || 1;
             }
         }
-        function deleteItem(formId) { const idInput = document.getElementById(formId === 'deleteForm' ? 'existingId' : 'npcId'); if(!idInput.value) return alert('Selecione um item primeiro.'); if(confirm('Excluir?')) { if(formId === 'deleteForm') document.getElementById('deleteId').value = idInput.value; if(formId === 'deleteNpcForm') document.getElementById('deleteNpcId').value = idInput.value; document.getElementById(formId).submit(); } }
+        
+        function deleteItem(formId) { 
+            const idInput = document.getElementById(formId === 'deleteForm' ? 'existingId' : 'npcId'); 
+            if(!idInput.value) return alert('Selecione um item na lista primeiro.'); 
+            if(confirm('Tem certeza que deseja excluir?')) { 
+                if(formId === 'deleteForm') document.getElementById('deleteId').value = idInput.value; 
+                if(formId === 'deleteNpcForm') document.getElementById('deleteNpcId').value = idInput.value; 
+                document.getElementById(formId).submit(); 
+            } 
+        }
     </script>
 </body>
 </html>
