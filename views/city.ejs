@@ -12,7 +12,7 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; }
         
-        /* --- 2. GAME CONTAINER (A TELA PRETA) --- */
+        /* --- 2. GAME CONTAINER --- */
         #gameViewport {
             position: relative;
             width: 100%; max-width: 500px;
@@ -23,13 +23,12 @@
             display: flex; justify-content: center; align-items: center;
         }
 
-        /* --- 3. MAPA ATIVO (CIDADE OU CASA) --- */
+        /* --- 3. MAPA ATIVO --- */
         #gameArea { 
             position: relative; 
-            /* Padrão Cidade: Full Size */
             width: 100%; height: 100%; 
+            /* Background definido via JS */
             background-size: 100% 100%; 
-            background-image: url('/uploads/route_map.png');
             background-position: center; background-repeat: no-repeat; 
             image-rendering: pixelated; 
             cursor: crosshair; 
@@ -37,11 +36,10 @@
             transition: width 0.5s, height 0.5s, opacity 0.3s;
         }
 
-        /* Estilo quando está dentro de casa (Quadrado menor) */
         #gameArea.indoor-mode {
-            width: 90%; height: 60%; /* Ajuste conforme a proporção da imagem da casa */
+            width: 90%; height: 60%;
             border: 4px solid #222;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); /* Escurece o resto */
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85);
         }
 
         /* --- 4. ENTIDADES --- */
@@ -146,7 +144,7 @@
         let isDrawing = false; 
         let startPoint = {x:0, y:0}; 
         let tempBox = null;
-        let editingHouseId = null; // Se != null, estamos editando o interior dessa casa
+        let editingHouseId = null; 
 
         const socket = io();
         const myName = "<%= playerName %>";
@@ -160,30 +158,27 @@
         const spawnFrom = urlParams.get('from'); 
         const returnX = urlParams.get('x');
         const returnY = urlParams.get('y');
-        const returnMap = urlParams.get('map'); // 'city' ou 'house_ID'
+        const returnMap = urlParams.get('map'); 
 
-        // Padrão
         let startX = 50; let startY = 5; let startDir = 'down';
-        let currentMapId = 'city'; // 'city' ou 'house_ID'
+        let currentMapId = 'city'; 
 
-        // Lógica de Retorno de Batalha
         if (returnX && returnY) {
             startX = parseFloat(returnX);
             startY = parseFloat(returnY);
             if (returnMap && returnMap !== 'city') {
-                currentMapId = returnMap; // Nasce direto na casa
+                currentMapId = returnMap; 
             }
         } else if (spawnFrom === 'forest') { 
             startX = 50; startY = 92; startDir = 'up'; 
         }
 
         // ============================================================
-        // --- ÁREA DE COLAGEM (COLE O CÓDIGO GERADO AQUI) ---
+        // --- DADOS DO MAPA (Corrigidos) ---
         // ============================================================
-let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
-let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[],"exit":null}];
-
+        let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
+        let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
+        let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[],"exit":null}];
         // ============================================================
     </script>
 
@@ -195,18 +190,22 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         const MOVEMENT_SPEED = 55; 
         let isMoving = false;
 
-        // --- INICIALIZAÇÃO ---
-        // Se nasceu numa casa, configura o visual imediatamente
+        // --- INICIALIZAÇÃO CORRIGIDA ---
         if (currentMapId !== 'city') {
             const house = housesData.find(h => h.id === currentMapId);
             if (house) enterHouseVisuals(house);
-            else currentMapId = 'city'; // Fallback
+            else { 
+                currentMapId = 'city'; 
+                gameArea.style.backgroundImage = "url('/uploads/route_map.png')"; 
+            }
+        } else {
+            // Se for cidade, define o fundo explicitamente
+            gameArea.style.backgroundImage = "url('/uploads/route_map.png')";
         }
 
         // --- SOCKET ---
         socket.on('connect', () => { 
             myId = socket.id; 
-            // Entra no canal correto (city ou house_ID) para ver os NPCs certos
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: startX, y: startY, direction: startDir }); 
         });
 
@@ -274,7 +273,7 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                     const currY = parseFloat(myPlayer.style.top);
                     const dx = npc.x - currX; const dy = npc.y - currY;
                     const totalDist = Math.hypot(dx, dy);
-                    const STOP_DISTANCE = 6; // Distância segura
+                    const STOP_DISTANCE = 6; 
 
                     if (totalDist <= STOP_DISTANCE) {
                         if(typeof interactWithNPC === 'function') interactWithNPC(npc);
@@ -297,7 +296,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             });
         });
 
-        // --- BATALHA ---
         socket.on('encounter_found', () => {
              if(typeof showToast === 'function') showToast('🌿 Um Monstro selvagem apareceu!');
              if(typeof showLoading === 'function') showLoading('Iniciando Batalha...', 'zoom');
@@ -312,7 +310,7 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                      headers: {'Content-Type':'application/json'}, 
                      body: JSON.stringify({
                          userId: window.CURRENT_USER_ID, 
-                         currentMap: currentMapId, // Envia 'city' ou 'house_ID'
+                         currentMap: currentMapId, 
                          currentX: cx,
                          currentY: cy
                      }) 
@@ -332,7 +330,7 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
              }, 1000);
         });
 
-        // --- RENDERIZAÇÃO E LÓGICA DE MAPA ---
+        // --- RENDERIZAÇÃO INICIAL ---
         renderMapObjects();
 
         function createPlayerElement(p) { 
@@ -349,12 +347,13 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
 
         function getSafeTarget(currX, currY, targetX, targetY) {
             const steps = 25;
-            // Seleciona o mapa de colisão correto (Cidade ou Casa Atual)
             let activeCollisions = collisionMap;
+            
+            // Usa colisão da casa se não estiver na cidade
             if (currentMapId !== 'city') {
                 const house = housesData.find(h => h.id === currentMapId);
                 if (house && house.collisions) activeCollisions = house.collisions;
-                else activeCollisions = []; // Casa sem colisão definida
+                else activeCollisions = []; 
             }
 
             for (let i = 1; i <= steps; i++) {
@@ -368,7 +367,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         }
 
         function checkTriggers(x, y) {
-            // 1. Saídas da Cidade (Só se estiver na cidade)
             if (currentMapId === 'city') {
                 if (y > 95 && x > 30 && x < 70) {
                     if(typeof showLoading === 'function') showLoading('Entrando na Floresta...', 'down');
@@ -381,17 +379,13 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
                     return;
                 }
 
-                // 2. Entradas de Casas (Zonas Azuis)
                 const houseHit = housesData.find(h => 
                     x >= h.trigger.x && x <= (h.trigger.x + h.trigger.w) &&
                     y >= h.trigger.y && y <= (h.trigger.y + h.trigger.h)
                 );
 
-                if (houseHit) {
-                    enterHouse(houseHit);
-                }
+                if (houseHit) enterHouse(houseHit);
             } 
-            // 3. Saída da Casa (Zona Amarela)
             else {
                 const house = housesData.find(h => h.id === currentMapId);
                 if (house && house.exit) {
@@ -405,11 +399,15 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
 
         function enterHouse(house) {
             if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
+            
+            // LIMPA NPCS ANTES DE ENTRAR
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
+
             setTimeout(() => {
                 currentMapId = house.id;
                 enterHouseVisuals(house);
                 
-                // Teleporta player para o centro da casa (ou spawn definido)
+                // Spawn padrão dentro da casa
                 const spawnX = 50; const spawnY = 80;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
                 
@@ -420,17 +418,21 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         function enterHouseVisuals(house) {
             gameArea.style.backgroundImage = `url('${house.bg}')`;
             gameArea.classList.add('indoor-mode');
-            renderMapObjects(); // Redesenha (agora vai desenhar vazio ou colisões da casa)
+            renderMapObjects(); 
         }
 
         function exitHouse(house) {
             if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
+            
+            // LIMPA NPCS ANTES DE SAIR
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
+
             setTimeout(() => {
                 currentMapId = 'city';
                 gameArea.style.backgroundImage = `url('/uploads/route_map.png')`;
                 gameArea.classList.remove('indoor-mode');
                 
-                // Teleporta para a porta da casa (trigger)
+                // Teleporte para a frente da porta
                 const exitX = house.trigger.x + (house.trigger.w / 2);
                 const exitY = house.trigger.y + house.trigger.h + 5;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
@@ -441,8 +443,8 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         }
 
         gameArea.addEventListener('click', (e) => {
-            if (devMode && !editingHouseId && currentTool !== 'house') return; // Bloqueia andar se editando cidade
-            if (devMode && editingHouseId && (currentTool === 'innerCollision' || currentTool === 'exit')) return; // Bloqueia andar se editando casa
+            if (devMode && !editingHouseId && currentTool !== 'house') return; 
+            if (devMode && editingHouseId && (currentTool === 'innerCollision' || currentTool === 'exit')) return; 
 
             if (e.target.closest('#chatBar') || isMoving || e.target.classList.contains('npc-entity')) return;
 
@@ -463,7 +465,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
             const travelTime = (dist / MOVEMENT_SPEED) * 1000;
             
-            // Checa grama apenas se estiver na cidade
             if (currentMapId === 'city') {
                 const testEl = document.elementFromPoint(
                     rect.left + (safeDest.x/100 * rect.width), 
@@ -479,7 +480,7 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
 
         // ============================================================
-        // --- LÓGICA DE ADMIN (ATUALIZADA PARA CASAS) ---
+        // --- LÓGICA DE ADMIN ---
         // ============================================================
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
         
@@ -487,8 +488,6 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             devMode = !devMode; 
             document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; 
             document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; 
-            
-            // Reseta visualização
             if(!devMode && editingHouseId) exitHouseEditor();
             renderMapObjects(); 
         }
@@ -524,6 +523,7 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             if(typeof showToast === 'function') showToast("Código copiado!"); 
         }
 
+        // --- RENDERIZAÇÃO CORRIGIDA PARA CASAS ---
         function renderMapObjects() {
             const colContainer = document.getElementById('collision-container'); 
             const grassContainer = document.getElementById('grass-container');
@@ -531,23 +531,28 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             
             colContainer.innerHTML = ''; grassContainer.innerHTML = ''; houseContainer.innerHTML = '';
 
-            if (editingHouseId) {
-                // Renderiza coisas da casa
-                const house = housesData.find(h => h.id === editingHouseId);
+            // Verifica se está EDITANDO uma casa OU se está JOGANDO dentro de uma
+            const targetHouseId = editingHouseId || (currentMapId !== 'city' ? currentMapId : null);
+
+            if (targetHouseId) {
+                // MODO INTERIOR DA CASA
+                const house = housesData.find(h => h.id === targetHouseId);
                 if (house) {
                     if (house.collisions) house.collisions.forEach(r => {
-                        const d = document.createElement('div'); d.className = 'collision-box dev-collision';
+                        const d = document.createElement('div'); d.className = 'collision-box';
+                        if(isAdmin && devMode) d.classList.add('dev-collision');
                         d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
                         colContainer.appendChild(d);
                     });
                     if (house.exit) {
-                        const d = document.createElement('div'); d.className = 'house-exit dev-exit';
+                        const d = document.createElement('div'); d.className = 'house-exit';
+                        if(isAdmin && devMode) d.classList.add('dev-exit');
                         d.style.left = house.exit.x+'%'; d.style.top = house.exit.y+'%'; d.style.width = house.exit.w+'%'; d.style.height = house.exit.h+'%';
                         houseContainer.appendChild(d);
                     }
                 }
             } else {
-                // Renderiza coisas da cidade
+                // MODO CIDADE
                 collisionMap.forEach(r => { 
                     const d = document.createElement('div'); d.className = 'collision-box'; 
                     if(isAdmin && devMode) d.classList.add('dev-collision'); 
