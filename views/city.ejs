@@ -127,12 +127,10 @@
 
         // --- DADOS INICIAIS (COLE AQUI O QUE O GERADOR CRIAR) ---
         // Se estiver vazio, use o modo Admin para criar e cole o resultado aqui.
-        let collisionMap = [
-             {x: 0, y: 0, w: 100, h: 1}, // Topo
-             {x: 0, y: 99, w: 100, h: 1} // Baixo
-        ]; 
-        
-        let grassMap = [];
+
+let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8}];
+
+let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
 
         // --- RENDERIZAÇÃO INICIAL ---
         function renderMapObjects() {
