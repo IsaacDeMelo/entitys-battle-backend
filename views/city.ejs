@@ -3,33 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Rota Selvagem</title>
+    <title>Mundo Aberto</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. BASE E RESET --- */
+        /* --- 1. BASE --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { margin: 0; padding: 0; background: #051405; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; }
-        div:focus { outline: none; }
+        body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; }
+        
+        /* --- 2. GAME CONTAINER (A TELA PRETA) --- */
+        #gameViewport {
+            position: relative;
+            width: 100%; max-width: 500px;
+            height: 100%; max-height: 900px;
+            background-color: #111;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+        }
 
-        /* --- 2. GAME AREA --- */
+        /* --- 3. MAPA ATIVO (CIDADE OU CASA) --- */
         #gameArea { 
             position: relative; 
-            width: 100%; max-width: 500px; 
-            height: 100%; max-height: 900px; 
-            background-color: #27ae60; 
-            background-image: url('/uploads/route_map.png'); 
+            /* Padrão Cidade: Full Size */
+            width: 100%; height: 100%; 
             background-size: 100% 100%; 
             background-position: center; background-repeat: no-repeat; 
             image-rendering: pixelated; 
             cursor: crosshair; 
-            overflow: hidden; 
             z-index: 1; isolation: isolate; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); 
+            transition: width 0.5s, height 0.5s, opacity 0.3s;
         }
 
-        /* --- 3. ENTIDADES --- */
+        /* Estilo quando está dentro de casa (Quadrado menor) */
+        #gameArea.indoor-mode {
+            width: 90%; height: 60%; /* Ajuste conforme a proporção da imagem da casa */
+            border: 4px solid #222;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); /* Escurece o resto */
+        }
+
+        /* --- 4. ENTIDADES --- */
         .player { 
             position: absolute; width: 28px; height: 28px; 
             background-size: 400% auto; image-rendering: pixelated; 
@@ -40,30 +54,18 @@
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
-        
-        .player[data-dir="down"] { background-position-y: 0%; } 
-        .player[data-dir="left"] { background-position-y: 33.33%; } 
-        .player[data-dir="right"] { background-position-y: 66.66%; } 
-        .player[data-dir="up"] { background-position-y: 100%; }
-        
+        .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
         .player-name { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 4px; border-radius: 4px; font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
-
-        /* NPCs */
         .npc-entity { cursor: pointer; z-index: 11; }
         .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; background: rgba(0,0,0,0.8); }
-        .npc-entity:hover { filter: brightness(1.2) drop-shadow(0 0 5px #f1c40f); }
 
-        /* --- 4. INTERFACE UI --- */
-        .chat-bubble { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
+        /* --- 5. UI --- */
+        .chat-bubble { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-        
-        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
+        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
-        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
-        
+        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
-        
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -72,24 +74,24 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .loader-text { font-size: 0.8rem; color:#f1c40f; }
 
-        /* --- 5. MODAL DE ADMIN --- */
+        /* --- 6. ADMIN & ZONES --- */
         #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
         #adminToolbar button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: bold; border-radius: 6px; transition: 0.2s; }
         #adminToolbar button:hover { background: #334155; }
         #adminToolbar button.active { background: #f1c40f; color: #0f172a; border-color: #f39c12; }
         #adminOutput { width: 100%; height: 80px; background: #0b1120; color: #2ecc71; border: 1px solid #334155; font-family: monospace; font-size: 0.6rem; margin-top: 5px; display:none; border-radius: 4px; padding: 5px; resize: none; }
         
-        /* Zonas Visuais */
         .collision-box { position: absolute; background: transparent; pointer-events: none; z-index: 5; }
         .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
-        
-        /* Zonas de Dev */
-        .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; }
-        .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; }
-        
-        /* CORREÇÃO: Camada de desenho deve cobrir tudo quando ativa */
-        #dev-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
-        .drawing-box { position: absolute; z-index: 101; pointer-events: none; }
+        .house-trigger { position: absolute; z-index: 6; cursor: pointer; background: transparent; }
+        .house-exit { position: absolute; z-index: 6; cursor: pointer; background: transparent; }
+
+        /* Cores de Dev */
+        .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; }
+        .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; pointer-events: auto !important; }
+        .dev-house { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; }
+        .dev-exit { background: rgba(241, 196, 15, 0.4) !important; border: 1px dashed #f1c40f; z-index: 20; pointer-events: auto !important; }
+        .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -101,8 +103,17 @@
         <div style="text-align:center; font-weight:bold; color:#f1c40f; margin-bottom:5px; font-family:'Press Start 2P'; font-size:0.6rem;">DEV MODE</div>
         <button id="btnDevMode" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
         <div id="devTools" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
-            <button id="btnToolCol" onclick="selectTool('collision')">🟥 ADD PAREDE</button>
-            <button id="btnToolGrass" onclick="selectTool('grass')">🟩 ADD GRAMA</button>
+            <div id="cityTools">
+                <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
+                <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
+                <button id="btnToolHouse" onclick="selectTool('house')">🟦 CASA (ENTRADA)</button>
+            </div>
+            <div id="houseTools" style="display:none;">
+                <div style="color:#aaa; font-size:0.6rem; text-align:center; margin-bottom:5px;">EDITANDO INTERIOR</div>
+                <button id="btnToolInnerCol" onclick="selectTool('innerCollision')">🟥 PAREDE INTERNA</button>
+                <button id="btnToolExit" onclick="selectTool('exit')">🟨 SAÍDA</button>
+                <button onclick="exitHouseEditor()" style="background:#e74c3c;">VOLTAR P/ CIDADE</button>
+            </div>
             <button onclick="undoLast()">↩️ DESFAZER</button>
             <button onclick="exportData()" style="background:#27ae60; border-color:#2ecc71; color:white;">💾 GERAR CÓDIGO</button>
             <textarea id="adminOutput" readonly onclick="this.select()"></textarea>
@@ -110,22 +121,32 @@
     </div>
     <% } %>
 
-    <div id="gameArea">
-        <div id="collision-container"></div>
-        <div id="grass-container"></div>
-        <div id="dev-layer"></div>
+    <div id="gameViewport">
+        <div id="gameArea">
+            <!-- Camadas -->
+            <div id="collision-container"></div>
+            <div id="grass-container"></div>
+            <div id="house-container"></div>
+            <div id="dev-layer"></div>
+        </div>
+        
+        <!-- UI Fixa -->
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
     </div>
     
     <div id="toastContainer"></div>
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
-    <!-- Importa Common.js -->
-    <script src="/scripts/common.js"></script>
-
-    <!-- SCRIPT PRINCIPAL UNIFICADO -->
+    <!-- VARS GLOBAIS -->
     <script>
-        // --- 1. VARIÁVEIS GLOBAIS ---
+        // --- VARIÁVEIS DE ADMIN ---
+        let devMode = false; 
+        let currentTool = null; 
+        let isDrawing = false; 
+        let startPoint = {x:0, y:0}; 
+        let tempBox = null;
+        let editingHouseId = null; // Se != null, estamos editando o interior dessa casa
+
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
@@ -133,40 +154,62 @@
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
         
-        // Variáveis de Admin (Declaradas no topo para evitar erro)
-        let devMode = false; 
-        let currentTool = null; 
-        let isDrawing = false; 
-        let startPoint = {x:0, y:0}; 
-        let tempBox = null;
-
-        // Dados de Spawn
+        // --- DADOS DE SPAWN ---
         const urlParams = new URLSearchParams(window.location.search);
         const spawnFrom = urlParams.get('from'); 
-        
-        let startX = 50; 
-        let startY = 5; 
-        let startDir = 'down';
+        const returnX = urlParams.get('x');
+        const returnY = urlParams.get('y');
+        const returnMap = urlParams.get('map'); // 'city' ou 'house_ID'
 
-        if(spawnFrom === 'forest') { startX = 50; startY = 92; startDir = 'up'; }
+        // Padrão
+        let startX = 50; let startY = 5; let startDir = 'down';
+        let currentMapId = 'city'; // 'city' ou 'house_ID'
+
+        // Lógica de Retorno de Batalha
+        if (returnX && returnY) {
+            startX = parseFloat(returnX);
+            startY = parseFloat(returnY);
+            if (returnMap && returnMap !== 'city') {
+                currentMapId = returnMap; // Nasce direto na casa
+            }
+        } else if (spawnFrom === 'forest') { 
+            startX = 50; startY = 92; startDir = 'up'; 
+        }
 
         // ============================================================
-        // --- ÁREA DE COLAGEM (COLE O CÓDIGO GERADO AQUI EMBAIXO) ---
+        // --- ÁREA DE COLAGEM (COLE O CÓDIGO GERADO AQUI) ---
         // ============================================================
         
-let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
+      let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
 let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-        // ============================================================
+        
+        // Estrutura: { id: 'house1', bg: 'url...', trigger: {x,y,w,h}, collisions: [], exit: {x,y,w,h} }
+        let housesData = []; 
 
+        // ============================================================
+    </script>
+
+    <script src="/scripts/common.js"></script>
+
+    <script>
         const gameArea = document.getElementById('gameArea');
         let myId = null; 
         const MOVEMENT_SPEED = 55; 
         let isMoving = false;
 
+        // --- INICIALIZAÇÃO ---
+        // Se nasceu numa casa, configura o visual imediatamente
+        if (currentMapId !== 'city') {
+            const house = housesData.find(h => h.id === currentMapId);
+            if (house) enterHouseVisuals(house);
+            else currentMapId = 'city'; // Fallback
+        }
+
         // --- SOCKET ---
         socket.on('connect', () => { 
             myId = socket.id; 
-            socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: startX, y: startY, direction: startDir }); 
+            // Entra no canal correto (city ou house_ID) para ver os NPCs certos
+            socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: startX, y: startY, direction: startDir }); 
         });
 
         socket.on('map_state', (players) => { 
@@ -198,7 +241,7 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
                         el.classList.remove('walking'); 
                         if (data.id === myId) { 
                             isMoving = false; 
-                            checkExits(data.x, data.y); 
+                            checkTriggers(data.x, data.y); 
                         }
                     }, duration * 1000); 
                 } else if(data.id === myId) { isMoving = false; }
@@ -213,13 +256,9 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
             document.querySelectorAll('.npc-entity').forEach(n => n.remove());
             npcs.forEach(npc => {
                 const div = document.createElement('div');
-                div.className = 'player npc-entity'; 
-                div.id = `npc-${npc._id}`;
-                div.style.left = npc.x + '%'; 
-                div.style.top = npc.y + '%'; 
-                div.style.zIndex = Math.floor(npc.y);
+                div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
+                div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
                 
-                // Imagem do NPC
                 if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:'))) {
                     div.style.backgroundImage = `url('${npc.skin}')`;
                 } else {
@@ -230,47 +269,31 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
                 label.className = 'player-name'; label.innerText = npc.name;
                 div.appendChild(label);
 
-                // --- LÓGICA DE INTERAÇÃO CORRIGIDA (DISTÂNCIA SEGURA) ---
                 div.onclick = (e) => { 
                     e.stopPropagation(); 
-                    
                     const myPlayer = document.getElementById(`p-${myId}`);
                     const currX = parseFloat(myPlayer.style.left);
                     const currY = parseFloat(myPlayer.style.top);
-
-                    // Vetor de direção até o NPC
-                    const dx = npc.x - currX;
-                    const dy = npc.y - currY;
+                    const dx = npc.x - currX; const dy = npc.y - currY;
                     const totalDist = Math.hypot(dx, dy);
-                    
-                    // Distância para parar antes (em %, aprox 4% é o tamanho de um char)
-                    const STOP_DISTANCE = 4.5; 
+                    const STOP_DISTANCE = 6; // Distância segura
 
-                    // Se já estiver muito perto, só interage sem andar
                     if (totalDist <= STOP_DISTANCE) {
                         if(typeof interactWithNPC === 'function') interactWithNPC(npc);
                         return;
                     }
 
-                    // Calcula o ponto de parada (interpolação linear)
-                    // "Ande tudo, menos os últimos 4.5%"
                     const ratio = (totalDist - STOP_DISTANCE) / totalDist;
                     const targetX = currX + (dx * ratio);
                     const targetY = currY + (dy * ratio);
-
-                    // Verifica se esse ponto de parada não é dentro de uma parede
                     const safeDest = getSafeTarget(currX, currY, targetX, targetY);
 
                     isMoving = true;
                     socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
-
-                    // Calcula tempo real para chegar no ponto seguro
                     const distToWalk = Math.hypot(safeDest.x - currX, safeDest.y - currY);
                     const travelTime = (distToWalk / MOVEMENT_SPEED) * 1000;
 
-                    setTimeout(() => {
-                        if(typeof interactWithNPC === 'function') interactWithNPC(npc);
-                    }, travelTime);
+                    setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(npc); }, travelTime);
                 };
                 gameArea.appendChild(div);
             });
@@ -279,12 +302,22 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
         // --- BATALHA ---
         socket.on('encounter_found', () => {
              if(typeof showToast === 'function') showToast('🌿 Um Monstro selvagem apareceu!');
-             if(typeof showLoading === 'function') showLoading('Entrando em batalha...', 'zoom');
+             if(typeof showLoading === 'function') showLoading('Iniciando Batalha...', 'zoom');
+             
+             const p = document.getElementById(`p-${myId}`);
+             const cx = p ? parseFloat(p.style.left) : 50;
+             const cy = p ? parseFloat(p.style.top) : 50;
+
              setTimeout(() => {
                  fetch('/battle/wild', { 
                      method: 'POST', 
                      headers: {'Content-Type':'application/json'}, 
-                     body: JSON.stringify({userId: window.CURRENT_USER_ID, currentMap: 'city'}) 
+                     body: JSON.stringify({
+                         userId: window.CURRENT_USER_ID, 
+                         currentMap: currentMapId, // Envia 'city' ou 'house_ID'
+                         currentX: cx,
+                         currentY: cy
+                     }) 
                  })
                  .then(r => r.json())
                  .then(d => { 
@@ -298,10 +331,10 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
                      if(typeof hideLoading === 'function') hideLoading();
                      if(typeof showToast === 'function') showToast("Erro de conexão.", {bg:'#e74c3c'});
                  });
-             }, 800);
+             }, 1000);
         });
 
-        // --- RENDERIZAÇÃO E MOVIMENTO ---
+        // --- RENDERIZAÇÃO E LÓGICA DE MAPA ---
         renderMapObjects();
 
         function createPlayerElement(p) { 
@@ -318,29 +351,101 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
 
         function getSafeTarget(currX, currY, targetX, targetY) {
             const steps = 25;
+            // Seleciona o mapa de colisão correto (Cidade ou Casa Atual)
+            let activeCollisions = collisionMap;
+            if (currentMapId !== 'city') {
+                const house = housesData.find(h => h.id === currentMapId);
+                if (house && house.collisions) activeCollisions = house.collisions;
+                else activeCollisions = []; // Casa sem colisão definida
+            }
+
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
                 const px = currX + (targetX - currX) * t;
                 const py = currY + (targetY - currY) * t;
-                const hit = collisionMap.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                const hit = activeCollisions.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
                 if (hit) return { x: currX + (targetX - currX) * ((i - 1) / steps), y: currY + (targetY - currY) * ((i - 1) / steps) };
             }
             return { x: targetX, y: targetY };
         }
 
-        function checkExits(x, y) {
-            if (y > 95 && x > 30 && x < 70) {
-                if(typeof showLoading === 'function') showLoading('Entrando na Floresta...', 'down');
-                setTimeout(() => window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID, 200);
-            }
-            else if (y < 5 && x > 30 && x < 70) {
-                if(typeof showLoading === 'function') showLoading('Voltando para a cidade...', 'up');
-                setTimeout(() => window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID, 200);
+        function checkTriggers(x, y) {
+            // 1. Saídas da Cidade (Só se estiver na cidade)
+            if (currentMapId === 'city') {
+                if (y > 95 && x > 30 && x < 70) {
+                    if(typeof showLoading === 'function') showLoading('Entrando na Floresta...', 'down');
+                    setTimeout(() => window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID, 200);
+                    return;
+                }
+                else if (y < 5 && x > 30 && x < 70) {
+                    if(typeof showLoading === 'function') showLoading('Voltando para a cidade...', 'up');
+                    setTimeout(() => window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID, 200);
+                    return;
+                }
+
+                // 2. Entradas de Casas (Zonas Azuis)
+                const houseHit = housesData.find(h => 
+                    x >= h.trigger.x && x <= (h.trigger.x + h.trigger.w) &&
+                    y >= h.trigger.y && y <= (h.trigger.y + h.trigger.h)
+                );
+
+                if (houseHit) {
+                    enterHouse(houseHit);
+                }
+            } 
+            // 3. Saída da Casa (Zona Amarela)
+            else {
+                const house = housesData.find(h => h.id === currentMapId);
+                if (house && house.exit) {
+                    if (x >= house.exit.x && x <= (house.exit.x + house.exit.w) &&
+                        y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
+                        exitHouse(house);
+                    }
+                }
             }
         }
 
+        function enterHouse(house) {
+            if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
+            setTimeout(() => {
+                currentMapId = house.id;
+                enterHouseVisuals(house);
+                
+                // Teleporta player para o centro da casa (ou spawn definido)
+                const spawnX = 50; const spawnY = 80;
+                socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
+                
+                if(typeof hideLoading === 'function') hideLoading();
+            }, 500);
+        }
+
+        function enterHouseVisuals(house) {
+            gameArea.style.backgroundImage = `url('${house.bg}')`;
+            gameArea.classList.add('indoor-mode');
+            renderMapObjects(); // Redesenha (agora vai desenhar vazio ou colisões da casa)
+        }
+
+        function exitHouse(house) {
+            if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
+            setTimeout(() => {
+                currentMapId = 'city';
+                gameArea.style.backgroundImage = `url('/uploads/route_map.png')`;
+                gameArea.classList.remove('indoor-mode');
+                
+                // Teleporta para a porta da casa (trigger)
+                const exitX = house.trigger.x + (house.trigger.w / 2);
+                const exitY = house.trigger.y + house.trigger.h + 5;
+                socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
+                
+                renderMapObjects();
+                if(typeof hideLoading === 'function') hideLoading();
+            }, 500);
+        }
+
         gameArea.addEventListener('click', (e) => {
-            if (devMode) return;
+            if (devMode && !editingHouseId && currentTool !== 'house') return; // Bloqueia andar se editando cidade
+            if (devMode && editingHouseId && (currentTool === 'innerCollision' || currentTool === 'exit')) return; // Bloqueia andar se editando casa
+
             if (e.target.closest('#chatBar') || isMoving || e.target.classList.contains('npc-entity')) return;
 
             const rect = gameArea.getBoundingClientRect();
@@ -360,34 +465,185 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
             const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
             const travelTime = (dist / MOVEMENT_SPEED) * 1000;
             
-            const testEl = document.elementFromPoint(
-                rect.left + (safeDest.x/100 * rect.width), 
-                rect.top + (safeDest.y/100 * rect.height)
-            );
-            
-            if (testEl && testEl.classList.contains('grass-patch')) {
-                setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime);
+            // Checa grama apenas se estiver na cidade
+            if (currentMapId === 'city') {
+                const testEl = document.elementFromPoint(
+                    rect.left + (safeDest.x/100 * rect.width), 
+                    rect.top + (safeDest.y/100 * rect.height)
+                );
+                if (testEl && testEl.classList.contains('grass-patch')) {
+                    setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime);
+                }
             }
         });
 
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
 
-        // --- LÓGICA DE ADMIN ---
+        // ============================================================
+        // --- LÓGICA DE ADMIN (ATUALIZADA PARA CASAS) ---
+        // ============================================================
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
-        function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
-        function selectTool(tool) { currentTool = tool; document.getElementById('btnToolCol').classList.remove('active'); document.getElementById('btnToolGrass').classList.remove('active'); if(tool === 'collision') document.getElementById('btnToolCol').classList.add('active'); if(tool === 'grass') document.getElementById('btnToolGrass').classList.add('active'); }
-        function undoLast() { if(currentTool === 'collision' && collisionMap.length > 0) collisionMap.pop(); else if(currentTool === 'grass' && grassMap.length > 0) grassMap.pop(); renderMapObjects(); }
-        function exportData() { const output = document.getElementById('adminOutput'); output.style.display = 'block'; output.value = `let collisionMap = ${JSON.stringify(collisionMap)};\nlet grassMap = ${JSON.stringify(grassMap)};`; output.select(); document.execCommand('copy'); if(typeof showToast === 'function') showToast("Código copiado!"); }
-        function renderMapObjects() {
-            const colContainer = document.getElementById('collision-container'); const grassContainer = document.getElementById('grass-container');
-            colContainer.innerHTML = ''; grassContainer.innerHTML = '';
-            collisionMap.forEach(r => { const d = document.createElement('div'); d.className = 'collision-box'; if(isAdmin && devMode) d.classList.add('dev-collision'); d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%'; colContainer.appendChild(d); });
-            grassMap.forEach((r, i) => { const d = document.createElement('div'); d.className = 'grass-patch'; d.id = 'city_grass_' + i; if(isAdmin && devMode) d.classList.add('dev-grass'); d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%'; grassContainer.appendChild(d); });
+        
+        function toggleDevMode() { 
+            devMode = !devMode; 
+            document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; 
+            document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; 
+            
+            // Reseta visualização
+            if(!devMode && editingHouseId) exitHouseEditor();
+            renderMapObjects(); 
         }
-        gameArea.addEventListener('mousedown', (e) => { if(!devMode || !currentTool) return; e.stopPropagation(); isDrawing = true; const rect = gameArea.getBoundingClientRect(); startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; tempBox = document.createElement('div'); tempBox.className = 'drawing-box'; if(currentTool === 'collision') tempBox.classList.add('dev-collision'); else tempBox.classList.add('dev-grass'); tempBox.style.left = startPoint.x+'%'; tempBox.style.top = startPoint.y+'%'; document.getElementById('dev-layer').appendChild(tempBox); });
-        gameArea.addEventListener('mousemove', (e) => { if(!isDrawing || !tempBox) return; const rect = gameArea.getBoundingClientRect(); const curX = ((e.clientX - rect.left)/rect.width)*100; const curY = ((e.clientY - rect.top)/rect.height)*100; const w = Math.abs(curX - startPoint.x); const h = Math.abs(curY - startPoint.y); tempBox.style.width = w+'%'; tempBox.style.height = h+'%'; tempBox.style.left = Math.min(curX, startPoint.x)+'%'; tempBox.style.top = Math.min(curY, startPoint.y)+'%'; });
-        gameArea.addEventListener('mouseup', (e) => { if(!isDrawing) return; isDrawing = false; if(tempBox) { const newRect = { x: parseFloat(parseFloat(tempBox.style.left).toFixed(1)), y: parseFloat(parseFloat(tempBox.style.top).toFixed(1)), w: parseFloat(parseFloat(tempBox.style.width).toFixed(1)), h: parseFloat(parseFloat(tempBox.style.height).toFixed(1)) }; if(newRect.w > 1 && newRect.h > 1) { if(currentTool === 'collision') collisionMap.push(newRect); else grassMap.push(newRect); } tempBox.remove(); tempBox = null; renderMapObjects(); } });
+
+        function selectTool(tool) { 
+            currentTool = tool; 
+            document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active'));
+            const btnId = {
+                'collision': 'btnToolCol', 'grass': 'btnToolGrass', 'house': 'btnToolHouse',
+                'innerCollision': 'btnToolInnerCol', 'exit': 'btnToolExit'
+            }[tool];
+            if(btnId) document.getElementById(btnId).classList.add('active');
+        }
+
+        function undoLast() { 
+            if (editingHouseId) {
+                const house = housesData.find(h => h.id === editingHouseId);
+                if (currentTool === 'innerCollision' && house.collisions.length > 0) house.collisions.pop();
+                if (currentTool === 'exit') house.exit = null;
+            } else {
+                if(currentTool === 'collision' && collisionMap.length > 0) collisionMap.pop(); 
+                else if(currentTool === 'grass' && grassMap.length > 0) grassMap.pop();
+                else if(currentTool === 'house' && housesData.length > 0) housesData.pop();
+            }
+            renderMapObjects(); 
+        }
+
+        function exportData() { 
+            const output = document.getElementById('adminOutput'); 
+            output.style.display = 'block'; 
+            output.value = `let collisionMap = ${JSON.stringify(collisionMap)};\nlet grassMap = ${JSON.stringify(grassMap)};\nlet housesData = ${JSON.stringify(housesData)};`; 
+            output.select(); document.execCommand('copy'); 
+            if(typeof showToast === 'function') showToast("Código copiado!"); 
+        }
+
+        function renderMapObjects() {
+            const colContainer = document.getElementById('collision-container'); 
+            const grassContainer = document.getElementById('grass-container');
+            const houseContainer = document.getElementById('house-container');
+            
+            colContainer.innerHTML = ''; grassContainer.innerHTML = ''; houseContainer.innerHTML = '';
+
+            if (editingHouseId) {
+                // Renderiza coisas da casa
+                const house = housesData.find(h => h.id === editingHouseId);
+                if (house) {
+                    if (house.collisions) house.collisions.forEach(r => {
+                        const d = document.createElement('div'); d.className = 'collision-box dev-collision';
+                        d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
+                        colContainer.appendChild(d);
+                    });
+                    if (house.exit) {
+                        const d = document.createElement('div'); d.className = 'house-exit dev-exit';
+                        d.style.left = house.exit.x+'%'; d.style.top = house.exit.y+'%'; d.style.width = house.exit.w+'%'; d.style.height = house.exit.h+'%';
+                        houseContainer.appendChild(d);
+                    }
+                }
+            } else {
+                // Renderiza coisas da cidade
+                collisionMap.forEach(r => { 
+                    const d = document.createElement('div'); d.className = 'collision-box'; 
+                    if(isAdmin && devMode) d.classList.add('dev-collision'); 
+                    d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%'; 
+                    colContainer.appendChild(d); 
+                });
+                grassMap.forEach((r, i) => { 
+                    const d = document.createElement('div'); d.className = 'grass-patch'; d.id = 'city_grass_' + i; 
+                    if(isAdmin && devMode) d.classList.add('dev-grass'); 
+                    d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%'; 
+                    grassContainer.appendChild(d); 
+                });
+                housesData.forEach(h => {
+                    const d = document.createElement('div'); d.className = 'house-trigger';
+                    if(isAdmin && devMode) {
+                        d.classList.add('dev-house');
+                        d.onclick = (e) => { e.stopPropagation(); if(confirm('Editar interior desta casa?')) enterHouseEditor(h.id); };
+                    }
+                    d.style.left = h.trigger.x+'%'; d.style.top = h.trigger.y+'%'; d.style.width = h.trigger.w+'%'; d.style.height = h.trigger.h+'%';
+                    houseContainer.appendChild(d);
+                });
+            }
+        }
+
+        function enterHouseEditor(hId) {
+            editingHouseId = hId;
+            const house = housesData.find(h => h.id === hId);
+            gameArea.style.backgroundImage = `url('${house.bg}')`;
+            gameArea.classList.add('indoor-mode');
+            document.getElementById('cityTools').style.display = 'none';
+            document.getElementById('houseTools').style.display = 'block';
+            renderMapObjects();
+        }
+
+        function exitHouseEditor() {
+            editingHouseId = null;
+            gameArea.style.backgroundImage = `url('/uploads/route_map.png')`;
+            gameArea.classList.remove('indoor-mode');
+            document.getElementById('cityTools').style.display = 'block';
+            document.getElementById('houseTools').style.display = 'none';
+            renderMapObjects();
+        }
+
+        gameArea.addEventListener('mousedown', (e) => { 
+            if(!devMode || !currentTool) return; 
+            e.stopPropagation(); isDrawing = true; 
+            const rect = gameArea.getBoundingClientRect(); 
+            startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; 
+            tempBox = document.createElement('div'); tempBox.className = 'drawing-box'; 
+            
+            if(currentTool === 'collision' || currentTool === 'innerCollision') tempBox.classList.add('dev-collision'); 
+            else if(currentTool === 'grass') tempBox.classList.add('dev-grass'); 
+            else if(currentTool === 'house') tempBox.classList.add('dev-house');
+            else if(currentTool === 'exit') tempBox.classList.add('dev-exit');
+
+            tempBox.style.left = startPoint.x+'%'; tempBox.style.top = startPoint.y+'%'; 
+            document.getElementById('dev-layer').appendChild(tempBox); 
+        });
+
+        gameArea.addEventListener('mousemove', (e) => { 
+            if(!isDrawing || !tempBox) return; 
+            const rect = gameArea.getBoundingClientRect(); 
+            const curX = ((e.clientX - rect.left)/rect.width)*100; 
+            const curY = ((e.clientY - rect.top)/rect.height)*100; 
+            const w = Math.abs(curX - startPoint.x); const h = Math.abs(curY - startPoint.y); 
+            tempBox.style.width = w+'%'; tempBox.style.height = h+'%'; 
+            tempBox.style.left = Math.min(curX, startPoint.x)+'%'; tempBox.style.top = Math.min(curY, startPoint.y)+'%'; 
+        });
+
+        gameArea.addEventListener('mouseup', (e) => { 
+            if(!isDrawing) return; isDrawing = false; 
+            if(tempBox) { 
+                const newRect = { x: parseFloat(parseFloat(tempBox.style.left).toFixed(1)), y: parseFloat(parseFloat(tempBox.style.top).toFixed(1)), w: parseFloat(parseFloat(tempBox.style.width).toFixed(1)), h: parseFloat(parseFloat(tempBox.style.height).toFixed(1)) }; 
+                
+                if(newRect.w > 1 && newRect.h > 1) { 
+                    if (editingHouseId) {
+                        const house = housesData.find(h => h.id === editingHouseId);
+                        if(currentTool === 'innerCollision') { if(!house.collisions) house.collisions = []; house.collisions.push(newRect); }
+                        if(currentTool === 'exit') house.exit = newRect;
+                    } else {
+                        if(currentTool === 'collision') collisionMap.push(newRect); 
+                        else if(currentTool === 'grass') grassMap.push(newRect);
+                        else if(currentTool === 'house') {
+                            const hId = prompt("ID da Casa (ex: house1):");
+                            const bg = prompt("URL/Base64 do Fundo:");
+                            if(hId && bg) {
+                                housesData.push({ id: hId, bg: bg, trigger: newRect, collisions: [], exit: null });
+                            }
+                        }
+                    }
+                } 
+                tempBox.remove(); tempBox = null; renderMapObjects(); 
+            } 
+        });
     </script>
 </body>
 </html>
