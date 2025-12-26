@@ -409,13 +409,32 @@
             window.showToast = function(msg) { const c = document.getElementById('toastContainer'); const d = document.createElement('div'); d.style.background='#333'; d.style.color='#fff'; d.style.padding='10px 20px'; d.style.marginBottom='10px'; d.innerText=msg; c.appendChild(d); setTimeout(() => d.remove(), 3000); }
         }
 
-        // Batalha (Gatilho)
+        // Batalha (Gatilho com Tratamento de Erro)
         socket.on('encounter_found', () => {
-             if(typeof showToast === 'function') showToast('🌿 Um Monstro selvagem apareceu!', {bg:'#e74c3c'});
-             if(typeof showLoading === 'function') showLoading('Entrando em batalha...');
+             if(typeof showToast === 'function') showToast('🌿 Algo se mexeu na grama...', {bg:'#27ae60'});
+             
+             // Pequeno delay dramático
              setTimeout(() => {
-                 fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({userId: window.CURRENT_USER_ID, currentMap: 'city'}) }).then(r=>r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; });
-             }, 1000);
+                 fetch('/battle/wild', { 
+                     method: 'POST', 
+                     headers: {'Content-Type':'application/json'}, 
+                     body: JSON.stringify({userId: window.CURRENT_USER_ID, currentMap: 'city'}) 
+                 })
+                 .then(r => r.json())
+                 .then(d => { 
+                     if(d.battleId) {
+                         if(typeof showLoading === 'function') showLoading('Entrando em batalha...');
+                         window.location.href = '/battle/' + d.battleId; 
+                     } else {
+                         // AQUI ESTÁ O AVISO QUE FALTAVA
+                         if(typeof showToast === 'function') showToast(d.error || "Nenhum Pokémon apareceu.", {bg:'#f39c12'});
+                     }
+                 })
+                 .catch(err => {
+                     console.error(err);
+                     if(typeof showToast === 'function') showToast("Erro de conexão.", {bg:'#e74c3c'});
+                 });
+             }, 800);
         });
     </script>
 </body>
