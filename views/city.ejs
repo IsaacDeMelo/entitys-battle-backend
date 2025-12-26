@@ -213,9 +213,13 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
             document.querySelectorAll('.npc-entity').forEach(n => n.remove());
             npcs.forEach(npc => {
                 const div = document.createElement('div');
-                div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
-                div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
+                div.className = 'player npc-entity'; 
+                div.id = `npc-${npc._id}`;
+                div.style.left = npc.x + '%'; 
+                div.style.top = npc.y + '%'; 
+                div.style.zIndex = Math.floor(npc.y);
                 
+                // Imagem do NPC
                 if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:'))) {
                     div.style.backgroundImage = `url('${npc.skin}')`;
                 } else {
@@ -226,22 +230,43 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
                 label.className = 'player-name'; label.innerText = npc.name;
                 div.appendChild(label);
 
+                // --- LÓGICA DE INTERAÇÃO CORRIGIDA (DISTÂNCIA SEGURA) ---
                 div.onclick = (e) => { 
                     e.stopPropagation(); 
                     
-                    // Lógica de andar até o NPC
-                    const targetX = npc.x;
-                    const targetY = npc.y;
                     const myPlayer = document.getElementById(`p-${myId}`);
                     const currX = parseFloat(myPlayer.style.left);
                     const currY = parseFloat(myPlayer.style.top);
+
+                    // Vetor de direção até o NPC
+                    const dx = npc.x - currX;
+                    const dy = npc.y - currY;
+                    const totalDist = Math.hypot(dx, dy);
+                    
+                    // Distância para parar antes (em %, aprox 4% é o tamanho de um char)
+                    const STOP_DISTANCE = 4.5; 
+
+                    // Se já estiver muito perto, só interage sem andar
+                    if (totalDist <= STOP_DISTANCE) {
+                        if(typeof interactWithNPC === 'function') interactWithNPC(npc);
+                        return;
+                    }
+
+                    // Calcula o ponto de parada (interpolação linear)
+                    // "Ande tudo, menos os últimos 4.5%"
+                    const ratio = (totalDist - STOP_DISTANCE) / totalDist;
+                    const targetX = currX + (dx * ratio);
+                    const targetY = currY + (dy * ratio);
+
+                    // Verifica se esse ponto de parada não é dentro de uma parede
                     const safeDest = getSafeTarget(currX, currY, targetX, targetY);
 
                     isMoving = true;
                     socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
 
-                    const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
-                    const travelTime = (dist / MOVEMENT_SPEED) * 1000;
+                    // Calcula tempo real para chegar no ponto seguro
+                    const distToWalk = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+                    const travelTime = (distToWalk / MOVEMENT_SPEED) * 1000;
 
                     setTimeout(() => {
                         if(typeof interactWithNPC === 'function') interactWithNPC(npc);
