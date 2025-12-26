@@ -11,7 +11,7 @@ const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTy
 const { MONGO_URI } = require('./config'); 
 
 const SKIN_COUNT = 12; 
-
+const GLOBAL_GRASS_CHANCE = 0.35
 // --- CONEXÃO BANCO ---
 mongoose.connect(MONGO_URI)
     .then(async () => {
