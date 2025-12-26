@@ -25,7 +25,7 @@
             z-index: 1; isolation: isolate; 
         }
 
-        /* --- 2. JOGADOR --- */
+        /* --- 2. ENTIDADES (PLAYERS & NPCS) --- */
         .player { 
             position: absolute; width: 28px; height: 28px; 
             background-size: 400% auto; image-rendering: pixelated; 
@@ -36,8 +36,18 @@
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.4s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
-        .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
+        
+        .player[data-dir="down"] { background-position-y: 0%; } 
+        .player[data-dir="left"] { background-position-y: 33.33%; } 
+        .player[data-dir="right"] { background-position-y: 66.66%; } 
+        .player[data-dir="up"] { background-position-y: 100%; }
+        
         .player-name { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 1px 4px; border-radius: 3px; font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
+
+        /* Estilo específico para NPCs */
+        .npc-entity { cursor: pointer; z-index: 11; }
+        .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; }
+        .npc-entity:hover { filter: brightness(1.2) drop-shadow(0 0 5px #f1c40f); }
 
         /* --- 3. UI ELEMENTS --- */
         .chat-bubble { position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 3px 6px; border-radius: 6px; border: 1px solid #333; font-size: 0.6rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
@@ -45,6 +55,8 @@
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        
+        /* Toast e Loader agora usam estilos base do Common.js mas mantemos aqui para garantir caso o CSS externo falhe */
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
@@ -52,27 +64,16 @@
         .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- 4. ZONAS ESPECIAIS (Visuais Finais) --- */
+        /* --- 4. ZONAS (Colisão e Grama) --- */
         .collision-box { position: absolute; background: transparent; pointer-events: none; z-index: 5; }
         .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
         .map-exit { position: absolute; z-index: 20; background: transparent; }
 
         /* --- 5. ADMIN TOOL STYLES --- */
-        #adminToolbar {
-            position: fixed; top: 10px; right: 10px; z-index: 10000;
-            background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; border: 1px solid #f1c40f;
-            display: none; flex-direction: column; gap: 5px; color: white; font-size: 0.7rem;
-            max-width: 200px;
-        }
-        #adminToolbar button {
-            background: #333; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; font-family: 'Roboto';
-        }
+        #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 5px; color: white; font-size: 0.7rem; max-width: 200px; }
+        #adminToolbar button { background: #333; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; font-family: 'Roboto'; }
         #adminToolbar button.active { background: #f1c40f; color: black; font-weight: bold; }
-        #adminOutput { 
-            width: 100%; height: 100px; background: #111; color: #0f0; border: none; font-family: monospace; font-size: 0.6rem; margin-top: 5px; display:none; 
-        }
-        
-        /* Estilo visual durante edição */
+        #adminOutput { width: 100%; height: 100px; background: #111; color: #0f0; border: none; font-family: monospace; font-size: 0.6rem; margin-top: 5px; display:none; }
         .dev-collision { background: rgba(255, 0, 0, 0.4) !important; border: 1px dashed red; }
         .dev-grass { background: rgba(0, 255, 0, 0.4) !important; border: 1px dashed green; }
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
@@ -97,85 +98,65 @@
     <% } %>
 
     <div id="gameArea">
+        <!-- Camadas -->
         <div id="collision-container"></div>
         <div id="grass-container"></div>
-        <div id="dev-layer"></div> <!-- Onde desenhamos -->
+        <div id="dev-layer"></div>
 
-        <!-- SAÍDAS (Fixas ou adicionar ferramenta depois) -->
+        <!-- SAÍDAS -->
         <div id="exit-top" class="map-exit" style="top: 0; left: 40%; width: 20%; height: 5%;"></div>
         <div id="exit-bottom" class="map-exit" style="bottom: 0; left: 40%; width: 20%; height: 5%;"></div>
 
+        <!-- Chat UI -->
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..."><button id="chatSend">💬</button></div>
     </div>
     
+    <!-- Elementos Globais -->
     <div id="toastContainer"></div>
     <div id="loader" class="loader-overlay show"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
     <!-- SCRIPTS -->
     <script>
+        // Variáveis Globais (usadas pelo common.js)
         const socket = io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
+        window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
 
+        // Configurações do Mapa
         const startX = <%= startX %>;
         const startY = <%= startY %>;
         let myId = null;
         const MOVEMENT_SPEED = 50; 
         let isMoving = false;
 
-        // --- DADOS INICIAIS (COLE AQUI O QUE O GERADOR CRIAR) ---
-        // Se estiver vazio, use o modo Admin para criar e cole o resultado aqui.
+        // SEUS DADOS GERADOS (Mantidos)
+        let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8}];
+        let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
+    </script>
 
-let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8}];
+    <!-- Importa Common.js (Toast, NPCs, Loading, Batalhas) -->
+    <script src="/scripts/common.js"></script>
 
-let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-
-        // --- RENDERIZAÇÃO INICIAL ---
-        function renderMapObjects() {
-            const colContainer = document.getElementById('collision-container');
-            const grassContainer = document.getElementById('grass-container');
-            colContainer.innerHTML = ''; 
-            grassContainer.innerHTML = '';
-
-            collisionMap.forEach(r => {
-                const d = document.createElement('div');
-                d.className = 'collision-box';
-                // Se for Admin, mostra vermelho pra saber onde está
-                if(isAdmin && devMode) d.classList.add('dev-collision');
-                d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
-                colContainer.appendChild(d);
-            });
-
-            grassMap.forEach((r, i) => {
-                const d = document.createElement('div');
-                d.className = 'grass-patch';
-                d.id = 'grass-' + i;
-                if(isAdmin && devMode) d.classList.add('dev-grass');
-                d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
-                grassContainer.appendChild(d);
-            });
-        }
-
+    <script>
         // ==========================================
         // SISTEMA DE ADMIN / DEV MODE
         // ==========================================
         let devMode = false;
-        let currentTool = null; // 'collision' | 'grass'
+        let currentTool = null; 
         let isDrawing = false;
         let startPoint = {x:0, y:0};
         let tempBox = null;
 
-        if(isAdmin) {
-            document.getElementById('adminToolbar').style.display = 'flex';
-        }
+        if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
 
         function toggleDevMode() {
             devMode = !devMode;
             document.getElementById('devTools').style.display = devMode ? 'flex' : 'none';
             document.getElementById('btnDevMode').innerText = devMode ? "Desativar Edição" : "Ativar Edição";
-            renderMapObjects(); // Atualiza visual das caixas
+            renderMapObjects();
         }
 
         function selectTool(tool) {
@@ -195,113 +176,100 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
         function exportData() {
             const output = document.getElementById('adminOutput');
             output.style.display = 'block';
-            
             let code = `// COPIE E SUBSTITUA AS VARIÁVEIS NO SCRIPT:\n`;
             code += `let collisionMap = ${JSON.stringify(collisionMap)};\n\n`;
             code += `let grassMap = ${JSON.stringify(grassMap)};`;
-            
             output.value = code;
             output.select();
             document.execCommand('copy');
-            alert("Código copiado! Cole no seu arquivo city.ejs na área de variáveis.");
+            if(typeof showToast === 'function') showToast("Código copiado!");
         }
 
-        // LÓGICA DE DESENHO
-        const gameArea = document.getElementById('gameArea');
+        function renderMapObjects() {
+            const colContainer = document.getElementById('collision-container');
+            const grassContainer = document.getElementById('grass-container');
+            colContainer.innerHTML = ''; 
+            grassContainer.innerHTML = '';
 
+            collisionMap.forEach(r => {
+                const d = document.createElement('div');
+                d.className = 'collision-box';
+                if(isAdmin && devMode) d.classList.add('dev-collision');
+                d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
+                colContainer.appendChild(d);
+            });
+
+            grassMap.forEach((r, i) => {
+                const d = document.createElement('div');
+                d.className = 'grass-patch';
+                d.id = 'grass-' + i;
+                if(isAdmin && devMode) d.classList.add('dev-grass');
+                d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
+                grassContainer.appendChild(d);
+            });
+        }
+
+        // Lógica de Desenho Admin
+        const gameArea = document.getElementById('gameArea');
         gameArea.addEventListener('mousedown', (e) => {
             if(!devMode || !currentTool) return;
-            e.stopPropagation(); // Impede andar
-            isDrawing = true;
-
+            e.stopPropagation(); isDrawing = true;
             const rect = gameArea.getBoundingClientRect();
-            const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-            const yPct = ((e.clientY - rect.top) / rect.height) * 100;
-            
-            startPoint = {x: xPct, y: yPct};
-
+            startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100};
             tempBox = document.createElement('div');
             tempBox.className = 'drawing-box';
-            if(currentTool === 'collision') tempBox.classList.add('dev-collision');
-            else tempBox.classList.add('dev-grass');
-            
-            tempBox.style.left = xPct + '%';
-            tempBox.style.top = yPct + '%';
+            if(currentTool === 'collision') tempBox.classList.add('dev-collision'); else tempBox.classList.add('dev-grass');
+            tempBox.style.left = startPoint.x+'%'; tempBox.style.top = startPoint.y+'%';
             document.getElementById('dev-layer').appendChild(tempBox);
         });
 
         gameArea.addEventListener('mousemove', (e) => {
             if(!isDrawing || !tempBox) return;
-            
             const rect = gameArea.getBoundingClientRect();
-            const curX = ((e.clientX - rect.left) / rect.width) * 100;
-            const curY = ((e.clientY - rect.top) / rect.height) * 100;
-
-            const w = Math.abs(curX - startPoint.x);
-            const h = Math.abs(curY - startPoint.y);
-            const l = Math.min(curX, startPoint.x);
-            const t = Math.min(curY, startPoint.y);
-
-            tempBox.style.width = w + '%';
-            tempBox.style.height = h + '%';
-            tempBox.style.left = l + '%';
-            tempBox.style.top = t + '%';
+            const curX = ((e.clientX - rect.left)/rect.width)*100;
+            const curY = ((e.clientY - rect.top)/rect.height)*100;
+            const w = Math.abs(curX - startPoint.x); const h = Math.abs(curY - startPoint.y);
+            tempBox.style.width = w+'%'; tempBox.style.height = h+'%';
+            tempBox.style.left = Math.min(curX, startPoint.x)+'%'; tempBox.style.top = Math.min(curY, startPoint.y)+'%';
         });
 
         gameArea.addEventListener('mouseup', (e) => {
             if(!isDrawing) return;
             isDrawing = false;
             if(tempBox) {
-                // Salvar dados
-                const l = parseFloat(tempBox.style.left);
-                const t = parseFloat(tempBox.style.top);
-                const w = parseFloat(tempBox.style.width);
-                const h = parseFloat(tempBox.style.height);
-
-                // Evitar cliques acidentais minúsculos
-                if(w > 1 && h > 1) {
-                    const newRect = { x: parseFloat(l.toFixed(1)), y: parseFloat(t.toFixed(1)), w: parseFloat(w.toFixed(1)), h: parseFloat(h.toFixed(1)) };
-                    
-                    if(currentTool === 'collision') collisionMap.push(newRect);
-                    else grassMap.push(newRect);
+                const newRect = { 
+                    x: parseFloat(parseFloat(tempBox.style.left).toFixed(1)), 
+                    y: parseFloat(parseFloat(tempBox.style.top).toFixed(1)), 
+                    w: parseFloat(parseFloat(tempBox.style.width).toFixed(1)), 
+                    h: parseFloat(parseFloat(tempBox.style.height).toFixed(1)) 
+                };
+                if(newRect.w > 1 && newRect.h > 1) {
+                    if(currentTool === 'collision') collisionMap.push(newRect); else grassMap.push(newRect);
                 }
-
-                tempBox.remove();
-                tempBox = null;
-                renderMapObjects();
+                tempBox.remove(); tempBox = null; renderMapObjects();
             }
         });
 
         // ==========================================
-        // LÓGICA DO JOGO (Normal)
+        // LÓGICA DO JOGO
         // ==========================================
-        
-        // Renderizar mapa ao iniciar
         renderMapObjects();
 
         function getSafeTarget(currX, currY, targetX, targetY) {
-            const steps = 20;
+            const steps = 25;
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
                 const px = currX + (targetX - currX) * t;
                 const py = currY + (targetY - currY) * t;
-
-                const hit = collisionMap.some(rect => 
-                    px >= rect.x && px <= (rect.x + rect.w) &&
-                    py >= rect.y && py <= (rect.y + rect.h)
-                );
-
-                if (hit) {
-                    const safeT = (i - 1) / steps;
-                    return { x: currX + (targetX - currX) * safeT, y: currY + (targetY - currY) * safeT };
-                }
+                const hit = collisionMap.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                if (hit) return { x: currX + (targetX - currX) * ((i - 1) / steps), y: currY + (targetY - currY) * ((i - 1) / steps) };
             }
             return { x: targetX, y: targetY };
         }
 
         gameArea.addEventListener('click', (e) => {
-            if (devMode) return; // Se editando, não anda
-            if (e.target.closest('#chatBar') || isMoving) return;
+            if (devMode) return;
+            if (e.target.closest('#chatBar') || isMoving || e.target.classList.contains('npc-entity')) return;
 
             const rect = gameArea.getBoundingClientRect();
             const rawX = ((e.clientX - rect.left) / rect.width) * 100;
@@ -317,30 +285,32 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
             isMoving = true;
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
-            // Checar batalha (apenas se clicou na grama)
-            // Usamos ElementsFromPoint para ver se clicou numa div .grass-patch
-            if(!isMoving) return; // Só checa se andar
-            
+            // Lógica CORRIGIDA da Grama: Calcula tempo de chegada
             const elements = document.elementsFromPoint(e.clientX, e.clientY);
             const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
+            
+            const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+            const travelTime = (dist / MOVEMENT_SPEED) * 1000;
+
             if (grassEl) {
-                // Pequeno delay para chegar lá visualmente
-                setTimeout(() => socket.emit('check_encounter', { grassId: grassEl.id }), 500);
+                // Só checa encontro quando o personagem CHEGAR no local (após travelTime)
+                setTimeout(() => socket.emit('check_encounter', { grassId: grassEl.id }), travelTime);
             }
 
-            checkExits(safeDest.x, safeDest.y);
+            checkExits(safeDest.x, safeDest.y, travelTime);
         });
 
-        // Socket e Players
+        // Socket e Entidades
         socket.on('connect', () => { 
             myId = socket.id; 
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: startX, y: startY, direction: 'down' }); 
         });
 
         socket.on('map_state', (players) => { 
-            document.querySelectorAll('.player').forEach(el => el.remove()); 
+            document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); 
             players.forEach(createPlayer); 
-            document.getElementById('loader').classList.remove('show');
+            if(typeof hideLoading === 'function') hideLoading();
+            else document.getElementById('loader').classList.remove('show');
         });
         
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayer(p); });
@@ -377,6 +347,34 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
 
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if(el) el.remove(); });
 
+        // --- SISTEMA DE NPCS (Via Common.js ou Local) ---
+        socket.on('npcs_list', (npcs) => {
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
+            npcs.forEach(npc => {
+                const div = document.createElement('div');
+                div.className = 'player npc-entity'; 
+                div.id = `npc-${npc._id}`;
+                div.style.left = npc.x + '%'; 
+                div.style.top = npc.y + '%'; 
+                div.style.zIndex = Math.floor(npc.y);
+                
+                if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('/'))) div.style.backgroundImage = `url('${npc.skin}')`;
+                else div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`;
+                
+                const label = document.createElement('div');
+                label.className = 'player-name'; label.innerText = npc.name;
+                div.appendChild(label);
+
+                // Clique no NPC -> Função do Common.js
+                div.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if(typeof interactWithNPC === 'function') interactWithNPC(npc);
+                    else showToast("NPC: " + npc.dialogue);
+                };
+                gameArea.appendChild(div);
+            });
+        });
+
         function createPlayer(p) {
             const div = document.createElement('div');
             div.id = `p-${p.id}`;
@@ -388,24 +386,33 @@ let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"
             gameArea.appendChild(div);
         }
 
-        // Saídas e Util
-        function checkExits(destX, destY) {
-            const timeMs = (Math.hypot(destX - parseFloat(document.getElementById(`p-${myId}`).style.left), destY - parseFloat(document.getElementById(`p-${myId}`).style.top)) / MOVEMENT_SPEED) * 1000;
+        // Saídas
+        function checkExits(destX, destY, delay) {
             setTimeout(() => {
                 if (destY < 5 && destX > 30 && destX < 70) changeMap('forest');
                 else if (destY > 95 && destX > 30 && destX < 70) changeMap('lobby');
-            }, timeMs);
+            }, delay);
         }
-        function changeMap(d) { document.getElementById('loader').classList.add('show'); window.location.href = '/' + d + '?userId=' + window.CURRENT_USER_ID; }
+        function changeMap(d) { 
+            if(typeof showLoading === 'function') showLoading('Viajando...');
+            else document.getElementById('loader').classList.add('show');
+            window.location.href = '/' + d + '?userId=' + window.CURRENT_USER_ID; 
+        }
         
+        // Chat
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
         socket.on('chat_message', (d) => { const p = document.getElementById(`p-${d.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=d.msg; p.appendChild(b); setTimeout(()=>b.remove(), 4000); }});
-        function showToast(msg, opts={}) { const c = document.getElementById('toastContainer'); const d = document.createElement('div'); d.style.background = opts.bg || '#333'; d.style.color = '#fff'; d.style.padding = '10px 20px'; d.style.marginBottom = '10px'; d.style.borderRadius = '5px'; d.innerText = msg; c.appendChild(d); setTimeout(() => d.remove(), 3000); }
         
+        // Fallback de funções caso common.js falhe
+        if(typeof showToast !== 'function') {
+            window.showToast = function(msg) { const c = document.getElementById('toastContainer'); const d = document.createElement('div'); d.style.background='#333'; d.style.color='#fff'; d.style.padding='10px 20px'; d.style.marginBottom='10px'; d.innerText=msg; c.appendChild(d); setTimeout(() => d.remove(), 3000); }
+        }
+
+        // Batalha (Gatilho)
         socket.on('encounter_found', () => {
-             showToast('⚔️ Batalha encontrada!', {bg:'#e74c3c'});
-             document.getElementById('loader').classList.add('show');
+             if(typeof showToast === 'function') showToast('⚔️ Batalha encontrada!', {bg:'#e74c3c'});
+             if(typeof showLoading === 'function') showLoading('Entrando em batalha...');
              setTimeout(() => {
                  fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({userId: window.CURRENT_USER_ID, currentMap: 'city'}) }).then(r=>r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; });
              }, 1000);
