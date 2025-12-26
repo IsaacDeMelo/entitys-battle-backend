@@ -650,5 +650,128 @@ let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca8877735
             } 
         });
     </script>
+    <!-- ========================================== -->
+<!-- 🛠️ DEBUGGER SUPREMO (Cole antes de </body>) -->
+<!-- ========================================== -->
+<script>
+    (function installDebugger() {
+        console.warn("🛠️ DEBUGGER INICIADO 🛠️");
+
+        // 1. CRIAR PAINEL VISUAL
+        const debugPanel = document.createElement('div');
+        debugPanel.style.cssText = "position:fixed; top:10px; left:10px; background:rgba(0,0,0,0.9); color:#0f0; font-family:monospace; padding:10px; z-index:999999; border:2px solid #0f0; font-size:12px; pointer-events:none; min-width:250px;";
+        debugPanel.id = 'debug-panel';
+        document.body.appendChild(debugPanel);
+
+        // 2. INTERCEPTAR FUNÇÃO DE MOVIMENTO (Wrapper)
+        const originalGetSafeTarget = window.getSafeTarget;
+        window.getSafeTarget = function(currX, currY, targetX, targetY) {
+            console.groupCollapsed(`🔍 Análise de Movimento (${currX.toFixed(1)},${currY.toFixed(1)}) -> (${targetX.toFixed(1)},${targetY.toFixed(1)})`);
+            
+            // Verifica mapa atual
+            console.log("🗺️ Mapa Atual:", currentMapId);
+            
+            // Verifica colisões ativas
+            let activeCollisions = [];
+            if (currentMapId === 'city') {
+                activeCollisions = collisionMap;
+                console.log("🧱 Usando Colisões da: CIDADE");
+            } else {
+                const house = housesData.find(h => h.id === currentMapId);
+                if (house) {
+                    activeCollisions = house.collisions || [];
+                    console.log(`🏠 Usando Colisões da CASA (${house.id}) - Qtd Paredes: ${activeCollisions.length}`);
+                } else {
+                    console.error("❌ ERRO CRÍTICO: Mapa definido como '" + currentMapId + "' mas não existe no housesData!");
+                }
+            }
+
+            // Testa colisão imediata (Origem)
+            const stuckTest = activeCollisions.find(rect => currX >= rect.x && currX <= (rect.x + rect.w) && currY >= rect.y && currY <= (rect.y + rect.h));
+            if (stuckTest) {
+                console.error("⛔ PRESO! O jogador nasceu DENTRO de uma parede:", stuckTest);
+                document.getElementById('debug-panel').style.borderColor = "red";
+                // Desenha a parede problemática
+                const wall = document.createElement('div');
+                wall.style.cssText = `position:absolute; left:${stuckTest.x}%; top:${stuckTest.y}%; width:${stuckTest.w}%; height:${stuckTest.h}%; border: 2px solid red; background: rgba(255,0,0,0.5); z-index:9999; pointer-events:none;`;
+                document.getElementById('gameArea').appendChild(wall);
+                setTimeout(() => wall.remove(), 2000);
+            }
+
+            // Executa original
+            const result = originalGetSafeTarget(currX, currY, targetX, targetY);
+            
+            console.log("🎯 Resultado Final:", result);
+            if (result.x === currX && result.y === currY) {
+                console.warn("⚠️ Movimento BLOQUEADO (Target == Origin)");
+            }
+            console.groupEnd();
+            return result;
+        };
+
+        // 3. INTERCEPTAR CLIQUES (Para ver se algo bloqueia)
+        document.addEventListener('mousedown', (e) => {
+            console.log("🖱️ CLIQUE DETECTADO:", e.target);
+            const isClickBlocked = e.target.closest('#chatBar');
+            if(isClickBlocked) console.log("❌ Clique bloqueado pela UI");
+            
+            if (window.isTeleporting) console.warn("⛔ CLIQUE IGNORADO: isTeleporting = TRUE");
+            if (window.isMoving) console.warn("⛔ CLIQUE IGNORADO: isMoving = TRUE");
+        }, true); // Use Capture para pegar antes do jogo
+
+        // 4. LOOP DE MONITORAMENTO EM TEMPO REAL
+        setInterval(() => {
+            const myP = document.getElementById(`p-${window.myId || socket.id}`);
+            let posInfo = "JOGADOR NÃO ENCONTRADO";
+            
+            if (myP) {
+                const x = parseFloat(myP.style.left).toFixed(2);
+                const y = parseFloat(myP.style.top).toFixed(2);
+                posInfo = `X: ${x} | Y: ${y}`;
+            }
+
+            debugPanel.innerHTML = `
+                <strong>🕵️ DEBUGGER SUPREMO</strong><br>
+                -----------------------<br>
+                MAPA: <span style="color:yellow">${currentMapId}</span><br>
+                POSIÇÃO: ${posInfo}<br>
+                FLAGS:<br>
+                - isMoving: <span style="color:${window.isMoving ? 'red':'lime'}">${window.isMoving}</span><br>
+                - isTeleporting: <span style="color:${window.isTeleporting ? 'red':'lime'}">${window.isTeleporting}</span><br>
+                -----------------------<br>
+                <button onclick="forceUnstuck()" style="pointer-events:auto; cursor:pointer; background:red; color:white; border:none; padding:5px;">🚑 DESTRAVAR (FORCE)</button>
+                <button onclick="toggleGhost()" style="pointer-events:auto; cursor:pointer; background:blue; color:white; border:none; padding:5px;">👻 GHOST MODE</button>
+            `;
+        }, 100);
+
+        // FERRAMENTAS GLOBAIS
+        window.forceUnstuck = function() {
+            window.isTeleporting = false;
+            window.isMoving = false;
+            console.log("✅ Flags resetadas manualmente.");
+            
+            // Teleporta um pouco pro lado pra sair da parede
+            const myP = document.getElementById(`p-${window.myId || socket.id}`);
+            if(myP) {
+                const curX = parseFloat(myP.style.left);
+                socket.emit('move_player', { x: curX + 5, y: parseFloat(myP.style.top) });
+            }
+        };
+
+        window.ghostMode = false;
+        window.toggleGhost = function() {
+            window.ghostMode = !window.ghostMode;
+            if(window.ghostMode) {
+                window.oldGetSafe = window.getSafeTarget;
+                window.getSafeTarget = (cx, cy, tx, ty) => ({x: tx, y: ty}); // Atravessa tudo
+                alert("GHOST ATIVADO: Você atravessa paredes.");
+            } else {
+                window.getSafeTarget = window.oldGetSafe; // Restaura
+                alert("GHOST DESATIVADO.");
+            }
+        };
+
+    })();
+</script>
 </body>
 </html>
