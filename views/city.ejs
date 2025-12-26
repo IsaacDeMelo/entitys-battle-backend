@@ -76,7 +76,7 @@
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         
-        /* Loader Corrigido */
+        /* Loader - Garante que ele possa ser removido */
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -146,7 +146,6 @@
     </div>
     
     <div id="toastContainer"></div>
-    <!-- LOADER INICIAL SEMPRE PRESENTE -->
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
     <!-- VARS GLOBAIS -->
@@ -180,11 +179,14 @@
         }
 
         // ============================================================
-        // --- SEUS DADOS DE MAPA ---
+        // --- DADOS DO MAPA (ATUALIZADOS) ---
         // ============================================================
         let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
+        
         let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-        let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[],"exit":null}];
+        
+        // SEUS DADOS DA CASA (COM COLISÕES)
+        let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[{"x":0.7,"y":29,"w":24,"h":13.2},{"x":38.4,"y":29.3,"w":24,"h":13.7},{"x":57.3,"y":1.1,"w":5.1,"h":41.9},{"x":75.3,"y":50.5,"w":24.4,"h":20.4},{"x":87.8,"y":69.7,"w":12,"h":10.9},{"x":0.7,"y":46.9,"w":11.1,"h":10.1},{"x":0.9,"y":87.8,"w":4.7,"h":11.6},{"x":13.3,"y":92.2,"w":23.6,"h":7.8},{"x":62.9,"y":1.6,"w":36.9,"h":7.2},{"x":75.3,"y":5.5,"w":6.7,"h":13.2},{"x":75.8,"y":9.1,"w":23.8,"h":9.8}],"exit":null}];
         // ============================================================
     </script>
 
@@ -222,10 +224,11 @@
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); 
             players.forEach(createPlayerElement); 
             
-            // CORREÇÃO: Força remoção do loader e destrava movimento
+            // CORREÇÃO CRÍTICA PARA DESTRAVAR O JOGO
+            isMoving = false; 
+            const loader = document.getElementById('loader');
+            if(loader) loader.classList.remove('show');
             if(typeof hideLoading === 'function') hideLoading(); 
-            else document.getElementById('loader').classList.remove('show');
-            isMoving = false; // Garante que destrave ao receber estado do mapa
         });
         
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
@@ -326,7 +329,7 @@
                 activeCollisions = collisionMap; 
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                // Garante que usa colisão da casa ou fica vazio (sem colisão)
+                // CORREÇÃO: Pega as colisões da casa se existirem
                 if (house && house.collisions) activeCollisions = house.collisions;
                 else activeCollisions = []; 
             }
@@ -350,9 +353,8 @@
                 if (houseHit) enterHouse(houseHit);
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                // Trigger de saída (se existir no objeto exit ou usar a lógica de coordenadas)
-                // Usando a lógica do "tapete" da porta, geralmente na parte de baixo da casa
-                if (y > 90) { // Se andar muito para baixo dentro da casa, sai
+                // Trigger de saída (pela posição y > 90 que é a parte de baixo)
+                if (y > 90) { 
                     exitHouse(house);
                 } else if (house && house.exit && x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
                     exitHouse(house);
@@ -361,7 +363,7 @@
         }
 
         function enterHouse(house) {
-            isMoving = false; // CORREÇÃO IMPORTANTE: Destrava movimento
+            isMoving = false; // Destrava preventivamente
             if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
             document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
 
@@ -374,14 +376,14 @@
                 const spawnX = 50; const spawnY = 80;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
                 
-                // Força remoção do loader
+                const loader = document.getElementById('loader');
+                if(loader) loader.classList.remove('show');
                 if(typeof hideLoading === 'function') hideLoading();
-                else document.getElementById('loader').classList.remove('show');
             }, 500);
         }
 
         function exitHouse(house) {
-            isMoving = false; // CORREÇÃO IMPORTANTE: Destrava movimento
+            isMoving = false; // Destrava preventivamente
             if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
             document.querySelectorAll('.npc-entity').forEach(n => n.remove());
 
@@ -391,14 +393,13 @@
                 gameArea.classList.remove('indoor-mode');
                 renderMapObjects();
                 
-                // Spawn logo abaixo da porta
                 const exitX = house.trigger.x + (house.trigger.w / 2);
                 const exitY = house.trigger.y + house.trigger.h + 5;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
                 
-                // Força remoção do loader
+                const loader = document.getElementById('loader');
+                if(loader) loader.classList.remove('show');
                 if(typeof hideLoading === 'function') hideLoading();
-                else document.getElementById('loader').classList.remove('show');
             }, 500);
         }
 
@@ -414,7 +415,7 @@
         function handleClick(e, targetNpc = null) {
             if (e.target.closest('#chatBar') || isMoving) return;
 
-            // BOLINHA DE FEEDBACK
+            // BOLINHA DE DEBUG
             const marker = document.createElement('div');
             marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
             marker.style.background = 'rgba(255,255,255,0.5)'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
@@ -453,7 +454,6 @@
             }
 
             isMoving = true;
-            // Timeout de segurança caso o servidor não responda
             setTimeout(() => isMoving = false, 2000); 
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
