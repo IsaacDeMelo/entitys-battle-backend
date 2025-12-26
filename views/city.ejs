@@ -156,57 +156,20 @@
 
     <!-- VARS GLOBAIS -->
     <script>
-        // --- VARIÁVEIS DE ADMIN ---
-        let devMode = false; 
-        let currentTool = null; 
-        let isDrawing = false; 
-        let startPoint = {x:0, y:0}; 
-        let tempBox = null;
-        let editingHouseId = null; 
-
-        const socket = io();
-        const myName = "<%= playerName %>";
-        const mySkin = "<%= playerSkin %>";
-        window.CURRENT_USER_ID = "<%= user._id %>"; 
-        window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
-        const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
-        
-        // --- DADOS DE SPAWN ---
-        const urlParams = new URLSearchParams(window.location.search);
-        let startX = urlParams.get('x') ? parseFloat(urlParams.get('x')) : 50;
-        let startY = urlParams.get('y') ? parseFloat(urlParams.get('y')) : 5;
-        let currentMapId = urlParams.get('map') || 'city';
-        let startDir = 'down';
-
-        if (urlParams.get('from') === 'forest') { 
-            startX = 50; startY = 92; startDir = 'up'; 
-        }
-
-        // ============================================================
-        // --- SEUS DADOS DE MAPA ---
-        // ============================================================
-        let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
-        let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-        let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[],"exit":null}];
-        // ============================================================
-    </script>
-
-    <script src="/scripts/common.js"></script>
-
-    <script>
+        const gameViewport = document.getElementById('gameViewport'); // MUDANÇA: Usamos o Viewport agora
         const gameArea = document.getElementById('gameArea');
         let myId = null; 
         const MOVEMENT_SPEED = 55; 
         let isMoving = false;
 
-        // --- INICIALIZAÇÃO CORRIGIDA ---
+        // --- INICIALIZAÇÃO VISUAL ---
         if (currentMapId !== 'city') {
             const house = housesData.find(h => h.id === currentMapId);
             if (house) {
                 gameArea.style.backgroundImage = `url('${house.bg}')`;
                 gameArea.classList.add('indoor-mode');
             } else {
-                currentMapId = 'city'; 
+                currentMapId = 'city';
                 gameArea.style.backgroundImage = "url('/uploads/route_map.png')";
             }
         } else {
@@ -276,29 +239,10 @@
                 label.className = 'player-name'; label.innerText = npc.name;
                 div.appendChild(label);
 
+                // Clique no NPC
                 div.onclick = (e) => { 
-                    e.stopPropagation(); 
-                    const myPlayer = document.getElementById(`p-${myId}`);
-                    const currX = parseFloat(myPlayer.style.left);
-                    const currY = parseFloat(myPlayer.style.top);
-                    const dx = npc.x - currX; const dy = npc.y - currY;
-                    const totalDist = Math.hypot(dx, dy);
-                    
-                    if (totalDist <= 6) {
-                        if(typeof interactWithNPC === 'function') interactWithNPC(npc);
-                        return;
-                    }
-                    const ratio = (totalDist - 6) / totalDist;
-                    const targetX = currX + (dx * ratio);
-                    const targetY = currY + (dy * ratio);
-                    const safeDest = getSafeTarget(currX, currY, targetX, targetY);
-
-                    isMoving = true;
-                    // Segurança para destravar se o servidor não responder
-                    setTimeout(() => isMoving = false, 1500);
-                    
-                    socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
-                    setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(npc); }, (Math.hypot(safeDest.x - currX, safeDest.y - currY) / MOVEMENT_SPEED) * 1000);
+                    e.stopPropagation(); // Impede andar ao clicar no NPC
+                    handleClick(e, npc); // Usa a mesma lógica de movimento para chegar perto
                 };
                 gameArea.appendChild(div);
             });
@@ -308,7 +252,7 @@
              const p = document.getElementById(`p-${myId}`);
              const cx = p ? parseFloat(p.style.left) : 50;
              const cy = p ? parseFloat(p.style.top) : 50;
-             if(typeof showToast === 'function') showToast('🌿 Um Monstro selvagem apareceu!');
+             if(typeof showToast === 'function') showToast('🌿 Batalha Iniciada!');
              if(typeof showLoading === 'function') showLoading('Batalha!', 'zoom');
              setTimeout(() => {
                  fetch('/battle/wild', { 
@@ -336,7 +280,6 @@
             gameArea.appendChild(div); if (p.id === myId) playerElement = div; 
         }
 
-        // --- COLISÃO ---
         function getSafeTarget(currX, currY, targetX, targetY) {
             const steps = 25;
             let activeCollisions = [];
@@ -345,6 +288,7 @@
                 activeCollisions = collisionMap; 
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
+                // Garante que dentro da casa NÃO use colisão da cidade
                 if (house && house.collisions) activeCollisions = house.collisions;
                 else activeCollisions = []; 
             }
@@ -409,48 +353,88 @@
             }, 500);
         }
 
-        // --- CLIQUE PARA ANDAR (CORRIGIDO) ---
-        gameArea.addEventListener('click', (e) => {
-            if (devMode && isDrawing) return;
-            if (e.target.closest('#chatBar') || isMoving || e.target.classList.contains('npc-entity')) return;
+        // ==========================================================
+        // --- SISTEMA DE CLIQUE E MOVIMENTO CORRIGIDO ---
+        // ==========================================================
+        
+        // Agora ouvimos cliques no Viewport (a tela preta inteira)
+        gameViewport.addEventListener('mousedown', (e) => {
+            // Se estiver desenhando no modo DEV, passamos o controle para o handler de desenho
+            if (devMode && currentTool) return; // Não anda se tiver ferramenta selecionada
+            
+            handleClick(e);
+        });
 
-            // CRIA BOLINHA VERMELHA PARA DEBUG VISUAL DO CLIQUE
-            const marker = document.createElement('div'); marker.className = 'click-marker';
-            marker.style.left = e.clientX + 'px'; marker.style.top = e.clientY + 'px';
-            document.body.appendChild(marker); setTimeout(() => marker.remove(), 500);
+        function handleClick(e, targetNpc = null) {
+            if (e.target.closest('#chatBar') || isMoving) return;
 
+            // BOLINHA VERMELHA DE DEBUG (Para ver onde clicou)
+            const marker = document.createElement('div');
+            marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
+            marker.style.background = 'red'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
+            marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px';
+            marker.style.pointerEvents = 'none';
+            document.body.appendChild(marker);
+            setTimeout(() => marker.remove(), 500);
+
+            // CÁLCULO RELATIVO AO MAPA (E NÃO À TELA)
             const rect = gameArea.getBoundingClientRect();
-            // CALCULA POSIÇÃO RELATIVA AO MAPA (MESMO SE FOR CASA PEQUENA)
+            
+            // Posição do clique relativa à imagem do mapa
             const rawX = ((e.clientX - rect.left) / rect.width) * 100;
             const rawY = ((e.clientY - rect.top) / rect.height) * 100;
 
-            if (rawX < 0 || rawX > 100 || rawY < 0 || rawY > 100) return;
+            // Limita o clique para não andar para o infinito se clicar muito fora
+            let targetX = Math.max(0, Math.min(100, rawX));
+            let targetY = Math.max(0, Math.min(100, rawY));
 
             const myPlayer = document.getElementById(`p-${myId}`);
-            if (!myPlayer) return console.log("Erro: Jogador não encontrado no DOM");
+            if (!myPlayer) return;
 
             const currX = parseFloat(myPlayer.style.left);
             const currY = parseFloat(myPlayer.style.top);
-            
-            const safeDest = getSafeTarget(currX, currY, rawX, rawY);
+
+            // Se for clique em NPC, ajusta destino para perto dele
+            if (targetNpc) {
+                targetX = targetNpc.x;
+                targetY = targetNpc.y;
+            }
+
+            const safeDest = getSafeTarget(currX, currY, targetX, targetY);
+
+            // Logica NPC
+            if (targetNpc) {
+                const dist = Math.hypot(targetNpc.x - currX, targetNpc.y - currY);
+                if (dist <= 6) { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); return; }
+            }
 
             isMoving = true;
-            setTimeout(() => isMoving = false, 1200); // Destrava se bugar
+            // Destrava automaticamente se bugar
+            setTimeout(() => isMoving = false, 2000);
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
+            // Check matinho (SÓ NA CIDADE)
             if (currentMapId === 'city') {
                 const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
                 const travelTime = (dist / MOVEMENT_SPEED) * 1000;
-                const testEl = document.elementFromPoint(
-                    rect.left + (safeDest.x/100 * rect.width), 
-                    rect.top + (safeDest.y/100 * rect.height)
-                );
+                
+                // Verifica elemento na posição final
+                const finalScreenX = rect.left + (safeDest.x/100 * rect.width);
+                const finalScreenY = rect.top + (safeDest.y/100 * rect.height);
+                const testEl = document.elementFromPoint(finalScreenX, finalScreenY);
+                
                 if (testEl && testEl.classList.contains('grass-patch')) {
                     setTimeout(() => socket.emit('check_encounter', { grassId: testEl.id }), travelTime);
                 }
             }
-        });
+
+            // Se for NPC, interage ao chegar
+            if (targetNpc) {
+                const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+                setTimeout(() => { if(typeof interactWithNPC === 'function') interactWithNPC(targetNpc); }, (dist / MOVEMENT_SPEED) * 1000);
+            }
+        }
 
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
@@ -565,7 +549,8 @@
             renderMapObjects();
         }
 
-        // --- DESENHO (DEV) ---
+        // --- SISTEMA DE DESENHO (DEV MODE) ---
+        // Ouvintes específicos para desenho
         gameArea.addEventListener('mousedown', (e) => { 
             if(!devMode || !currentTool) return; 
             e.stopPropagation(); isDrawing = true; 
