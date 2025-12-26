@@ -147,7 +147,7 @@
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
         
         socket.on('encounter_found', () => {
-            window.isPlayerMoving = true; showToast("🌿 Um Pokémon selvagem apareceu!");
+            window.isPlayerMoving = true; showToast("🌿 Um Monstro selvagem apareceu!");
             showLoading('Iniciando batalha...', 'left');
             
             const p = document.getElementById(`p-${myId}`);
