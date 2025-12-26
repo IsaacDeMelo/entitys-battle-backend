@@ -5,57 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Cidade</title>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
         /* --- 1. RESET E BASE --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        
-        body { 
-            margin: 0; padding: 0; 
-            background: #111; 
-            overflow: hidden; 
-            height: 100vh; width: 100vw; 
-            font-family: 'Roboto', sans-serif; 
-            user-select: none; 
-            display: flex; justify-content: center; align-items: center; 
-        }
+        body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: center; }
         
         #gameArea { 
             position: relative; 
             width: 100%; max-width: 500px; 
             height: 100%; max-height: 900px; 
-            
-            /* Imagem da Cidade Fixa */
+            /* A imagem fornecida */
             background-image: url('/uploads/city_map_large.png'); 
             background-size: 100% 100%; 
             background-position: center;
             background-repeat: no-repeat; 
-            
             image-rendering: pixelated; 
-            cursor: crosshair; 
+            cursor: pointer; /* Cursor normal pois agora clicamos no chão */
             box-shadow: 0 0 50px rgba(0,0,0,0.8); 
             overflow: hidden; 
             z-index: 1; isolation: isolate; 
         }
-        
-        /* --- 2. JOGADOR (Escala Menor: 32px) --- */
+
+        /* --- 2. JOGADOR (MENOR) --- */
         .player { 
             position: absolute; 
-            width: 32px; height: 32px; 
+            /* Reduzido de 48px para 28px para escala mais realista com as portas */
+            width: 28px; height: 28px; 
             background-size: 400% auto; 
             image-rendering: pixelated; 
             filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); 
-            margin-left: -16px; margin-top: -28px; /* Pivô no pé */
+            /* Pivô ajustado para os pés */
+            margin-left: -14px; margin-top: -24px; 
             z-index: 10; 
-            transition: top 0s linear, left 0s linear; 
+            transition: top 0s linear, left 0s linear, opacity 0.3s ease, transform 0.3s ease; 
+        }
+
+        /* Efeito de entrar na casa */
+        .player.entering-building {
+            opacity: 0;
+            transform: scale(0.5) translateY(10px);
         }
         
         <% for(let i = 1; i <= skinCount; i++) { %> 
             .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } 
         <% } %>
         
-        .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
+        .player.walking { animation: walk-anim 0.4s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         
         .player[data-dir="down"] { background-position-y: 0%; } 
@@ -63,137 +60,112 @@
         .player[data-dir="right"] { background-position-y: 66.66%; } 
         .player[data-dir="up"] { background-position-y: 100%; }
         
-        /* --- 3. NOME DO JOGADOR (Padrão Room.ejs) --- */
         .player-name { 
-            position: absolute; 
-            top: -15px; left: 50%; transform: translateX(-50%); 
-            background: rgba(0,0,0,0.6); 
-            color: white; 
-            padding: 2px 4px; 
-            border-radius: 4px; 
-            font-size: 0.6rem; /* Fonte pequena legível */
-            white-space: nowrap; 
-            pointer-events: none; 
-            z-index: 500; 
-            font-family: 'Roboto', sans-serif; 
-            font-weight: bold;
+            position: absolute; top: -15px; left: 50%; transform: translateX(-50%); 
+            background: rgba(0,0,0,0.6); color: white; padding: 1px 4px; border-radius: 3px; 
+            font-size: 0.5rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold;
         }
 
-        /* NPCs destacam o nome */
-        .npc-entity { cursor: pointer; }
-        .npc-entity .player-name { color: #f1c40f; }
-
-        /* --- 4. ZONAS (Colisão e Interação) --- */
-        
-        /* Debug: Mude background para rgba(255,0,0,0.5) para ver as paredes */
-        .blocked-zone {
+        /* --- 3. DEBUG E COLISÃO --- */
+        /* Mude opacity para 0.4 para ver as caixas de colisão e ajustar se necessário */
+        .collision-box {
             position: absolute;
             background: rgba(255, 0, 0, 0.0); 
-            z-index: 2;
-            pointer-events: none; /* O clique passa através para checar coordenadas */
+            pointer-events: none;
+            z-index: 5;
         }
 
-        /* Gatilhos de Interação (Portas/Tapetes) */
-        .interaction-trigger {
-            position: absolute;
-            z-index: 20;
-            cursor: pointer;
-            background: rgba(0, 255, 0, 0.0); /* Debug: 0.3 */
-        }
-
-        /* Matinhos */
-        .grass-patch { 
-            position: absolute; 
-            z-index: 4; 
-            cursor: pointer; 
-            background: transparent; 
-        }
+        /* --- 4. INTERAÇÃO E GATILHOS --- */
+        .interaction-trigger { position: absolute; z-index: 20; cursor: pointer; background: transparent; }
         
-        /* POSICIONAMENTO VISUAL DOS MATINHOS */
-        #city_grass1 { top: 2%; left: 32%; width: 10%; height: 8%; } 
-        #city_grass2 { top: 92%; left: 5%; width: 12%; height: 6%; }
-
-        /* POSICIONAMENTO DOS GATILHOS (PORTAS) */
-        /* Loja (Porta Azul no meio esquerda) */
-        #trigger-shop { top: 41%; left: 29%; width: 6%; height: 4%; }
-        /* Centro (Porta Vermelha no topo direita) */
-        #trigger-heal { top: 12%; left: 65%; width: 6%; height: 4%; }
+        /* Ajuste fino dos gatilhos baseados na imagem */
+        /* Loja (Telhado Azul Esquerda) */
+        #trigger-shop { top: 39%; left: 32%; width: 8%; height: 3%; }
+        /* Centro/Heal (Prédio Duplo Azul Direita) */
+        #trigger-heal { top: 59%; left: 63%; width: 8%; height: 3%; }
         /* Saída Sul */
-        #trigger-exit { top: 97%; left: 45%; width: 10%; height: 3%; }
+        #trigger-exit { top: 97%; left: 40%; width: 20%; height: 3%; }
 
-        /* --- 5. UI (Interface Fixa) --- */
-        .chat-bubble { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 4px 8px; border-radius: 8px; border: 1px solid #333; font-size: 0.6rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-family: 'Press Start 2P'; }
-        .chat-bubble::after { content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); border-width: 5px 5px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
+        /* Matinhos (Visíveis/Invisíveis) */
+        .grass-patch { position: absolute; z-index: 4; cursor: pointer; background: transparent; }
+        /* Matinho Esquerda Grande */
+        #grass-left { top: 40%; left: 0%; width: 14%; height: 16%; }
+        /* Matinho Baixo Esquerda */
+        #grass-bottom { top: 89%; left: 0%; width: 15%; height: 11%; }
+        /* Matinho Topo */
+        #grass-top { top: 3%; left: 28%; width: 15%; height: 10%; }
+
+        /* --- 5. UI (Chat, Toast, Loader) --- */
+        /* (Copiado do padrão anterior para manter consistência) */
+        .chat-bubble { position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 3px 6px; border-radius: 6px; border: 1px solid #333; font-size: 0.6rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         
-        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
+        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
-        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
-        
+        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
-        .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
-        .loader-overlay.show .loader-box { transform: translateY(0); opacity: 1; }
+        .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
         .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loader-text { font-size: 0.8rem; color:#f1c40f; }
 
-        /* Estilo do Modal Shop igual ao Room.ejs */
+        /* Modais */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 3000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; box-shadow: 0 0 20px rgba(52, 152, 219, 0.3); }
-        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; z-index: 50; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #1a1a2e; width: 90%; max-width: 400px; padding: 20px; border-radius: 15px; border: 1px solid #3498db; color: white; position: relative; max-height: 85vh; overflow-y: auto; }
+        .close-btn { position: absolute; top: 10px; right: 10px; background: #e74c3c; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
     </style>
 </head>
 <body>
     <%- include('partials/menu') %>
 
     <div id="gameArea">
-        <!-- BLOQUEIOS VISUAIS (Para debug se precisar, mas invisiveis por padrao) -->
-        <!-- O JS vai gerar as areas bloqueadas, mas aqui estao os gatilhos -->
-        
-        <!-- INTERAÇÕES -->
-        <div id="trigger-shop" class="interaction-trigger" onclick="interact('shop')"></div>
-        <div id="trigger-heal" class="interaction-trigger" onclick="interact('heal')"></div>
+        <!-- Áreas Bloqueadas (Geradas via JS para melhor controle) -->
+        <div id="collision-container"></div>
+
+        <!-- Gatilhos -->
+        <div id="trigger-shop" class="interaction-trigger"></div>
+        <div id="trigger-heal" class="interaction-trigger"></div>
         <div id="trigger-exit" class="interaction-trigger" onclick="goToForest()"></div>
 
-        <!-- MATINHOS -->
-        <div id="city_grass1" class="grass-patch"></div>
-        <div id="city_grass2" class="grass-patch"></div>
+        <!-- Matinhos -->
+        <div id="grass-left" class="grass-patch" onclick="handleGrassClick(event, 'grass-left')"></div>
+        <div id="grass-bottom" class="grass-patch" onclick="handleGrassClick(event, 'grass-bottom')"></div>
+        <div id="grass-top" class="grass-patch" onclick="handleGrassClick(event, 'grass-top')"></div>
 
-        <!-- CHAT -->
-        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
+        <!-- Chat -->
+        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..."><button id="chatSend">💬</button></div>
     </div>
     
-    <!-- UI ELEMENTS -->
     <div id="toastContainer"></div>
-    <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
+    <div id="loader" class="loader-overlay show"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
     <!-- MODAL LOJA -->
     <div class="modal-overlay" id="modalShop">
         <div class="modal-content">
-            <button class="close-btn" onclick="document.getElementById('modalShop').style.display='none'">X</button>
+            <button class="close-btn" onclick="exitBuilding('modalShop')">X</button>
             <h2 style="text-align:center; color:#f1c40f; font-family:'Press Start 2P'; margin-bottom:20px;">LOJA</h2>
+            <div style="text-align:center; color:#ccc; margin-bottom:20px; font-size:0.8rem;">Bem-vindo! O que deseja?</div>
             
-            <div style="background:#0b1220; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; gap:10px;">
-                <img src="/uploads/catchcube.gif" style="width:40px; height:40px;">
+            <div style="background:#0b1220; padding:15px; border-radius:8px; display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                <img src="/uploads/catchcube.gif" style="width:30px;">
                 <div style="flex:1;">
                     <div style="font-weight:bold; color:#fff;">CatchCube</div>
-                    <div style="font-size:0.8rem; color:#aaa;">Captura monstros.</div>
-                    <div style="color:#f1c40f; margin-top:5px;">$50</div>
+                    <div style="font-size:0.7rem; color:#aaa;">Captura monstros.</div>
+                    <div style="color:#f1c40f;">$50</div>
                 </div>
-                <button onclick="buyItem('pokeball')" style="width:auto; background:#27ae60; border:none; padding:10px; color:white; font-weight:bold; cursor:pointer; border-radius:5px;">COMPRAR</button>
+                <button onclick="buyItem('pokeball')" style="background:#27ae60; border:none; padding:8px; color:white; border-radius:5px; cursor:pointer;">COMPRAR</button>
             </div>
-
-            <div style="background:#0b1220; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; align-items:center; gap:10px;">
-                <div style="font-size:30px;">🍬</div>
+            
+            <div style="background:#0b1220; padding:15px; border-radius:8px; display:flex; align-items:center; gap:10px;">
+                <div style="font-size:24px;">🍬</div>
                 <div style="flex:1;">
                     <div style="font-weight:bold; color:#fff;">Rare Candy</div>
-                    <div style="font-size:0.8rem; color:#aaa;">+1 Nível.</div>
-                    <div style="color:#f1c40f; margin-top:5px;">$2000</div>
+                    <div style="font-size:0.7rem; color:#aaa;">+1 Nível.</div>
+                    <div style="color:#f1c40f;">$2000</div>
                 </div>
-                <button onclick="buyItem('rareCandy')" style="width:auto; background:#27ae60; border:none; padding:10px; color:white; font-weight:bold; cursor:pointer; border-radius:5px;">COMPRAR</button>
+                <button onclick="buyItem('rareCandy')" style="background:#27ae60; border:none; padding:8px; color:white; border-radius:5px; cursor:pointer;">COMPRAR</button>
             </div>
         </div>
     </div>
@@ -204,294 +176,358 @@
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
-        window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         
-        window.isPlayerMoving = false;
-        window.isInteracting = false;
-    </script>
-
-    <script src="/scripts/common.js"></script>
-
-    <script>
-        const gameArea = document.getElementById('gameArea');
-        let myId = null; 
-        const MOVEMENT_SPEED = 50;
-
         const startX = <%= startX %>;
         const startY = <%= startY %>;
-
-        // --- DEFINIÇÃO DE BLOQUEIOS (COLISÃO) ---
-        // Coordenadas baseadas na imagem (x, y, largura, altura) em %
-        // Tudo que é casa ou árvore densa deve estar aqui
-        const blockedZones = [
-            // Coluna Esquerda (Casas)
-            {x: 2, y: 2, w: 14, h: 10},   // Casa Azul Topo
-            {x: 2, y: 18, w: 14, h: 10},  // Casa Vermelha
-            {x: 2, y: 34, w: 14, h: 10},  // Casa Azul
-            {x: 2, y: 58, w: 14, h: 10},  // Casa Vermelha
-            {x: 2, y: 72, w: 14, h: 10},  // Casa Vermelha
-            {x: 2, y: 86, w: 14, h: 10},  // Casa Vermelha Baixo
-
-            // Bloco Centro-Esquerda
-            {x: 23, y: 15, w: 18, h: 12}, // Casa Grande Marrom
-            {x: 23, y: 32, w: 18, h: 10}, // LOJA (Bloqueia o prédio todo, o gatilho é na porta)
-            {x: 23, y: 48, w: 18, h: 10}, // Casa Vermelha
-            {x: 23, y: 70, w: 18, h: 10}, // Casa Laranja
-
-            // Bloco Centro-Direita
-            {x: 58, y: 2, w: 17, h: 12},  // CENTRO PKMN (Prédio todo)
-            {x: 58, y: 18, w: 17, h: 10}, // Casa Marrom
-            {x: 58, y: 32, w: 17, h: 10}, // Casa Vermelha
-            {x: 58, y: 48, w: 17, h: 15}, // Prédios Azuis Duplos
-            {x: 58, y: 68, w: 17, h: 10}, // Casa Marrom
-            {x: 58, y: 82, w: 17, h: 10}, // Casa Vermelha
-
-            // Coluna Direita (Casas)
-            {x: 84, y: 10, w: 14, h: 10},
-            {x: 84, y: 24, w: 14, h: 10},
-            {x: 84, y: 38, w: 14, h: 10},
-            {x: 84, y: 60, w: 14, h: 10},
-            {x: 84, y: 74, w: 14, h: 10},
-            {x: 84, y: 88, w: 14, h: 10},
+        let myId = null;
+        const MOVEMENT_SPEED = 50; // Velocidade visual
+        let isMoving = false;
+        
+        // --- 1. DEFINIÇÃO DE BLOQUEIOS (Mapeamento baseado na imagem enviada) ---
+        // Coordenadas em % (x, y, largura, altura)
+        // Essas caixas cobrem as casas para que o jogador não ande em cima.
+        const collisionMap = [
+            // COLUNA 1 (Esquerda Extrema - Casas pequenas)
+            {x: 1, y: 10, w: 11, h: 9},
+            {x: 1, y: 20, w: 11, h: 9},
+            {x: 1, y: 30, w: 11, h: 9},
+            {x: 1, y: 60, w: 11, h: 9},
+            {x: 1, y: 70, w: 11, h: 9},
+            {x: 1, y: 80, w: 11, h: 9},
             
-            // Topo (Arvores)
-            {x: 0, y: 0, w: 100, h: 2},
+            // COLUNA 2 (Centro Esquerda)
+            {x: 23, y: 19, w: 19, h: 14}, // Casa Marrom Grande Topo
+            {x: 23, y: 36, w: 19, h: 14}, // LOJA (Ocupa o bloco todo)
+            {x: 23, y: 53, w: 19, h: 12}, // Casa Vermelha
+            {x: 23, y: 68, w: 19, h: 15}, // Casa Laranja Baixo
+            {x: 23, y: 88, w: 16, h: 8},  // Casa Pequena fundo
+
+            // COLUNA 3 (Centro Direita)
+            {x: 55, y: 2, w: 20, h: 10},  // GYM (Topo Direita)
+            {x: 55, y: 18, w: 17, h: 12}, // Casa Vermelha
+            {x: 55, y: 32, w: 17, h: 12}, // Casa Vermelha
+            {x: 55, y: 48, w: 17, h: 16}, // CENTRO POKEMON (Prédios Azuis)
+            {x: 55, y: 66, w: 17, h: 12}, // Casa Laranja
+            {x: 55, y: 80, w: 17, h: 12}, // Casa Vermelha
+
+            // COLUNA 4 (Direita Extrema)
+            {x: 87, y: 12, w: 11, h: 9},
+            {x: 87, y: 24, w: 11, h: 9},
+            {x: 87, y: 34, w: 11, h: 9},
+            {x: 87, y: 58, w: 11, h: 9},
+            {x: 87, y: 69, w: 11, h: 9},
+            {x: 87, y: 81, w: 11, h: 9},
+            {x: 58, y: 91, w: 8, h: 8}, // Casinha fundo
+
+            // OBSTÁCULOS EXTRAS
+            {x: 0, y: 0, w: 100, h: 3}, // Árvores topo
+            {x: 27, y: 2, w: 16, h: 12}, // Matinho/Jardim Topo (Se quiser bloquear, se for andar use outro)
+            {x: 0, y: 39, w: 15, h: 18}, // Matinho Esquerda (Opcional bloquear ou deixar andar)
         ];
 
-        // Função para checar colisão
-        function isBlocked(tx, ty) {
-            for (let z of blockedZones) {
-                // Checa se o ponto (tx, ty) cai dentro do retangulo z
-                if (tx >= z.x && tx <= (z.x + z.w) && ty >= z.y && ty <= (z.y + z.h)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // --- SISTEMA DE CLIQUE ---
-        gameArea.addEventListener('click', (e) => {
-            // Se clicou em UI, ignora
-            if (e.target.closest('#chatBar') || e.target.closest('.modal-content')) return;
-            
-            // 1. TRAVA: Se já está andando, ignora novos cliques (evita bug de teleporte/spam)
-            if (window.isPlayerMoving) return;
-
-            // Se clicou num gatilho de interação, o evento onclick dele já vai disparar, então não movemos "cegamente"
-            if (e.target.classList.contains('interaction-trigger')) return;
-
-            const rect = gameArea.getBoundingClientRect();
-            const targetX = ((e.clientX - rect.left) / rect.width) * 100;
-            const targetY = ((e.clientY - rect.top) / rect.height) * 100;
-
-            // 2. CHECK COLISÃO
-            if (isBlocked(targetX, targetY)) {
-                // Tenta usar showToast do common.js, se não tiver usa alert, mas common.js é garantido
-                if(typeof showToast === 'function') showToast("Bloqueado!", { bg: '#c0392b' });
-                return; // NÃO ANDA
-            }
-
-            // 3. MOVIMENTO PERMITIDO
-            window.isPlayerMoving = true;
-            gameArea.classList.add('locked');
-            socket.emit('move_player', { x: targetX, y: targetY });
-
-            // 4. MATINHOS
-            const elements = document.elementsFromPoint(e.clientX, e.clientY);
-            const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
-            if (grassEl) {
-                socket.emit('check_encounter', { grassId: grassEl.id, x: targetX, y: targetY });
-            }
+        // Renderizar Debug (opcional, ajuda a ver onde não pode andar)
+        const debugContainer = document.getElementById('collision-container');
+        collisionMap.forEach(rect => {
+            const div = document.createElement('div');
+            div.className = 'collision-box';
+            div.style.left = rect.x + '%';
+            div.style.top = rect.y + '%';
+            div.style.width = rect.w + '%';
+            div.style.height = rect.h + '%';
+            debugContainer.appendChild(div);
         });
 
-        // --- SOCKETS E LÓGICA DE JOGO ---
+        // --- 2. SISTEMA DE COLISÃO (RAYCAST SIMPLES) ---
+        function checkCollisionLine(x1, y1, x2, y2) {
+            // Verifica se a linha de (x1,y1) até (x2,y2) intercepta algum retângulo
+            // Se interceptar, retorna o ponto de colisão mais próximo de (x1,y1)
+            
+            let closestT = 1.0; // 1.0 = chegou no destino sem bater
+            let hit = false;
+
+            collisionMap.forEach(rect => {
+                // Expandimos levemente a caixa para o player não "colar" pixel-perfect
+                const rx = rect.x - 1; 
+                const ry = rect.y - 1;
+                const rw = rect.w + 2;
+                const rh = rect.h + 2;
+
+                // Algoritmo de Liang-Barsky para clipping de linha
+                // (Simplificado para apenas detectar interseção e truncar)
+                // Checagem AABB simples do ponto final primeiro:
+                if (x2 > rx && x2 < rx+rw && y2 > ry && y2 < ry+rh) {
+                    hit = true;
+                    // Se o destino é dentro da parede, encurtamos o vetor
+                    // Maneira simples: apenas não vai.
+                    // Maneira avançada: vai até a borda.
+                    
+                    // Implementação simples de "Slide": Se destino é inválido, para.
+                    // Mas queremos que ele ande ATÉ a parede.
+                }
+            });
+
+            return hit;
+        }
+
+        // Função melhorada: Se clicar na parede, não vai. Se clicar atravessando a parede, para nela.
+        // Como o JS é client-side, vamos simplificar:
+        // Se a linha direta tocar num bloco, o movimento é cancelado ou encurtado.
+        function getSafeTarget(currX, currY, targetX, targetY) {
+            const steps = 20; // Checar 20 pontos ao longo da linha
+            let finalX = targetX;
+            let finalY = targetY;
+
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const px = currX + (targetX - currX) * t;
+                const py = currY + (targetY - currY) * t;
+
+                // Verifica se esse ponto (px, py) está dentro de algum bloco
+                const inside = collisionMap.some(rect => 
+                    px >= rect.x && px <= (rect.x + rect.w) &&
+                    py >= rect.y && py <= (rect.y + rect.h)
+                );
+
+                if (inside) {
+                    // Colidiu! O ponto seguro é o anterior (t - 1 passo)
+                    const safeT = (i - 1) / steps;
+                    return {
+                        x: currX + (targetX - currX) * safeT,
+                        y: currY + (targetY - currY) * safeT,
+                        blocked: true
+                    };
+                }
+            }
+            return { x: targetX, y: targetY, blocked: false };
+        }
+
+        // --- 3. LÓGICA DE JOGO ---
+        const gameArea = document.getElementById('gameArea');
         
+        // Movimento ao clicar
+        gameArea.addEventListener('click', (e) => {
+            if (e.target.closest('#chatBar') || e.target.closest('.modal-content') || isMoving) return;
+
+            // Se clicou no gatilho, a função do gatilho roda. Mas precisamos mover até lá.
+            // O evento propaga. Vamos pegar a coordenada.
+            const rect = gameArea.getBoundingClientRect();
+            const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+            const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+
+            const myPlayer = document.getElementById(`p-${myId}`);
+            if (!myPlayer) return;
+
+            const currX = parseFloat(myPlayer.style.left);
+            const currY = parseFloat(myPlayer.style.top);
+
+            // Calcula destino seguro (para na parede)
+            const safeDest = getSafeTarget(currX, currY, rawX, rawY);
+
+            // Envia movimento
+            isMoving = true;
+            socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+
+            // Se o destino original era um gatilho e fomos bloqueados muito antes, cancelamos a interação?
+            // Por enquanto, vamos deixar a interação acontecer se chegar "perto".
+            
+            // Verifica Gatilhos de Interação após chegar
+            checkInteractions(safeDest.x, safeDest.y);
+        });
+
+        // --- 4. SOCKETS ---
         socket.on('connect', () => { 
             myId = socket.id; 
-            socket.emit('enter_map', { 
-                userId: '<%= user._id %>', 
-                name: myName, 
-                skin: mySkin, 
-                map: 'city', 
-                x: startX, 
-                y: startY, 
-                direction: 'down' 
-            }); 
+            socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: startX, y: startY, direction: 'down' }); 
         });
-        
+
         socket.on('map_state', (players) => { 
-            document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); 
-            players.forEach(p => createPlayerElement(p)); 
-            if(typeof hideLoading === 'function') hideLoading();
-            else document.getElementById('loader').classList.remove('show');
+            document.querySelectorAll('.player').forEach(el => el.remove()); 
+            players.forEach(createPlayer); 
+            document.getElementById('loader').classList.remove('show');
         });
         
-        socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
+        socket.on('player_joined', (p) => { if(p.id !== myId) createPlayer(p); });
         
-        socket.on('player_moved', (data) => { 
-            const el = document.getElementById(`p-${data.id}`); 
-            if (el) { 
-                const currentLeft = parseFloat(el.style.left) || 50; 
-                const currentTop = parseFloat(el.style.top) || 50; 
-                const dx = data.x - currentLeft; const dy = data.y - currentTop; 
-                const distance = Math.sqrt(dx*dx + dy*dy); 
-                const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0; 
-                
-                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
-                void el.offsetWidth; 
-                el.style.left = data.x + '%'; el.style.top = data.y + '%'; 
-                el.style.zIndex = Math.floor(data.y); 
-                el.setAttribute('data-dir', data.direction); 
-                
-                if (duration > 0) { 
-                    if (!el.classList.contains('walking')) el.classList.add('walking'); 
-                    
-                    // Limpa timer anterior se houver
-                    if (el.walkTimeout) clearTimeout(el.walkTimeout); 
-                    
-                    el.walkTimeout = setTimeout(() => { 
-                        el.classList.remove('walking'); 
-                        if (data.id === myId) { 
-                            window.isPlayerMoving = false; 
-                            gameArea.classList.remove('locked');
-                            
-                            // Check de saída automática
-                            if (data.y > 96 && data.x > 35 && data.x < 65) { 
-                                goToForest(); 
-                            } 
-                        } 
-                    }, duration * 1000); 
-                } else if(data.id === myId) {
-                    window.isPlayerMoving = false;
-                    gameArea.classList.remove('locked');
+        socket.on('player_moved', (data) => {
+            const el = document.getElementById(`p-${data.id}`);
+            if (el) {
+                const currX = parseFloat(el.style.left) || 50;
+                const currY = parseFloat(el.style.top) || 50;
+                const dist = Math.hypot(data.x - currX, data.y - currY);
+                const time = dist > 0 ? (dist / MOVEMENT_SPEED) : 0;
+
+                el.style.transition = `top ${time}s linear, left ${time}s linear`;
+                void el.offsetWidth; // Força reflow
+                el.style.left = data.x + '%';
+                el.style.top = data.y + '%';
+                el.style.zIndex = Math.floor(data.y); // Z-Index dinâmico para passar atrás/frente
+
+                // Direção do Sprite
+                const dx = data.x - currX;
+                const dy = data.y - currY;
+                if(Math.abs(dx) > Math.abs(dy)) el.setAttribute('data-dir', dx > 0 ? 'right' : 'left');
+                else el.setAttribute('data-dir', dy > 0 ? 'down' : 'up');
+
+                if (time > 0) {
+                    el.classList.add('walking');
+                    if (el.timeout) clearTimeout(el.timeout);
+                    el.timeout = setTimeout(() => {
+                        el.classList.remove('walking');
+                        if (data.id === myId) isMoving = false;
+                    }, time * 1000);
+                } else if (data.id === myId) {
+                    isMoving = false;
                 }
-            } 
-        });
-        
-        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
-        
-        // --- CHAT ---
-        const chatIn = document.getElementById('chatInput');
-        const chatBt = document.getElementById('chatSend');
-        function sendChat() { const m = chatIn.value.trim(); if(m) { socket.emit('send_chat', m); chatIn.value = ''; chatIn.blur(); }}
-        chatBt.onclick = (e) => { e.stopPropagation(); sendChat(); };
-        chatIn.onclick = (e) => { e.stopPropagation(); };
-        
-        socket.on('chat_message', (data) => { 
-            const p = document.getElementById(`p-${data.id}`); 
-            if(p) { 
-                const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; 
-                p.appendChild(b); setTimeout(()=>b.remove(),4000); 
             }
         });
 
-        // --- ENCONTRO (Batalha) ---
-        socket.on('encounter_found', () => {
-            window.isPlayerMoving = true;
-            if(typeof showToast === 'function') showToast("🌿 Pokémon selvagem!", { bg: '#2ecc71' });
-            document.getElementById('loader').classList.add('show');
-            
-            const p = document.getElementById(`p-${myId}`);
-            const cx = p ? parseFloat(p.style.left) : 50; 
-            const cy = p ? parseFloat(p.style.top) : 50;
+        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if(el) el.remove(); });
 
-            setTimeout(() => { 
-                fetch('/battle/wild', { 
-                    method: 'POST', headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ userId: '<%= user._id %>', currentMap: 'city', currentX: cx, currentY: cy }) 
-                }).then(r=>r.json()).then(data => { 
-                    if(data.battleId) window.location.href = '/battle/' + data.battleId; 
-                    else { 
-                        document.getElementById('loader').classList.remove('show'); 
-                        showToast(data.error, { bg: '#e74c3c' });
-                        window.isPlayerMoving = false;
-                    } 
-                }); 
-            }, 1000);
-        });
-
-        // --- FUNÇÕES DE AUXÍLIO ---
-        function createPlayerElement(p) { 
-            const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
-            div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); 
-            div.setAttribute('data-dir', p.direction || 'down'); 
-            
-            const skinName = p.skin || 'char1';
-            if (p.isCustomSkin) div.style.backgroundImage = `url('${p.skin}')`;
-            else div.style.backgroundImage = `url('/uploads/${skinName}.png')`; 
-            
-            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; 
-            div.appendChild(label); 
-            
-            gameArea.appendChild(div); 
-            if (p.id === myId) playerElement = div; 
+        function createPlayer(p) {
+            const div = document.createElement('div');
+            div.id = `p-${p.id}`;
+            div.className = 'player';
+            div.style.left = p.x + '%';
+            div.style.top = p.y + '%';
+            div.setAttribute('data-skin', p.skin || 'char1');
+            div.innerHTML = `<div class="player-name">${p.name}</div>`;
+            gameArea.appendChild(div);
         }
 
-        // --- INTERAÇÕES (Lógica Padronizada) ---
-        function interact(type) {
-            // O jogador precisa andar até o gatilho.
-            // Aqui assumimos que ele clicou no gatilho e o onclick disparou.
-            
-            const p = document.getElementById(`p-${myId}`);
-            // Calcula onde o jogador está
-            const cx = parseFloat(p.style.left);
-            const cy = parseFloat(p.style.top);
-            
-            // Só interage se não estiver se movendo (ou acabou de chegar)
-            if (window.isPlayerMoving) return;
+        // --- 5. INTERAÇÕES E EFEITOS VISUAIS ---
+        
+        function checkInteractions(destX, destY) {
+            // Calcula tempo de chegada estimado
+            const myPlayer = document.getElementById(`p-${myId}`);
+            const currX = parseFloat(myPlayer.style.left);
+            const currY = parseFloat(myPlayer.style.top);
+            const dist = Math.hypot(destX - currX, destY - currY);
+            const timeMs = (dist / MOVEMENT_SPEED) * 1000;
 
-            // Pequeno delay para garantir que parou
             setTimeout(() => {
-                if (type === 'heal') healTeam();
-                else if (type === 'shop') document.getElementById('modalShop').style.display = 'flex';
-            }, 100);
+                // SHOP (Perto de 32, 39)
+                if (isNear(destX, destY, 32, 39, 5)) {
+                    enterBuilding('modalShop');
+                }
+                // HEAL (Perto de 63, 59)
+                else if (isNear(destX, destY, 63, 59, 5)) {
+                    healTeam();
+                    // Efeito visual de entrar rapidinho e sair
+                    const p = document.getElementById(`p-${myId}`);
+                    p.classList.add('entering-building');
+                    setTimeout(() => p.classList.remove('entering-building'), 1000);
+                }
+                // SAÍDA
+                else if (destY > 95 && destX > 35 && destX < 65) {
+                    goToForest();
+                }
+            }, timeMs);
         }
 
+        function isNear(x1, y1, x2, y2, tolerance) {
+            return Math.abs(x1 - x2) < tolerance && Math.abs(y1 - y2) < tolerance;
+        }
+
+        // Efeito de Entrada
+        function enterBuilding(modalId) {
+            const p = document.getElementById(`p-${myId}`);
+            if(p) p.classList.add('entering-building');
+            
+            setTimeout(() => {
+                document.getElementById(modalId).style.display = 'flex';
+            }, 300); // Espera animação
+        }
+
+        function exitBuilding(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            const p = document.getElementById(`p-${myId}`);
+            if(p) {
+                p.classList.remove('entering-building');
+                // Move um pouquinho pra baixo pra não triggar de novo instantaneamente
+                // (Opcional, mas bom UX)
+            }
+        }
+
+        // Funções de API e Common
         async function healTeam() {
-            if(typeof showToast === 'function') showToast('Curando...', { bg: '#3498db' });
-            await fetch('/api/heal', { 
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ userId: '<%= user._id %>' }) 
-            });
-            setTimeout(() => { if(typeof showToast === 'function') showToast('Equipe curada!', { bg: '#2ecc71' }); }, 500);
-        }
-
-        function goToForest() {
-            document.getElementById('loader').classList.add('show');
-            setTimeout(() => window.location.href = '/forest?from=city&userId=<%= user._id %>', 200); 
+            showToast('Curando Pokémons...', {bg: '#3498db'});
+            try {
+                await fetch('/api/heal', { 
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({userId: window.CURRENT_USER_ID}) 
+                });
+                setTimeout(() => showToast('Equipe recuperada!', {bg: '#2ecc71'}), 800);
+            } catch(e) { showToast('Erro ao curar'); }
         }
 
         async function buyItem(item) {
             try {
                 const res = await fetch('/api/buy-item', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ userId: '<%= user._id %>', itemId: item, qty: 1 })
+                    body: JSON.stringify({ userId: window.CURRENT_USER_ID, itemId: item, qty: 1 })
                 });
                 const d = await res.json();
-                if(d.success) { if(typeof showToast === 'function') showToast('Comprado!', { bg: '#2ecc71' }); }
-                else { if(typeof showToast === 'function') showToast(d.error || 'Erro', { bg: '#e74c3c' }); }
-            } catch(e) { }
+                if(d.success) showToast('Item comprado!', {bg:'#2ecc71'});
+                else showToast(d.error || 'Erro', {bg:'#e74c3c'});
+            } catch(e) {}
         }
 
-        // --- NPCS (Compatibilidade com Common.js) ---
-        socket.on('npcs_list', (npcs) => {
-            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
-            npcs.forEach(npc => {
-                const div = document.createElement('div');
-                div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
-                div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
-                if (npc.isCustomSkin && npc.skin) div.style.backgroundImage = `url('${npc.skin}')`;
-                else div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`;
-                
-                const label = document.createElement('div');
-                label.className = 'player-name'; label.innerText = npc.name;
-                label.style.color = '#f1c40f'; // Destaca NPC
-                div.appendChild(label);
+        function goToForest() {
+            document.getElementById('loader').classList.add('show');
+            window.location.href = '/forest?userId=' + window.CURRENT_USER_ID;
+        }
 
-                div.onclick = (e) => { e.stopPropagation(); if(typeof interactWithNPC === 'function') interactWithNPC(npc); };
-                gameArea.appendChild(div);
-            });
+        // Matinho Click
+        function handleGrassClick(e, grassId) {
+            // Apenas para diferenciar o clique no chão do clique no mato
+            // O evento do chão vai capturar a coordenada, aqui podemos marcar flag de encontro
+            // Mas vamos deixar o server decidir.
+            socket.emit('check_encounter', { grassId: grassId });
+        }
+        
+        // Chat
+        const chatIn = document.getElementById('chatInput');
+        document.getElementById('chatSend').onclick = () => {
+            if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; }
+        };
+        socket.on('chat_message', (d) => {
+            const p = document.getElementById(`p-${d.id}`);
+            if(p) {
+                const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=d.msg;
+                p.appendChild(b); setTimeout(()=>b.remove(), 4000);
+            }
         });
+
+        // Common JS Emulado
+        function showToast(msg, opts={}) {
+            const c = document.getElementById('toastContainer');
+            const d = document.createElement('div');
+            d.style.background = opts.bg || '#333';
+            d.style.color = '#fff';
+            d.style.padding = '10px 20px';
+            d.style.marginBottom = '10px';
+            d.style.borderRadius = '5px';
+            d.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+            d.innerText = msg;
+            c.appendChild(d);
+            setTimeout(() => d.remove(), 3000);
+        }
+        
+        // Encontro Selvagem
+        socket.on('encounter_found', () => {
+             showToast('⚔️ Batalha encontrada!', {bg:'#e74c3c'});
+             document.getElementById('loader').classList.add('show');
+             setTimeout(() => {
+                 // Redirecionar para batalha (lógica simulada)
+                 fetch('/battle/wild', {
+                     method: 'POST', headers: {'Content-Type':'application/json'},
+                     body: JSON.stringify({userId: window.CURRENT_USER_ID, currentMap: 'city'})
+                 }).then(r=>r.json()).then(d => {
+                     if(d.battleId) window.location.href = '/battle/' + d.battleId;
+                 });
+             }, 1000);
+        });
+
     </script>
 </body>
 </html>
