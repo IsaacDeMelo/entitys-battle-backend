@@ -75,6 +75,8 @@
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
+        
+        /* Loader Corrigido */
         .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
         .loader-overlay.show { opacity: 1; pointer-events: auto; }
         .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
@@ -144,6 +146,7 @@
     </div>
     
     <div id="toastContainer"></div>
+    <!-- LOADER INICIAL SEMPRE PRESENTE -->
     <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Carregando mapa...</div></div></div>
 
     <!-- VARS GLOBAIS -->
@@ -177,7 +180,7 @@
         }
 
         // ============================================================
-        // --- SEUS DADOS DE MAPA (COLE SUAS ATUALIZAÇÕES AQUI) ---
+        // --- SEUS DADOS DE MAPA ---
         // ============================================================
         let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
         let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
@@ -218,8 +221,11 @@
         socket.on('map_state', (players) => { 
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); 
             players.forEach(createPlayerElement); 
+            
+            // CORREÇÃO: Força remoção do loader e destrava movimento
             if(typeof hideLoading === 'function') hideLoading(); 
             else document.getElementById('loader').classList.remove('show');
+            isMoving = false; // Garante que destrave ao receber estado do mapa
         });
         
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
@@ -344,13 +350,18 @@
                 if (houseHit) enterHouse(houseHit);
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
-                if (house && house.exit && x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
+                // Trigger de saída (se existir no objeto exit ou usar a lógica de coordenadas)
+                // Usando a lógica do "tapete" da porta, geralmente na parte de baixo da casa
+                if (y > 90) { // Se andar muito para baixo dentro da casa, sai
+                    exitHouse(house);
+                } else if (house && house.exit && x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
                     exitHouse(house);
                 }
             }
         }
 
         function enterHouse(house) {
+            isMoving = false; // CORREÇÃO IMPORTANTE: Destrava movimento
             if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
             document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
 
@@ -363,11 +374,14 @@
                 const spawnX = 50; const spawnY = 80;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
                 
+                // Força remoção do loader
                 if(typeof hideLoading === 'function') hideLoading();
+                else document.getElementById('loader').classList.remove('show');
             }, 500);
         }
 
         function exitHouse(house) {
+            isMoving = false; // CORREÇÃO IMPORTANTE: Destrava movimento
             if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
             document.querySelectorAll('.npc-entity').forEach(n => n.remove());
 
@@ -377,35 +391,37 @@
                 gameArea.classList.remove('indoor-mode');
                 renderMapObjects();
                 
+                // Spawn logo abaixo da porta
                 const exitX = house.trigger.x + (house.trigger.w / 2);
                 const exitY = house.trigger.y + house.trigger.h + 5;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
                 
+                // Força remoção do loader
                 if(typeof hideLoading === 'function') hideLoading();
+                else document.getElementById('loader').classList.remove('show');
             }, 500);
         }
 
         // ==========================================================
-        // --- SISTEMA DE CLIQUE E MOVIMENTO CORRIGIDO ---
+        // --- SISTEMA DE CLIQUE E MOVIMENTO ---
         // ==========================================================
         
-        // Agora ouvimos cliques no Viewport (a tela preta inteira) para evitar zonas mortas
         gameViewport.addEventListener('mousedown', (e) => {
-            if (devMode && currentTool) return; // Se for ferramenta de dev, não anda
+            if (devMode && currentTool) return;
             handleClick(e);
         });
 
         function handleClick(e, targetNpc = null) {
             if (e.target.closest('#chatBar') || isMoving) return;
 
-            // BOLINHA VERMELHA DE DEBUG
+            // BOLINHA DE FEEDBACK
             const marker = document.createElement('div');
             marker.style.position = 'fixed'; marker.style.width = '10px'; marker.style.height = '10px';
-            marker.style.background = 'red'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
+            marker.style.background = 'rgba(255,255,255,0.5)'; marker.style.borderRadius = '50%'; marker.style.zIndex = '99999';
             marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px';
             marker.style.pointerEvents = 'none';
             document.body.appendChild(marker);
-            setTimeout(() => marker.remove(), 500);
+            setTimeout(() => marker.remove(), 300);
 
             // CÁLCULO RELATIVO AO MAPA
             const rect = gameArea.getBoundingClientRect();
@@ -437,7 +453,8 @@
             }
 
             isMoving = true;
-            setTimeout(() => isMoving = false, 2000); // Destrava se bugar
+            // Timeout de segurança caso o servidor não responda
+            setTimeout(() => isMoving = false, 2000); 
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
             
