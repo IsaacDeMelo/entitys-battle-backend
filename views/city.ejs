@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Mundo Aberto - RPG</title>
+    <title>Mundo Aberto - Persistent Player</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     
@@ -32,8 +32,7 @@
             image-rendering: pixelated; 
             cursor: crosshair; 
             z-index: 1; isolation: isolate; 
-            /* A transição suave de tamanho fica escondida pelo Fade agora */
-            transition: width 0s, height 0s; 
+            transition: width 0.5s, height 0.5s;
         }
 
         #gameArea.indoor-mode {
@@ -42,21 +41,7 @@
             box-shadow: 0 0 0 1000px rgba(0,0,0,0.85);
         }
 
-        /* --- CAMADA DE TRANSIÇÃO (FADE) --- */
-        #transition-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000;
-            z-index: 99999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease-in-out;
-        }
-        #transition-layer.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        /* --- CAMADAS LÓGICAS --- */
+        /* --- CAMADAS --- */
         #collision-container, #grass-container, #house-container, #dev-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; 
@@ -111,6 +96,7 @@
         .house-trigger { position: absolute; z-index: 6; background: transparent; }
         .house-exit { position: absolute; z-index: 6; background: transparent; }
         
+        /* Marcadores Visuais */
         .house-spawn-point { position: absolute; width: 20px; height: 20px; background: rgba(255, 255, 255, 0.8); border: 2px solid #000; border-radius: 50%; z-index: 50; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; pointer-events: none; }
         .house-spawn-point::after { content: 'S'; color: #000; }
         
@@ -154,7 +140,6 @@
     <% } %>
 
     <div id="gameViewport">
-        <div id="transition-layer"></div> <!-- CAMADA DE FADE -->
         <div id="gameArea">
             <div id="collision-container"></div>
             <div id="grass-container"></div>
@@ -171,7 +156,7 @@
     <script>
         let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null; let editingHouseId = null; 
 
-        // FLAGS
+        // VARIAVEIS DE MOVIMENTO NO ESCOPO GLOBAL (WINDOW)
         window.isMoving = false;
         window.isTeleporting = false;
 
@@ -190,7 +175,7 @@
 
         if (urlParams.get('from') === 'forest') { startX = 50; startY = 92; startDir = 'up'; }
 
-        // --- SEUS DADOS ---
+        // DADOS
         let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
         let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
         let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[{"x":0.7,"y":29,"w":24,"h":13.2},{"x":38.4,"y":29.3,"w":24,"h":13.7},{"x":57.3,"y":1.1,"w":5.1,"h":41.9},{"x":75.3,"y":50.5,"w":24.4,"h":20.4},{"x":87.8,"y":69.7,"w":12,"h":10.9},{"x":0.7,"y":46.9,"w":11.1,"h":10.1},{"x":0.9,"y":87.8,"w":4.7,"h":11.6},{"x":13.3,"y":92.2,"w":23.6,"h":7.8},{"x":62.9,"y":1.6,"w":36.9,"h":7.2},{"x":75.3,"y":5.5,"w":6.7,"h":13.2},{"x":75.8,"y":9.1,"w":23.8,"h":9.8}],"exit":{"x":61.6,"y":91.9,"w":10.4,"h":8}, "returnSpot": {"x": 27.4, "y": 68}}];
@@ -201,7 +186,6 @@
     <script>
         const gameViewport = document.getElementById('gameViewport');
         const gameArea = document.getElementById('gameArea');
-        const transitionLayer = document.getElementById('transition-layer');
         window.myId = null; 
         const MOVEMENT_SPEED = 55; 
 
@@ -223,14 +207,18 @@
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: startX, y: startY, direction: startDir }); 
         });
 
+        // --- CORREÇÃO CRÍTICA DO MAP STATE ---
         socket.on('map_state', (players) => { 
+            // 1. Remove todo mundo MENOS eu (pra evitar piscar)
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => {
                 if(el.id !== `p-${window.myId}`) el.remove();
             });
 
+            // 2. Atualiza os outros
             players.forEach(p => {
                 if(p.id !== window.myId) createPlayerElement(p);
                 else {
+                    // O servidor mandou dados meus? Atualiza se existir
                     const myEl = document.getElementById(`p-${window.myId}`);
                     if(myEl && !window.isMoving) {
                         myEl.style.left = p.x + '%';
@@ -239,20 +227,24 @@
                 }
             });
             
-            // Client-Side Persistence
+            // 3. BLINDAGEM: Se eu não existo no DOM, me cria AGORA!
             if (!document.getElementById(`p-${window.myId}`)) {
-                createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: 50, y: 50, direction: 'down' });
+                console.warn("⚠️ Jogador perdido recuperado pelo Client-Side Persistence!");
+                createPlayerElement({
+                    id: window.myId,
+                    name: myName,
+                    skin: mySkin,
+                    x: 50, // Posição segura padrão
+                    y: 50,
+                    direction: 'down'
+                });
             }
 
             const loader = document.getElementById('loader');
             if(loader) loader.classList.remove('show');
             if(typeof hideLoading === 'function') hideLoading(); 
             
-            // Se o Fade estiver ativo, remove ele agora que carregou
-            if(transitionLayer.classList.contains('active')) {
-                setTimeout(() => transitionLayer.classList.remove('active'), 100);
-            }
-            
+            // Destrava flags globalmente
             window.isMoving = false; 
             window.isTeleporting = false; 
         });
@@ -263,7 +255,8 @@
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
-                const duration = data.id === window.myId ? 0.05 : (Math.sqrt(Math.pow(data.x - currentLeft, 2) + Math.pow(data.y - currentTop, 2)) / MOVEMENT_SPEED);
+                const dx = data.x - currentLeft; const dy = data.y - currentTop;
+                const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
                 
                 el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
                 void el.offsetWidth; 
@@ -271,7 +264,7 @@
                 el.style.zIndex = Math.floor(data.y); 
                 el.setAttribute('data-dir', data.direction);
                 
-                if (duration > 0.1) { 
+                if (duration > 0) { 
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
                     el.walkTimeout = setTimeout(() => { 
@@ -302,11 +295,11 @@
              const p = document.getElementById(`p-${window.myId}`);
              const cx = p ? parseFloat(p.style.left) : 50;
              const cy = p ? parseFloat(p.style.top) : 50;
-             transitionLayer.classList.add('active'); // Efeito visual de batalha
              if(typeof showToast === 'function') showToast('🌿 Batalha Iniciada!');
+             if(typeof showLoading === 'function') showLoading('Batalha!', 'zoom');
              setTimeout(() => {
-                 fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: currentMapId, currentX: cx, currentY: cy }) }).then(r => r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; else { transitionLayer.classList.remove('active'); if(typeof showToast === 'function') showToast(d.error, {bg:'#e74c3c'}); } }).catch(() => { transitionLayer.classList.remove('active'); });
-             }, 800);
+                 fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: currentMapId, currentX: cx, currentY: cy }) }).then(r => r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; else { if(typeof hideLoading === 'function') hideLoading(); if(typeof showToast === 'function') showToast(d.error, {bg:'#e74c3c'}); } }).catch(() => { if(typeof hideLoading === 'function') hideLoading(); });
+             }, 1000);
         });
 
         renderMapObjects();
@@ -361,58 +354,48 @@
             if (window.isTeleporting) return;
             window.isTeleporting = true;
             window.isMoving = false;
-            
-            // Para o personagem
             const myP = document.getElementById(`p-${window.myId}`);
             if(myP) { myP.classList.remove('walking'); if(myP.walkTimeout) clearTimeout(myP.walkTimeout); }
 
-            // 1. Inicia o FADE OUT (Preto)
-            transitionLayer.classList.add('active');
+            if(typeof showLoading === 'function') showLoading('Entrando...', 'zoom');
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
 
             setTimeout(() => {
-                // 2. Troca o Mapa (Enquanto está preto)
                 currentMapId = house.id; 
                 gameArea.style.backgroundImage = `url('${house.bg}')`;
                 gameArea.classList.add('indoor-mode');
-                document.querySelectorAll('.npc-entity').forEach(n => n.remove()); 
                 renderMapObjects(); 
                 
                 let spawnX = house.spawn ? house.spawn.x : 50; 
                 let spawnY = house.spawn ? house.spawn.y : 50; 
 
-                // Atualiza visualmente
+                // FORÇA VISUAL IMEDIATA DO JOGADOR
                 if (myP) {
                     myP.style.left = spawnX + '%';
                     myP.style.top = spawnY + '%';
                     myP.style.zIndex = Math.floor(spawnY);
-                    myP.setAttribute('data-dir', 'up'); // FORÇA OLHAR PRA CIMA AO ENTRAR
                 }
                 
-                // 3. Emite para o servidor (que vai responder com map_state e tirar o fade)
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
                 
-                // Fallback de segurança se o servidor demorar muito
-                setTimeout(() => { window.isTeleporting = false; transitionLayer.classList.remove('active'); }, 500);
-            }, 300); // Tempo para a tela ficar preta (sincronizado com CSS transition)
+                setTimeout(() => { window.isTeleporting = false; }, 300);
+            }, 500);
         }
 
         function exitHouse(house) {
             if (window.isTeleporting) return;
             window.isTeleporting = true;
             window.isMoving = false;
-            
             const myP = document.getElementById(`p-${window.myId}`);
             if(myP) { myP.classList.remove('walking'); if(myP.walkTimeout) clearTimeout(myP.walkTimeout); }
 
-            // 1. Inicia FADE OUT
-            transitionLayer.classList.add('active');
+            if(typeof showLoading === 'function') showLoading('Saindo...', 'down');
+            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
 
             setTimeout(() => {
-                // 2. Troca para Cidade
                 currentMapId = 'city';
                 gameArea.style.backgroundImage = `url('/uploads/route_map.png')`;
                 gameArea.classList.remove('indoor-mode');
-                document.querySelectorAll('.npc-entity').forEach(n => n.remove());
                 renderMapObjects(); 
                 
                 let exitX, exitY;
@@ -420,17 +403,9 @@
                 else if (house) { exitX = house.trigger.x + (house.trigger.w / 2); exitY = house.trigger.y + house.trigger.h + 8; } 
                 else { exitX = 50; exitY = 50; }
                 
-                if (myP) {
-                    myP.style.left = exitX + '%';
-                    myP.style.top = exitY + '%';
-                    myP.style.zIndex = Math.floor(exitY);
-                    myP.setAttribute('data-dir', 'down'); // FORÇA OLHAR PRA BAIXO AO SAIR
-                }
-                
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
-                
-                setTimeout(() => { window.isTeleporting = false; transitionLayer.classList.remove('active'); }, 500);
-            }, 300);
+                setTimeout(() => { window.isTeleporting = false; }, 300);
+            }, 500);
         }
 
         gameViewport.addEventListener('mousedown', (e) => {
@@ -476,8 +451,10 @@
             let targetY = Math.max(0, Math.min(100, rawY));
             const myPlayer = document.getElementById(`p-${window.myId}`);
             if (!myPlayer) {
+                // FALLBACK DE EMERGÊNCIA SE O CLICK NÃO ACHAR O JOGADOR
+                console.warn("Click detectado mas jogador não encontrado. Recriando...");
                  createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: 50, y: 50 });
-                 return;
+                 return; // Tenta no próximo click
             }
             const currX = parseFloat(myPlayer.style.left);
             const currY = parseFloat(myPlayer.style.top);
