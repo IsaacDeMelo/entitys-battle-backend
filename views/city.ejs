@@ -225,7 +225,7 @@
             if(typeof hideLoading === 'function') hideLoading(); 
             
             isMoving = false; // Destrava movimento
-            isTeleporting = false; // Destrava teleporte
+            isTeleporting = false; // GARANTE DESTRAVAMENTO
         });
         
         socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
@@ -322,20 +322,15 @@
             const steps = 25;
             let activeCollisions = [];
 
-            // === CORREÇÃO CRÍTICA AQUI ===
+            // --- SELETOR DE COLISÃO CORRIGIDO ---
             if (currentMapId !== 'city') {
-                // Se NÃO for cidade, usa SOMENTE colisão da casa
                 const house = housesData.find(h => h.id === currentMapId);
                 if (house && house.collisions) {
                     activeCollisions = house.collisions;
-                } else {
-                    activeCollisions = []; // Casa sem colisão = livre
                 }
             } else {
-                // Se for cidade, usa collisionMap
                 activeCollisions = collisionMap;
             }
-            // ============================
 
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps;
@@ -358,6 +353,7 @@
                 if (houseHit) enterHouse(houseHit);
             } else {
                 const house = housesData.find(h => h.id === currentMapId);
+                // Trigger da saída
                 if (y > 90) { 
                     exitHouse(house);
                 } else if (house && house.exit && x >= house.exit.x && x <= (house.exit.x + house.exit.w) && y >= house.exit.y && y <= (house.exit.y + house.exit.h)) {
@@ -367,8 +363,10 @@
         }
 
         function enterHouse(house) {
+            if (isTeleporting) return; // Evita duplo clique
             isTeleporting = true;
             isMoving = false;
+            
             const myP = document.getElementById(`p-${myId}`);
             if(myP) {
                 myP.classList.remove('walking'); 
@@ -386,12 +384,18 @@
                 
                 const spawnX = 50; const spawnY = 80;
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
+                
+                // --- CORREÇÃO: Destrava o movimento forçadamente após emitir ---
+                setTimeout(() => { isTeleporting = false; }, 200);
+
             }, 500);
         }
 
         function exitHouse(house) {
+            if (isTeleporting) return;
             isTeleporting = true;
             isMoving = false;
+            
             const myP = document.getElementById(`p-${myId}`);
             if(myP) {
                 myP.classList.remove('walking');
@@ -407,9 +411,15 @@
                 gameArea.classList.remove('indoor-mode');
                 renderMapObjects(); 
                 
-                const exitX = house.trigger.x + (house.trigger.w / 2);
-                const exitY = house.trigger.y + house.trigger.h + 5;
+                // Se house não estiver definido (erro), joga pro meio
+                const exitX = house ? house.trigger.x + (house.trigger.w / 2) : 50;
+                const exitY = house ? house.trigger.y + house.trigger.h + 5 : 50;
+                
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: 'city', x: exitX, y: exitY, direction: 'down' });
+
+                // --- CORREÇÃO: Destrava o movimento forçadamente após emitir ---
+                setTimeout(() => { isTeleporting = false; }, 200);
+
             }, 500);
         }
 
@@ -423,6 +433,7 @@
         });
 
         function handleClick(e, targetNpc = null) {
+            // Se estiver teleportando, ignora o clique
             if (e.target.closest('#chatBar') || isMoving || isTeleporting) return;
 
             // BOLINHA DE DEBUG
@@ -459,7 +470,6 @@
             // ANTI-TRAVAMENTO: Se for bater na parede, não trava
             const distance = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
             if (distance < 0.1) {
-                console.log("Movimento bloqueado pela parede. Ignorando.");
                 return;
             }
 
@@ -470,6 +480,7 @@
             }
 
             isMoving = true;
+            // Timeout de segurança caso player_moved falhe
             setTimeout(() => isMoving = false, 2000); 
 
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
