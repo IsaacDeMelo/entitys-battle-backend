@@ -411,7 +411,7 @@
 
         // Batalha (Gatilho)
         socket.on('encounter_found', () => {
-             if(typeof showToast === 'function') showToast('⚔️ Batalha encontrada!', {bg:'#e74c3c'});
+             if(typeof showToast === 'function') showToast('🌿 Um Monstro selvagem apareceu!', {bg:'#e74c3c'});
              if(typeof showLoading === 'function') showLoading('Entrando em batalha...');
              setTimeout(() => {
                  fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({userId: window.CURRENT_USER_ID, currentMap: 'city'}) }).then(r=>r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; });
