@@ -3,95 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cidade</title>
+    <title>Rota Principal</title>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { margin: 0; padding: 0; background: #0c0c0c; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; }
-        div:focus { outline: none; }
-
-        /* ÁREA DO JOGO - Estilo Urbano */
-        #gameArea { 
-            position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; 
-            background-color: #4a5568; /* Asfalto/Concreto */
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            image-rendering: pixelated; 
-            cursor: crosshair; overflow: hidden; z-index: 1; isolation: isolate; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8); 
+        /* --- ESTILOS GERAIS --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
+        body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; }
+        
+        /* JANELA DO JOGO */
+        #gameViewport {
+            position: relative;
+            width: 100%; max-width: 500px;
+            height: 100%; max-height: 900px;
+            background-color: #111;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
         }
 
-        /* MATINHOS (Batalha) - Mesmo estilo visual funcional */
-        .grass-patch { position: absolute; z-index: 5; cursor: pointer; background-color: transparent; border: none; -webkit-tap-highlight-color: transparent; }
+        /* ÁREA DO MAPA (Background da sua imagem) */
+        #gameArea { 
+            position: relative; 
+            width: 100%; height: 100%; 
+            /* AQUI ENTRA A SUA IMAGEM DA ROTA */
+            background-image: url('/uploads/route_bg.png'); 
+            background-size: 100% 100%; 
+            background-position: center; 
+            image-rendering: pixelated; 
+            cursor: crosshair; 
+            z-index: 1; 
+            transition: transform 0.5s ease;
+        }
+
+        /* MODO INTERIOR (Quando entra na casa) */
+        #gameArea.indoor-mode {
+            background-size: cover;
+            border: 20px solid #111; /* Borda estética */
+        }
+
+        /* CAMADAS LÓGICAS */
+        .layer-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
         
-        /* Posicionamento dos matinhos da cidade (Jardins urbanos) */
-        #city_grass1 { top: 15%; left: 10%; width: 30%; height: 25%; background: rgba(46, 204, 113, 0.2); border: 2px dashed rgba(46, 204, 113, 0.5); border-radius: 8px; }
-        #city_grass2 { top: 15%; right: 10%; width: 30%; height: 25%; background: rgba(46, 204, 113, 0.2); border: 2px dashed rgba(46, 204, 113, 0.5); border-radius: 8px; }
-
-        /* SAÍDAS */
-        .map-exit { position: absolute; z-index: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        
-        /* Saída para FLORESTA (Esquerda/Oeste) */
-        .exit-forest { top: 40%; left: 0; width: 20px; height: 20%; background: linear-gradient(to right, rgba(0,0,0,0.3), transparent); }
-        .exit-forest::after { content: 'FLORESTA 🌲'; position: absolute; left: 5px; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #2ecc71; writing-mode: vertical-rl; text-orientation: upright; opacity: 0.8; text-shadow: 1px 1px 0 #000; }
-
-        /* Saída para LOBBY (Baixo/Sul) */
-        .exit-lobby { bottom: 0; left: 0; width: 100%; height: 30px; background: linear-gradient(to top, rgba(0,0,0,0.3), transparent); display: flex; justify-content: center; align-items: flex-end; padding-bottom: 5px; }
-        .exit-lobby::after { content: 'CENTRO 🏙️'; font-family: 'Press Start 2P'; font-size: 0.5rem; color: #fff; opacity: 0.8; text-shadow: 1px 1px 0 #000; }
-
-        /* PLAYER */
-        .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 4px 2px rgba(0,0,0,0.4)); margin-left: -24px; margin-top: -40px; z-index: 10; transition: top 0s linear, left 0s linear; }
+        /* ENTIDADES (JOGADORES E NPCS) */
+        .player { 
+            position: absolute; width: 32px; height: 32px; 
+            background-size: 400% auto; image-rendering: pixelated; 
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6)); 
+            margin-left: -16px; margin-top: -28px; z-index: 10; 
+            pointer-events: none; 
+            transition: top 0s linear, left 0s linear; 
+        }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
+        
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
-        .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
-        .player-name { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; white-space: nowrap; pointer-events: none; z-index: 500; }
         
-        /* CHAT E UI */
-        .chat-bubble { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; opacity: 1; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .chat-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
-        @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-        #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); transition: 0.2s; }
-        #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
-        #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 3px 0 #c27c0e; padding: 0; padding-bottom: 3px; line-height: 1; margin-top: 0 !important; }
-        #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
+        .player[data-dir="down"] { background-position-y: 0%; } 
+        .player[data-dir="left"] { background-position-y: 33.33%; } 
+        .player[data-dir="right"] { background-position-y: 66.66%; } 
+        .player[data-dir="up"] { background-position-y: 100%; }
         
-        /* LOADER */
-        .loader-overlay { position: fixed; inset: 0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.9); z-index: 99999; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
-        .loader-overlay.show { opacity: 1; pointer-events: auto; }
-        .loader-box { background: linear-gradient(135deg,#0b1622,#071018); border: 1px solid rgba(255,255,255,0.05); padding: 20px 26px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); transform: translateY(8px); opacity: 0; transition: transform .35s ease, opacity .35s ease; display:flex; align-items:center; gap:12px; color:#fff; font-family:'Press Start 2P'; }
-        .loader-overlay.show .loader-box { transform: translateY(0); opacity: 1; }
-        .loader-box .spinner { width: 28px; height: 28px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.08); border-top-color: #f1c40f; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loader-text { font-size: 0.8rem; color:#f1c40f; }
+        .player-name { 
+            position: absolute; top: -18px; left: 50%; transform: translateX(-50%); 
+            background: rgba(0,0,0,0.7); color: white; padding: 2px 5px; border-radius: 4px; 
+            font-size: 0.6rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; 
+        }
+        
+        /* NPC TEM CLICK HABILITADO */
+        .npc-entity { pointer-events: auto !important; cursor: pointer; z-index: 11; }
+        .npc-entity:hover { filter: brightness(1.2) drop-shadow(0 0 5px yellow); }
+        .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; }
 
-        .npc-entity { cursor: pointer; }
-        .npc-entity:hover { filter: brightness(1.2); }
+        /* UI CHAT */
+        .chat-bubble { position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 4px 8px; border-radius: 8px; border: 2px solid #333; font-size: 0.75rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+        
+        #chatBar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; gap: 8px; z-index: 9999; pointer-events: auto; }
+        #chatInput { flex: 1; padding: 10px 15px; border: 2px solid #3498db; background: rgba(26, 26, 46, 0.95); color: white; border-radius: 25px; font-family: 'Roboto', sans-serif; font-size: 1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        #chatSend { width: 46px; height: 46px; border-radius: 50%; border: none; background: #f1c40f; color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 5px 0 #c27c0e; transition: 0.1s; }
+        #chatSend:active { transform: translateY(4px); box-shadow: 0 1px 0 #c27c0e; }
+
+        /* ADMIN / DEV MODE VISUALS */
+        .collision-box { position: absolute; background: transparent; z-index: 5; }
+        .grass-patch { position: absolute; z-index: 4; background: transparent; }
+        .house-trigger { position: absolute; z-index: 6; background: transparent; cursor: pointer; }
+        
+        /* Cores para o modo de edição */
+        .dev-collision { background: rgba(231, 76, 60, 0.5) !important; border: 1px dashed #e74c3c; pointer-events: auto !important; }
+        .dev-grass { background: rgba(46, 204, 113, 0.5) !important; border: 1px dashed #2ecc71; pointer-events: auto !important; }
+        .dev-house { background: rgba(52, 152, 219, 0.5) !important; border: 1px dashed #3498db; pointer-events: auto !important; }
+        .dev-exit { background: rgba(241, 196, 15, 0.5) !important; border: 1px dashed #f1c40f; pointer-events: auto !important; }
+        
+        #adminToolbar { 
+            position: fixed; top: 10px; right: 10px; z-index: 10000; 
+            background: rgba(15, 23, 42, 0.95); padding: 10px; border-radius: 8px; border: 1px solid #f1c40f; 
+            display: none; flex-direction: column; gap: 5px; color: white; font-size: 0.7rem; pointer-events: auto;
+        }
+        .tool-btn { background: #1e293b; color: white; border: 1px solid #475569; padding: 6px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
+        .tool-btn.active { background: #f1c40f; color: black; border-color: white; }
+        .tool-btn:hover { filter: brightness(1.2); }
+
+        #loader { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; color: #f1c40f; font-family: 'Press Start 2P'; z-index: 20000; transition: opacity 0.5s; pointer-events: none; opacity: 0; }
+        #loader.show { opacity: 1; pointer-events: auto; }
+        
+        /* SAÍDAS */
+        .exit-zone { position: absolute; z-index: 2; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: rgba(255,255,255,0.5); font-weight: bold; font-family: 'Press Start 2P'; text-shadow: 1px 1px 0 #000; }
+        #exit-forest { bottom: 0; left: 40%; width: 20%; height: 5%; border-top: 2px dashed rgba(46, 204, 113, 0.5); }
+        #exit-forest::after { content: '▼ FLORESTA ▼'; animation: blink 2s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
     <%- include('partials/menu') %>
 
-    <div id="gameArea">
-        <!-- SAÍDAS -->
-        <div class="map-exit exit-forest"></div>
-        <div class="map-exit exit-lobby"></div>
+    <!-- TELA DE CARREGAMENTO -->
+    <div id="loader" class="show">CARREGANDO...</div>
 
-        <!-- MATINHOS DA CIDADE -->
-        <div class="grass-patch" id="city_grass1"></div>
-        <div class="grass-patch" id="city_grass2"></div>
+    <!-- FERRAMENTAS DE DEV (SÓ ADMIN VÊ) -->
+    <% if(user.isAdmin) { %>
+    <div id="adminToolbar">
+        <div style="text-align:center; color:#f1c40f; font-family:'Press Start 2P'; margin-bottom:5px;">DEV MODE</div>
+        <button class="tool-btn" onclick="toggleDevMode()" id="btnDevToggle">ATIVAR EDITOR</button>
+        <div id="devControls" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
+            <button class="tool-btn" onclick="setTool('collision')" id="btnCol">🟥 PAREDE</button>
+            <button class="tool-btn" onclick="setTool('grass')" id="btnGrs">🟩 GRAMA</button>
+            <button class="tool-btn" onclick="setTool('house')" id="btnHse">🟦 CASA (ENTRADA)</button>
+            <div style="height:1px; background:#555; margin:2px 0;"></div>
+            <button class="tool-btn" onclick="undoLast()">↩️ DESFAZER</button>
+            <button class="tool-btn" onclick="exportConfig()" style="background:#27ae60;">💾 SALVAR/COPIAR</button>
+        </div>
+        <textarea id="configOutput" style="width:150px; height:50px; display:none; font-size:9px;"></textarea>
+    </div>
+    <% } %>
 
-        <!-- CHAT -->
-        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
+    <!-- ÁREA DO JOGO -->
+    <div id="gameViewport">
+        <div id="gameArea">
+            <div id="exit-forest" class="exit-zone"></div>
+            
+            <!-- CAMADAS -->
+            <div id="layer-collision" class="layer-container"></div>
+            <div id="layer-grass" class="layer-container"></div>
+            <div id="layer-triggers" class="layer-container"></div>
+            
+            <!-- CAMADA DE DESENHO DEV -->
+            <div id="layer-dev" class="layer-container" style="z-index: 100;"></div>
+        </div>
+        
+        <div id="chatBar">
+            <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="40">
+            <button id="chatSend">➤</button>
+        </div>
     </div>
 
-    <!-- UI -->
-    <div id="toastContainer"></div>
-    <div id="loader" class="loader-overlay show" aria-hidden="false"><div class="loader-box"><div class="spinner"></div><div class="loader-text">Entrando na Cidade...</div></div></div>
-
+    <!-- VARIAVEIS E LIBS -->
     <script>
         const socket = io();
         const myName = "<%= playerName %>";
@@ -99,136 +166,439 @@
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         
-        window.isPlayerMoving = false;
-        window.isInteracting = false;
+        // --- CONFIGURAÇÃO INICIAL (Baseada na imagem) ---
+        // Aqui eu pre-defini algumas áreas baseadas na imagem, mas você pode editar com o DEV MODE.
+        let collisionMap = [
+            {"x":0,"y":0,"w":15,"h":100}, // Árvores Esquerda
+            {"x":85,"y":0,"w":15,"h":100}, // Árvores Direita
+            {"x":15,"y":50,"w":10,"h":10}, // Cerca casa vermelha
+            {"x":75,"y":50,"w":10,"h":10}  // Cerca casa azul
+        ];
+        let grassMap = [
+            {"x":18,"y":15,"w":25,"h":30}, // Grama Alta Esquerda
+            {"x":60,"y":70,"w":20,"h":15}  // Grama Alta Direita Baixa
+        ];
+        // Casas configuradas com base na imagem
+        let housesData = [
+            {
+                "id": "house_red", 
+                "bg": "/uploads/house_red_interior.png", // Imagem interior (exemplo)
+                "trigger": {"x":20,"y":50,"w":12,"h":10}, // Posição visual da casa vermelha
+                "spawn": {"x":50,"y":80},
+                "collisions": [{"x":0,"y":0,"w":100,"h":10}], // Exemplo colisão interna
+                "exit": {"x":40,"y":90,"w":20,"h":10}
+            },
+            {
+                "id": "house_blue", 
+                "bg": "/uploads/house_blue_interior.png",
+                "trigger": {"x":75,"y":50,"w":12,"h":10}, // Posição visual da casa azul
+                "spawn": {"x":50,"y":80},
+                "collisions": [],
+                "exit": {"x":40,"y":90,"w":20,"h":10}
+            }
+        ];
     </script>
-
+    
+    <!-- IMPORTANTE: Traz as funcionalidades de NPC, Batalha e Diálogo -->
     <script src="/scripts/common.js"></script>
 
     <script>
         const gameArea = document.getElementById('gameArea');
-        const allMonsters = <%- JSON.stringify(typeof entities !== 'undefined' ? entities : []) %>;
-        let myId = null; const MOVEMENT_SPEED = 55;
-        
-        const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
-        const urlParams = new URLSearchParams(window.location.search);
-        
-        const spawnFrom = urlParams.get('from');
-        const returnX = urlParams.get('x');
-        const returnY = urlParams.get('y');
+        let myId = null; 
+        const MOVEMENT_SPEED = 50; // Velocidade do boneco
 
-        function sendChat() { const msg = chatInput.value.trim(); if (msg) { socket.emit('send_chat', msg); chatInput.value = ''; chatInput.blur(); } }
-        chatBtn.addEventListener('click', (e) => { e.stopPropagation(); sendChat(); }); chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChat(); }); chatInput.addEventListener('click', (e) => { e.stopPropagation(); });
+        // Controle de Estado
+        let currentMap = 'route'; // 'route' ou ID da casa
+        let isDevMode = false;
+        let currentTool = null;
+        let isDrawing = false;
+        let startDraw = {x:0, y:0};
+        let tempDrawBox = null;
         
+        // Pega parametros da URL (ex: spawn vindo da floresta)
+        const urlParams = new URLSearchParams(window.location.search);
+        let startX = urlParams.get('x') ? parseFloat(urlParams.get('x')) : 50;
+        let startY = urlParams.get('y') ? parseFloat(urlParams.get('y')) : 90; // Default: Chega por baixo
+        
+        if(urlParams.get('from') === 'forest') { startX = 50; startY = 95; } // Vindo da floresta (baixo)
+        if(urlParams.get('from') === 'city_center') { startX = 50; startY = 5; } // Vindo de cima
+
+        // --- CONEXÃO SOCKET ---
         socket.on('connect', () => { 
-            myId = socket.id; 
-            
-            // Lógica de posição inicial
-            let initialX = returnX ? parseFloat(returnX) : 50; 
-            let initialY = returnY ? parseFloat(returnY) : 50; 
-            let initialDir = 'down'; 
-            
-            // Vindo da Floresta (esquerda)
-            if (spawnFrom === 'forest') { initialX = 5; initialY = 50; initialDir = 'right'; }
-            // Vindo do Lobby (baixo)
-            if (spawnFrom === 'lobby') { initialX = 50; initialY = 92; initialDir = 'up'; }
-            
-            socket.emit('enter_map', { userId: '<%= user._id %>', name: myName, skin: mySkin, map: 'city', x: initialX, y: initialY, direction: initialDir }); 
+            myId = socket.id;
+            socket.emit('enter_map', { 
+                userId: window.CURRENT_USER_ID, 
+                name: myName, 
+                skin: mySkin, 
+                map: 'route_main', // Nome único para esta sala no socket
+                x: startX, 
+                y: startY, 
+                direction: 'up' 
+            });
         });
-        
-        socket.on('map_state', (players) => { document.querySelectorAll('.player:not(.npc-entity)').forEach(el => el.remove()); players.forEach(p => createPlayerElement(p)); hideLoading(); });
-        socket.on('player_joined', (p) => { if(p.id !== myId) createPlayerElement(p); });
-        socket.on('duplicate_session', (info) => { showToast('Sessão desconectada: outra entrada com esta conta.'); setTimeout(() => { window.location.href = '/'; }, 1800); });
+
+        // --- RENDERIZAÇÃO DE JOGADORES ---
+        socket.on('map_state', (players) => {
+            document.querySelectorAll('.player:not(.npc-entity)').forEach(el => {
+                if(el.id !== `p-${myId}`) el.remove(); // Não remove o próprio player pra não piscar
+            });
+            
+            players.forEach(p => {
+                if (p.id !== myId) createPlayer(p);
+                else {
+                    // Atualiza eu mesmo se necessário (ex: primeira carga)
+                    const me = document.getElementById(`p-${myId}`);
+                    if(!me) createPlayer(p);
+                }
+            });
+            
+            document.getElementById('loader').classList.remove('show');
+            renderLevelGeometry(); // Desenha paredes/grama
+        });
+
+        socket.on('player_joined', (p) => { if(p.id !== myId) createPlayer(p); });
+        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if(el) el.remove(); });
         
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
-                const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
-                const dx = data.x - currentLeft; const dy = data.y - currentTop;
-                const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
-                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
-                void el.offsetWidth; 
-                el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
-                if (duration > 0) { 
-                    if (!el.classList.contains('walking')) el.classList.add('walking'); 
-                    if (el.walkTimeout) clearTimeout(el.walkTimeout); 
-                    el.walkTimeout = setTimeout(() => { 
-                        el.classList.remove('walking'); 
-                        if (data.id === myId) { 
-                            window.isPlayerMoving = false; 
-                            gameArea.classList.remove('locked');
-                            
-                            // SAÍDA ESQUERDA -> FLORESTA
-                            if (data.x < 3 && data.y > 30 && data.y < 70) { 
-                                showLoading('Entrando na Floresta...', 'left'); 
-                                setTimeout(() => { window.location.href = '/forest?from=city&userId=<%= user._id %>'; }, 120); 
-                            }
-                            
-                            // SAÍDA BAIXO -> LOBBY
-                            if (data.y > 95) {
-                                showLoading('Voltando para o Centro...', 'down');
-                                setTimeout(() => { window.location.href = '/lobby?from=city&userId=<%= user._id %>'; }, 120);
-                            }
-                        } 
-                    }, duration * 1000); 
+                // Interpolação de movimento simples via CSS Transition
+                const dur = data.teleport ? 0 : (dist(parseFloat(el.style.left), parseFloat(el.style.top), data.x, data.y) / MOVEMENT_SPEED);
+                el.style.transition = dur > 0 ? `top ${dur}s linear, left ${dur}s linear` : 'none';
+                
+                // Força reflow
+                void el.offsetWidth;
+                
+                el.style.left = data.x + '%';
+                el.style.top = data.y + '%';
+                el.style.zIndex = Math.floor(data.y);
+                el.setAttribute('data-dir', data.direction);
+
+                // Animação de andar
+                if (dur > 0) {
+                    el.classList.add('walking');
+                    clearTimeout(el.walkTimer);
+                    el.walkTimer = setTimeout(() => {
+                        el.classList.remove('walking');
+                        // Lógica de Gatilho (só para mim)
+                        if(data.id === myId) checkTriggers(data.x, data.y);
+                    }, dur * 1000);
                 }
             }
         });
+
+        socket.on('chat_message', (data) => {
+            const el = document.getElementById(data.id === myId ? `p-${myId}` : `p-${data.id}`);
+            if(el) {
+                const bubble = document.createElement('div');
+                bubble.className = 'chat-bubble';
+                bubble.innerText = data.msg;
+                el.appendChild(bubble);
+                setTimeout(() => bubble.remove(), 4000);
+            }
+        });
         
-        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
-        socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
-        
-        // --- PADRONIZAÇÃO DO ENCONTRO ---
+        // Recebe lista de NPCs (vem do servidor baseados no models/NPC)
+        socket.on('npcs_list', (list) => {
+            document.querySelectorAll('.npc-entity').forEach(e => e.remove());
+            list.forEach(npc => {
+                const div = document.createElement('div');
+                div.className = 'player npc-entity';
+                div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
+                div.style.backgroundImage = `url('${npc.skin.startsWith('http')?npc.skin:'/uploads/'+npc.skin+'.png'}')`;
+                
+                const name = document.createElement('div');
+                name.className = 'player-name'; name.innerText = npc.name;
+                div.appendChild(name);
+                
+                // INTEGRAÇÃO COM COMMON.JS
+                div.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if(typeof moveToAndTalkToNPC === 'function') {
+                        moveToAndTalkToNPC(npc); // Usa a lógica inteligente do common.js
+                    }
+                };
+                
+                gameArea.appendChild(div);
+            });
+        });
+
+        // Batalha Selvagem (Grama)
         socket.on('encounter_found', () => {
-            window.isPlayerMoving = true; 
-            // Mensagem EXATAMENTE igual ao forest.ejs
-            showToast("🌿 Um Monstro selvagem apareceu!");
-            // Loader EXATAMENTE igual ao forest.ejs
-            showLoading('Entrando em batalha...', 'left');
-            
-            const p = document.getElementById(`p-${myId}`);
-            const cx = p ? parseFloat(p.style.left) : 50;
-            const cy = p ? parseFloat(p.style.top) : 50;
-
-            setTimeout(() => { 
-                fetch('/battle/wild', { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ 
-                        userId: '<%= user._id %>',
-                        currentMap: 'city',
-                        currentX: cx,
-                        currentY: cy
-                    }) 
-                })
-                .then(r => r.json())
-                .then(data => { 
-                    if(data.battleId) window.location.href = '/battle/' + data.battleId; 
-                    else { 
-                        hideLoading(); 
-                        showToast(data.error); 
-                        window.isPlayerMoving = false; 
-                    } 
-                }); 
-            }, 1000); // Delay padrão igual ao da floresta
+             // Redireciona para batalha usando a lógica do servidor
+             if(typeof showLoading === 'function') showLoading('Entrando em Batalha...', 'left');
+             const me = document.getElementById(`p-${myId}`);
+             const cx = parseFloat(me.style.left); const cy = parseFloat(me.style.top);
+             
+             fetch('/battle/wild', {
+                 method: 'POST',
+                 headers: {'Content-Type':'application/json'},
+                 body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: 'route_main', currentX: cx, currentY: cy })
+             }).then(r=>r.json()).then(d => {
+                 if(d.battleId) window.location.href = '/battle/' + d.battleId;
+                 else { document.getElementById('loader').classList.remove('show'); alert(d.error); }
+             });
         });
 
-        function showLoading(msg = 'Carregando...', dir) { const loader = document.getElementById('loader'); if (!loader) return; const text = loader.querySelector('.loader-text'); if (text) text.innerText = msg; if (dir) loader.setAttribute('data-dir', dir); loader.classList.add('show'); loader.setAttribute('aria-hidden', 'false'); }
-        function hideLoading() { const loader = document.getElementById('loader'); if (!loader) return; loader.classList.remove('show'); loader.removeAttribute('data-dir'); loader.setAttribute('aria-hidden', 'true'); }
-        
-        function createPlayerElement(p) { const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; } else { const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; } const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); gameArea.appendChild(div); if (p.id === myId) playerElement = div; }
-        
-        gameArea.addEventListener('click', (e) => {
-            if (window.isPlayerMoving || window.isInteracting || e.target.classList.contains('npc-entity')) return;
-            const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
-            window.isPlayerMoving = true; socket.emit('move_player', { x: targetX, y: targetY });
+        // --- INPUT DO JOGADOR (CLIQUE PARA ANDAR) ---
+        gameArea.addEventListener('mousedown', (e) => {
+            if(isDevMode && currentTool) return; // Se estiver editando, não anda
             
-            const elements = document.elementsFromPoint(e.clientX, e.clientY);
-            const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
-            if (grassEl) socket.emit('check_encounter', { grassId: grassEl.id, x: targetX, y: targetY });
+            const rect = gameArea.getBoundingClientRect();
+            const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+            const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            // Pega minha posição atual
+            const me = document.getElementById(`p-${myId}`);
+            if(!me) return;
+            const startX = parseFloat(me.style.left);
+            const startY = parseFloat(me.style.top);
+            
+            // Calcula rota segura (colisão simples)
+            const target = getSafePath(startX, startY, clickX, clickY);
+            
+            // Envia movimento
+            socket.emit('move_player', { x: target.x, y: target.y });
+            
+            // Efeito visual de clique
+            createClickMarker(e.clientX, e.clientY);
         });
 
-        window.addEventListener('beforeunload', () => { showLoading(); });
+        // --- SISTEMAS DE LÓGICA DO MAPA ---
+        
+        function getSafePath(x1, y1, x2, y2) {
+            // Verifica colisão em passos
+            const steps = 20;
+            let finalX = x2, finalY = y2;
+            
+            // Qual mapa de colisão usar? (Rota ou Casa)
+            let activeCollisions = (currentMap === 'route') ? collisionMap : 
+                (housesData.find(h=>h.id===currentMap)?.collisions || []);
+
+            for(let i=1; i<=steps; i++) {
+                const t = i/steps;
+                const tx = x1 + (x2-x1)*t;
+                const ty = y1 + (y2-y1)*t;
+                
+                // Verifica se bateu em algo
+                const hit = activeCollisions.some(c => 
+                    tx >= c.x && tx <= c.x+c.w && ty >= c.y && ty <= c.y+c.h
+                );
+                
+                if(hit) {
+                    // Se bateu, retorna a ultima posição válida
+                    return { x: x1 + (x2-x1)*((i-1)/steps), y: y1 + (y2-y1)*((i-1)/steps) };
+                }
+            }
+            return { x: x2, y: y2 };
+        }
+
+        function checkTriggers(x, y) {
+            // 1. Saída para Floresta (Embaixo)
+            if (currentMap === 'route' && y > 96 && x > 35 && x < 65) {
+                window.location.href = '/forest?from=route&x=50&y=5&userId=' + window.CURRENT_USER_ID;
+                return;
+            }
+
+            // 2. Entrar em Casas
+            if (currentMap === 'route') {
+                const house = housesData.find(h => 
+                    x >= h.trigger.x && x <= h.trigger.x+h.trigger.w &&
+                    y >= h.trigger.y && y <= h.trigger.y+h.trigger.h
+                );
+                if (house) enterHouse(house);
+            }
+            
+            // 3. Sair de Casas
+            if (currentMap !== 'route') {
+                const house = housesData.find(h => h.id === currentMap);
+                if (house && house.exit && 
+                    x >= house.exit.x && x <= house.exit.x+house.exit.w &&
+                    y >= house.exit.y && y <= house.exit.y+house.exit.h) {
+                    exitHouse(house);
+                }
+            }
+            
+            // 4. Grama (Batalha)
+            if (currentMap === 'route') {
+                // Verifica se está na grama
+                const inGrass = grassMap.some(g => x >= g.x && x <= g.x+g.w && y >= g.y && y <= g.y+g.h);
+                // Envia para o servidor checar RNG (Chance global)
+                if (inGrass) socket.emit('check_encounter', { grassId: 'route_grass' });
+            }
+        }
+
+        function enterHouse(house) {
+            currentMap = house.id;
+            gameArea.style.backgroundImage = `url('${house.bg}')`;
+            gameArea.classList.add('indoor-mode');
+            renderLevelGeometry();
+            
+            // Teleporta visualmente
+            const me = document.getElementById(`p-${myId}`);
+            me.style.transition = 'none';
+            me.style.left = (house.spawn?.x || 50) + '%';
+            me.style.top = (house.spawn?.y || 80) + '%';
+            
+            // Avisa servidor (muda de sala socket se quiser lógica avançada, ou só atualiza pos)
+            // Aqui mantemos 'route_main' mas mudamos pos visualmente
+        }
+
+        function exitHouse(house) {
+            currentMap = 'route';
+            gameArea.style.backgroundImage = `url('/uploads/route_bg.png')`;
+            gameArea.classList.remove('indoor-mode');
+            renderLevelGeometry();
+            
+            const me = document.getElementById(`p-${myId}`);
+            me.style.transition = 'none';
+            // Sai na frente da porta
+            me.style.left = (house.trigger.x + house.trigger.w/2) + '%';
+            me.style.top = (house.trigger.y + house.trigger.h + 5) + '%';
+        }
+
+        // --- SISTEMA DE DEV / ADMIN (PARA COLISÃO) ---
+        
+        function toggleDevMode() {
+            isDevMode = !isDevMode;
+            document.getElementById('devControls').style.display = isDevMode ? 'flex' : 'none';
+            document.getElementById('btnDevToggle').innerText = isDevMode ? 'DESATIVAR' : 'ATIVAR EDITOR';
+            renderLevelGeometry();
+        }
+
+        function setTool(t) {
+            currentTool = t;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            const map = {'collision':'btnCol', 'grass':'btnGrs', 'house':'btnHse'};
+            if(map[t]) document.getElementById(map[t]).classList.add('active');
+        }
+
+        // Desenhar caixas
+        gameArea.addEventListener('mousedown', (e) => {
+            if(!isDevMode || !currentTool) return;
+            e.stopPropagation(); e.preventDefault();
+            isDrawing = true;
+            const rect = gameArea.getBoundingClientRect();
+            startDraw = {x: ((e.clientX-rect.left)/rect.width)*100, y: ((e.clientY-rect.top)/rect.height)*100};
+            
+            tempDrawBox = document.createElement('div');
+            tempDrawBox.className = currentTool === 'collision' ? 'dev-collision' : (currentTool === 'grass' ? 'dev-grass' : 'dev-house');
+            tempDrawBox.style.position = 'absolute';
+            tempDrawBox.style.left = startDraw.x+'%'; tempDrawBox.style.top = startDraw.y+'%';
+            document.getElementById('layer-dev').appendChild(tempDrawBox);
+        });
+
+        gameArea.addEventListener('mousemove', (e) => {
+            if(!isDrawing) return;
+            const rect = gameArea.getBoundingClientRect();
+            const currX = ((e.clientX-rect.left)/rect.width)*100;
+            const currY = ((e.clientY-rect.top)/rect.height)*100;
+            
+            const w = Math.abs(currX - startDraw.x);
+            const h = Math.abs(currY - startDraw.y);
+            const l = Math.min(currX, startDraw.x);
+            const t = Math.min(currY, startDraw.y);
+            
+            tempDrawBox.style.width = w+'%'; tempDrawBox.style.height = h+'%';
+            tempDrawBox.style.left = l+'%'; tempDrawBox.style.top = t+'%';
+        });
+
+        gameArea.addEventListener('mouseup', () => {
+            if(!isDrawing) return; isDrawing = false;
+            const rect = {
+                x: parseFloat(tempDrawBox.style.left), y: parseFloat(tempDrawBox.style.top),
+                w: parseFloat(tempDrawBox.style.width), h: parseFloat(tempDrawBox.style.height)
+            };
+            
+            if(rect.w > 1 && rect.h > 1) {
+                if(currentTool === 'collision') collisionMap.push(rect);
+                if(currentTool === 'grass') grassMap.push(rect);
+                if(currentTool === 'house') {
+                    const id = prompt('ID da casa (ex: house_red):', 'house_'+Date.now());
+                    const bg = prompt('URL do fundo (interior):', '/uploads/room_bg.png');
+                    housesData.push({ id, bg, trigger: rect, collisions: [], spawn: {x:50,y:80}, exit: {x:40,y:90,w:20,h:10} });
+                }
+            }
+            tempDrawBox.remove();
+            renderLevelGeometry();
+        });
+
+        function undoLast() {
+            if(currentTool === 'collision') collisionMap.pop();
+            if(currentTool === 'grass') grassMap.pop();
+            if(currentTool === 'house') housesData.pop();
+            renderLevelGeometry();
+        }
+
+        function exportConfig() {
+            const str = `let collisionMap = ${JSON.stringify(collisionMap)};\nlet grassMap = ${JSON.stringify(grassMap)};\nlet housesData = ${JSON.stringify(housesData)};`;
+            const out = document.getElementById('configOutput');
+            out.style.display = 'block'; out.value = str; out.select(); document.execCommand('copy');
+            alert('Configuração copiada! Cole no topo do arquivo.');
+            out.style.display = 'none';
+        }
+
+        // --- FUNÇÕES AUXILIARES ---
+
+        function renderLevelGeometry() {
+            const colL = document.getElementById('layer-collision'); colL.innerHTML = '';
+            const grsL = document.getElementById('layer-grass'); grsL.innerHTML = '';
+            const trgL = document.getElementById('layer-triggers'); trgL.innerHTML = '';
+
+            // Se estiver na rota principal
+            if (currentMap === 'route') {
+                collisionMap.forEach(r => drawRect(colL, r, 'collision-box', 'dev-collision'));
+                grassMap.forEach(r => drawRect(grsL, r, 'grass-patch', 'dev-grass'));
+                housesData.forEach(h => drawRect(trgL, h.trigger, 'house-trigger', 'dev-house'));
+            } else {
+                // Se estiver dentro de casa
+                const house = housesData.find(h => h.id === currentMap);
+                if(house && house.collisions) {
+                    house.collisions.forEach(r => drawRect(colL, r, 'collision-box', 'dev-collision'));
+                }
+                if(house && house.exit) {
+                    drawRect(trgL, house.exit, 'house-trigger', 'dev-exit');
+                }
+            }
+        }
+
+        function drawRect(container, r, className, devClass) {
+            const d = document.createElement('div');
+            d.className = className + (isDevMode ? ' '+devClass : '');
+            d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
+            container.appendChild(d);
+        }
+
+        function createPlayer(p) {
+            const div = document.createElement('div');
+            div.id = `p-${p.id}`; div.className = 'player';
+            div.style.left = p.x+'%'; div.style.top = p.y+'%';
+            div.style.backgroundImage = `url('${p.sprite || '/uploads/'+(p.skin||'char1')+'.png'}')`;
+            
+            const name = document.createElement('div');
+            name.className = 'player-name'; name.innerText = p.name;
+            div.appendChild(name);
+            
+            gameArea.appendChild(div);
+        }
+
+        function createClickMarker(x, y) {
+            const m = document.createElement('div');
+            m.style.position = 'fixed'; m.style.left = x+'px'; m.style.top = y+'px';
+            m.style.width = '10px'; m.style.height = '10px'; m.style.background = 'rgba(255,255,255,0.4)';
+            m.style.borderRadius = '50%'; m.style.pointerEvents = 'none'; m.style.zIndex = '9999';
+            m.style.transform = 'translate(-50%, -50%)';
+            document.body.appendChild(m);
+            setTimeout(() => m.remove(), 300);
+        }
+
+        function dist(x1, y1, x2, y2) { return Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2)); }
+
+        // Chat
+        const chatIn = document.getElementById('chatInput');
+        document.getElementById('chatSend').onclick = () => {
+            if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; }
+        };
     </script>
 </body>
 </html>
