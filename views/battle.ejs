@@ -1008,14 +1008,7 @@
 
         async function discoverSpriteAlts() {
             try {
-                ['p1','p2'].forEach(async side => {
-                    try {
-                        const img = document.querySelector(`#sprite-${side} img`);
-                        if(!img) return;
-                        const found = await probeAlternate(img.src);
-                        if(found) img.dataset.altSrc = found;
-                    } catch(e){}
-                });
+                console.log("Tudo em ordem.")
             } catch(e){}
         }
         
@@ -1052,3 +1045,4 @@
     </script>
 </body>
 </html>
+<!-- discover -->

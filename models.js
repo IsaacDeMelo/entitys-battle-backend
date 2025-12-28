@@ -74,7 +74,8 @@ reward: {
         value: String,
         qty: Number,
         level: Number
-    }
+    },
+     battleBackground: { type: String, default: 'battle_bg.png' }, // Ex: 'gym_bg.png', 
 });
 
 module.exports = {

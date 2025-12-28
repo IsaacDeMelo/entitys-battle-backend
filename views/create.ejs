@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laboratório - Goofymon Admin</title>
+    <title>Laboratório - Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #3498db; --text: #e2e8f0; --danger: #e74c3c; --success: #2ecc71; --warning: #f1c40f; }
@@ -265,7 +265,6 @@
                     <div class="form-grid">
                         <div>
                             <label>Mapa (ID ou Selecione)</label>
-                            <!-- AQUI ESTÁ A MELHORIA: INPUT FLEXÍVEL -->
                             <input type="text" name="map" id="npcMap" list="mapList" placeholder="ex: city, house1" required autocomplete="off">
                             <datalist id="mapList">
                                 <option value="lobby">Lobby (Início)</option>
@@ -306,6 +305,14 @@
                         <label>Ou Upload Skin Própria</label>
                         <input type="file" name="npcSkinFile" accept="image/*" onchange="previewImage(this, 'npcImgPreview')">
                         <div id="npcImgPreview"></div>
+                    </div>
+
+                    <!-- NOVO CAMPO: BACKGROUND DE BATALHA -->
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Cenário de Batalha (Nome do arquivo em /uploads)</label>
+                            <input type="text" name="battleBg" id="npcBattleBg" placeholder="battle_bg.png" autocomplete="off">
+                        </div>
                     </div>
                     
                     <h4>💬 DIÁLOGOS</h4>
@@ -464,7 +471,6 @@
             
             document.getElementById('npcName').value = n.name; 
             
-            // Aqui está a mágica do mapa personalizado
             document.getElementById('npcMap').value = n.map; 
             
             document.getElementById('npcX').value = n.x; 
@@ -477,6 +483,9 @@
             document.getElementById('npcCdDialogue').value = n.cooldownDialogue || '';
             document.getElementById('npcCooldown').value = n.cooldownMinutes || 0;
             
+            // Carrega o Battle Background
+            document.getElementById('npcBattleBg').value = n.battleBackground || '';
+
             if(n.team) { 
                 const cleanTeam = n.team.map(t => ({ baseId: t.baseId, level: t.level })); 
                 document.getElementById('npcTeam').value = JSON.stringify(cleanTeam); 

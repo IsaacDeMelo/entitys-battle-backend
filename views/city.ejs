@@ -58,8 +58,15 @@
             margin-left: -24px; margin-top: -40px; 
             z-index: 10; 
             pointer-events: none; 
-            transition: top 0s linear, left 0s linear; 
+            transition: top 0s linear, left 0s linear, transform 0.1s; 
         }
+        
+        /* CLASSE PARA CRIANÇAS (KID) */
+        .player.kid-scale {
+            transform: scale(0.75);
+            transform-origin: bottom center;
+        }
+
         <% for(let i = 1; i <= skinCount; i++) { %> 
             .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } 
         <% } %>
@@ -74,9 +81,21 @@
         
         .player-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 4px; border-radius: 4px; font-size: 0.6rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
         
+        /* NPC INTERATIVO */
         .npc-entity { pointer-events: auto !important; cursor: pointer; z-index: 20; }
         .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; background: rgba(0,0,0,0.8); }
-        .npc-entity:hover, .npc-entity:active { filter: brightness(1.2); transform: scale(1.05); transition: 0.1s; }
+        
+        /* HOVER NORMAL (ADULTO) */
+        .npc-entity:not(.kid-scale):hover, .npc-entity:not(.kid-scale):active { 
+            filter: brightness(1.2); 
+            transform: scale(1.05); 
+        }
+
+        /* HOVER CORRIGIDO (CRIANÇA) */
+        .npc-entity.kid-scale:hover, .npc-entity.kid-scale:active {
+            filter: brightness(1.2);
+            transform: scale(0.8); /* 0.75 + um pouquinho de zoom, mas sem virar gigante */
+        }
 
         /* --- 5. UI --- */
         .chat-bubble { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
@@ -88,7 +107,7 @@
         
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
         
-        /* TRANSITION OVERLAY (FADE BLACK) */
+        /* TRANSITION OVERLAY */
         #transitionOverlay { 
             position: fixed; inset: 0; background: #000; z-index: 99999; 
             opacity: 0; pointer-events: none; 
@@ -169,15 +188,15 @@
     </div>
     
     <div id="toastContainer"></div>
-    <!-- OVERLAY DE TRANSIÇÃO (PRETO) -->
     <div id="transitionOverlay"></div>
 
     <!-- DADOS DO MAPA -->
     <script>
-     let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
+    let collisionMap = [{"x":0,"y":0,"w":100,"h":1},{"x":0,"y":99,"w":100,"h":1},{"x":5.2,"y":0.8,"w":15.8,"h":10.8},{"x":76.2,"y":45.3,"w":17,"h":22},{"x":64,"y":46.5,"w":12.2,"h":12.4},{"x":4.6,"y":42.1,"w":15.6,"h":11.4},{"x":18.2,"y":48.7,"w":19.2,"h":14.1},{"x":30.4,"y":46.5,"w":15.4,"h":3.5},{"x":42.8,"y":46.5,"w":3.4,"h":13.8},{"x":79,"y":7.7,"w":15.6,"h":12.1},{"x":45.6,"y":1.5,"w":18.2,"h":13.4},{"x":10.8,"y":56.8,"w":2.2,"h":1.5},{"x":10.4,"y":56.7,"w":5.6,"h":2.3},{"x":0.8,"y":0.8,"w":99,"h":9.7}];
 let grassMap = [{"x":9.2,"y":15.7,"w":31,"h":26.1},{"x":19.6,"y":67.9,"w":22.6,"h":5.8},{"x":69,"y":68.2,"w":21.8,"h":5.5}];
-let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[{"x":0.7,"y":29,"w":24,"h":13.2},{"x":38.4,"y":29.3,"w":24,"h":13.7},{"x":57.3,"y":1.1,"w":5.1,"h":41.9},{"x":75.3,"y":50.5,"w":24.4,"h":20.4},{"x":87.8,"y":69.7,"w":12,"h":10.9},{"x":0.7,"y":46.9,"w":11.1,"h":10.1},{"x":13.3,"y":92.2,"w":23.6,"h":7.8},{"x":62.9,"y":1.6,"w":36.9,"h":7.2},{"x":75.3,"y":5.5,"w":6.7,"h":13.2},{"x":75.8,"y":9.1,"w":23.8,"h":9.8},{"x":0.4,"y":0.4,"w":60.9,"h":12.9},{"x":31.8,"y":10.8,"w":11.8,"h":9.2},{"x":46.4,"y":5.9,"w":7.6,"h":13.5},{"x":62.4,"y":0.7,"w":36.4,"h":12.9},{"x":1.1,"y":29.9,"w":24,"h":20.3},{"x":38,"y":29.9,"w":24.7,"h":20.6},{"x":1.3,"y":9.3,"w":3.8,"h":12.3}],"exit":{"x":61.6,"y":91.9,"w":10.4,"h":8},"returnSpot":{"x":27.4,"y":68},"interacts":[{"x":31.6,"y":9,"w":6.7,"h":16,"type":"msg","messages":["Vicent deixou uma aba aberta "," Parece que Vicent tem olhado coisas.. erradas em seu notebook"],"image":"","itemId":null,"qty":0}],"spawn":{"x":66.9,"y":85.2}}];
-let interactsMap = [];</script>
+let housesData = [{"id":"house1","bg":"https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/f18eec73-a0af-43fe-a42a-9cce3f729e08/dcwxpql-633c8e9b-d7e5-4c39-956c-f632f4e2a11c.png/v1/fill/w_400,h_350,q_80,strp/pokemon_interior_walls_by_aveontrainer_dcwxpql-fullview.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvZGN3eHBxbC02MzNjOGU5Yi1kN2U1LTRjMzktOTU2Yy1mNjMyZjRlMmExMWMucG5nIiwiaGVpZ2h0IjoiPD0zNTAiLCJ3aWR0aCI6Ijw9NDAwIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmltYWdlLndhdGVybWFyayJdLCJ3bWsiOnsicGF0aCI6Ii93bS9mMThlZWM3My1hMGFmLTQzZmUtYTQyYS05Y2NlM2Y3MjllMDgvYXZlb250cmFpbmVyLTQucG5nIiwib3BhY2l0eSI6OTUsInByb3BvcnRpb25zIjowLjQ1LCJncmF2aXR5IjoiY2VudGVyIn19.QVYoD82S-DnaA1Z9HHNKCrZOVk1SbEyERj6hdyCffwg","trigger":{"x":24,"y":60.2,"w":6.8,"h":3.4},"collisions":[{"x":0.7,"y":29,"w":24,"h":13.2},{"x":38.4,"y":29.3,"w":24,"h":13.7},{"x":57.3,"y":1.1,"w":5.1,"h":41.9},{"x":75.3,"y":50.5,"w":24.4,"h":20.4},{"x":87.8,"y":69.7,"w":12,"h":10.9},{"x":0.7,"y":46.9,"w":11.1,"h":10.1},{"x":0.9,"y":87.8,"w":4.7,"h":11.6},{"x":13.3,"y":92.2,"w":23.6,"h":7.8},{"x":62.9,"y":1.6,"w":36.9,"h":7.2},{"x":75.3,"y":5.5,"w":6.7,"h":13.2},{"x":75.8,"y":9.1,"w":23.8,"h":9.8},{"x":46.1,"y":8.7,"w":8.4,"h":11.6},{"x":0.8,"y":10.9,"w":4.7,"h":10.7},{"x":32.3,"y":9.6,"w":10.7,"h":11.6},{"x":82.3,"y":30.1,"w":12.4,"h":14.1},{"x":20.1,"y":59.5,"w":9.6,"h":12.5},{"x":0.1,"y":1.7,"w":98.9,"h":11.9},{"x":0.1,"y":29.2,"w":27.1,"h":13.8},{"x":36.1,"y":29.8,"w":26.4,"h":12.8}],"exit":{"x":61.6,"y":91.9,"w":10.4,"h":8},"returnSpot":{"x":27.4,"y":68},"interacts":[{"x":32.1,"y":10.9,"w":5.8,"h":13.8,"type":"msg","messages":["Este é o notebook de Kross..","Que papel de parede estranho para um garoto."],"image":"https://media.craiyon.com/2025-10-06/vNVJzNPUR32j-erUSYA2Mg.webp","itemId":null,"qty":0},{"x":20.3,"y":59.5,"w":9.1,"h":14.7,"type":"msg","messages":["Está passando um desenho na TV. "," Molly adora o herói de laranja."],"image":"https://media.tenor.com/93v-ddtq5QgAAAAM/dragon-ball-cell-vs-goku.gif","itemId":null,"qty":0},{"x":38.8,"y":11.2,"w":5.1,"h":10.1,"type":"msg","messages":["Um globo terrestre. Será que o mundo é assim mesmo? Só vemos pixels."],"image":"https://cdn.awsli.com.br/600x450/991/991664/produto/146333700749935fcdc.jpg","itemId":null,"qty":0},{"x":75.4,"y":5.4,"w":6.2,"h":16.5,"type":"msg","messages":["A geladeira está cheia de frutas e legumes. "," Essa família parece ser bem energética e saudável."],"image":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRx3Cl8mH7pr4zb8pJ_nebpASnL_waypZsX-Q&s","itemId":null,"qty":0},{"x":82.8,"y":69.3,"w":16.4,"h":11.6,"type":"msg","messages":["Não podemos simplesmente invadir o segundo andar da casa, podemos? "],"image":"","itemId":null,"qty":0}],"spawn":{"x":66.6,"y":85.8}}];
+let interactsMap = [];
+    </script>
 
     <script src="/scripts/common.js"></script>
 
@@ -202,15 +221,15 @@ let interactsMap = [];</script>
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
- 
-        // Limpa &amp; da query string para garantir leitura correta
+        
+        // --- PARÂMETROS E LIMPEZA DE URL ---
         let queryString = window.location.search.replace(/&amp;/g, '&');
         const urlParams = new URLSearchParams(queryString);
-
+        
         let startX = urlParams.get('x') ? parseFloat(urlParams.get('x')) : 50;
         let startY = urlParams.get('y') ? parseFloat(urlParams.get('y')) : 5;
         let currentMapId = urlParams.get('map') || 'city';
-        // CORREÇÃO DE URL SUJA (EX: city?map=house1?userId=...)
+        
         if(currentMapId.includes('?')) currentMapId = currentMapId.split('?')[0];
 
         let startDir = 'down';
@@ -231,6 +250,26 @@ let interactsMap = [];</script>
             gameArea.style.backgroundImage = "url('/uploads/route_map.png')";
         }
 
+        // --- HELPER PARA ESTILO DA IMAGEM DE DIÁLOGO ---
+        function setDialogImageStyle(mode) {
+            setTimeout(() => {
+                const imgEl = document.getElementById('rpgPortrait');
+                if (imgEl) {
+                    if (mode === 'pixel') {
+                        imgEl.style.backgroundSize = '400% auto';
+                        imgEl.style.backgroundPosition = '0 0';
+                        imgEl.style.backgroundRepeat = 'no-repeat';
+                        imgEl.style.imageRendering = 'pixelated';
+                    } else {
+                        imgEl.style.backgroundSize = 'contain';
+                        imgEl.style.backgroundPosition = 'center';
+                        imgEl.style.backgroundRepeat = 'no-repeat';
+                        imgEl.style.imageRendering = 'auto';
+                    }
+                }
+            }, 10);
+        }
+
         // --- SISTEMA DE TRANSIÇÃO (FADE) ---
         function performTransition(onMidPoint) {
             if(window.isTeleporting) return;
@@ -246,7 +285,7 @@ let interactsMap = [];</script>
                     overlay.classList.remove('active'); // Fade Out
                     window.isTeleporting = false;
                 }, 200);
-            }, 300); // 300ms = tempo da animação
+            }, 300); 
         }
 
         // --- SOCKET EVENTS ---
@@ -312,6 +351,10 @@ let interactsMap = [];</script>
                 div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
                 div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
                 
+                if (npc.name && npc.name.toLowerCase().includes('(kid)')) {
+                    div.classList.add('kid-scale');
+                }
+
                 if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:'))) { 
                     div.style.backgroundImage = `url('${npc.skin}')`; 
                 } else { 
@@ -319,7 +362,9 @@ let interactsMap = [];</script>
                 }
                 div.setAttribute('data-dir', npc.direction || 'down');
 
-                const label = document.createElement('div'); label.className = 'player-name'; label.innerText = npc.name; div.appendChild(label);
+                const displayName = npc.name.replace(/\(kid\)/i, '').trim();
+                const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; 
+                div.appendChild(label);
                 
                 div.onclick = (e) => { 
                     e.stopPropagation(); 
@@ -335,7 +380,6 @@ let interactsMap = [];</script>
              const cx = p ? parseFloat(p.style.left) : 50;
              const cy = p ? parseFloat(p.style.top) : 50;
              performTransition(() => {
-                // HACK: Força o parâmetro da casa na URL de retorno
                 let mapParam = currentMapId;
                 if(currentMapId !== 'city') mapParam = `city?map=${currentMapId}`;
 
@@ -349,22 +393,50 @@ let interactsMap = [];</script>
 
         // --- INTERAÇÕES NPC ---
         window.interactWithNPC = function(npc) {
-            window.isInteracting = true; window.isMoving = false;
+            window.isInteracting = true; 
+            window.isMoving = false;
+
+            const cleanName = npc.name.replace(/\(kid\)/i, '').trim();
             const defeatedList = window.DEFEATED_NPCS || [];
             const record = defeatedList.find(r => (r === npc._id) || (r.npcId === npc._id));
+            
             let dialogueText = npc.dialogue || 'Olá!';
-            if (record) {
-                const defeatedAt = record.defeatedAt || 0; const cooldownMins = npc.cooldownMinutes || 0;
-                const diffMinutes = (Date.now() - defeatedAt) / 60000;
-                if (cooldownMins > 0 && diffMinutes < cooldownMins) dialogueText = (npc.cooldownDialogue || "...") + ` (${Math.ceil(cooldownMins - diffMinutes)}m)`;
-                else dialogueText = npc.winDialogue || "Bela batalha!";
-            }
-            const canBattle = npc.team && npc.team.length > 0;
-            const buttons = (canBattle && !record) ? [{ text: 'BATALHAR', value: true, class: 'confirm' }, { text: 'SAIR', value: false, class: 'cancel' }] : [];
+            let showBattleOptions = false;
 
-            showRPGDialog(npc.name, npc.skin, dialogueText, buttons).then(accepted => {
+            if (!record) {
+                showBattleOptions = true;
+            } else {
+                const defeatedAt = record.defeatedAt || 0;
+                const cooldownMins = npc.cooldownMinutes || 0;
+
+                if (cooldownMins <= 0) {
+                    dialogueText = npc.winDialogue || "Você já me venceu! Bom trabalho.";
+                    showBattleOptions = false;
+                } else {
+                    const now = Date.now();
+                    const diffMinutes = (now - defeatedAt) / 60000;
+
+                    if (diffMinutes < cooldownMins) {
+                        const remaining = Math.ceil(cooldownMins - diffMinutes);
+                        dialogueText = (npc.cooldownDialogue || "Estou descansando...") + ` (${remaining}m)`;
+                        showBattleOptions = false;
+                    } else {
+                        dialogueText = npc.dialogue || "Vamos batalhar novamente!";
+                        showBattleOptions = true;
+                    }
+                }
+            }
+
+            const canBattle = npc.team && npc.team.length > 0;
+            const buttons = (canBattle && showBattleOptions) ? 
+                [{ text: 'BATALHAR', value: true, class: 'confirm' }, { text: 'SAIR', value: false, class: 'cancel' }] : 
+                [];
+
+            setDialogImageStyle('pixel');
+
+            showRPGDialog(cleanName, npc.skin, dialogueText, buttons).then(accepted => {
                 window.isInteracting = false; 
-                if (accepted === true && canBattle) {
+                if (accepted === true && canBattle && showBattleOptions) {
                     performTransition(() => {
                         let mapParam = currentMapId;
                         if(currentMapId !== 'city') mapParam = `city?map=${currentMapId}`;
@@ -388,11 +460,13 @@ let interactsMap = [];</script>
             } else { interactWithNPC(npc); }
         };
 
-        // --- SISTEMA DE INTERAÇÃO COM OBJETOS (CORRIGIDO: DISTÂNCIA) ---
+        // --- SISTEMA DE INTERAÇÃO COM OBJETOS ---
         async function handleObjectInteraction(obj) {
             window.isInteracting = true; window.isMoving = false;
             
             let customImg = obj.image || null;
+            if(customImg) setDialogImageStyle('full');
+            else setDialogImageStyle('pixel');
 
             if (obj.messages && obj.messages.length > 0) {
                 for (let msg of obj.messages) {
@@ -415,8 +489,16 @@ let interactsMap = [];</script>
         function createPlayerElement(p) { 
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
+            
+            if (p.name && p.name.toLowerCase().includes('(kid)')) {
+                div.classList.add('kid-scale');
+            }
+
             if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; div.appendChild(img); div.style.backgroundImage='none'; } else { div.style.backgroundImage = `url('/uploads/${p.skin || 'char1'}.png')`; }
-            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); 
+            
+            const displayName = (p.name || "").replace(/\(kid\)/i, '').trim();
+            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; 
+            div.appendChild(label); 
             gameArea.appendChild(div); 
         }
 
@@ -465,8 +547,6 @@ let interactsMap = [];</script>
                 
                 let spawnX = house.spawn ? house.spawn.x : 50; 
                 let spawnY = house.spawn ? house.spawn.y : 50; 
-                
-                // TELEPORT VISUAL ANTES DO FADE SAIR
                 const myP = document.getElementById(`p-${window.myId}`);
                 if (myP) { myP.style.left = spawnX + '%'; myP.style.top = spawnY + '%'; myP.style.zIndex = Math.floor(spawnY); }
                 socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: spawnX, y: spawnY, direction: 'up' });
@@ -486,7 +566,6 @@ let interactsMap = [];</script>
                 else if (house) { exitX = house.trigger.x + (house.trigger.w / 2); exitY = house.trigger.y + house.trigger.h + 8; } 
                 else { exitX = 50; exitY = 50; }
                 
-                // TELEPORT VISUAL ANTES DO FADE SAIR
                 const myP = document.getElementById(`p-${window.myId}`);
                 if (myP) { myP.style.left = exitX + '%'; myP.style.top = exitY + '%'; myP.style.zIndex = Math.floor(exitY); }
                 
@@ -494,7 +573,7 @@ let interactsMap = [];</script>
             });
         }
 
-        // --- CONTROLES UNIFICADOS E CORRIGIDOS ---
+        // --- CONTROLES UNIFICADOS ---
         gameViewport.addEventListener('mousedown', (e) => {
             if (devMode && (currentTool === 'spawn' || currentTool === 'returnSpot')) {
                 // ... (Lógica de Admin igual) ...
@@ -544,7 +623,6 @@ let interactsMap = [];</script>
             marker.style.left = (e.clientX - 5) + 'px'; marker.style.top = (e.clientY - 5) + 'px'; marker.style.pointerEvents = 'none';
             document.body.appendChild(marker); setTimeout(() => marker.remove(), 300);
 
-            // 1. Identifica objeto de interação
             let interactsList = [];
             if (currentMapId === 'city') interactsList = interactsMap;
             else {
@@ -573,8 +651,6 @@ let interactsMap = [];</script>
             if (hitObj) {
                 setTimeout(() => {
                     window.isMoving = false;
-                    
-                    // CORREÇÃO: VERIFICA SE CHEGOU PERTO ANTES DE INTERAGIR (Tolerância de 5%)
                     const newPx = parseFloat(myPlayer.style.left);
                     const newPy = parseFloat(myPlayer.style.top);
                     const inRange = (newPx >= hitObj.x - 5 && newPx <= (hitObj.x + hitObj.w) + 5 && newPy >= hitObj.y - 5 && newPy <= (hitObj.y + hitObj.h) + 5);
@@ -586,7 +662,6 @@ let interactsMap = [];</script>
                     }
                 }, travelTime);
             } else if (currentMapId === 'city') {
-                 // CORREÇÃO MATINHOS: Verifica se o destino final está dentro de algum rect do grassMap
                  const steppedOnGrass = grassMap.some(g => safeDest.x >= g.x && safeDest.x <= g.x + g.w && safeDest.y >= g.y && safeDest.y <= g.y + g.h);
                  if (steppedOnGrass) {
                      setTimeout(() => socket.emit('check_encounter', { grassId: 'grass_generic' }), travelTime); 
