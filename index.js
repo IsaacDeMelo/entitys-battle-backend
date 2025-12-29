@@ -6,7 +6,6 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
-// Importa Modelos
 const { BasePokemon, User, NPC, GameMap } = require('./models');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
@@ -26,9 +25,11 @@ async function fixLegacyUsers() {
     try {
         const users = await mongoose.connection.db.collection('users').find({}).toArray();
         for (let u of users) {
-            if (u.defeatedNPCs && u.defeatedNPCs.length > 0 && typeof u.defeatedNPCs[0] === 'string') {
-                const newFormat = u.defeatedNPCs.map(id => ({ npcId: id, defeatedAt: 0 }));
-                await mongoose.connection.db.collection('users').updateOne({ _id: u._id }, { $set: { defeatedNPCs: newFormat } });
+            if (u.defeatedNPCs && u.defeatedNPCs.length > 0) {
+                if (typeof u.defeatedNPCs[0] === 'string') {
+                    const newFormat = u.defeatedNPCs.map(id => ({ npcId: id, defeatedAt: 0 }));
+                    await mongoose.connection.db.collection('users').updateOne({ _id: u._id }, { $set: { defeatedNPCs: newFormat } });
+                }
             }
         }
     } catch (e) { console.error("Erro migração:", e); }
@@ -37,13 +38,12 @@ async function fixLegacyUsers() {
 const app = express();
 const server = http.createServer(app);
 
-// --- CONFIGURAÇÃO SOCKET.IO (100MB) ---
+// --- CONFIGURAÇÃO DO SOCKET.IO COM LIMITE AUMENTADO ---
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8, 
+    maxHttpBufferSize: 1e8, // 100 MB para aguentar imagens Base64
     cors: { origin: "*" }
 });
 
-// Aumenta limite Express
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
@@ -51,23 +51,26 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static('public'));
 
+// --- VARIÁVEIS GLOBAIS DE ESTADO ---
 const activeBattles = {}; 
 const onlineBattles = {}; 
 const players = {}; 
+let matchmakingQueue = []; // <--- ADICIONADO AQUI (Estava faltando)
 const roomSpectators = {}; 
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // --- FUNÇÕES AUXILIARES ---
-function pickWeightedPokemon(list) {
-    let total = 0; list.forEach(p => total += (p.spawnChance || 1));
-    let r = Math.random() * total;
-    for (let i = 0; i < list.length; i++) {
-        const w = list[i].spawnChance || 1;
-        if (r < w) return list[i];
-        r -= w;
+function pickWeightedPokemon(pokemonList) {
+    let totalWeight = 0; pokemonList.forEach(p => totalWeight += (p.spawnChance || 1));
+    let random = Math.random() * totalWeight;
+    for (let i = 0; i < pokemonList.length; i++) {
+        const weight = pokemonList[i].spawnChance || 1;
+        if (random < weight) return pokemonList[i];
+        random -= weight;
     }
-    return list[0]; 
+    return pokemonList[0]; 
 }
 
 function calculateStats(base, level) { 
@@ -118,14 +121,19 @@ function applyStatusDamage(pokemon, events) {
 
 function processAction(attacker, defender, move, logArray) {
     if(!move) { logArray.push({ type: 'MSG', text: `${attacker.name} hesitou!` }); return; }
+    
     const cost = move.cost || 0;
-    if (attacker.energy >= cost) { attacker.energy -= cost; } else { logArray.push({ type: 'MSG', text: `${attacker.name} cansou!` }); return; }
+    if (attacker.energy >= cost) { attacker.energy -= cost; } 
+    else { logArray.push({ type: 'MSG', text: `${attacker.name} cansou!` }); return; }
+    
     logArray.push({ type: 'USE_MOVE', actorId: attacker.instanceId || 'wild', moveName: move.name, moveIcon: move.icon, moveElement: move.element || 'normal', moveCategory: move.category || 'physical', moveType: move.type, cost: cost, newEnergy: attacker.energy });
+    
     if(move.type === 'heal') { 
         const oldHp = attacker.hp; const healAmount = move.power + Math.floor(attacker.maxHp * 0.1); 
         attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount); 
         logArray.push({ type: 'HEAL', actorId: attacker.instanceId || 'wild', amount: attacker.hp - oldHp, newHp: attacker.hp }); 
-    } else if (move.type === 'defend') { logArray.push({ type: 'MSG', text: `${attacker.name} se protegeu!` }); } 
+    } 
+    else if (move.type === 'defend') { logArray.push({ type: 'MSG', text: `${attacker.name} se protegeu!` }); } 
     else { 
         const multiplier = getTypeEffectiveness(move.element, defender.type);
         const level = attacker.level || 1; const atk = attacker.stats.attack; const def = defender.stats.defense;
@@ -140,7 +148,7 @@ function processAction(attacker, defender, move, logArray) {
 
 function performEnemyTurn(attacker, defender, events) { const move = attacker.moves[Math.floor(Math.random() * attacker.moves.length)]; processAction(attacker, defender, move, events); }
 
-// --- ROTAS DE LOGIN/LOBBY ---
+// --- ROTAS GERAIS ---
 app.get('/', async (req, res) => { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: null, skinCount: SKIN_COUNT, starters }); });
 app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/lobby?userId=' + user._id); } else { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
 app.post('/register', async (req, res) => { 
@@ -151,20 +159,22 @@ app.post('/register', async (req, res) => {
             const starter = await BasePokemon.findOne({ id: starterId, isStarter: true }); 
             if (starter) { 
                 const stats = calculateStats(starter.baseStats, 1); 
-                let m = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); if(!m.length) m = ['tackle'];
+                let m = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); 
+                if(!m.length) m = ['tackle']; 
                 starterTeam.push({ baseId: starter.id, nickname: starter.name, level: 1, currentHp: stats.hp, stats: stats, moves: m, learnedMoves: m }); 
                 dex.push(starter.id);
             } 
         } 
         const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [], dex: dex }); 
-        await newUser.save(); res.redirect('/lobby?userId=' + newUser._id); 
+        await newUser.save(); 
+        res.redirect('/lobby?userId=' + newUser._id); 
     } catch (e) { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } 
 });
 
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
 app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
 
-// --- ROTA CIDADE (CARREGAMENTO DINÂMICO) ---
+// --- ROTA CIDADE (DYNAMIC MAP ENGINE) ---
 app.get('/city', async (req, res) => {
     const { userId, from, map } = req.query;
     const user = await User.findById(userId);
@@ -175,13 +185,7 @@ app.get('/city', async (req, res) => {
     if(mapId.includes('?')) mapId = mapId.split('?')[0];
 
     // Carrega mapa do DB
-    let mapData;
-    try {
-        mapData = await GameMap.findOne({ mapId }).lean();
-    } catch (e) {
-        console.log("Erro ao buscar mapa, usando default", e);
-    }
-
+    let mapData = await GameMap.findOne({ mapId }).lean();
     if (!mapData) {
         mapData = { mapId: mapId, name: 'Mapa', bgImage: '/uploads/route_map.png', collisions: [], grass: [], interacts: [], portals: [], spawnPoint: null, width: 100, height: 100, darknessLevel: 0 };
     }
@@ -208,21 +212,24 @@ app.post('/api/map/save', async (req, res) => {
     const { userId, mapId, mapData } = req.body;
     const user = await User.findById(userId);
     if (!user || !user.isAdmin) return res.status(403).json({ error: 'Sem permissão' });
+
     try {
         await GameMap.findOneAndUpdate(
             { mapId: mapId },
-            { $set: { 
-                collisions: mapData.collisions, 
-                grass: mapData.grass, 
-                interacts: mapData.interacts, 
-                portals: mapData.portals, 
-                bgImage: mapData.bgImage, 
-                width: mapData.width || 100, 
-                height: mapData.height || 100, 
-                spawnPoint: mapData.spawnPoint, 
-                darknessLevel: mapData.darknessLevel || 0, 
-                battleBackground: mapData.battleBackground 
-            }},
+            { 
+                $set: {
+                    collisions: mapData.collisions,
+                    grass: mapData.grass,
+                    interacts: mapData.interacts,
+                    portals: mapData.portals,
+                    bgImage: mapData.bgImage,
+                    width: mapData.width || 100,
+                    height: mapData.height || 100,
+                    spawnPoint: mapData.spawnPoint,
+                    darknessLevel: mapData.darknessLevel || 0,
+                    battleBackground: mapData.battleBackground
+                }
+            },
             { upsert: true, new: true }
         );
         res.json({ success: true });
@@ -239,32 +246,58 @@ app.post('/api/npc/move', async (req, res) => {
     if (!user || !user.isAdmin) return res.status(403).json({ error: 'Acesso negado' });
     try {
         const updated = await NPC.findByIdAndUpdate(npcId, { x: x, y: y, map: mapId }, { new: true });
-        if (updated) { const mapNpcs = await NPC.find({ map: mapId }).lean(); io.to(mapId).emit('npcs_list', mapNpcs); res.json({ success: true }); } 
-        else res.json({ error: 'NPC não encontrado' });
+        if (updated) {
+            const mapNpcs = await NPC.find({ map: mapId }).lean();
+            io.to(mapId).emit('npcs_list', mapNpcs);
+            res.json({ success: true });
+        } else res.json({ error: 'NPC não encontrado' });
     } catch (e) { res.json({ error: e.message }); }
 });
 
 // --- CRIAÇÃO DE NPC ---
+app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
+
 const npcUpload = upload.fields([{ name: 'npcSkinFile', maxCount: 1 }, { name: 'battleBgFile', maxCount: 1 }]);
 app.post('/lab/create-npc', npcUpload, async (req, res) => { 
     try { 
-        const { npcId, name, map, x, y, direction, skinSelect, dialogue, winDialogue, cooldownDialogue, money, teamJson, rewardType, rewardVal, rewardQty, cooldownMinutes, userId } = req.body; 
-        let finalSkin = skinSelect, isCustom = false; 
-        if (req.files['npcSkinFile']) { finalSkin = `data:${req.files['npcSkinFile'][0].mimetype};base64,${req.files['npcSkinFile'][0].buffer.toString('base64')}`; isCustom = true; } 
-        else if (npcId && !skinSelect) { const old = await NPC.findById(npcId); if(old) { finalSkin = old.skin; isCustom = old.isCustomSkin; } } 
+        const { npcId, name, map, x, y, direction, skinSelect, dialogue, winDialogue, cooldownDialogue, money, teamJson, rewardType, rewardVal, rewardQty, cooldownMinutes, userId, battleBg } = req.body; 
+        
+        let finalSkin = skinSelect; 
+        let isCustom = false; 
+        if (req.files['npcSkinFile']) { 
+            finalSkin = `data:${req.files['npcSkinFile'][0].mimetype};base64,${req.files['npcSkinFile'][0].buffer.toString('base64')}`; 
+            isCustom = true; 
+        } else if (npcId && !skinSelect) { 
+            const old = await NPC.findById(npcId); 
+            if(old) { finalSkin = old.skin; isCustom = old.isCustomSkin; } 
+        } 
+        
         let finalBattleBg = 'battle_bg.png';
-        if (req.files['battleBgFile']) { finalBattleBg = `data:${req.files['battleBgFile'][0].mimetype};base64,${req.files['battleBgFile'][0].buffer.toString('base64')}`; }
-        else if (npcId) { const old = await NPC.findById(npcId); if(old && old.battleBackground) finalBattleBg = old.battleBackground; }
+        if (req.files['battleBgFile']) {
+            finalBattleBg = `data:${req.files['battleBgFile'][0].mimetype};base64,${req.files['battleBgFile'][0].buffer.toString('base64')}`;
+        } else if (npcId) {
+             const old = await NPC.findById(npcId);
+             if(old && old.battleBackground) finalBattleBg = old.battleBackground;
+        }
+
         let team = []; try { team = JSON.parse(teamJson); } catch (e) {} 
         const reward = { type: rewardType || 'none', value: rewardVal || '', qty: parseInt(rewardQty) || 1, level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1 }; 
-        const npcData = { name, map, x: parseInt(x)||50, y: parseInt(y)||50, direction: direction||'down', skin: finalSkin, isCustomSkin: isCustom, dialogue, winDialogue, cooldownDialogue, moneyReward: parseInt(money)||0, cooldownMinutes: parseInt(cooldownMinutes) || 0, team, reward, battleBackground: finalBattleBg }; 
-        if (npcId) { if (!req.files['npcSkinFile'] && skinSelect && !skinSelect.startsWith('data:')) { npcData.skin = skinSelect; npcData.isCustomSkin = false; } await NPC.findByIdAndUpdate(npcId, npcData); } else { await new NPC(npcData).save(); } 
+        
+        const npcData = { 
+            name, map, x: parseInt(x)||50, y: parseInt(y)||50, direction: direction||'down', 
+            skin: finalSkin, isCustomSkin: isCustom, dialogue, winDialogue, cooldownDialogue, 
+            moneyReward: parseInt(money)||0, cooldownMinutes: parseInt(cooldownMinutes) || 0, 
+            team, reward, battleBackground: finalBattleBg 
+        }; 
+        
+        if (npcId) { 
+            if (!req.files['npcSkinFile'] && skinSelect && !skinSelect.startsWith('data:')) { npcData.skin = skinSelect; npcData.isCustomSkin = false; } 
+            await NPC.findByIdAndUpdate(npcId, npcData); 
+        } else { await new NPC(npcData).save(); } 
         res.redirect('/lab?userId=' + userId); 
     } catch (e) { console.error(e); res.send("Erro: " + e.message); } 
 });
 
-// ... Outras rotas do lab e API (/api/me, /api/pc, etc) mantenha igual ...
-app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
 app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), spawnChance: parseFloat(spawnChance) || 10, isStarter: isStarter === 'on', evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool }; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } res.redirect(req.header('Referer') || '/'); });
 app.post('/lab/delete', async (req, res) => { try { const { id } = req.body; if (id) await BasePokemon.deleteOne({ id }); res.redirect(req.get('referer')); } catch (e) { res.send('Erro ao excluir: ' + e.message); } });
 app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
@@ -291,6 +324,7 @@ app.post('/battle/wild', async (req, res) => {
         else if (currentMap !== 'city' && !currentMap.includes('?')) mapName = currentMap;
     }
     
+    // Busca fundo de batalha do mapa
     const mapDoc = await GameMap.findOne({ mapId: mapName }).lean();
     let battleBgToUse = 'forest_bg.png';
     if (mapDoc && mapDoc.battleBackground) battleBgToUse = mapDoc.battleBackground;
@@ -307,11 +341,16 @@ app.post('/battle/wild', async (req, res) => {
     userEntity.skin = user.skin; 
     
     const battleId = `wild_${Date.now()}`; 
+    
     let returnMapUrl = currentMap;
-    if (mapName !== 'city' && mapName !== 'forest' && !currentMap.includes('city?')) { returnMapUrl = `city?map=${mapName}`; }
+    if (mapName !== 'city' && mapName !== 'forest' && !currentMap.includes('city?')) {
+        returnMapUrl = `city?map=${mapName}`;
+    }
 
     activeBattles[battleId] = { 
-        p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: battleBgToUse 
+        p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1,
+        returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50,
+        customBackground: battleBgToUse
     }; 
     res.json({ battleId }); 
 });
@@ -359,7 +398,10 @@ app.post('/battle/npc', async (req, res) => {
     let returnMapUrl = currentMap;
     if (mapName !== 'city' && mapName !== 'forest' && !currentMap.includes('map=')) { returnMapUrl = `city?map=${mapName}`; }
 
-    activeBattles[battleId] = { p1: p1Entity, p2: npcTeamInstances[0], npcReserve: npcTeamInstances, type: 'local', userId: user._id, turn: 1, npcId: npc._id, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: finalBg }; 
+    activeBattles[battleId] = { 
+        p1: p1Entity, p2: npcTeamInstances[0], npcReserve: npcTeamInstances, type: 'local', userId: user._id, turn: 1, npcId: npc._id,
+        returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: finalBg
+    }; 
     res.json({ battleId });
 });
 
@@ -730,6 +772,7 @@ io.on('connection', (socket) => {
             if (battle.p1.hp <= 0) {
                  const user1 = await User.findById(battle.p1.userId);
                  const hasAlive1 = user1.pokemonTeam.some(p => p.currentHp > 0 && p._id.toString() !== battle.p1.instanceId); 
+                 
                  const deadPoke = user1.pokemonTeam.find(p => p._id.toString() === battle.p1.instanceId);
                  if(deadPoke) { deadPoke.currentHp = 0; await user1.save(); }
 
@@ -744,6 +787,7 @@ io.on('connection', (socket) => {
             if (!winnerId && battle.p2.hp <= 0) {
                  const user2 = await User.findById(battle.p2.userId);
                  const hasAlive2 = user2.pokemonTeam.some(p => p.currentHp > 0 && p._id.toString() !== battle.p2.instanceId);
+                 
                  const deadPoke2 = user2.pokemonTeam.find(p => p._id.toString() === battle.p2.instanceId);
                  if(deadPoke2) { deadPoke2.currentHp = 0; await user2.save(); }
 
