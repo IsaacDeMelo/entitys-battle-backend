@@ -58,6 +58,19 @@
             font-size: 0.9rem;
         }
         .btn-back:hover { background: #4a4a4a; }
+        
+        /* Botão extra para alternar visualização */
+        .btn-toggle-img {
+            background: #3c3c3c;
+            color: #dcdcdc;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            margin-right: 15px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+        .btn-toggle-img:hover { background: #4a4a4a; }
 
         #status-msg { margin-right: 15px; font-size: 0.9rem; opacity: 0; transition: opacity 0.5s; }
         .success { color: #6a9955; }
@@ -72,12 +85,15 @@
             <h1>Database JSON Editor (BasePokemon)</h1>
         </div>
         <div style="display:flex; align-items:center;">
+            <!-- Botão opcional para ver as imagens se precisar -->
+            <button class="btn-toggle-img" onclick="toggleImages()">👁️ Alternar Imagens</button>
             <span id="status-msg"></span>
             <button class="btn-save" onclick="saveData()">SALVAR ALTERAÇÕES (SYNC)</button>
         </div>
     </header>
 
     <div id="editor-container">
+        <!-- O valor inicial é carregado aqui -->
         <textarea id="jsonInput" spellcheck="false"><%= pokemonsJSON %></textarea>
     </div>
 
@@ -85,6 +101,82 @@
         const userId = "<%= userId %>";
         const statusEl = document.getElementById('status-msg');
         const textarea = document.getElementById('jsonInput');
+        
+        // Variável global para guardar os dados ORIGINAIS (com base64)
+        let originalFullData = null;
+        const PLACEHOLDER_IMG = "--- IMAGEM BASE64 OCULTA (NAO MEXA AQUI) ---";
+
+        // Inicialização: Ler o textarea, guardar original e limpar a visualização
+        window.onload = function() {
+            try {
+                const raw = textarea.value;
+                if(!raw) return;
+
+                originalFullData = JSON.parse(raw);
+                
+                // Exibe a versão "limpa"
+                textarea.value = JSON.stringify(cleanDataForDisplay(originalFullData), null, 4);
+            } catch (e) {
+                console.error("Erro ao processar JSON inicial", e);
+            }
+        };
+
+        // Função recursiva para substituir strings gigantes por placeholder
+        function cleanDataForDisplay(data) {
+            // Cria uma cópia profunda para não alterar o original na memória
+            const copy = JSON.parse(JSON.stringify(data));
+
+            function traverse(obj) {
+                for (let key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        // Lógica: Se a chave for 'img', 'image' ou o valor for uma string muito longa que parece base64
+                        if (typeof obj[key] === 'string') {
+                            if (key === 'img' || key === 'image' || (obj[key].startsWith('data:image') && obj[key].length > 100)) {
+                                obj[key] = PLACEHOLDER_IMG;
+                            }
+                        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+                            traverse(obj[key]);
+                        }
+                    }
+                }
+            }
+            traverse(copy);
+            return copy;
+        }
+
+        // Função para restaurar as imagens originais antes de salvar
+        function restoreOriginalImages(editedObj, originalObj) {
+            // Se o original não existe, retornamos o editado (caso seja um novo pokemon criado do zero)
+            if (!originalObj) return editedObj;
+
+            for (let key in editedObj) {
+                if (editedObj.hasOwnProperty(key)) {
+                    // Se o valor é o placeholder, restauramos do original
+                    if (editedObj[key] === PLACEHOLDER_IMG) {
+                        if (originalObj[key]) {
+                            editedObj[key] = originalObj[key];
+                        }
+                    } 
+                    // Se for objeto, descemos um nível (recursão)
+                    else if (typeof editedObj[key] === 'object' && editedObj[key] !== null) {
+                        // Tenta encontrar o objeto correspondente no original
+                        // Nota: Isso assume que a estrutura de arrays/ids se mantém relativamente estável
+                        // Se você mudou a ordem de um array, isso pode ser complexo, mas para objetos chave:valor funciona bem.
+                        let nextOriginal = (originalObj && originalObj[key]) ? originalObj[key] : null;
+                        
+                        // Tratamento especial para Arrays se necessário, mas genérico funciona na maioria dos casos
+                        // Se for um array de pokemons, precisamos garantir que estamos pegando o item certo pelo ID ou índice
+                        if(Array.isArray(editedObj) && Array.isArray(originalObj)) {
+                            // Mapeamento simples por índice
+                             nextOriginal = originalObj[key];
+                        }
+
+                        restoreOriginalImages(editedObj[key], nextOriginal);
+                    }
+                }
+            }
+            return editedObj;
+        }
 
         // Permitir usar TAB no textarea
         textarea.addEventListener('keydown', function(e) {
@@ -92,18 +184,50 @@
                 e.preventDefault();
                 var start = this.selectionStart;
                 var end = this.selectionEnd;
-                this.value = this.value.substring(0, start) +
-                    "    " + this.value.substring(end);
+                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
                 this.selectionStart = this.selectionEnd = start + 4;
             }
         });
 
-        async function saveData() {
-            const raw = textarea.value;
-            
-            // Validação local simples antes de enviar
+        // Alternar visualização (Botão extra)
+        let isHidden = true;
+        function toggleImages() {
             try {
-                JSON.parse(raw);
+                const currentVal = JSON.parse(textarea.value);
+                if (isHidden) {
+                    // Mostrar imagens reais (restaurar temporariamente para visualização)
+                    const full = restoreOriginalImages(currentVal, originalFullData);
+                    textarea.value = JSON.stringify(full, null, 4);
+                    isHidden = false;
+                } else {
+                    // Ocultar novamente
+                    // Atualiza o originalFullData caso tenha editado algo enquanto via as imagens
+                    originalFullData = currentVal; 
+                    textarea.value = JSON.stringify(cleanDataForDisplay(currentVal), null, 4);
+                    isHidden = true;
+                }
+            } catch(e) {
+                alert("Corrija o erro de sintaxe JSON antes de alternar.");
+            }
+        }
+
+        async function saveData() {
+            const rawDisplayed = textarea.value;
+            let finalJsonString = "";
+            
+            // 1. Validação Sintática
+            try {
+                let editedData = JSON.parse(rawDisplayed);
+                
+                // 2. Restauração das Imagens (Merge)
+                // Pegamos o que está na tela e preenchemos os placeholders com os dados da memória
+                let finalData = restoreOriginalImages(editedData, originalFullData);
+                
+                // Atualizamos a memória com o estado mais novo (para futuros saves sem reload)
+                originalFullData = finalData;
+                
+                finalJsonString = JSON.stringify(finalData);
+
             } catch (e) {
                 showStatus("Erro de Sintaxe JSON: " + e.message, true);
                 return;
@@ -117,7 +241,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         userId: userId,
-                        jsonData: raw
+                        jsonData: finalJsonString // Envia o JSON completo com as imagens
                     })
                 });
 
@@ -125,12 +249,15 @@
 
                 if (data.success) {
                     showStatus(`✅ Sucesso! ${data.count} Pokémons processados.`, false);
-                    setTimeout(() => { window.location.reload(); }, 1500); // Recarrega para formatar bonitinho
+                    // Opcional: Recarregar a página ou apenas re-formatar
+                    // Se recarregar, perde o undo/redo do navegador, então talvez melhor só manter
+                    // setTimeout(() => { window.location.reload(); }, 1500); 
                 } else {
                     showStatus("❌ Erro: " + data.error, true);
                 }
             } catch (e) {
                 showStatus("❌ Erro de conexão", true);
+                console.error(e);
             }
         }
 
