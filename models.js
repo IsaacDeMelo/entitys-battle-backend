@@ -22,21 +22,21 @@ const BasePokemonSchema = new mongoose.Schema({
     sprite: String
 });
 
+// Em models.js, procure o MapSchema e atualize:
+
 const MapSchema = new mongoose.Schema({
-    mapId: { type: String, required: true, unique: true }, // ex: 'city', 'house1', 'cave_01'
+    mapId: { type: String, required: true, unique: true },
     name: String,
-    bgImage: String, // ex: '/uploads/route_map.png'
+    bgImage: String,
     collisions: { type: Array, default: [] },
     grass: { type: Array, default: [] },
     interacts: { type: Array, default: [] },
-    // "Portais" substituem a lógica antiga de housesData complexa
-    portals: [{
-        x: Number, y: Number, w: Number, h: Number, // Área do gatilho
-        targetMap: String, // Para onde vai (ex: 'house1')
-        targetX: Number, targetY: Number, // Onde spawna no novo mapa
-        direction: String
-    }],
-    spawnPoint: { x: Number, y: Number } // Spawn padrão se não especificado
+    portals: { type: Array, default: [] },
+    spawnPoint: { x: Number, y: Number },
+    
+    // --- NOVOS CAMPOS ---
+    width: { type: Number, default: 100 },  // Porcentagem de largura
+    height: { type: Number, default: 100 }  // Porcentagem de altura
 });
 
 const UserSchema = new mongoose.Schema({
