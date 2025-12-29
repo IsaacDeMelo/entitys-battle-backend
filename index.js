@@ -276,7 +276,8 @@ app.post('/api/map/save', async (req, res) => {
                     bgImage: mapData.bgImage,
                     width: mapData.width || 100,
                     height: mapData.height || 100,
-                    spawnPoint: mapData.spawnPoint // <--- AGORA SALVA O SPAWN!
+                    spawnPoint: mapData.spawnPoint, 
+                    darknessLevel: mapData.darknessLevel || 0
                 }
             },
             { upsert: true, new: true }
