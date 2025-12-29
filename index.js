@@ -22,7 +22,10 @@ mongoose.connect(MONGO_URI)
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    maxHttpBufferSize: 1e8,
+    cors: {origin: "*"}
+});
 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
