@@ -9,23 +9,15 @@
         :root { --bg: #0f172a; --panel: #1e293b; --accent: #3498db; --text: #e2e8f0; --danger: #e74c3c; --success: #2ecc71; --warning: #f1c40f; }
         * { box-sizing: border-box; }
         body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; padding: 20px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        
-        /* HEADER */
         header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
         h1 { margin: 0; color: var(--warning); text-shadow: 0 0 10px rgba(241, 196, 15, 0.3); font-size: 1.8rem; }
         .back-btn { text-decoration: none; color: #94a3b8; font-weight: bold; border: 1px solid #333; padding: 8px 15px; border-radius: 8px; transition: 0.2s; background: rgba(0,0,0,0.3); }
         .back-btn:hover { background: #333; color: #fff; border-color: #555; }
-        
-        /* LAYOUT */
         .main-layout { display: flex; gap: 20px; height: 100%; overflow: hidden; }
-        
-        /* SIDEBAR */
         .sidebar { width: 320px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
         .sidebar-header { padding: 15px; background: rgba(255,255,255,0.05); font-weight: bold; text-align: center; border-bottom: 1px solid #333; letter-spacing: 1px; }
         .list-container { flex: 1; overflow-y: auto; padding: 10px; display: none; }
         .list-container.active { display: block; }
-        
-        /* LIST ITEMS */
         .list-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s; border-radius: 6px; margin-bottom: 4px; }
         .list-item:hover { background: rgba(52, 152, 219, 0.1); border-left: 3px solid var(--accent); }
         .list-item img, .npc-thumb { width: 40px; height: 40px; border-radius: 50%; background-color: rgba(0,0,0,0.3); image-rendering: pixelated; object-fit: contain; flex-shrink: 0; border: 1px solid #444; }
@@ -33,55 +25,36 @@
         .item-info { flex: 1; overflow: hidden; }
         .item-name { font-weight: bold; color: #fff; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .item-sub { font-size: 0.7rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        
-        /* EDITOR AREA */
         .editor-area { flex: 1; background: var(--panel); border-radius: 12px; padding: 25px; overflow-y: auto; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
-        /* TABS */
         .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #333; }
         .tab-btn { background: none; border: none; padding: 10px 25px; color: #777; font-weight: bold; cursor: pointer; font-size: 1.1rem; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: 0.2s; }
         .tab-btn:hover { color: #aaa; }
         .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-        
-        /* FORMS */
         .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
         .full-width { grid-column: span 3; }
         .half-width { grid-column: span 2; }
-        
         label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
         input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 0.9rem; transition: 0.2s; }
         input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; background: #162032; }
         input[disabled] { background: #1e293b; color: #555; border-color: #222; }
-        
-        /* MOVES WRAPPER */
         .moves-wrapper { background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 8px; max-height: 220px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
         .move-option { display: flex; align-items: center; gap: 8px; padding: 6px; background: rgba(255,255,255,0.03); border-radius: 4px; font-size: 0.8rem; cursor: pointer; user-select: none; border: 1px solid transparent; }
         .move-option:hover { background: rgba(255,255,255,0.08); border-color: #444; }
         .move-option input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
         .move-lvl-input { width: 45px; padding: 2px; font-size: 0.75rem; text-align: center; border: 1px solid #555; background: #000; color: var(--accent); border-radius: 4px; }
-        
-        /* BUTTONS */
         .btn-row { display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; }
         button { cursor: pointer; transition: 0.2s; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
         button:active { transform: translateY(1px); }
-        
         .btn-save { flex: 1; padding: 14px; border: none; border-radius: 6px; font-weight: bold; background: var(--success); color: #052e16; font-size: 1rem; }
         .btn-save:hover { filter: brightness(1.1); }
-        
         .btn-delete { flex: 0.3; padding: 14px; border: none; border-radius: 6px; font-weight: bold; background: var(--danger); color: #fff; font-size: 1rem; }
         .btn-delete:hover { background: #c0392b; }
-        
         .btn-new { background: var(--accent); color: #fff; margin-bottom: 10px; width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-new:hover { background: #2980b9; }
-
         .hidden { display: none; }
         h4 { color: var(--warning); border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 15px; margin-top: 25px; font-size: 1rem; }
-        
-        /* PREVIEWS */
         #imgPreview, #npcImgPreview { margin-top:10px; height:80px; border:1px dashed #444; border-radius: 6px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.2); color: #555; overflow: hidden; }
         #imgPreview img, #npcImgPreview img { height: 100%; object-fit: contain; }
-        
-        /* CODE TEXTAREA */
         .code-area { font-family: 'Consolas', monospace; color: #2ecc71; background: #000; border: 1px solid #333; padding: 10px; font-size: 0.85rem; line-height: 1.4; }
     </style>
 </head>
@@ -97,7 +70,6 @@
     <div class="main-layout">
         <!-- SIDEBAR -->
         <div class="sidebar">
-            <!-- LISTA POKEMON -->
             <div id="list-poke" class="list-container active">
                 <div class="sidebar-header">POKEMONS (<%= pokemons.length %>)</div>
                 <div style="padding:10px;">
@@ -113,7 +85,6 @@
                     </div>
                 <% }) %>
             </div>
-            <!-- LISTA NPC -->
             <div id="list-npc" class="list-container">
                 <div class="sidebar-header">NPCS (<%= npcs.length %>)</div>
                 <div style="padding:10px;">
@@ -163,39 +134,25 @@
                         <div>
                             <label>Tipo Elementar</label>
                             <select name="type" id="pokeType">
-                                <% Object.keys(types).forEach(t => { %> 
-                                    <option value="<%= t %>"><%= t.toUpperCase() %></option> 
-                                <% }) %>
+                                <% Object.keys(types).forEach(t => { %> <option value="<%= t %>"><%= t.toUpperCase() %></option> <% }) %>
                             </select>
                         </div>
-                        <div>
-                            <label>Chance Captura (0.1 a 1.0)</label>
-                            <input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5" min="0" max="1">
-                        </div>
-                        <div>
-                            <label>Raridade de Spawn (%)</label>
-                            <input type="number" name="spawnChance" id="pokeSpawn" value="10">
-                        </div>
+                        <div><label>Chance Captura (0.1 - 1.0)</label><input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5" min="0" max="1"></div>
+                        <div><label>Raridade de Spawn (%)</label><input type="number" name="spawnChance" id="pokeSpawn" value="10"></div>
                     </div>
                     
                     <h4>📍 SPAWN & EVOLUÇÃO</h4>
                     <div class="form-grid">
                         <div>
-                            <label>Local de Spawn</label>
-                            <select name="location" id="pokeLoc">
-                                <option value="none">Nenhum (Apenas Evolução)</option>
-                                <option value="forest">Floresta (Início)</option>
-                                <option value="city">Cidade (Rota Selvagem)</option>
-                            </select>
+                            <label>Local de Spawn (ID do Mapa)</label>
+                            <input type="text" name="location" id="pokeLoc" placeholder="ex: city, house1" list="mapSuggestions">
+                            <datalist id="mapSuggestions">
+                                <option value="city">Cidade</option>
+                                <option value="forest">Floresta</option>
+                            </datalist>
                         </div>
-                        <div>
-                            <label>Nível Mínimo</label>
-                            <input type="number" name="minLvl" id="spawnMin" value="2">
-                        </div>
-                        <div>
-                            <label>Nível Máximo</label>
-                            <input type="number" name="maxLvl" id="spawnMax" value="5">
-                        </div>
+                        <div><label>Nível Mínimo</label><input type="number" name="minLvl" id="spawnMin" value="2"></div>
+                        <div><label>Nível Máximo</label><input type="number" name="maxLvl" id="spawnMax" value="5"></div>
                     </div>
 
                     <div class="form-grid">
@@ -237,8 +194,7 @@
                     </div>
 
                     <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; margin-top:10px;">
-                        <input type="checkbox" name="isStarter" id="isStarter" style="width:auto;"> 
-                        <span style="font-weight:bold; color:var(--accent);">Disponível como Inicial?</span>
+                        <input type="checkbox" name="isStarter" id="isStarter" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Disponível como Inicial?</span>
                     </label>
                     
                     <div class="btn-row">
@@ -264,10 +220,10 @@
                     
                     <div class="form-grid">
                         <div>
-                            <label>Mapa (ID ou Selecione)</label>
+                            <label>Mapa (ID)</label>
                             <input type="text" name="map" id="npcMap" list="mapList" placeholder="ex: city, house1" required autocomplete="off">
                             <datalist id="mapList">
-                                <option value="lobby">Lobby (Início)</option>
+                                <option value="lobby">Lobby</option>
                                 <option value="forest">Floresta</option>
                                 <option value="city">Cidade</option>
                             </datalist>
@@ -290,9 +246,7 @@
                             <label>Skin Padrão</label>
                             <select name="skinSelect" id="npcSkinSelect">
                                 <option value="">-- Personalizada --</option>
-                                <% for(let i=1; i<=12; i++){ %>
-                                    <option value="char<%=i%>">Personagem <%=i%></option>
-                                <% } %>
+                                <% for(let i=1; i<=12; i++){ %> <option value="char<%=i%>">Personagem <%=i%></option> <% } %>
                             </select>
                         </div>
                         <div>
@@ -307,11 +261,14 @@
                         <div id="npcImgPreview"></div>
                     </div>
 
-                    <!-- NOVO CAMPO: BACKGROUND DE BATALHA -->
+                    <!-- BACKGROUND DE BATALHA COM UPLOAD -->
                     <div class="form-grid">
                         <div class="full-width">
-                            <label>Cenário de Batalha (Nome do arquivo em /uploads)</label>
-                            <input type="text" name="battleBg" id="npcBattleBg" placeholder="battle_bg.png" autocomplete="off">
+                            <label>Cenário de Batalha (Upload Imagem)</label>
+                            <input type="file" name="battleBgFile" accept="image/*" onchange="previewImage(this, 'battleBgPreview')">
+                            <div id="battleBgPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
+                                <span style="font-size:0.7rem; color:#555">Padrão</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -339,18 +296,9 @@
 
                     <h4 style="margin-top:20px;">🎁 ITEM DE RECOMPENSA (Opcional)</h4>
                     <div class="form-grid">
-                        <div>
-                            <label>Cooldown (Minutos)</label>
-                            <input type="number" name="cooldownMinutes" id="npcCooldown" value="0" title="0 = Único, >0 = Repetível">
-                        </div>
-                        <div>
-                            <label>ID do Item/Pokemon</label>
-                            <input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: pokeball, rareCandy" autocomplete="off">
-                        </div>
-                        <div>
-                            <label>Quantidade</label>
-                            <input type="number" name="rewardQty" id="npcRewQty" value="1">
-                        </div>
+                        <div><label>Cooldown (Minutos)</label><input type="number" name="cooldownMinutes" id="npcCooldown" value="0" title="0 = Único, >0 = Repetível"></div>
+                        <div><label>ID do Item/Pokemon</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: pokeball, rareCandy" autocomplete="off"></div>
+                        <div><label>Quantidade</label><input type="number" name="rewardQty" id="npcRewQty" value="1"></div>
                         <input type="hidden" name="rewardType" id="npcRewType" value="item">
                     </div>
 
@@ -365,146 +313,79 @@
     </div>
     
     <script>
-        // --- NAVEGAÇÃO ---
         function switchMode(mode) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
             document.getElementById('btn-tab-' + mode).classList.add('active');
-            
             document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden')); 
             document.getElementById('tab-' + mode).classList.remove('hidden');
-            
             document.querySelectorAll('.list-container').forEach(l => l.classList.remove('active')); 
             document.getElementById('list-' + mode).classList.add('active');
         }
         
-        // --- PREVIEW DE IMAGEM ---
         function previewImage(input, targetId) {
             const container = document.getElementById(targetId);
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    container.innerHTML = `<img src="${e.target.result}" style="height:100%;">`;
-                }
+                reader.onload = function(e) { container.innerHTML = `<img src="${e.target.result}" style="height:100%;">`; }
                 reader.readAsDataURL(input.files[0]);
-            } else {
-                container.innerHTML = "Sem imagem";
-            }
+            } else { container.innerHTML = "Sem imagem"; }
         }
 
-        // --- POKEMON LOGIC ---
         function clearPokeForm() { 
-            document.getElementById('pokeForm').reset(); 
-            document.getElementById('existingId').value = ""; 
+            document.getElementById('pokeForm').reset(); document.getElementById('existingId').value = ""; 
             document.getElementById('imgPreview').innerHTML = "Sem imagem"; 
             document.querySelectorAll('.move-check').forEach(c => c.checked = false); 
         }
         
         function loadPokemon(p) {
-            switchMode('poke'); 
-            clearPokeForm(); 
-            document.getElementById('existingId').value = p.id; 
-            document.getElementById('pokeId').value = p.id;
-            
-            document.getElementById('pokeName').value = p.name; 
-            document.getElementById('pokeType').value = p.type;
-            
-            document.getElementById('statHp').value = p.baseStats.hp; 
-            document.getElementById('statEn').value = p.baseStats.energy; 
-            document.getElementById('statAtk').value = p.baseStats.attack; 
-            document.getElementById('statDef').value = p.baseStats.defense; 
+            switchMode('poke'); clearPokeForm(); 
+            document.getElementById('existingId').value = p.id; document.getElementById('pokeId').value = p.id;
+            document.getElementById('pokeName').value = p.name; document.getElementById('pokeType').value = p.type;
+            document.getElementById('statHp').value = p.baseStats.hp; document.getElementById('statEn').value = p.baseStats.energy; 
+            document.getElementById('statAtk').value = p.baseStats.attack; document.getElementById('statDef').value = p.baseStats.defense; 
             document.getElementById('statSpd').value = p.baseStats.speed;
-            
-            document.getElementById('pokeRate').value = p.catchRate || 0.5; 
-            document.getElementById('pokeSpawn').value = p.spawnChance || 10; 
+            document.getElementById('pokeRate').value = p.catchRate || 0.5; document.getElementById('pokeSpawn').value = p.spawnChance || 10; 
             document.getElementById('pokeLoc').value = p.spawnLocation || 'none';
-            
-            document.getElementById('spawnMin').value = p.minSpawnLevel || 1; 
-            document.getElementById('spawnMax').value = p.maxSpawnLevel || 5; 
+            document.getElementById('spawnMin').value = p.minSpawnLevel || 1; document.getElementById('spawnMax').value = p.maxSpawnLevel || 5; 
             document.getElementById('isStarter').checked = !!p.isStarter;
-            
-            if(p.evolution) { 
-                document.getElementById('evoTarget').value = p.evolution.targetId || ''; 
-                document.getElementById('evoLevel').value = p.evolution.level || ''; 
-            }
-            
+            if(p.evolution) { document.getElementById('evoTarget').value = p.evolution.targetId || ''; document.getElementById('evoLevel').value = p.evolution.level || ''; }
             if(p.sprite) { 
                 const src = (p.sprite.startsWith('http') || p.sprite.startsWith('data:')) ? p.sprite : '/uploads/' + p.sprite; 
                 document.getElementById('imgPreview').innerHTML = `<img src="${src}" style="height:100%; object-fit:contain;">`; 
             }
-            
-            if(p.movePool) { 
-                p.movePool.forEach(mp => { 
-                    const check = document.getElementById('chk_' + mp.moveId); 
-                    const lvlInp = document.getElementById('lvl_' + mp.moveId); 
-                    if(check) check.checked = true; 
-                    if(lvlInp) lvlInp.value = mp.level; 
-                }); 
-            }
+            if(p.movePool) { p.movePool.forEach(mp => { const check = document.getElementById('chk_' + mp.moveId); const lvlInp = document.getElementById('lvl_' + mp.moveId); if(check) check.checked = true; if(lvlInp) lvlInp.value = mp.level; }); }
         }
         
         function prepareMoves() { 
             const moves = []; 
-            document.querySelectorAll('.move-check').forEach(chk => { 
-                if(chk.checked) { 
-                    const id = chk.getAttribute('data-id'); 
-                    const lvl = document.getElementById('lvl_' + id).value; 
-                    moves.push({ moveId: id, level: parseInt(lvl) }); 
-                } 
-            }); 
-            document.getElementById('movesJson').value = JSON.stringify(moves); 
-            return true; 
+            document.querySelectorAll('.move-check').forEach(chk => { if(chk.checked) { const id = chk.getAttribute('data-id'); const lvl = document.getElementById('lvl_' + id).value; moves.push({ moveId: id, level: parseInt(lvl) }); } }); 
+            document.getElementById('movesJson').value = JSON.stringify(moves); return true; 
         }
         
-        // --- NPC LOGIC ---
         function clearNpcForm() { 
-            document.getElementById('npcForm').reset(); 
-            document.getElementById('npcId').value = ""; 
-            document.getElementById('npcImgPreview').innerHTML = ""; 
+            document.getElementById('npcForm').reset(); document.getElementById('npcId').value = ""; 
+            document.getElementById('npcImgPreview').innerHTML = ""; document.getElementById('battleBgPreview').innerHTML = "Padrão";
             document.getElementById('npcTeam').value = '[{"baseId":"bulbasaur", "level":5}]'; 
         }
         
         function loadNpc(n) {
-            switchMode('npc'); 
-            clearNpcForm(); 
-            document.getElementById('npcId').value = n._id; 
-            document.getElementById('deleteNpcId').value = n._id;
-            
-            document.getElementById('npcName').value = n.name; 
-            
-            document.getElementById('npcMap').value = n.map; 
-            
-            document.getElementById('npcX').value = n.x; 
-            document.getElementById('npcY').value = n.y;
-            document.getElementById('npcDir').value = n.direction || 'down'; 
-            document.getElementById('npcMoney').value = n.moneyReward || 0; 
-            
-            document.getElementById('npcDialogue').value = n.dialogue || ''; 
-            document.getElementById('npcWinDialogue').value = n.winDialogue || '';
-            document.getElementById('npcCdDialogue').value = n.cooldownDialogue || '';
-            document.getElementById('npcCooldown').value = n.cooldownMinutes || 0;
-            
-            // Carrega o Battle Background
-            document.getElementById('npcBattleBg').value = n.battleBackground || '';
-
-            if(n.team) { 
-                const cleanTeam = n.team.map(t => ({ baseId: t.baseId, level: t.level })); 
-                document.getElementById('npcTeam').value = JSON.stringify(cleanTeam); 
-            }
-            
+            switchMode('npc'); clearNpcForm(); 
+            document.getElementById('npcId').value = n._id; document.getElementById('deleteNpcId').value = n._id;
+            document.getElementById('npcName').value = n.name; document.getElementById('npcMap').value = n.map; 
+            document.getElementById('npcX').value = n.x; document.getElementById('npcY').value = n.y;
+            document.getElementById('npcDir').value = n.direction || 'down'; document.getElementById('npcMoney').value = n.moneyReward || 0; 
+            document.getElementById('npcDialogue').value = n.dialogue || ''; document.getElementById('npcWinDialogue').value = n.winDialogue || '';
+            document.getElementById('npcCdDialogue').value = n.cooldownDialogue || ''; document.getElementById('npcCooldown').value = n.cooldownMinutes || 0;
+            if(n.team) { const cleanTeam = n.team.map(t => ({ baseId: t.baseId, level: t.level })); document.getElementById('npcTeam').value = JSON.stringify(cleanTeam); }
             if(!n.isCustomSkin) document.getElementById('npcSkinSelect').value = n.skin; 
             else document.getElementById('npcImgPreview').innerHTML = `<img src="${n.skin}" style="height:100%;">`;
-            
-            if(n.reward) {
-                document.getElementById('npcRewVal').value = n.reward.value || '';
-                document.getElementById('npcRewQty').value = n.reward.qty || 1;
-            }
+            if(n.battleBackground && n.battleBackground.startsWith('data:')) { document.getElementById('battleBgPreview').innerHTML = `<img src="${n.battleBackground}" style="height:100%;">`; }
+            if(n.reward) { document.getElementById('npcRewVal').value = n.reward.value || ''; document.getElementById('npcRewQty').value = n.reward.qty || 1; }
         }
         
-        // --- DELETION ---
         function deleteItem(formId) { 
             const idInput = document.getElementById(formId === 'deleteForm' ? 'existingId' : 'npcId'); 
             if(!idInput.value) return alert('Selecione um item na lista primeiro para excluir.'); 
-            
             if(confirm('Tem certeza absoluta que deseja excluir este item? Essa ação não pode ser desfeita.')) { 
                 if(formId === 'deleteForm') document.getElementById('deleteId').value = idInput.value; 
                 if(formId === 'deleteNpcForm') document.getElementById('deleteNpcId').value = idInput.value; 
