@@ -70,14 +70,14 @@ const NPCSchema = new mongoose.Schema({
         level: Number
     }],
     reward: {
-        type: { type: String }, // 'item' ou 'pokemon'
+        type: { type: String }, // 'item', 'pokemon' ou 'none'
         value: String,
         qty: Number,
         level: Number
     }
 });
 
-// --- MAP SCHEMA (NOVO) ---
+// --- MAP SCHEMA (SISTEMA DINÂMICO) ---
 const MapSchema = new mongoose.Schema({
     mapId: { type: String, required: true, unique: true }, // ex: 'city', 'house1'
     name: String,
@@ -86,7 +86,7 @@ const MapSchema = new mongoose.Schema({
     width: { type: Number, default: 100 }, // Tamanho em %
     height: { type: Number, default: 100 }, // Tamanho em %
     darknessLevel: { type: Number, default: 0 }, // 0.0 a 0.9
-    spawnPoint: { x: Number, y: Number }, // Ponto único de nascimento padrão
+    spawnPoint: { x: Number, y: Number }, // Ponto de nascimento padrão
     
     collisions: { type: Array, default: [] },
     grass: { type: Array, default: [] },
