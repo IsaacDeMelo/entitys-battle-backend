@@ -584,6 +584,36 @@ app.post('/battle', async (req, res) => {
     res.redirect('/battle/' + battleId); 
 });
 
+// --- ATUALIZAR POSIÇÃO DO NPC (VIA DEV MODE) ---
+app.post('/api/npc/move', async (req, res) => {
+    const { userId, npcId, x, y, mapId } = req.body;
+    
+    // Verificação de segurança
+    const user = await User.findById(userId);
+    if (!user || !user.isAdmin) return res.status(403).json({ error: 'Acesso negado' });
+
+    try {
+        // Atualiza no Banco
+        const updated = await NPC.findByIdAndUpdate(npcId, { 
+            x: x, 
+            y: y,
+            map: mapId // Garante que ele fique fixo neste mapa
+        }, { new: true });
+
+        if (updated) {
+            // Avisa a todos na sala que o NPC mudou
+            const mapNpcs = await NPC.find({ map: mapId }).lean();
+            io.to(mapId).emit('npcs_list', mapNpcs);
+            res.json({ success: true });
+        } else {
+            res.json({ error: 'NPC não encontrado' });
+        }
+    } catch (e) {
+        console.error(e);
+        res.json({ error: e.message });
+    }
+});
+
 // --- ROTA CRÍTICA PARA RENDERIZAR BATALHA (ATUALIZADA COM BG) ---
 app.get('/battle/:id', async (req, res) => { 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
