@@ -236,6 +236,27 @@ app.get('/city', async (req, res) => {
     }); 
 });
 
+// --- API PARA PEGAR DADOS DE UM MAPA (PREVIEW) ---
+app.get('/api/map/:mapId', async (req, res) => {
+    try {
+        const { mapId } = req.params;
+        let map = await GameMap.findOne({ mapId }).lean();
+        
+        // Se não existir, retorna dados padrão para não quebrar
+        if (!map) {
+            return res.json({ 
+                bgImage: mapId === 'city' ? '/uploads/route_map.png' : '/uploads/room_bg.png',
+                width: 100,
+                height: 100
+            });
+        }
+        
+        res.json(map);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // --- ROTA DE SALVAR MAPA (CORRIGIDA PARA SALVAR SPAWN POINT) ---
 app.post('/api/map/save', async (req, res) => {
     const { userId, mapId, mapData } = req.body;
