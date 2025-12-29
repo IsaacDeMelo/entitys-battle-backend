@@ -77,7 +77,7 @@
         .dev-interact { background: rgba(155, 89, 182, 0.4) !important; border: 1px dashed #8e44ad; z-index: 21; pointer-events: auto !important; cursor: help; }
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
         
-        /* SPAWN POINT VISUAL (Apenas no Modo Dev) */
+        /* SPAWN POINT VISUAL */
         .dev-spawn { 
             position: absolute; width: 30px; height: 30px; 
             background: rgba(46, 204, 113, 0.8); border: 2px solid #fff; 
@@ -195,17 +195,20 @@
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
         
-        // --- SPAWN INICIAL ---
+        // --- LÓGICA DE SPAWN INICIAL ---
         let queryString = window.location.search.replace(/&amp;/g, '&');
         const urlParams = new URLSearchParams(queryString);
         
         let startX = 50;
         let startY = 50;
 
+        // 1. Prioridade: URL (Portal enviou coordenada específica)
         if (urlParams.get('x') && urlParams.get('y')) {
             startX = parseFloat(urlParams.get('x'));
             startY = parseFloat(urlParams.get('y'));
-        } else if (mapConfig.spawnPoint && typeof mapConfig.spawnPoint.x === 'number') {
+        } 
+        // 2. Prioridade: Spawn Point Padrão do Mapa (Se existir no DB)
+        else if (mapConfig.spawnPoint && typeof mapConfig.spawnPoint.x === 'number') {
             startX = mapConfig.spawnPoint.x;
             startY = mapConfig.spawnPoint.y;
         }
@@ -227,7 +230,7 @@
             }, 10);
         }
 
-        // --- TRANSIÇÃO ---
+        // --- TRANSIÇÃO RÁPIDA (FADE) ---
         window.onload = function() {
             setTimeout(() => { document.getElementById('transitionOverlay').classList.add('hidden'); }, 300);
         };
@@ -309,6 +312,7 @@
 
         renderMapObjects();
 
+        // --- LÓGICA DE MOVER NPC ---
         function selectNpcToMove(npcId) {
             document.querySelectorAll('.npc-entity').forEach(el => el.classList.remove('dev-selected'));
             if (selectedNpcId === npcId) {
@@ -334,6 +338,7 @@
             } else alert("Erro: " + data.error);
         }
 
+        // --- INTERAÇÕES ---
         window.interactWithNPC = function(npc) {
             window.isInteracting = true; window.isMoving = false;
             const cleanName = npc.name.replace(/\(kid\)/i, '').trim();
@@ -558,7 +563,13 @@
         function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
         function selectTool(tool) { currentTool = tool; pendingPortalData = null; document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active')); document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active'); }
         
-        function changeBg() { document.getElementById('uploadMapBg').click(); }
+        function changeBg() {
+            const newBg = prompt("URL da Imagem de Fundo (ex: /uploads/room_bg.png):", mapConfig.bgImage);
+            if(newBg) { 
+                mapConfig.bgImage = newBg; 
+                applyMapVisuals(mapConfig);
+            }
+        }
 
         function changeSize() {
             const w = prompt("Largura do Mapa (em %):", mapConfig.width || 100);
@@ -566,7 +577,10 @@
             if(w && h) {
                 mapConfig.width = parseInt(w);
                 mapConfig.height = parseInt(h);
-                applyMapVisuals(mapConfig);
+                const ga = document.getElementById('gameArea');
+                ga.style.width = mapConfig.width + '%';
+                ga.style.height = mapConfig.height + '%';
+                if (mapConfig.width < 100 || mapConfig.height < 100) ga.classList.add('map-bordered'); else ga.classList.remove('map-bordered');
             }
         }
 
