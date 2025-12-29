@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
-const BasePokemonSchema = new mongoose.Schema({
-    id: { type: String, unique: true },
+// --- POKEMON SCHEMA ---
+const PokemonSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true },
     name: String,
     type: String,
     baseStats: {
@@ -11,42 +12,29 @@ const BasePokemonSchema = new mongoose.Schema({
         defense: Number,
         speed: Number
     },
-    spawnLocation: String,
+    spawnLocation: String, // ex: 'forest', 'house1'
     minSpawnLevel: Number,
     maxSpawnLevel: Number,
     catchRate: Number,
     spawnChance: Number,
     isStarter: Boolean,
-    evolution: { targetId: String, level: Number },
-    movePool: [{ level: Number, moveId: String }],
-    sprite: String
+    sprite: String, // Base64 ou URL
+    evolution: {
+        targetId: String,
+        level: Number
+    },
+    movePool: [{ moveId: String, level: Number }]
 });
 
-// Em models.js, procure o MapSchema e atualize:
-
-const MapSchema = new mongoose.Schema({
-    mapId: { type: String, required: true, unique: true },
-    name: String,
-    bgImage: String,
-    collisions: { type: Array, default: [] },
-    grass: { type: Array, default: [] },
-    interacts: { type: Array, default: [] },
-    portals: { type: Array, default: [] },
-    spawnPoint: { x: Number, y: Number },
-    
-    // --- NOVOS CAMPOS ---
-    width: { type: Number, default: 100 },  // Porcentagem de largura
-    height: { type: Number, default: 100 },  // Porcentagem de altura
-    darknessLevel: { type: Number, default: 0 } 
-});
-
+// --- USER SCHEMA ---
 const UserSchema = new mongoose.Schema({
-    username: { type: String, unique: true },
-    password: String,
-    skin: String,
-    money: { type: Number, default: 0 },
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    skin: { type: String, default: 'char1' },
+    money: { type: Number, default: 1000 },
     pokeballs: { type: Number, default: 5 },
     rareCandy: { type: Number, default: 0 },
+    isAdmin: { type: Boolean, default: false },
     pokemonTeam: [{
         baseId: String,
         nickname: String,
@@ -57,22 +45,12 @@ const UserSchema = new mongoose.Schema({
         moves: [String],
         learnedMoves: [String]
     }],
-    pc: [{
-        baseId: String,
-        nickname: String,
-        level: Number,
-        currentHp: Number,
-        xp: { type: Number, default: 0 },
-        stats: Object,
-        moves: [String],
-        learnedMoves: [String]
-    }],
-    defeatedNPCs: [{ npcId: String, defeatedAt: Number }],
-    // NOVO CAMPO: Histórico da Pokedex
-    dex: { type: [String], default: [] },
-    isAdmin: { type: Boolean, default: false }
+    pc: Array,
+    dex: [String],
+    defeatedNPCs: [{ npcId: String, defeatedAt: Number }]
 });
 
+// --- NPC SCHEMA ---
 const NPCSchema = new mongoose.Schema({
     name: String,
     map: String,
@@ -86,19 +64,39 @@ const NPCSchema = new mongoose.Schema({
     cooldownDialogue: String,
     moneyReward: Number,
     cooldownMinutes: Number,
-    team: [{ baseId: String, level: Number }],
-reward: {
-        type: { type: String, default: 'none' }, // Note o aninhamento: type: { type: String }
+    battleBackground: String, // Fundo de batalha específico
+    team: [{
+        baseId: String,
+        level: Number
+    }],
+    reward: {
+        type: { type: String }, // 'item' ou 'pokemon'
         value: String,
         qty: Number,
         level: Number
-    },
-     battleBackground: { type: String, default: 'battle_bg.png' }, // Ex: 'gym_bg.png', 
+    }
 });
 
-module.exports = {
-    BasePokemon: mongoose.model('BasePokemon', BasePokemonSchema),
-    User: mongoose.model('User', UserSchema),
-    NPC: mongoose.model('NPC', NPCSchema),
-    GameMap: mongoose.model('GameMap', MapSchema)
-};
+// --- MAP SCHEMA (NOVO) ---
+const MapSchema = new mongoose.Schema({
+    mapId: { type: String, required: true, unique: true }, // ex: 'city', 'house1'
+    name: String,
+    bgImage: String, // Base64 ou URL
+    battleBackground: String, // Fundo de batalha padrão deste mapa
+    width: { type: Number, default: 100 }, // Tamanho em %
+    height: { type: Number, default: 100 }, // Tamanho em %
+    darknessLevel: { type: Number, default: 0 }, // 0.0 a 0.9
+    spawnPoint: { x: Number, y: Number }, // Ponto único de nascimento padrão
+    
+    collisions: { type: Array, default: [] },
+    grass: { type: Array, default: [] },
+    interacts: { type: Array, default: [] },
+    portals: { type: Array, default: [] }
+});
+
+const BasePokemon = mongoose.model('BasePokemon', PokemonSchema);
+const User = mongoose.model('User', UserSchema);
+const NPC = mongoose.model('NPC', NPCSchema);
+const GameMap = mongoose.model('GameMap', MapSchema);
+
+module.exports = { BasePokemon, User, NPC, GameMap };
