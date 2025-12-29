@@ -13,12 +13,24 @@
     :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
     body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
+    
     #global-loader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out; }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.1); border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
     .loading-text { font-family: 'Press Start 2P', cursive; font-size: 0.8rem; color: #f1c40f; animation: pulse 1.5s infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .arena { flex: 1; background: url('/uploads/<%= bgImage %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden; z-index: 10; image-rendering: pixelated; }
+    
+    /* --- CORREÇÃO DO BACKGROUND AQUI --- */
+    .arena { 
+        flex: 1; 
+        /* Verifica se é base64/url ou arquivo local */
+        background: url('<%= (bgImage.startsWith("http") || bgImage.startsWith("data:")) ? bgImage : "/uploads/" + bgImage %>') no-repeat center center; 
+        background-size: cover; 
+        position: relative; 
+        overflow: hidden; 
+        z-index: 10; 
+        image-rendering: pixelated; 
+    }
     
     .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 6px 10px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: 150px; font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     .hud-p1 { left: 10px; border-left: 5px solid #3498db; text-align: left; }
@@ -31,7 +43,6 @@
     .en-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.5s ease-out; }
     .stat-text { font-size: 0.5rem; color: #ddd; text-shadow: 1px 1px 0 #000; display: block; margin-top: 2px; }
     
-    /* --- POSICIONAMENTO E TAMANHO --- */
     .fighter { 
         position: absolute; 
         width: 240px; 
@@ -40,7 +51,6 @@
         align-items: flex-end; 
         z-index: 20; 
         pointer-events: none; 
-        /* AQUI ESTÁ A MUDANÇA: Sobe 10px em relação ao centro exato */
         top: calc(50% - 10px); 
         transform: translateY(-50%); 
         transition: opacity 0.5s; 
@@ -82,7 +92,6 @@
         top: 5px; 
         transition: transform 0.2s; 
     }
-    /* ---------------------------------- */
 
     <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
     .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
@@ -93,7 +102,6 @@
     .impact-pop { animation: impactPop 0.4s forwards; }
     @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
     
-    /* CORES DOS TIPOS CORRIGIDAS */
     .effect-fire { background: radial-gradient(circle, #f1c40f, #e74c3c); box-shadow: 0 0 20px #e67e22; }
     .effect-water { background: radial-gradient(circle, #3498db, #2980b9); box-shadow: 0 0 20px #3498db; }
     .effect-plant { background: radial-gradient(circle, #2ecc71, #27ae60); box-shadow: 0 0 20px #2ecc71; }
@@ -1045,4 +1053,3 @@
     </script>
 </body>
 </html>
-<!-- discover -->
