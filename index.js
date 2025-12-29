@@ -395,30 +395,64 @@ app.post('/api/use-item', async (req, res) => {
 app.post('/battle/wild', async (req, res) => { 
     const { userId, currentMap, currentX, currentY } = req.body; 
     const user = await User.findById(userId); 
+    
+    // Verifica se o usuário tem pokémons vivos
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; 
     if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Monstros estão desmaiados!" }); 
     
-    const mapName = currentMap || 'forest';
+    // --- LÓGICA DE DETECÇÃO DO MAPA CORRIGIDA ---
+    let mapName = 'city'; // Padrão
+
+    if (currentMap) {
+        // Se a URL for algo como "city?map=house1", extrai "house1"
+        if (currentMap.includes('map=')) {
+            const match = currentMap.match(/map=([^&]+)/);
+            if (match && match[1]) {
+                mapName = match[1];
+            }
+        } else if (currentMap !== 'city' && !currentMap.includes('?')) {
+            // Se for apenas o ID direto (ex: "forest")
+            mapName = currentMap;
+        }
+    }
+    
+    console.log(`Procurando Pokémon selvagem em: ${mapName}`);
+
+    // Busca pokémons que tenham spawnLocation igual ao ID do mapa atual
     const possibleSpawns = await BasePokemon.find({ spawnLocation: mapName }); 
     
-    if(possibleSpawns.length === 0) return res.json({ error: "Nenhum monstro aqui." }); 
+    // Se não achar nada específico do mapa, tenta achar genéricos da "city" ou "forest" como fallback (opcional)
+    if(possibleSpawns.length === 0) {
+        // Fallback: Se não tem bicho na casa, não aparece nada (ou coloque 'city' aqui se quiser que apareçam pombos dentro de casa)
+        return res.json({ error: `Nada selvagem em '${mapName}'.` }); 
+    }
+    
     const wildBase = pickWeightedPokemon(possibleSpawns); 
     const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
     const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
+    
     const userBase = await BasePokemon.findOne({ id: userPokeData.baseId }); 
     const userEntity = userPokemonToEntity(userPokeData, userBase); 
     userEntity.playerName = user.username; 
     userEntity.skin = user.skin; 
     
     const battleId = `wild_${Date.now()}`; 
+    
+    // Monta a URL de retorno correta para não bugar o spawn
+    let returnMapUrl = currentMap;
+    // Se o currentMap for apenas o ID (ex: house1), transforma em city?map=house1
+    if (mapName !== 'city' && mapName !== 'forest' && !currentMap.includes('city?')) {
+        returnMapUrl = `city?map=${mapName}`;
+    }
+
     activeBattles[battleId] = { 
         p1: userEntity, 
         p2: wildEntity, 
         type: 'wild', 
         userId: user._id, 
         turn: 1,
-        returnMap: mapName, 
-        returnX: currentX || 10,
+        returnMap: returnMapUrl, 
+        returnX: currentX || 50,
         returnY: currentY || 50
     }; 
     res.json({ battleId }); 
