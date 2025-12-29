@@ -15,13 +15,20 @@
         #gameViewport { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-color: #111; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; }
 
         #gameArea { 
-            position: relative; width: 100%; height: 100%; 
+            position: relative; 
+            /* Largura e Altura agora são definidos via JS inline */
+            width: 100%; height: 100%; 
             background-size: 100% 100%; background-position: center; background-repeat: no-repeat; 
-            image-rendering: pixelated; z-index: 1; isolation: isolate; transition: width 0.5s, height 0.5s; 
+            image-rendering: pixelated; z-index: 1; isolation: isolate; 
+            transition: width 0.5s ease, height 0.5s ease; /* Transição suave ao mudar tamanho */
         }
 
-        /* Se for mapa interno, aplica borda */
-        #gameArea.indoor-mode { width: 90%; height: 50%; border: 4px solid #222; box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); border-radius: 8px; }
+        /* Classe auxiliar para quando o mapa for menor que 100% (Indoor) */
+        .map-bordered {
+            border: 4px solid #222; 
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); /* Escurece o fundo */
+            border-radius: 8px;
+        }
 
         /* Camadas */
         #collision-container, #grass-container, #portal-container, #interacts-container, #dev-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
@@ -33,7 +40,9 @@
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
+        
         .player-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 4px; border-radius: 4px; font-size: 0.6rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
+        
         .npc-entity { pointer-events: auto !important; cursor: pointer; z-index: 20; }
         .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; background: rgba(0,0,0,0.8); }
         .npc-entity:not(.kid-scale):hover { filter: brightness(1.2); transform: scale(1.05); transition: 0.1s; }
@@ -46,7 +55,7 @@
         #chatInput { flex: 1; padding: 5px 10px; border: none; background: transparent; color: white; outline: none; font-family: 'Roboto', sans-serif; font-size: 1rem; }
         #chatSend { width: 40px; height: 40px; border-radius: 50%; border: none; background: linear-gradient(135deg, #f1c40f, #f39c12); color: #1a1a2e; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
         #toastContainer { position: fixed; top: 20px; width: 100%; display: flex; justify-content: center; z-index: 2000; pointer-events: none; }
-        #transitionOverlay { position: fixed; inset: 0; background: #000; z-index: 99999; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out; }
+        #transitionOverlay { position: fixed; inset: 0; background: #000; z-index: 99999; opacity: 0; pointer-events: none; transition: opacity 0.4s ease-in-out; }
         #transitionOverlay.active { opacity: 1; pointer-events: auto; }
 
         /* ADMIN */
@@ -84,6 +93,7 @@
             <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL (Saída)</button>
             <button id="btnToolInteract" onclick="selectTool('interact')" style="border-color:#9b59b6; color:#d2b4de;">🟪 INTERAÇÃO</button>
             <button id="btnToolBg" onclick="changeBg()" style="background:#f39c12; color:black;">🖼️ MUDA FUNDO</button>
+            <button id="btnToolSize" onclick="changeSize()" style="background:#f1c40f; color:black;">📏 TAMANHO</button>
             <button id="btnToolDelete" onclick="selectTool('delete')" style="background:#c0392b; color:white; border-color:#e74c3c;">🗑️ APAGAR</button>
             <button onclick="undoLast()">↩️ DESFAZER</button>
             <button onclick="saveMapToServer()" style="background:#27ae60; border-color:#2ecc71; color:white;">💾 SALVAR NO SERVER</button>
@@ -107,7 +117,7 @@
 
     <!-- DADOS CARREGADOS DO SERVIDOR -->
     <script>
-        // Dados vindos do Backend (MongoDB)
+        // Dados vindos do Backend
         let mapConfig = <%- JSON.stringify(mapData) %>;
         
         let collisionMap = mapConfig.collisions || [];
@@ -115,12 +125,20 @@
         let interactsMap = mapConfig.interacts || [];
         let portalsMap = mapConfig.portals || [];
         
-        // Define o fundo inicial
-        document.getElementById('gameArea').style.backgroundImage = `url('${mapConfig.bgImage}')`;
+        // Configurações Iniciais de Visual
+        const gameAreaEl = document.getElementById('gameArea');
+        gameAreaEl.style.backgroundImage = `url('${mapConfig.bgImage}')`;
         
-        // Se for um mapa interno (não é 'city' nem 'forest'), aplica estilo indoor
-        if (mapConfig.mapId !== 'city' && mapConfig.mapId !== 'forest') {
-            document.getElementById('gameArea').classList.add('indoor-mode');
+        // Aplica tamanho vindo do banco (ou padrão 100%)
+        const mapW = mapConfig.width || 100;
+        const mapH = mapConfig.height || 100;
+        
+        gameAreaEl.style.width = mapW + '%';
+        gameAreaEl.style.height = mapH + '%';
+        
+        // Se for menor que 100%, aplica borda de "Indoor"
+        if (mapW < 100 || mapH < 100) {
+            gameAreaEl.classList.add('map-bordered');
         }
     </script>
 
@@ -327,9 +345,16 @@
 
         function checkTriggers(x, y) {
             if (window.isTeleporting) return; 
+            
+            // SAÍDAS FIXAS (Hardcoded para compatibilidade)
+            if (currentMapId === 'city') {
+                if (y > 95 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
+                if (y < 5 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
+            }
+
+            // PORTAIS DO BANCO DE DADOS
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
-                // REDIRECIONA PARA O NOVO MAPA
                 performTransition(() => {
                     const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}&x=${portal.targetX}&y=${portal.targetY}`;
                     window.location.href = newUrl;
@@ -383,7 +408,6 @@
                     if (inRange) handleObjectInteraction(hitObj); else if(typeof showToast === 'function') showToast("Muito longe...", {bg: '#e74c3c'});
                 }, travelTime);
             } else {
-                 // Check grass math
                  const steppedOnGrass = grassMap.some(g => safeDest.x >= g.x && safeDest.x <= g.x + g.w && safeDest.y >= g.y && safeDest.y <= g.y + g.h);
                  if (steppedOnGrass) setTimeout(() => socket.emit('check_encounter', { grassId: 'grass_generic' }), travelTime); 
             }
@@ -399,11 +423,34 @@
         
         function changeBg() {
             const newBg = prompt("URL da Imagem de Fundo (ex: /uploads/room_bg.png):", mapConfig.bgImage);
-            if(newBg) { mapConfig.bgImage = newBg; document.getElementById('gameArea').style.backgroundImage = `url('${newBg}')`; }
+            if(newBg) { 
+                mapConfig.bgImage = newBg; 
+                document.getElementById('gameArea').style.backgroundImage = `url('${newBg}')`; 
+            }
+        }
+
+        // FUNÇÃO DE MUDAR TAMANHO DO MAPA
+        function changeSize() {
+            const w = prompt("Largura do Mapa (em %):", mapConfig.width || 100);
+            const h = prompt("Altura do Mapa (em %):", mapConfig.height || 100);
+            
+            if(w && h) {
+                mapConfig.width = parseInt(w);
+                mapConfig.height = parseInt(h);
+                
+                const ga = document.getElementById('gameArea');
+                ga.style.width = mapConfig.width + '%';
+                ga.style.height = mapConfig.height + '%';
+                
+                if (mapConfig.width < 100 || mapConfig.height < 100) {
+                    ga.classList.add('map-bordered');
+                } else {
+                    ga.classList.remove('map-bordered');
+                }
+            }
         }
 
         function saveMapToServer() {
-            // Atualiza o objeto mapConfig com os arrays atuais
             mapConfig.collisions = collisionMap;
             mapConfig.grass = grassMap;
             mapConfig.interacts = interactsMap;
@@ -429,15 +476,7 @@
 
         function handleDevClick(e) {
             e.stopPropagation();
-            const rect = gameArea.getBoundingClientRect(); 
-            const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
-            const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1)); 
-            
-            if (currentTool === 'portal' && !isDrawing) {
-                // Ao clicar para criar portal, inicia desenho da área
-                // (Implementado no mousedown/mouseup global abaixo, aqui só previne conflito)
-                return;
-            }
+            if (currentTool === 'portal' && !isDrawing) return;
         }
 
         function renderMapObjects() {
@@ -471,7 +510,7 @@
 
         // --- DESENHO DE RETANGULOS (DEV) ---
         gameArea.addEventListener('mousedown', (e) => { 
-            if(!devMode || !currentTool || currentTool === 'delete') return; 
+            if(!devMode || !currentTool || currentTool === 'delete' || currentTool === 'bg' || currentTool === 'size') return; 
             e.stopPropagation(); isDrawing = true; 
             const rect = gameArea.getBoundingClientRect(); 
             startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; 
