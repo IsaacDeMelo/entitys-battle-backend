@@ -22,6 +22,23 @@ const BasePokemonSchema = new mongoose.Schema({
     sprite: String
 });
 
+const MapSchema = new mongoose.Schema({
+    mapId: { type: String, required: true, unique: true }, // ex: 'city', 'house1', 'cave_01'
+    name: String,
+    bgImage: String, // ex: '/uploads/route_map.png'
+    collisions: { type: Array, default: [] },
+    grass: { type: Array, default: [] },
+    interacts: { type: Array, default: [] },
+    // "Portais" substituem a lógica antiga de housesData complexa
+    portals: [{
+        x: Number, y: Number, w: Number, h: Number, // Área do gatilho
+        targetMap: String, // Para onde vai (ex: 'house1')
+        targetX: Number, targetY: Number, // Onde spawna no novo mapa
+        direction: String
+    }],
+    spawnPoint: { x: Number, y: Number } // Spawn padrão se não especificado
+});
+
 const UserSchema = new mongoose.Schema({
     username: { type: String, unique: true },
     password: String,
@@ -81,5 +98,6 @@ reward: {
 module.exports = {
     BasePokemon: mongoose.model('BasePokemon', BasePokemonSchema),
     User: mongoose.model('User', UserSchema),
-    NPC: mongoose.model('NPC', NPCSchema)
+    NPC: mongoose.model('NPC', NPCSchema),
+    GameMap: mongoose.model('GameMap', MapSchema)
 };
