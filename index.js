@@ -6,7 +6,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
-const { BasePokemon, User, NPC } = require('./models');
+const { BasePokemon, User, NPC, GameMap } = require('./models');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
 
@@ -180,17 +180,42 @@ app.post('/register', async (req, res) => {
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
 app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
 
-// --- ROTA DA CIDADE ---
 app.get('/city', async (req, res) => {
-    const { userId, from } = req.query;
+    const { userId, from, map } = req.query;
     const user = await User.findById(userId);
     if (!user) return res.redirect('/');
     
-    const startX = (from === 'forest') ? 50 : 50;
-    const startY = (from === 'forest') ? 95 : 50;
+    // Define qual mapa carregar (padrão 'city')
+    const mapId = map || 'city';
     
+    // Tenta achar no banco
+    let mapData = await GameMap.findOne({ mapId }).lean();
+
+    // SE O MAPA NÃO EXISTIR NO BANCO, CRIA UM PADRÃO (Para não quebrar na primeira vez)
+    if (!mapData) {
+        mapData = {
+            mapId: mapId,
+            name: mapId === 'city' ? 'Cidade' : 'Interior',
+            bgImage: mapId === 'city' ? '/uploads/route_map.png' : '/uploads/room_bg.png', // imagem default
+            collisions: [],
+            grass: [],
+            interacts: [],
+            portals: []
+        };
+        // Opcional: Se quiser salvar esse padrão vazio automaticamente:
+        // await new GameMap(mapData).save();
+    }
+
+    // Lógica de spawn (se vier de outro lugar)
+    let startX = 50, startY = 50;
+    if (req.query.x && req.query.y) {
+        startX = req.query.x;
+        startY = req.query.y;
+    } else if (from === 'forest') {
+        startX = 50; startY = 92;
+    }
+
     const allPokes = await BasePokemon.find().lean();
-    
     const teamData = []; 
     for(let p of user.pokemonTeam) { 
         const base = await BasePokemon.findOne({id: p.baseId}); 
@@ -203,11 +228,38 @@ app.get('/city', async (req, res) => {
         playerSkin: user.skin, 
         isAdmin: user.isAdmin, 
         skinCount: SKIN_COUNT,
-        startX,
-        startY,
+        startX, startY,
         entities: allPokes,
-        team: teamData
+        team: teamData,
+        mapData: mapData // <--- ENVIAMOS OS DADOS DO MAPA AQUI
     }); 
+});
+
+// --- NOVA ROTA: SALVAR MAPA (API) ---
+app.post('/api/map/save', async (req, res) => {
+    const { userId, mapId, mapData } = req.body;
+    
+    const user = await User.findById(userId);
+    if (!user || !user.isAdmin) return res.status(403).json({ error: 'Sem permissão' });
+
+    try {
+        await GameMap.findOneAndUpdate(
+            { mapId: mapId },
+            { 
+                $set: {
+                    collisions: mapData.collisions,
+                    grass: mapData.grass,
+                    interacts: mapData.interacts,
+                    portals: mapData.portals,
+                    bgImage: mapData.bgImage // Salva o fundo também
+                }
+            },
+            { upsert: true, new: true }
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ error: e.message });
+    }
 });
 
 app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
