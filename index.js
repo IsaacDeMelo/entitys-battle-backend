@@ -236,11 +236,11 @@ app.get('/city', async (req, res) => {
 });
 
 // --- NOVA ROTA: SALVAR MAPA (API) ---
+// Em index.js, na rota /api/map/save:
+
 app.post('/api/map/save', async (req, res) => {
     const { userId, mapId, mapData } = req.body;
-    
-    const user = await User.findById(userId);
-    if (!user || !user.isAdmin) return res.status(403).json({ error: 'Sem permissão' });
+    // ... verificações de admin ...
 
     try {
         await GameMap.findOneAndUpdate(
@@ -251,15 +251,17 @@ app.post('/api/map/save', async (req, res) => {
                     grass: mapData.grass,
                     interacts: mapData.interacts,
                     portals: mapData.portals,
-                    bgImage: mapData.bgImage // Salva o fundo também
+                    bgImage: mapData.bgImage,
+                    
+                    // --- SALVAR TAMANHO ---
+                    width: mapData.width || 100,
+                    height: mapData.height || 100
                 }
             },
             { upsert: true, new: true }
         );
         res.json({ success: true });
-    } catch (e) {
-        res.json({ error: e.message });
-    }
+    } catch (e) { res.json({ error: e.message }); }
 });
 
 app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
