@@ -15,25 +15,16 @@
         #gameViewport { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-color: #111; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; }
 
         #gameArea { 
-            position: relative; 
-            /* Largura e Altura agora são definidos via JS inline */
-            width: 100%; height: 100%; 
+            position: relative; width: 100%; height: 100%; 
             background-size: 100% 100%; background-position: center; background-repeat: no-repeat; 
             image-rendering: pixelated; z-index: 1; isolation: isolate; 
-            transition: width 0.5s ease, height 0.5s ease; /* Transição suave ao mudar tamanho */
+            transition: width 0.5s ease, height 0.5s ease;
         }
 
-        /* Classe auxiliar para quando o mapa for menor que 100% (Indoor) */
-        .map-bordered {
-            border: 4px solid #222; 
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); /* Escurece o fundo */
-            border-radius: 8px;
-        }
+        .map-bordered { border: 4px solid #222; box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); border-radius: 8px; }
 
-        /* Camadas */
         #collision-container, #grass-container, #portal-container, #interacts-container, #dev-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
-        /* Entidades */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
@@ -48,7 +39,6 @@
         .npc-entity:not(.kid-scale):hover { filter: brightness(1.2); transform: scale(1.05); transition: 0.1s; }
         .npc-entity.kid-scale:hover { filter: brightness(1.2); transform: scale(0.8); transition: 0.1s; }
 
-        /* UI */
         .chat-bubble { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); pointer-events: auto; }
@@ -73,7 +63,9 @@
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-portal { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; cursor: pointer; }
-        .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+        /* Ícone para facilitar identificação de portas */
+        .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:1.5rem; }
+        
         .dev-interact { background: rgba(155, 89, 182, 0.4) !important; border: 1px dashed #8e44ad; z-index: 21; pointer-events: auto !important; cursor: help; }
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
@@ -85,12 +77,17 @@
     <% if(user.isAdmin) { %>
     <div id="adminToolbar">
         <div style="text-align:center; font-weight:bold; color:#f1c40f; margin-bottom:5px; font-family:'Press Start 2P'; font-size:0.6rem;">DEV MODE</div>
-        <div style="font-size:0.55rem; color:#aaa; text-align:center; margin-bottom:5px;">MAPA: <span style="color:#fff"><%= mapData.mapId %></span></div>
+        
+        <!-- MOSTRAR ID DO MAPA ATUAL PARA AJUDAR NA CRIAÇÃO DE SPAWNS -->
+        <div style="font-size:0.6rem; color:#aaa; text-align:center; margin-bottom:5px; background:rgba(0,0,0,0.5); padding:4px; border-radius:4px;">
+            ID DO MAPA:<br><span style="color:#2ecc71; font-weight:bold; user-select:all;"><%= mapData.mapId %></span>
+        </div>
+
         <button id="btnDevMode" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
         <div id="devTools" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
             <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
             <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
-            <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL (Saída)</button>
+            <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL (Saída/Entrada)</button>
             <button id="btnToolInteract" onclick="selectTool('interact')" style="border-color:#9b59b6; color:#d2b4de;">🟪 INTERAÇÃO</button>
             <button id="btnToolBg" onclick="changeBg()" style="background:#f39c12; color:black;">🖼️ MUDA FUNDO</button>
             <button id="btnToolSize" onclick="changeSize()" style="background:#f1c40f; color:black;">📏 TAMANHO</button>
@@ -136,7 +133,6 @@
         gameAreaEl.style.width = mapW + '%';
         gameAreaEl.style.height = mapH + '%';
         
-        // Se for menor que 100%, aplica borda de "Indoor"
         if (mapW < 100 || mapH < 100) {
             gameAreaEl.classList.add('map-bordered');
         }
@@ -346,12 +342,6 @@
         function checkTriggers(x, y) {
             if (window.isTeleporting) return; 
             
-            // SAÍDAS FIXAS (Hardcoded para compatibilidade)
-            if (currentMapId === 'city') {
-                if (y > 95 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
-                if (y < 5 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
-            }
-
             // PORTAIS DO BANCO DE DADOS
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
