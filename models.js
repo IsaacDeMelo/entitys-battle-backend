@@ -36,7 +36,8 @@ const MapSchema = new mongoose.Schema({
     
     // --- NOVOS CAMPOS ---
     width: { type: Number, default: 100 },  // Porcentagem de largura
-    height: { type: Number, default: 100 }  // Porcentagem de altura
+    height: { type: Number, default: 100 },  // Porcentagem de altura
+    darknessLevel: { type: Number, default: 0 } 
 });
 
 const UserSchema = new mongoose.Schema({
