@@ -17,28 +17,29 @@
         #gameArea { 
             position: relative; width: 100%; height: 100%; 
             background-size: 100% 100%; background-position: center; background-repeat: no-repeat; 
-            image-rendering: pixelated; z-index: 1; isolation: isolate; 
-            transition: width 0.5s ease, height 0.5s ease;
+            image-rendering: pixelated; z-index: 1; isolation: isolate; transition: width 0.5s, height 0.5s; 
         }
 
-        .map-bordered { border: 4px solid #222; box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); border-radius: 8px; }
+        #gameArea.indoor-mode { width: 90%; height: 50%; border: 4px solid #222; box-shadow: 0 0 0 1000px rgba(0,0,0,0.85); border-radius: 8px; }
 
         #collision-container, #grass-container, #portal-container, #interacts-container, #dev-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
+        /* Entidades */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; }
         @keyframes walk-anim { from { background-position-x: 0; } to { background-position-x: -400%; } }
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
-        
         .player-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 2px 4px; border-radius: 4px; font-size: 0.6rem; white-space: nowrap; pointer-events: none; z-index: 500; font-weight: bold; }
         
         .npc-entity { pointer-events: auto !important; cursor: pointer; z-index: 20; }
         .npc-entity .player-name { color: #f1c40f; border: 1px solid #c27c0e; background: rgba(0,0,0,0.8); }
         .npc-entity:not(.kid-scale):hover { filter: brightness(1.2); transform: scale(1.05); transition: 0.1s; }
         .npc-entity.kid-scale:hover { filter: brightness(1.2); transform: scale(0.8); transition: 0.1s; }
+        .npc-entity.dev-selected { filter: drop-shadow(0 0 5px #f1c40f) brightness(1.5) !important; transform: scale(1.1) !important; z-index: 100; }
 
+        /* UI */
         .chat-bubble { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 10px; border: 2px solid #333; font-size: 0.8rem; white-space: nowrap; z-index: 1000; animation: popIn 0.2s forwards; }
         @keyframes popIn { from { transform: translateX(-50%) scale(0); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
         #chatBar { position: fixed; bottom: max(20px, env(safe-area-inset-bottom) + 15px); left: 50%; transform: translateX(-50%); width: 90%; max-width: 450px; display: flex; align-items: center; gap: 8px; z-index: 9999; background: #1a1a2e; border: 2px solid #3498db; padding: 8px; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.6); pointer-events: auto; }
@@ -63,11 +64,21 @@
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-portal { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; cursor: pointer; }
-        /* Ícone para facilitar identificação de portas */
-        .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:1.5rem; }
-        
+        .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
         .dev-interact { background: rgba(155, 89, 182, 0.4) !important; border: 1px dashed #8e44ad; z-index: 21; pointer-events: auto !important; cursor: help; }
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
+        
+        /* SPAWN POINT VISUAL */
+        .dev-spawn { 
+            position: absolute; width: 30px; height: 30px; 
+            background: rgba(46, 204, 113, 0.7); border: 2px solid #fff; 
+            border-radius: 50%; z-index: 25; pointer-events: none; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: bold; color: #fff; font-size: 0.7rem; box-shadow: 0 0 10px #2ecc71;
+            transform: translate(-50%, -50%);
+        }
+        .dev-spawn::after { content: 'SPAWN'; font-size: 0.5rem; position: absolute; bottom: -15px; }
+
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
     </style>
 </head>
@@ -77,23 +88,24 @@
     <% if(user.isAdmin) { %>
     <div id="adminToolbar">
         <div style="text-align:center; font-weight:bold; color:#f1c40f; margin-bottom:5px; font-family:'Press Start 2P'; font-size:0.6rem;">DEV MODE</div>
-        
-        <!-- MOSTRAR ID DO MAPA ATUAL PARA AJUDAR NA CRIAÇÃO DE SPAWNS -->
         <div style="font-size:0.6rem; color:#aaa; text-align:center; margin-bottom:5px; background:rgba(0,0,0,0.5); padding:4px; border-radius:4px;">
-            ID DO MAPA:<br><span style="color:#2ecc71; font-weight:bold; user-select:all;"><%= mapData.mapId %></span>
+            MAPA: <span style="color:#2ecc71; font-weight:bold; user-select:all;"><%= mapData.mapId %></span>
         </div>
 
         <button id="btnDevMode" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
         <div id="devTools" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
+            <button id="btnToolMoveNpc" onclick="selectTool('moveNpc')" style="background:#e67e22; color:white; border-color:#d35400;">🧍 MOVER NPC</button>
+            <div style="height:1px; background:#444; margin:2px 0;"></div>
+            <button id="btnToolSpawn" onclick="selectTool('spawn')" style="border-color: #2ecc71; color: #2ecc71;">📍 SET SPAWN</button>
             <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
             <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
-            <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL (Saída/Entrada)</button>
+            <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL</button>
             <button id="btnToolInteract" onclick="selectTool('interact')" style="border-color:#9b59b6; color:#d2b4de;">🟪 INTERAÇÃO</button>
             <button id="btnToolBg" onclick="changeBg()" style="background:#f39c12; color:black;">🖼️ MUDA FUNDO</button>
             <button id="btnToolSize" onclick="changeSize()" style="background:#f1c40f; color:black;">📏 TAMANHO</button>
             <button id="btnToolDelete" onclick="selectTool('delete')" style="background:#c0392b; color:white; border-color:#e74c3c;">🗑️ APAGAR</button>
             <button onclick="undoLast()">↩️ DESFAZER</button>
-            <button onclick="saveMapToServer()" style="background:#27ae60; border-color:#2ecc71; color:white;">💾 SALVAR NO SERVER</button>
+            <button onclick="saveMapToServer()" style="background:#27ae60; border-color:#2ecc71; color:white;">💾 SALVAR MAPA</button>
         </div>
     </div>
     <% } %>
@@ -112,48 +124,43 @@
     <div id="toastContainer"></div>
     <div id="transitionOverlay"></div>
 
-    <!-- DADOS CARREGADOS DO SERVIDOR -->
+    <!-- DADOS -->
     <script>
-        // Dados vindos do Backend
         let mapConfig = <%- JSON.stringify(mapData) %>;
-        
         let collisionMap = mapConfig.collisions || [];
         let grassMap = mapConfig.grass || [];
         let interactsMap = mapConfig.interacts || [];
         let portalsMap = mapConfig.portals || [];
         
-        // Configurações Iniciais de Visual
+        // Se não tiver spawnPoint no banco, cria objeto vazio
+        if (!mapConfig.spawnPoint) mapConfig.spawnPoint = null;
+
         const gameAreaEl = document.getElementById('gameArea');
         gameAreaEl.style.backgroundImage = `url('${mapConfig.bgImage}')`;
-        
-        // Aplica tamanho vindo do banco (ou padrão 100%)
         const mapW = mapConfig.width || 100;
         const mapH = mapConfig.height || 100;
-        
         gameAreaEl.style.width = mapW + '%';
         gameAreaEl.style.height = mapH + '%';
-        
-        if (mapW < 100 || mapH < 100) {
-            gameAreaEl.classList.add('map-bordered');
-        }
+        if (mapW < 100 || mapH < 100) gameAreaEl.classList.add('map-bordered');
     </script>
 
     <script src="/scripts/common.js"></script>
 
     <script>
-        // --- CONFIGURAÇÕES GLOBAIS ---
+        // --- GLOBAIS ---
         const gameViewport = document.getElementById('gameViewport');
         const gameArea = document.getElementById('gameArea');
         window.myId = null; 
         const MOVEMENT_SPEED = 55; 
 
-        // Flags de Estado
         window.isMoving = false;
         window.isTeleporting = false;
         window.isInteracting = false;
 
-        // Variáveis de Admin
+        // Admin Vars
         let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null; 
+        let selectedNpcId = null; 
+        let pendingPortalData = null; // Para guardar dados do portal enquanto espera clique de destino
 
         const socket = io();
         const myName = "<%= playerName %>";
@@ -162,16 +169,26 @@
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
         
-        // Limpa URL
+        // URL Utils
         let queryString = window.location.search.replace(/&amp;/g, '&');
         const urlParams = new URLSearchParams(queryString);
         
-        let startX = parseFloat("<%= startX %>") || 50;
-        let startY = parseFloat("<%= startY %>") || 50;
+        // Define X/Y inicial: Prioridade URL > Spawn Point do Mapa > Centro
+        let startX = 50;
+        let startY = 50;
+        
+        if (urlParams.get('x') && urlParams.get('y')) {
+            startX = parseFloat(urlParams.get('x'));
+            startY = parseFloat(urlParams.get('y'));
+        } else if (mapConfig.spawnPoint) {
+            startX = mapConfig.spawnPoint.x;
+            startY = mapConfig.spawnPoint.y;
+        }
+
         let currentMapId = mapConfig.mapId;
+        if(currentMapId.includes('?')) currentMapId = currentMapId.split('?')[0];
         let startDir = 'down';
 
-        // Helper para Imagens de Diálogo
         function setDialogImageStyle(mode) {
             setTimeout(() => {
                 const imgEl = document.getElementById('rpgPortrait');
@@ -196,7 +213,7 @@
             }, 300); 
         }
 
-        // --- SOCKET EVENTS ---
+        // --- SOCKETS ---
         socket.on('connect', () => { 
             window.myId = socket.id; 
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: startX, y: startY, direction: startDir }); 
@@ -238,7 +255,7 @@
                 const div = document.createElement('div');
                 div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
                 div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
-                if (npc.name && npc.name.toLowerCase().includes('(kid)')) { div.classList.add('kid-scale'); }
+                if (npc.name && npc.name.toLowerCase().includes('(kid)')) div.classList.add('kid-scale');
                 if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:'))) { div.style.backgroundImage = `url('${npc.skin}')`; } 
                 else { div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`; }
                 div.setAttribute('data-dir', npc.direction || 'down');
@@ -260,14 +277,39 @@
 
         renderMapObjects();
 
-        // --- INTERAÇÕES NPC ---
+        // --- LÓGICA DE MOVER NPC ---
+        function selectNpcToMove(npcId) {
+            document.querySelectorAll('.npc-entity').forEach(el => el.classList.remove('dev-selected'));
+            if (selectedNpcId === npcId) {
+                selectedNpcId = null; showToast("NPC Desmarcado");
+            } else {
+                selectedNpcId = npcId;
+                const el = document.getElementById(`npc-${npcId}`);
+                if(el) el.classList.add('dev-selected');
+                showToast("NPC Selecionado! Clique no chão para mover.");
+            }
+        }
+        async function teleportNpc(x, y) {
+            if (!selectedNpcId) return;
+            const res = await fetch('/api/npc/move', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: selectedNpcId, mapId: currentMapId, x: x, y: y })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast("Posição salva!", {bg:'#2ecc71'});
+                selectedNpcId = null;
+                document.querySelectorAll('.npc-entity').forEach(el => el.classList.remove('dev-selected'));
+            } else alert("Erro: " + data.error);
+        }
+
+        // --- INTERAÇÕES ---
         window.interactWithNPC = function(npc) {
             window.isInteracting = true; window.isMoving = false;
             const cleanName = npc.name.replace(/\(kid\)/i, '').trim();
             const defeatedList = window.DEFEATED_NPCS || [];
             const record = defeatedList.find(r => (r === npc._id) || (r.npcId === npc._id));
             let dialogueText = npc.dialogue || 'Olá!'; let showBattleOptions = false;
-
             if (!record) { showBattleOptions = true; } 
             else {
                 const defeatedAt = record.defeatedAt || 0; const cooldownMins = npc.cooldownMinutes || 0;
@@ -318,7 +360,7 @@
             window.isInteracting = false;
         }
 
-        // --- MOVIMENTO E MAPA ---
+        // --- BASE ---
         function createPlayerElement(p) { 
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
@@ -342,11 +384,21 @@
         function checkTriggers(x, y) {
             if (window.isTeleporting) return; 
             
-            // PORTAIS DO BANCO DE DADOS
+            // SAÍDAS FIXAS (Hardcoded para compatibilidade)
+            if (currentMapId === 'city') {
+                if (y > 95 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
+                if (y < 5 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
+            }
+
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
                 performTransition(() => {
-                    const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}&x=${portal.targetX}&y=${portal.targetY}`;
+                    // SE TIVER DESTINO X/Y DEFINIDO, USA. SE NÃO, DEIXA O SERVIDOR USAR O SPAWN POINT PADRÃO
+                    let extra = '';
+                    if (portal.targetX !== undefined && portal.targetY !== undefined && !isNaN(portal.targetX)) {
+                        extra = `&x=${portal.targetX}&y=${portal.targetY}`;
+                    }
+                    const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
                     window.location.href = newUrl;
                 });
             }
@@ -354,9 +406,53 @@
 
         // --- CONTROLES ---
         gameViewport.addEventListener('mousedown', (e) => {
-            if (devMode && currentTool) { handleDevClick(e); return; }
+            if (devMode) {
+                if (currentTool === 'moveNpc' && selectedNpcId) {
+                    e.stopPropagation();
+                    const rect = gameArea.getBoundingClientRect(); 
+                    const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
+                    const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
+                    teleportNpc(clickX, clickY);
+                    return;
+                }
+                
+                // CLICK PARA SETAR DESTINO DO PORTAL (VISUAL)
+                if (pendingPortalData) {
+                    e.stopPropagation();
+                    const rect = gameArea.getBoundingClientRect(); 
+                    const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
+                    const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
+                    
+                    portalsMap.push({
+                        ...pendingPortalData.rect,
+                        targetMap: pendingPortalData.mapId,
+                        targetX: clickX,
+                        targetY: clickY
+                    });
+                    
+                    pendingPortalData = null;
+                    showToast("Portal com destino visual criado!");
+                    renderMapObjects();
+                    return;
+                }
+
+                // CLICK PARA SPAWN POINT
+                if (currentTool === 'spawn') {
+                    e.stopPropagation();
+                    const rect = gameArea.getBoundingClientRect(); 
+                    const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
+                    const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
+                    mapConfig.spawnPoint = { x: clickX, y: clickY };
+                    showToast("Spawn Point Atualizado!", {bg:'#2ecc71'});
+                    renderMapObjects();
+                    return;
+                }
+
+                if (currentTool && currentTool !== 'moveNpc') { handleDevClick(e); return; }
+            }
             handleInput(e);
         });
+        
         gameViewport.addEventListener('touchstart', (e) => {
             if (e.target.closest('#chatBar')) return;
             handleInput(e.touches[0], e.target);
@@ -409,7 +505,7 @@
         
         // --- DEV TOOLS (ATUALIZADO) ---
         function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
-        function selectTool(tool) { currentTool = tool; document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active')); document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active'); }
+        function selectTool(tool) { currentTool = tool; pendingPortalData = null; document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active')); document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active'); }
         
         function changeBg() {
             const newBg = prompt("URL da Imagem de Fundo (ex: /uploads/room_bg.png):", mapConfig.bgImage);
@@ -419,24 +515,16 @@
             }
         }
 
-        // FUNÇÃO DE MUDAR TAMANHO DO MAPA
         function changeSize() {
             const w = prompt("Largura do Mapa (em %):", mapConfig.width || 100);
             const h = prompt("Altura do Mapa (em %):", mapConfig.height || 100);
-            
             if(w && h) {
                 mapConfig.width = parseInt(w);
                 mapConfig.height = parseInt(h);
-                
                 const ga = document.getElementById('gameArea');
                 ga.style.width = mapConfig.width + '%';
                 ga.style.height = mapConfig.height + '%';
-                
-                if (mapConfig.width < 100 || mapConfig.height < 100) {
-                    ga.classList.add('map-bordered');
-                } else {
-                    ga.classList.remove('map-bordered');
-                }
+                if (mapConfig.width < 100 || mapConfig.height < 100) ga.classList.add('map-bordered'); else ga.classList.remove('map-bordered');
             }
         }
 
@@ -466,7 +554,6 @@
 
         function handleDevClick(e) {
             e.stopPropagation();
-            if (currentTool === 'portal' && !isDrawing) return;
         }
 
         function renderMapObjects() {
@@ -474,6 +561,23 @@
             document.getElementById('grass-container').innerHTML = '';
             document.getElementById('portal-container').innerHTML = '';
             document.getElementById('interacts-container').innerHTML = '';
+            
+            // RENDERIZAÇÃO DO SPAWN POINT
+            if (mapConfig.spawnPoint && devMode) {
+                const sp = document.createElement('div');
+                sp.className = 'dev-spawn';
+                sp.style.left = mapConfig.spawnPoint.x + '%';
+                sp.style.top = mapConfig.spawnPoint.y + '%';
+                // Adicionei listener para remover
+                sp.onclick = (e) => {
+                    e.stopPropagation();
+                    if(currentTool === 'delete' && confirm('Remover Spawn Point?')) {
+                        mapConfig.spawnPoint = null;
+                        renderMapObjects();
+                    }
+                }
+                document.getElementById('dev-layer').appendChild(sp);
+            }
 
             const createDiv = (cls, r, arr, i) => {
                 const d = document.createElement('div'); d.className = cls; d.style.left = r.x+'%'; d.style.top = r.y+'%'; d.style.width = r.w+'%'; d.style.height = r.h+'%';
@@ -500,7 +604,7 @@
 
         // --- DESENHO DE RETANGULOS (DEV) ---
         gameArea.addEventListener('mousedown', (e) => { 
-            if(!devMode || !currentTool || currentTool === 'delete' || currentTool === 'bg' || currentTool === 'size') return; 
+            if(!devMode || !currentTool || currentTool === 'delete' || currentTool === 'bg' || currentTool === 'size' || currentTool === 'moveNpc' || currentTool === 'spawn' || pendingPortalData) return; 
             e.stopPropagation(); isDrawing = true; 
             const rect = gameArea.getBoundingClientRect(); 
             startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; 
@@ -540,13 +644,19 @@
                     else if(currentTool === 'portal') {
                         const target = prompt("ID do Mapa de Destino (ex: house1):");
                         if(target) {
-                            const tx = parseFloat(prompt("Spawn X no destino:", "50"));
-                            const ty = parseFloat(prompt("Spawn Y no destino:", "50"));
-                            portalsMap.push({ ...newRect, targetMap: target, targetX: tx, targetY: ty });
+                            // PERGUNTA: QUER DEFINIR O LOCAL VISUALMENTE?
+                            if(confirm("Clique na tela para definir o local de destino? (Cancelar = usar Spawn Padrão)")) {
+                                pendingPortalData = { rect: newRect, mapId: target };
+                                showToast("Clique onde o jogador deve cair...", {bg: '#3498db'});
+                            } else {
+                                portalsMap.push({ ...newRect, targetMap: target });
+                                renderMapObjects();
+                            }
                         }
                     }
                 }
-                tempBox.remove(); tempBox = null; renderMapObjects(); 
+                tempBox.remove(); tempBox = null; 
+                if(!pendingPortalData) renderMapObjects(); 
             } 
         });
     </script>
