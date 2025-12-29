@@ -525,7 +525,12 @@ app.get('/battle/:id', async (req, res) => {
 
     let returnUrl = '/lobby';
     if(battle.returnMap) {
-        returnUrl = `/${battle.returnMap}?userId=${battle.userId}`;
+        // CORREÇÃO: Verifica se o mapa já tem parâmetros (como '?map=house1')
+        // Se tiver, usa '&' para juntar o userId. Se não, usa '?'.
+        const separator = battle.returnMap.includes('?') ? '&' : '?';
+        
+        returnUrl = `/${battle.returnMap}${separator}userId=${battle.userId}`;
+        
         if(battle.returnX) returnUrl += `&x=${battle.returnX}`;
         if(battle.returnY) returnUrl += `&y=${battle.returnY}`;
     } else {
