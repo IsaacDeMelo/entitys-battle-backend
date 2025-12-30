@@ -145,7 +145,7 @@ function performEnemyTurn(attacker, defender, events) { const move = attacker.mo
 
 // --- ROTAS GERAIS ---
 app.get('/', async (req, res) => { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: null, skinCount: SKIN_COUNT, starters }); });
-app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/lobby?userId=' + user._id); } else { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
+app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/city?map=house1&userId=' + user._id); } else { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
 app.post('/register', async (req, res) => { 
     const { username, password, skin, starterId } = req.body; 
     try { 
@@ -161,7 +161,7 @@ app.post('/register', async (req, res) => {
             } 
         } 
         const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [], dex: dex }); 
-        await newUser.save(); res.redirect('/lobby?userId=' + newUser._id); 
+        await newUser.save(); res.redirect('/city?map=house1&userId=' + newUser._id); 
     } catch (e) { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } 
 });
 
