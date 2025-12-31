@@ -27,9 +27,14 @@
 
         /* Camadas */
         #collision-container, #grass-container, #portal-container, #interacts-container, #dev-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        /* Objetos do mapa (não cria stacking context: sem z-index) */
+        #objects-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+        .map-object { position: absolute; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
+        .map-object.dev-object { pointer-events: auto !important; cursor: pointer; outline: 1px dashed rgba(236, 240, 241, 0.9); background-color: rgba(255,255,255,0.04); }
 
         /* Iluminação */
-        #darkness-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: black; opacity: 0; pointer-events: none; z-index: 25; transition: opacity 0.5s; }
+        #darkness-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: black; opacity: 0; pointer-events: none; z-index: 2000; transition: opacity 0.5s; }
 
         /* Entidades */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
@@ -58,10 +63,38 @@
         #transitionOverlay.hidden { opacity: 0; pointer-events: none; }
 
         /* ADMIN */
-        #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto; }
+        #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; max-height: calc(100vh - 20px); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto; }
+
+        /* Deixa a lista de botões rolável quando ficar grande */
+        #devTools { overflow-y: auto; max-height: calc(100vh - 170px); padding-right: 6px; }
         #adminToolbar button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: bold; border-radius: 6px; transition: 0.2s; }
         #adminToolbar button:hover { background: #334155; }
         #adminToolbar button.active { background: #f1c40f; color: #0f172a; border-color: #f39c12; }
+
+        /* NPC Editor (janela PC) */
+        #npcEditorOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200000; display: none; align-items: center; justify-content: center; padding: 18px; pointer-events: auto; }
+        #npcEditorWindow { width: min(920px, 96vw); height: min(720px, 92vh); background: rgba(15, 23, 42, 0.98); border: 1px solid #334155; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.75); display: flex; flex-direction: column; overflow: hidden; }
+        #npcEditorHeader { display:flex; justify-content: space-between; align-items:center; padding: 12px 14px; border-bottom: 1px solid #334155; }
+        #npcEditorHeader h3 { margin: 0; font-size: 14px; color: #f1c40f; letter-spacing: 0.5px; }
+        #npcEditorHeader .actions { display:flex; gap: 8px; }
+        #npcEditorHeader button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-weight: 700; }
+        #npcEditorHeader button.primary { background: #2ecc71; border-color: #27ae60; color: #052e16; }
+        #npcEditorHeader button.danger { background: #c0392b; border-color: #e74c3c; }
+        #npcEditorBody { display: grid; grid-template-columns: 320px 1fr; flex: 1; min-height: 0; }
+        #npcEditorList { border-right: 1px solid #334155; padding: 12px; overflow: auto; }
+        #npcEditorFormWrap { padding: 12px; overflow: auto; }
+        .npcListItem { padding: 10px; border: 1px solid #334155; border-radius: 10px; margin-bottom: 8px; cursor: pointer; background: rgba(255,255,255,0.03); }
+        .npcListItem:hover { background: rgba(241, 196, 15, 0.08); border-color: #f1c40f; }
+        .npcListItem.active { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.15) inset; }
+        .npcListTitle { font-weight: 900; font-size: 13px; color: #fff; }
+        .npcListSub { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+        .npcFieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .npcField { display: flex; flex-direction: column; gap: 5px; }
+        .npcField label { font-size: 11px; color: #94a3b8; font-weight: 800; letter-spacing: 0.5px; }
+        .npcField input, .npcField select, .npcField textarea { background: #0b1220; color: #fff; border: 1px solid #334155; border-radius: 10px; padding: 9px 10px; font-family: 'Roboto', sans-serif; }
+        .npcField textarea { min-height: 70px; resize: vertical; }
+        .npcDivider { height: 1px; background: #334155; margin: 10px 0; }
+        .npcHint { font-size: 11px; color: #94a3b8; line-height: 1.35; }
         
         .collision-box { position: absolute; background: transparent; z-index: 5; }
         .grass-patch { position: absolute; z-index: 4; background: transparent; }
@@ -96,6 +129,7 @@
     <!-- INPUTS ESCONDIDOS PARA UPLOAD -->
     <input type="file" id="uploadMapBg" accept="image/*" style="display:none" onchange="handleFileBg(this, 'map')">
     <input type="file" id="uploadBattleBg" accept="image/*" style="display:none" onchange="handleFileBg(this, 'battle')">
+    <input type="file" id="uploadObjectImg" accept="image/*" style="display:none" onchange="handleObjectImageUpload(this)">
 
     <% if(user.isAdmin) { %>
     <div id="adminToolbar">
@@ -113,9 +147,12 @@
             <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
             <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL</button>
             <button id="btnToolInteract" onclick="selectTool('interact')" style="border-color:#9b59b6; color:#d2b4de;">🟪 INTERAÇÃO</button>
+            <button id="btnToolObject" onclick="selectTool('object')" style="border-color:#95a5a6; color:#ecf0f1;">🪑 OBJETO</button>
             
             <button id="btnToolBg" onclick="document.getElementById('uploadMapBg').click()" style="background:#f39c12; color:black;">🖼️ FUNDO MAPA</button>
             <button id="btnToolBattleBg" onclick="document.getElementById('uploadBattleBg').click()" style="background:#e74c3c; color:white;">⚔️ FUNDO BATALHA</button>
+            <button id="btnToolChroma" onclick="openChromaTool()" style="background:#1e293b; color:white; border-color:#f1c40f;">🎨 REMOVER FUNDO</button>
+            <button id="btnToolNpcEditor" onclick="openNpcEditor()" style="background:#1e293b; color:white; border-color:#e67e22;">🧪 NPCs</button>
             
             <button id="btnToolSize" onclick="changeSize()" style="background:#f1c40f; color:black;">📏 TAMANHO</button>
             <button id="btnToolLight" onclick="changeLight()" style="background:#bdc3c7; color:black;">💡 ILUMINAÇÃO</button>
@@ -132,6 +169,7 @@
             <div id="grass-container"></div>
             <div id="portal-container"></div>
             <div id="interacts-container"></div>
+            <div id="objects-container"></div>
             <div id="dev-layer"></div>
             <div id="darkness-layer"></div>
             
@@ -143,6 +181,143 @@
     <div id="toastContainer"></div>
     <div id="transitionOverlay"></div>
 
+    <!-- NPC EDITOR (PC) -->
+    <div id="npcEditorOverlay" onclick="closeNpcEditor()">
+        <div id="npcEditorWindow" onclick="event.stopPropagation()">
+            <div id="npcEditorHeader">
+                <h3>NPCs do mapa: <span id="npcEditorMapId" style="color:#2ecc71"></span></h3>
+                <div class="actions">
+                    <button type="button" onclick="newNpcDraft()">+ Novo NPC</button>
+                    <button type="button" class="danger" onclick="deleteNpcFromEditor()">Excluir</button>
+                    <button type="button" class="primary" onclick="saveNpcFromEditor()">Salvar</button>
+                    <button type="button" onclick="closeNpcEditor()">Fechar</button>
+                </div>
+            </div>
+            <div id="npcEditorBody">
+                <div id="npcEditorList">
+                    <div class="npcHint">Clique em um NPC para editar. O mapa atualiza sozinho após salvar.</div>
+                    <div class="npcDivider"></div>
+                    <div id="npcEditorListItems"></div>
+                </div>
+                <div id="npcEditorFormWrap">
+                    <div class="npcFieldGrid">
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>ID</label>
+                            <input id="npcEdId" type="text" disabled placeholder="Novo NPC" />
+                        </div>
+
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Nome</label>
+                            <input id="npcEdName" type="text" placeholder="Nome do NPC" />
+                        </div>
+
+                        <div class="npcField">
+                            <label>Mapa</label>
+                            <input id="npcEdMap" type="text" placeholder="ex: city, house1" />
+                        </div>
+                        <div class="npcField">
+                            <label>Direção</label>
+                            <select id="npcEdDir">
+                                <option value="down">Baixo</option>
+                                <option value="up">Cima</option>
+                                <option value="left">Esquerda</option>
+                                <option value="right">Direita</option>
+                            </select>
+                        </div>
+
+                        <div class="npcField">
+                            <label>X (0-100)</label>
+                            <input id="npcEdX" type="number" min="0" max="100" step="1" />
+                        </div>
+                        <div class="npcField">
+                            <label>Y (0-100)</label>
+                            <input id="npcEdY" type="number" min="0" max="100" step="1" />
+                        </div>
+
+                        <div class="npcField">
+                            <label>Skin padrão</label>
+                            <select id="npcEdSkinSelect">
+                                <option value="">-- Personalizada --</option>
+                                <% for(let i=1; i<=skinCount; i++) { %>
+                                    <option value="char<%= i %>">Personagem <%= i %></option>
+                                <% } %>
+                            </select>
+                        </div>
+                        <div class="npcField">
+                            <label>Upload skin (opcional)</label>
+                            <input id="npcEdSkinFile" type="file" accept="image/*" />
+                        </div>
+
+                        <div class="npcField">
+                            <label>Recompensa ($)</label>
+                            <input id="npcEdMoney" type="number" min="0" step="1" />
+                        </div>
+                        <div class="npcField">
+                            <label>Cooldown (min)</label>
+                            <input id="npcEdCooldown" type="number" min="0" step="1" />
+                        </div>
+                    </div>
+
+                    <div class="npcDivider"></div>
+
+                    <div class="npcFieldGrid">
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Diálogo</label>
+                            <textarea id="npcEdDialogue" placeholder="Olá!"></textarea>
+                        </div>
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Diálogo pós-vitória</label>
+                            <textarea id="npcEdWinDialogue" placeholder="Você já me venceu!"></textarea>
+                        </div>
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Diálogo em cooldown</label>
+                            <textarea id="npcEdCooldownDialogue" placeholder="Estou descansando..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="npcDivider"></div>
+
+                    <div class="npcFieldGrid">
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Battle background (upload opcional)</label>
+                            <input id="npcEdBattleBgFile" type="file" accept="image/*" />
+                        </div>
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Team JSON</label>
+                            <textarea id="npcEdTeamJson" class="code-area" style="min-height:120px" placeholder='[{"baseId":"pikachu","level":5}]'></textarea>
+                            <div class="npcHint">Formato: [{"baseId":"id_do_monstro","level":N}, ...]</div>
+                        </div>
+                    </div>
+
+                    <div class="npcDivider"></div>
+
+                    <div class="npcFieldGrid">
+                        <div class="npcField">
+                            <label>Reward type</label>
+                            <select id="npcEdRewardType">
+                                <option value="none">none</option>
+                                <option value="item">item</option>
+                                <option value="pokemon">pokemon</option>
+                            </select>
+                        </div>
+                        <div class="npcField">
+                            <label>Reward value</label>
+                            <input id="npcEdRewardVal" type="text" placeholder="ex: pokeball" />
+                        </div>
+                        <div class="npcField">
+                            <label>Reward qty/level</label>
+                            <input id="npcEdRewardQty" type="number" min="1" step="1" />
+                        </div>
+                        <div class="npcField">
+                            <label>Dica</label>
+                            <div class="npcHint">Para rewardType=pokemon, o qty vira level (como no lab).</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- DADOS -->
     <script>
         let mapConfig = <%- JSON.stringify(mapData) %>;
@@ -150,6 +325,7 @@
         let grassMap = mapConfig.grass || [];
         let interactsMap = mapConfig.interacts || [];
         let portalsMap = mapConfig.portals || [];
+        let objectsMap = mapConfig.objects || [];
         
         if (!mapConfig.spawnPoint) mapConfig.spawnPoint = null;
 
@@ -186,6 +362,11 @@
         let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null; 
         let selectedNpcId = null; 
         let pendingPortalData = null;
+        let pendingObjectCreate = null; // { rect, meta }
+        let pendingObjectEditId = null;
+
+        let currentNpcsCache = [];
+        let npcEditorSelectedId = null;
 
         const socket = io();
         const myName = "<%= playerName %>";
@@ -282,6 +463,7 @@
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
 
         socket.on('npcs_list', (npcs) => {
+            currentNpcsCache = Array.isArray(npcs) ? npcs : [];
             document.querySelectorAll('.npc-entity').forEach(n => n.remove());
             npcs.forEach(npc => {
                 const div = document.createElement('div');
@@ -299,6 +481,171 @@
                 gameArea.appendChild(div);
             });
         });
+
+        function openNpcEditor() {
+            if (!isAdmin) return;
+            document.getElementById('npcEditorOverlay').style.display = 'flex';
+            document.getElementById('npcEditorMapId').innerText = currentMapId;
+            renderNpcEditorList();
+            if (!npcEditorSelectedId) newNpcDraft();
+        }
+
+        function closeNpcEditor() {
+            document.getElementById('npcEditorOverlay').style.display = 'none';
+        }
+
+        function renderNpcEditorList() {
+            const el = document.getElementById('npcEditorListItems');
+            if (!el) return;
+            el.innerHTML = '';
+            const list = (currentNpcsCache || []).slice().sort((a, b) => (a.y || 0) - (b.y || 0));
+            if (list.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Nenhum NPC neste mapa.';
+                el.appendChild(empty);
+                return;
+            }
+            list.forEach(n => {
+                const item = document.createElement('div');
+                item.className = 'npcListItem' + (npcEditorSelectedId === n._id ? ' active' : '');
+                const name = (n.name || 'NPC').replace(/\(kid\)/i, '').trim();
+                item.innerHTML = `<div class="npcListTitle">${escapeHtml(name)}</div><div class="npcListSub">X:${n.x} Y:${n.y} dir:${n.direction || 'down'}</div>`;
+                item.onclick = () => loadNpcToEditor(n._id);
+                el.appendChild(item);
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function newNpcDraft() {
+            npcEditorSelectedId = null;
+            const myEl = document.getElementById(`p-${window.myId}`);
+            const px = myEl ? Math.round(parseFloat(myEl.style.left) || 50) : 50;
+            const py = myEl ? Math.round(parseFloat(myEl.style.top) || 50) : 50;
+
+            document.getElementById('npcEdId').value = '';
+            document.getElementById('npcEdName').value = '';
+            document.getElementById('npcEdMap').value = currentMapId;
+            document.getElementById('npcEdDir').value = 'down';
+            document.getElementById('npcEdX').value = px;
+            document.getElementById('npcEdY').value = py;
+            document.getElementById('npcEdSkinSelect').value = '';
+            document.getElementById('npcEdSkinFile').value = '';
+            document.getElementById('npcEdMoney').value = 100;
+            document.getElementById('npcEdCooldown').value = 0;
+
+            document.getElementById('npcEdDialogue').value = 'Olá!';
+            document.getElementById('npcEdWinDialogue').value = 'Você já me venceu! Bom trabalho.';
+            document.getElementById('npcEdCooldownDialogue').value = 'Estou descansando...';
+
+            document.getElementById('npcEdBattleBgFile').value = '';
+            document.getElementById('npcEdTeamJson').value = '[]';
+
+            document.getElementById('npcEdRewardType').value = 'none';
+            document.getElementById('npcEdRewardVal').value = '';
+            document.getElementById('npcEdRewardQty').value = 1;
+            renderNpcEditorList();
+        }
+
+        function loadNpcToEditor(npcId) {
+            const npc = (currentNpcsCache || []).find(n => n._id === npcId);
+            if (!npc) return;
+            npcEditorSelectedId = npcId;
+
+            document.getElementById('npcEdId').value = npc._id;
+            document.getElementById('npcEdName').value = npc.name || '';
+            document.getElementById('npcEdMap').value = npc.map || currentMapId;
+            document.getElementById('npcEdDir').value = npc.direction || 'down';
+            document.getElementById('npcEdX').value = Math.round(npc.x || 50);
+            document.getElementById('npcEdY').value = Math.round(npc.y || 50);
+
+            document.getElementById('npcEdSkinSelect').value = (npc.isCustomSkin ? '' : (npc.skin || ''));
+            document.getElementById('npcEdSkinFile').value = '';
+
+            document.getElementById('npcEdMoney').value = npc.moneyReward || 0;
+            document.getElementById('npcEdCooldown').value = npc.cooldownMinutes || 0;
+
+            document.getElementById('npcEdDialogue').value = npc.dialogue || '';
+            document.getElementById('npcEdWinDialogue').value = npc.winDialogue || '';
+            document.getElementById('npcEdCooldownDialogue').value = npc.cooldownDialogue || '';
+            document.getElementById('npcEdBattleBgFile').value = '';
+
+            document.getElementById('npcEdTeamJson').value = JSON.stringify(npc.team || [], null, 2);
+            document.getElementById('npcEdRewardType').value = (npc.reward && npc.reward.type) ? npc.reward.type : 'none';
+            document.getElementById('npcEdRewardVal').value = (npc.reward && npc.reward.value) ? npc.reward.value : '';
+            document.getElementById('npcEdRewardQty').value = (npc.reward && npc.reward.qty) ? npc.reward.qty : 1;
+
+            renderNpcEditorList();
+        }
+
+        async function saveNpcFromEditor() {
+            if (!isAdmin) return;
+            const fd = new FormData();
+            fd.append('userId', window.CURRENT_USER_ID);
+            if (npcEditorSelectedId) fd.append('npcId', npcEditorSelectedId);
+
+            fd.append('name', document.getElementById('npcEdName').value || 'NPC');
+            fd.append('map', document.getElementById('npcEdMap').value || currentMapId);
+            fd.append('x', document.getElementById('npcEdX').value || '50');
+            fd.append('y', document.getElementById('npcEdY').value || '50');
+            fd.append('direction', document.getElementById('npcEdDir').value || 'down');
+            fd.append('skinSelect', document.getElementById('npcEdSkinSelect').value || '');
+            fd.append('money', document.getElementById('npcEdMoney').value || '0');
+            fd.append('cooldownMinutes', document.getElementById('npcEdCooldown').value || '0');
+            fd.append('dialogue', document.getElementById('npcEdDialogue').value || '');
+            fd.append('winDialogue', document.getElementById('npcEdWinDialogue').value || '');
+            fd.append('cooldownDialogue', document.getElementById('npcEdCooldownDialogue').value || '');
+            fd.append('teamJson', document.getElementById('npcEdTeamJson').value || '[]');
+
+            fd.append('rewardType', document.getElementById('npcEdRewardType').value || 'none');
+            fd.append('rewardVal', document.getElementById('npcEdRewardVal').value || '');
+            fd.append('rewardQty', document.getElementById('npcEdRewardQty').value || '1');
+
+            const skinFile = document.getElementById('npcEdSkinFile').files && document.getElementById('npcEdSkinFile').files[0];
+            if (skinFile) fd.append('npcSkinFile', skinFile);
+            const bgFile = document.getElementById('npcEdBattleBgFile').files && document.getElementById('npcEdBattleBgFile').files[0];
+            if (bgFile) fd.append('battleBgFile', bgFile);
+
+            const res = await fetch('/api/npc/save', { method: 'POST', body: fd });
+            const data = await res.json().catch(() => ({}));
+            if (data && data.success) {
+                npcEditorSelectedId = data.npc && data.npc._id ? data.npc._id : npcEditorSelectedId;
+                if (typeof showToast === 'function') showToast('NPC salvo!', { bg: '#2ecc71' });
+                renderNpcEditorList();
+            } else {
+                alert('Erro ao salvar NPC: ' + (data.error || res.statusText || 'erro'));
+            }
+        }
+
+        async function deleteNpcFromEditor() {
+            if (!isAdmin) return;
+            if (!npcEditorSelectedId) {
+                alert('Selecione um NPC para excluir.');
+                return;
+            }
+            if (!confirm('Excluir este NPC?')) return;
+            const res = await fetch('/api/npc/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npcEditorSelectedId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (data && data.success) {
+                npcEditorSelectedId = null;
+                newNpcDraft();
+                if (typeof showToast === 'function') showToast('NPC excluído!', { bg: '#e74c3c' });
+            } else {
+                alert('Erro ao excluir NPC: ' + (data.error || res.statusText || 'erro'));
+            }
+        }
 
         socket.on('encounter_found', () => {
              const p = document.getElementById(`p-${window.myId}`); const cx = p ? parseFloat(p.style.left) : 50; const cy = p ? parseFloat(p.style.top) : 50;
@@ -561,6 +908,74 @@
         // --- DEV TOOLS (ATUALIZADO) ---
         function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
         function selectTool(tool) { currentTool = tool; pendingPortalData = null; document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active')); document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active'); }
+
+        function openChromaTool() {
+            const mapId = currentMapId || (mapConfig && mapConfig.mapId) || 'city';
+            const url = `/tools/chroma?userId=${encodeURIComponent(window.CURRENT_USER_ID)}&map=${encodeURIComponent(mapId)}`;
+            window.open(url, '_blank', 'noopener');
+        }
+
+        function generateObjectId() {
+            return 'obj_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+        }
+
+        function computeObjectZ(obj) {
+            const y = typeof obj.y === 'number' ? obj.y : 0;
+            const h = typeof obj.h === 'number' ? obj.h : 0;
+            const anchorY = (typeof obj.anchorY === 'number') ? obj.anchorY : h;
+            const zOffset = (typeof obj.zOffset === 'number') ? obj.zOffset : parseFloat(obj.zOffset) || 0;
+
+            let z = (y + anchorY) + zOffset;
+            if (obj.zMode === 'above') z += 1000; // acima do jogador, mas ainda abaixo do darkness-layer (2000)
+            return Math.floor(z);
+        }
+
+        function requestNewObjectImage(rect, meta) {
+            pendingObjectCreate = { rect, meta };
+            pendingObjectEditId = null;
+            document.getElementById('uploadObjectImg').click();
+        }
+
+        function requestEditObjectImage(objectId) {
+            pendingObjectEditId = objectId;
+            pendingObjectCreate = null;
+            document.getElementById('uploadObjectImg').click();
+        }
+
+        function handleObjectImageUpload(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const image = reader.result;
+
+                if (pendingObjectCreate) {
+                    const { rect, meta } = pendingObjectCreate;
+                    objectsMap.push({
+                        id: generateObjectId(),
+                        x: rect.x, y: rect.y, w: rect.w, h: rect.h,
+                        image,
+                        anchorY: meta.anchorY,
+                        zOffset: meta.zOffset,
+                        zMode: meta.zMode
+                    });
+                    pendingObjectCreate = null;
+                    if (typeof showToast === 'function') showToast('Objeto criado!', { bg: '#2ecc71' });
+                    renderMapObjects();
+                } else if (pendingObjectEditId) {
+                    const obj = objectsMap.find(o => o.id === pendingObjectEditId);
+                    if (obj) {
+                        obj.image = image;
+                        if (typeof showToast === 'function') showToast('Imagem atualizada!', { bg: '#2ecc71' });
+                        renderMapObjects();
+                    }
+                    pendingObjectEditId = null;
+                }
+
+                input.value = '';
+            };
+            reader.readAsDataURL(file);
+        }
         
         function changeBg() {
             const newBg = prompt("URL da Imagem de Fundo (ex: /uploads/room_bg.png):", mapConfig.bgImage);
@@ -596,6 +1011,7 @@
             mapConfig.grass = grassMap;
             mapConfig.interacts = interactsMap;
             mapConfig.portals = portalsMap;
+            mapConfig.objects = objectsMap;
 
             fetch('/api/map/save', {
                 method: 'POST',
@@ -612,6 +1028,7 @@
             else if(currentTool === 'grass') grassMap.pop();
             else if(currentTool === 'portal') portalsMap.pop();
             else if(currentTool === 'interact') interactsMap.pop();
+            else if(currentTool === 'object') objectsMap.pop();
             renderMapObjects();
         }
 
@@ -624,6 +1041,8 @@
             document.getElementById('grass-container').innerHTML = '';
             document.getElementById('portal-container').innerHTML = '';
             document.getElementById('interacts-container').innerHTML = '';
+            document.getElementById('objects-container').innerHTML = '';
+            document.getElementById('dev-layer').innerHTML = '';
             
             if (devMode && mapConfig.spawnPoint && mapConfig.spawnPoint.x !== undefined) {
                 const sp = document.createElement('div');
@@ -661,6 +1080,52 @@
                 if(isAdmin && devMode) d.classList.add('dev-portal');
                 document.getElementById('portal-container').appendChild(d);
             });
+
+            // Objetos (decorativos)
+            objectsMap.forEach((o, i) => {
+                const d = document.createElement('div');
+                d.className = 'map-object';
+                d.style.left = (o.x || 0) + '%';
+                d.style.top = (o.y || 0) + '%';
+                d.style.width = (o.w || 0) + '%';
+                d.style.height = (o.h || 0) + '%';
+                if (o.image) d.style.backgroundImage = `url('${o.image}')`;
+                d.style.zIndex = computeObjectZ(o);
+
+                if (devMode && isAdmin) {
+                    d.classList.add('dev-object');
+                    d.onclick = (ev) => {
+                        ev.stopPropagation();
+                        if (currentTool === 'delete' && confirm('Apagar objeto?')) {
+                            objectsMap.splice(i, 1);
+                            renderMapObjects();
+                            return;
+                        }
+                        if (currentTool === 'object') {
+                            const zMode = confirm('Objeto fica sempre acima do jogador?') ? 'above' : 'normal';
+                            const anchorY = prompt('AnchorY (em % do mapa, relativo ao topo do objeto). Dica: use a altura do objeto para “ancorar no chão”.', (typeof o.anchorY === 'number' ? o.anchorY : o.h || 0));
+                            const zOffset = prompt('zOffset (ajuste fino do z-index, pode ser negativo):', (typeof o.zOffset === 'number' ? o.zOffset : 0));
+                            if (anchorY !== null) o.anchorY = parseFloat(anchorY) || 0;
+                            if (zOffset !== null) o.zOffset = parseFloat(zOffset) || 0;
+                            o.zMode = zMode;
+
+                            if (confirm('Trocar imagem do objeto?')) {
+                                const img = prompt('Cole URL/data:image... (deixe vazio para selecionar um arquivo PNG):', o.image || '');
+                                if (img && img.trim()) {
+                                    o.image = img.trim();
+                                    renderMapObjects();
+                                } else {
+                                    requestEditObjectImage(o.id);
+                                }
+                            } else {
+                                renderMapObjects();
+                            }
+                        }
+                    };
+                }
+
+                document.getElementById('objects-container').appendChild(d);
+            });
         }
 
         // --- DESENHO DE RETANGULOS (DEV) ---
@@ -674,6 +1139,7 @@
             else if(currentTool === 'grass') tempBox.classList.add('dev-grass'); 
             else if(currentTool === 'portal') tempBox.classList.add('dev-portal');
             else if(currentTool === 'interact') tempBox.classList.add('dev-interact');
+            else if(currentTool === 'object') tempBox.classList.add('dev-object');
             tempBox.style.left = startPoint.x+'%'; tempBox.style.top = startPoint.y+'%'; 
             document.getElementById('dev-layer').appendChild(tempBox); 
         });
@@ -702,6 +1168,25 @@
                         if(type === 'item' || type === 'both') { item = prompt("ID do Item:"); qty = parseInt(prompt("Qtd:", "1")); }
                         interactsMap.push({ ...newRect, type, messages: msgs.split('|'), image: img, itemId: item, qty });
                     }
+                    else if(currentTool === 'object') {
+                        const zMode = confirm('Objeto fica sempre acima do jogador?') ? 'above' : 'normal';
+                        const anchorY = prompt('AnchorY (em % do mapa, relativo ao topo do objeto). Use a altura do objeto para “ancorar no chão”.', newRect.h);
+                        const zOffset = prompt('zOffset (ajuste fino do z-index, pode ser negativo):', '0');
+                        const img = prompt('Imagem (URL ou data:image...). Deixe vazio para selecionar um arquivo PNG:', '');
+
+                        const meta = {
+                            zMode,
+                            anchorY: (anchorY !== null) ? (parseFloat(anchorY) || 0) : (newRect.h || 0),
+                            zOffset: (zOffset !== null) ? (parseFloat(zOffset) || 0) : 0
+                        };
+
+                        if (img && img.trim()) {
+                            objectsMap.push({ id: generateObjectId(), ...newRect, image: img.trim(), ...meta });
+                            if (typeof showToast === 'function') showToast('Objeto criado!', { bg: '#2ecc71' });
+                        } else {
+                            requestNewObjectImage(newRect, meta);
+                        }
+                    }
                     else if(currentTool === 'portal') {
                         const target = prompt("ID do Mapa de Destino (ex: house1):");
                         if(target) {
@@ -726,6 +1211,11 @@
                                     
                                     // Remove caixas do mapa atual
                                     document.getElementById('collision-container').innerHTML = '';
+                                    document.getElementById('grass-container').innerHTML = '';
+                                    document.getElementById('portal-container').innerHTML = '';
+                                    document.getElementById('interacts-container').innerHTML = '';
+                                    document.getElementById('objects-container').innerHTML = '';
+                                    document.getElementById('dev-layer').innerHTML = '';
                                     
                                 } catch(err) {
                                     alert("Erro ao carregar mapa: " + err);

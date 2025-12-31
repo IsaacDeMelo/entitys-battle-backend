@@ -91,7 +91,11 @@ const MapSchema = new mongoose.Schema({
     collisions: { type: Array, default: [] },
     grass: { type: Array, default: [] },
     interacts: { type: Array, default: [] },
-    portals: { type: Array, default: [] }
+    portals: { type: Array, default: [] },
+
+    // Objetos decorativos do mapa (imagens PNG/base64 ou URL) com controle de z-index
+    // Estrutura sugerida: { id, x, y, w, h, image, anchorY, zOffset, zMode }
+    objects: { type: Array, default: [] }
 });
 
 const BasePokemon = mongoose.model('BasePokemon', PokemonSchema);

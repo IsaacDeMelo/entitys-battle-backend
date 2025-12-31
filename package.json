@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:encounter": "node scripts/test_encounter.js",
-    "migrate:levels": "node scripts/migrate_levels.js"
+    "migrate:levels": "node scripts/migrate_levels.js",
+    "chroma:key": "node scripts/chroma_key_png.js"
   },
   "author": "",
   "license": "ISC",
@@ -16,6 +17,7 @@
     "express": "^5.2.1",
     "mongoose": "^9.0.2",
     "multer": "^2.0.2",
+    "pngjs": "^7.0.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1"
   }

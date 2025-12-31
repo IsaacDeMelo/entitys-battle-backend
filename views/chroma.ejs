@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chroma Key</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: #050505; color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .card { max-width: 720px; margin: 0 auto; background: rgba(15, 23, 42, 0.95); border: 1px solid #334155; border-radius: 12px; padding: 16px; }
+    h1 { margin: 0 0 12px; font-size: 18px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .field { flex: 1 1 220px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+    label { font-size: 12px; color: #cbd5e1; }
+    input[type="file"], input[type="text"], input[type="number"] { padding: 10px; border-radius: 10px; border: 1px solid #334155; background: #0b1220; color: #fff; }
+    .hint { font-size: 12px; color: #94a3b8; line-height: 1.4; }
+    .actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: #fff; cursor: pointer; font-weight: 700; }
+    button.primary { background: #f1c40f; border-color: #f39c12; color: #0f172a; }
+    .error { margin-top: 12px; padding: 10px; border-radius: 10px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.35); color: #fecaca; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+    a { color: #f1c40f; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="topbar">
+      <h1>Chroma key (remover fundo)</h1>
+      <div class="hint">
+        <a href="/city?userId=<%= user._id %>&map=<%= mapId %>">Voltar</a>
+      </div>
+    </div>
+
+    <div class="hint">
+      Ideal para spritesheet com fundo sólido (ex: magenta). Se o fundo tiver ruído, aumente <b>tolerance</b> e use <b>despeckle</b>.
+    </div>
+
+    <% if (error) { %>
+      <div class="error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/tools/chroma" enctype="multipart/form-data">
+      <input type="hidden" name="userId" value="<%= user._id %>" />
+      <input type="hidden" name="returnMap" value="<%= mapId %>" />
+
+      <div class="field">
+        <label>Imagem (PNG)</label>
+        <input type="file" name="image" accept="image/png" required />
+        <div class="hint">Dica: se vier JPG/WebP, converta para PNG antes.</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Cor do fundo (hex)</label>
+          <input type="text" name="key" value="<%= defaults.key %>" placeholder="ff00ff" />
+        </div>
+        <div class="field">
+          <label>tolerance (20–80)</label>
+          <input type="number" name="tolerance" value="<%= defaults.tolerance %>" min="0" max="441" />
+        </div>
+        <div class="field">
+          <label>feather (0–15)</label>
+          <input type="number" name="feather" value="<%= defaults.feather %>" min="0" max="441" />
+          <div class="hint">Para pixel art, geralmente deixe 0.</div>
+        </div>
+        <div class="field">
+          <label>despeckle (10–60)</label>
+          <input type="number" name="despeckle" value="<%= defaults.despeckle %>" min="0" max="100000" />
+          <div class="hint">Remove pontinhos/ruído que sobra no alpha.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" type="submit">Gerar PNG transparente</button>
+        <div class="hint">O arquivo sai como download direto.</div>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
