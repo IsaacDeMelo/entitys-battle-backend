@@ -215,7 +215,7 @@ function paginateText(text, maxChars) {
     return pages;
 }
 
-function showRPGDialog(npcName, npcSkin, text, buttons = []) {
+function showRPGDialog(npcName, npcSkin, text, buttons = [], onClose = null, opts = null) {
     return new Promise((resolve) => {
         initRPGDialog();
         const overlay = document.getElementById('rpgOverlay');
@@ -224,6 +224,8 @@ function showRPGDialog(npcName, npcSkin, text, buttons = []) {
         const portraitEl = document.getElementById('rpgPortrait');
         const optionsEl = document.getElementById('rpgOptions');
         const arrowEl = document.getElementById('rpgArrow');
+
+        const keepOpenForValues = Array.isArray(opts && opts.keepOpenForValues) ? opts.keepOpenForValues : [];
 
         nameEl.innerText = npcName || '???';
         optionsEl.innerHTML = '';
@@ -240,7 +242,23 @@ function showRPGDialog(npcName, npcSkin, text, buttons = []) {
 
         overlay.style.display = 'block';
 
-        const pages = paginateText(text, 90);
+        const allowHtml = !!(opts && opts.allowHtml);
+        const rawText = String(text ?? '');
+
+        if (allowHtml) {
+            textEl.innerHTML = rawText;
+            arrowEl.style.display = 'none';
+
+            overlay.onclick = (e) => {
+                // Não fecha nem pagina por clique; só ignora.
+                if (e && e.target && e.target.tagName === 'BUTTON') return;
+            };
+
+            showButtons();
+            return;
+        }
+
+        const pages = paginateText(rawText, 90);
         let pageIndex = 0;
         let charIndex = 0;
         let typeInterval = null;
@@ -315,26 +333,58 @@ function showRPGDialog(npcName, npcSkin, text, buttons = []) {
             if (buttons.length === 0) {
                 const btn = document.createElement('button');
                 btn.className = 'rpg-btn'; btn.innerText = 'FECHAR ▼';
-                btn.onclick = (e) => { e.stopPropagation(); closeDialog(); resolve(true); };
+                btn.onclick = (e) => { e.stopPropagation(); closeDialog(true); resolve(true); };
                 optionsEl.appendChild(btn);
             } else {
                 buttons.forEach(b => {
                     const btn = document.createElement('button');
                     btn.className = `rpg-btn ${b.class || ''}`; btn.innerText = b.text;
-                    btn.onclick = (e) => { e.stopPropagation(); closeDialog(); resolve(b.value); };
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        const val = b.value;
+                        const keepOpen = keepOpenForValues.includes(val);
+                        if (!keepOpen) closeDialog(val);
+                        resolve(val);
+                    };
                     optionsEl.appendChild(btn);
                 });
             }
         }
 
-        function closeDialog() {
+        function closeDialog(result) {
             overlay.style.display = 'none';
             overlay.onclick = null;
+            if (typeof onClose === 'function') {
+                try { onClose(result); } catch (_) {}
+            }
         }
 
         typeNextPage();
     });
 }
+
+async function disengageNpc(npcId) {
+    const id = String(npcId || '').trim();
+    if (!id) return;
+    try {
+        await fetch('/api/npc/disengage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ npcId: id })
+        });
+    } catch (_) {
+        // best-effort
+    }
+}
+
+// Ao voltar de uma batalha de NPC, retoma a patrulha do NPC imediatamente.
+(function resumeNpcFromUrl() {
+    try {
+        const qs = new URLSearchParams(window.location.search || '');
+        const npcId = qs.get('resumeNpcId');
+        if (npcId) disengageNpc(npcId);
+    } catch (_) {}
+})();
 
 // =============================================================================
 // 3. LÓGICA DE MOVIMENTO E INTERAÇÃO COM NPC (GLOBAL)
@@ -342,6 +392,7 @@ function showRPGDialog(npcName, npcSkin, text, buttons = []) {
 
 if (typeof socket !== 'undefined') {
     socket.on('npcs_list', (list) => {
+        if (typeof window !== 'undefined' && window.DISABLE_GLOBAL_NPC_RENDER) return;
         document.querySelectorAll('.npc-entity').forEach(el => el.remove());
         const gameArea = document.getElementById('gameArea');
         if(!gameArea) return;
@@ -376,6 +427,10 @@ if (typeof socket !== 'undefined') {
 
 function moveToAndTalkToNPC(npc) {
     if (window.isPlayerMoving || window.isInteracting) return;
+
+    let currentMap = 'lobby';
+    if (window.location.pathname.includes('forest')) currentMap = 'forest';
+    if (window.location.pathname.includes('city')) currentMap = 'city';
     
     const socketId = socket.id; 
     const myPlayer = document.getElementById(`p-${socketId}`);
@@ -392,11 +447,30 @@ function moveToAndTalkToNPC(npc) {
     const dist = Math.sqrt(dx*dx + dy*dy);
     const MOVEMENT_SPEED = 55;
 
+    function engageAt(px, py) {
+        try {
+            fetch('/api/npc/engage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    npcId: npc._id,
+                    playerX: px,
+                    playerY: py,
+                    currentMap
+                })
+            });
+        } catch (_) {
+            // best-effort
+        }
+    }
+
     if (dist > 8) { 
         window.isInteracting = true; 
         const ratio = 6 / dist; 
         const targetX = npc.x - (dx * ratio);
         const targetY = npc.y - (dy * ratio);
+
+        engageAt(targetX, targetY);
         
         const gameArea = document.getElementById('gameArea');
         if(gameArea) gameArea.classList.add('locked');
@@ -411,6 +485,7 @@ function moveToAndTalkToNPC(npc) {
             interactWithNPC(npc); 
         }, timeToTravel);
     } else {
+        engageAt(currentLeft, currentTop);
         interactWithNPC(npc); 
     }
 }
@@ -419,17 +494,135 @@ function interactWithNPC(npc) {
     const myId = window.CURRENT_USER_ID;
     const defeatedList = window.DEFEATED_NPCS || [];
 
+    function updateUserGlobals(payload) {
+        if (!payload) return;
+        if (payload.inventory && typeof payload.inventory === 'object') window.USER_INVENTORY = payload.inventory;
+        if (Array.isArray(payload.keyItems)) window.USER_KEY_ITEMS = payload.keyItems;
+        if (payload.storyFlags && typeof payload.storyFlags === 'object') window.STORY_FLAGS = payload.storyFlags;
+    }
+
     let currentMap = 'lobby';
     let cx = 50, cy = 50;
     if (window.location.pathname.includes('forest')) currentMap = 'forest';
+    if (window.location.pathname.includes('city')) currentMap = 'city';
     const pEl = document.getElementById(`p-${socket.id}`);
     if (pEl) {
         cx = parseFloat(pEl.style.left);
         cy = parseFloat(pEl.style.top);
     }
 
-    if (!npc.team || npc.team.length === 0) {
-        showRPGDialog(npc.name, npc.skin, npc.dialogue || '...');
+    async function engageNpc() {
+        try {
+            await fetch('/api/npc/engage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    npcId: npc._id,
+                    playerX: cx,
+                    playerY: cy,
+                    currentMap
+                })
+            });
+        } catch (_) {
+            // best-effort
+        }
+    }
+
+    async function openNpcShop(items) {
+        const list = Array.isArray(items) ? items : [];
+        if (list.length === 0) {
+            await showRPGDialog(npc.name, npc.skin, 'Sem itens à venda agora.');
+            return;
+        }
+
+        const shown = list.slice(0, 4);
+        const moreCount = Math.max(0, list.length - shown.length);
+        const lines = shown.map(i => {
+            const nm = i && i.name ? String(i.name) : String(i && (i.itemId || i.id) ? (i.itemId || i.id) : 'Item');
+            const price = (i && Number.isFinite(i.price)) ? i.price : (parseFloat(i && i.price) || 0);
+            const desc = i && i.description ? String(i.description) : '';
+            return `- ${nm} ($${price})${desc ? `: ${desc}` : ''}`;
+        });
+
+        const shopText = `O que você quer comprar?\n\n${lines.join('\n')}${moreCount ? `\n\n(+${moreCount} itens...)` : ''}`;
+
+        const choice = await showRPGDialog(npc.name, npc.skin, shopText, [
+            ...shown.map(i => ({
+                text: `COMPRAR ${i.name || i.itemId || i.id}`,
+                value: String(i.itemId || i.id || i.name || ''),
+                class: 'confirm'
+            })),
+            { text: 'SAIR', value: 'exit', class: 'cancel' }
+        ]);
+
+        if (choice === 'exit') return;
+        const selected = shown.find(i => String(i.itemId || i.id || i.name || '') === String(choice));
+        if (!selected) return;
+
+        const selectedItemId = String(selected.itemId || selected.id || '').trim();
+        if (!selectedItemId) {
+            showToast('Item inválido.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/npc/shop/buy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: myId, npcId: npc._id, itemId: selectedItemId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data.error) {
+                showToast(data.error || 'Não foi possível comprar.');
+                return;
+            }
+
+            if (data && data.user) {
+                updateUserGlobals(data.user);
+                if (typeof window.USER_MONEY === 'number' && typeof data.user.money === 'number') {
+                    window.USER_MONEY = data.user.money;
+                }
+            }
+
+            showToast('Item comprado!');
+        } catch (e) {
+            showToast('Erro ao comprar.');
+        }
+    }
+
+    const hasInteract = !!(npc.interact && npc.interact.enabled);
+    const canBattle = npc.team && npc.team.length > 0;
+
+    // NPC sem time: pode ser apenas diálogo OU interação de história
+    if (!canBattle) {
+        if (!hasInteract) {
+            showRPGDialog(npc.name, npc.skin, npc.dialogue || '...');
+            return;
+        }
+
+        showRPGDialog(npc.name, npc.skin, npc.dialogue || '...', [
+            { text: 'FALAR', value: 'talk', class: 'confirm' },
+            { text: 'SAIR', value: 'exit', class: 'cancel' }
+        ]).then(async (choice) => {
+            if (choice !== 'talk') return;
+            try {
+                await engageNpc();
+                const res = await fetch('/api/npc/interact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: myId, npcId: npc._id, playerX: cx, playerY: cy, currentMap })
+                });
+                const data = await res.json().catch(() => ({}));
+                updateUserGlobals(data);
+                await showRPGDialog(npc.name, npc.skin, (data && data.text) ? data.text : (npc.dialogue || '...'));
+
+                if (data && data.action && data.action.type === 'shop') {
+                    await openNpcShop(data.action.items);
+                }
+            } catch (e) {
+                showToast('Erro ao interagir.');
+            }
+        });
         return;
     }
 
@@ -456,11 +649,34 @@ function interactWithNPC(npc) {
         }
     }
 
-    showRPGDialog(npc.name, npc.skin, npc.dialogue || 'Vamos batalhar!', [
-        { text: 'BATALHAR', value: true, class: 'confirm' },
-        { text: 'SAIR', value: false, class: 'cancel' }
-    ]).then(accepted => {
-        if(accepted) {
+    const buttons = [];
+    if (hasInteract) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
+    buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
+    buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
+
+    showRPGDialog(npc.name, npc.skin, npc.dialogue || 'Vamos batalhar!', buttons).then(async (choice) => {
+        if(choice === 'talk') {
+            try {
+                await engageNpc();
+                const res = await fetch('/api/npc/interact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: myId, npcId: npc._id, playerX: cx, playerY: cy, currentMap })
+                });
+                const data = await res.json().catch(() => ({}));
+                updateUserGlobals(data);
+                await showRPGDialog(npc.name, npc.skin, (data && data.text) ? data.text : '...');
+
+                if (data && data.action && data.action.type === 'shop') {
+                    await openNpcShop(data.action.items);
+                }
+            } catch (e) {
+                showToast('Erro ao interagir.');
+            }
+            return;
+        }
+
+        if(choice === 'battle') {
             if(typeof showLoading === 'function') showLoading('Iniciando Batalha...');
             
             fetch('/battle/npc', { 

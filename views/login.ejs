@@ -271,22 +271,9 @@
                 </div>
             </div>
 
-            <label class="form-label" style="margin-top: 15px; text-align: center;">Escolha seu Parceiro</label>
-            <div class="starters-container">
-                <% if(starters && starters.length > 0) { %>
-                    <% starters.forEach((s, index) => { %>
-                        <label class="starter-opt">
-                            <input type="radio" name="starterId" value="<%= s.id %>" required <%= index === 0 ? 'checked' : '' %>>
-                            <% if(s.sprite) { %>
-                                <img src="<%= s.sprite %>" alt="<%= s.name %>">
-                            <% } else { %>
-                                <div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:#333; border-radius:50%;"><%= s.name %></div>
-                            <% } %>
-                        </label>
-                    <% }) %>
-                <% } else { %>
-                    <small style="color:#aaa;">Nenhum inicial disponível no banco de dados.</small>
-                <% } %>
+            <label class="form-label" style="margin-top: 15px; text-align: center;">Seu monstro inicial</label>
+            <div style="text-align:center; color:#aaa; font-size:0.85rem; line-height:1.35; margin: 6px 0 10px;">
+                Você não escolhe no registro. Dentro do jogo existe um NPC especial que oferece 3 opções.
             </div>
 
             <button class="btn-action" style="background: linear-gradient(135deg, #2ecc71, #27ae60); box-shadow: 0 4px 0 #1e8449;">COMEÇAR JORNADA</button>

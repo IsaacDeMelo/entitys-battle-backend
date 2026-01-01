@@ -6,7 +6,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
-const { BasePokemon, User, NPC, GameMap } = require('./models');
+const { BasePokemon, User, NPC, GameMap, ItemDefinition } = require('./models');
 const { processPngBuffer } = require('./lib/chromaKey');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
@@ -14,13 +14,73 @@ const { MONGO_URI } = require('./config');
 const SKIN_COUNT = 12; 
 const GLOBAL_GRASS_CHANCE = 0.35;
 
+// --- STARTER (obtido via NPC no jogo) ---
+const STARTER_FLAG_ID = 'starter_chosen';
+
+async function getStarterOptions() {
+    const starters = await BasePokemon.find({ isStarter: true }).sort({ id: 1 }).limit(3).lean();
+    return starters.map(s => ({ id: s.id, name: s.name, sprite: s.sprite || null }));
+}
+
+async function getStarterOptionsForNpc(npc) {
+    const interact = npc && npc.interact ? npc.interact : null;
+    const raw = interact && Array.isArray(interact.starterOptions) ? interact.starterOptions : [];
+    const list = raw
+        .map(x => String(x || '').trim())
+        .filter(Boolean);
+
+    // Compatibilidade: se não configurou, cai no global (isStarter=true)
+    if (!list.length) return await getStarterOptions();
+
+    // Se configurou parcialmente, melhor avisar (evita escolha inválida)
+    const unique = Array.from(new Set(list));
+    if (unique.length < 3) return { error: 'Este NPC está configurado como starter, mas tem menos de 3 opções em starterOptions.' };
+
+    const docs = await BasePokemon.find({ id: { $in: unique } }).lean();
+    const byId = new Map(docs.map(d => [String(d.id), d]));
+    const options = unique
+        .map(id => {
+            const d = byId.get(id);
+            if (!d) return null;
+            return { id: d.id, name: d.name, sprite: d.sprite || null };
+        })
+        .filter(Boolean);
+    return options;
+}
+
+
 // --- CONEXÃO BANCO ---
 mongoose.connect(MONGO_URI)
     .then(async () => {
         console.log('✅ MongoDB Conectado');
         await fixLegacyUsers();
+        await ensureDefaultItemCatalog();
+        await refreshItemCatalogCache();
     })
     .catch(e => console.log('❌ Erro no Mongo:', e));
+
+async function ensureDefaultItemCatalog() {
+    try {
+        const defaults = [
+            { id: 'pokeball', name: 'CatchCube', type: 'consumable' },
+            { id: 'rareCandy', name: 'Rare Candy', type: 'consumable' }
+        ];
+        for (const it of defaults) {
+            const existing = await ItemDefinition.findOne({ id: it.id });
+            if (!existing) {
+                await ItemDefinition.create({
+                    id: it.id,
+                    name: it.name,
+                    type: it.type,
+                    iconPngBase64: '',
+                    updatedAt: Date.now()
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Erro ao garantir catálogo padrão:', e);
+    }
+}
 
 async function fixLegacyUsers() {
     try {
@@ -54,10 +114,155 @@ const onlineBattles = {};
 const players = {}; 
 let matchmakingQueue = []; // Declarado globalmente
 const roomSpectators = {}; 
+
+// Cache da lista de NPCs por mapa (para sockets/patrol sem query constante)
+const npcCacheByMap = {};
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+// --- CATÁLOGO DE ITENS (central, cacheado) ---
+let ITEM_CATALOG_CACHE = [];
+let ITEM_CATALOG_MAP = new Map();
+
+function normalizeCatalogItemId(id) {
+    return String(id || '').trim();
+}
+
+async function refreshItemCatalogCache() {
+    try {
+        const list = await ItemDefinition.find({}).sort({ id: 1 }).lean();
+        ITEM_CATALOG_CACHE = Array.isArray(list) ? list.map(x => ({
+            id: String(x.id || '').trim(),
+            name: String(x.name || x.id || '').trim(),
+            type: (String(x.type || 'consumable').trim() === 'key') ? 'key' : 'consumable',
+            hasIcon: !!(x.iconPngBase64 && String(x.iconPngBase64).trim()),
+            updatedAt: x.updatedAt || 0
+        })).filter(x => x.id) : [];
+        ITEM_CATALOG_MAP = new Map(ITEM_CATALOG_CACHE.map(it => [it.id, it]));
+    } catch (e) {
+        ITEM_CATALOG_CACHE = [];
+        ITEM_CATALOG_MAP = new Map();
+        console.error('Erro ao atualizar cache do catálogo:', e);
+    }
+}
+
+function getItemDefFromCache(itemId) {
+    const id = normalizeCatalogItemId(itemId);
+    if (!id) return null;
+    return ITEM_CATALOG_MAP.get(id) || null;
+}
+
+function parsePngDimensions(buf) {
+    try {
+        if (!Buffer.isBuffer(buf) || buf.length < 24) return null;
+        // PNG signature
+        const sig = buf.slice(0, 8);
+        const pngSig = Buffer.from([0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A]);
+        if (!sig.equals(pngSig)) return null;
+        // IHDR chunk starts at offset 8: length(4) type(4) data...
+        const chunkType = buf.slice(12, 16).toString('ascii');
+        if (chunkType !== 'IHDR') return null;
+        const width = buf.readUInt32BE(16);
+        const height = buf.readUInt32BE(20);
+        return { width, height };
+    } catch (_) {
+        return null;
+    }
+}
+
 // --- FUNÇÕES AUXILIARES ---
+
+// --- INVENTÁRIO / ITENS-CHAVE (retrocompatível) ---
+function normalizeItemId(itemId) {
+    return String(itemId || '').trim();
+}
+
+function ensureUserInventories(user) {
+    if (!user) return;
+    if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
+    if (!Array.isArray(user.keyItems)) user.keyItems = [];
+    if (!user.storyFlags || typeof user.storyFlags !== 'object') user.storyFlags = {};
+}
+
+function getItemCount(user, itemId) {
+    if (!user) return 0;
+    ensureUserInventories(user);
+    const id = normalizeItemId(itemId);
+    if (!id) return 0;
+
+    if (id === 'pokeball') return user.pokeballs || 0;
+    if (id === 'rareCandy') return user.rareCandy || 0;
+    if (user.keyItems.includes(id)) return 1;
+
+    const raw = user.inventory[id];
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function addItemToUser(user, itemId, qty = 1, opts = {}) {
+    ensureUserInventories(user);
+    const id = normalizeItemId(itemId);
+    const amount = Math.max(1, parseInt(qty, 10) || 1);
+    const def = getItemDefFromCache(id);
+    const isKeyItem = !!opts.keyItem || (def && def.type === 'key');
+    const unique = !!opts.unique;
+
+    if (!id) return { ok: false, reason: 'invalid_item' };
+
+    if (id === 'pokeball') {
+        user.pokeballs = (user.pokeballs || 0) + amount;
+        return { ok: true, added: amount, storage: 'pokeballs' };
+    }
+    if (id === 'rareCandy') {
+        user.rareCandy = (user.rareCandy || 0) + amount;
+        return { ok: true, added: amount, storage: 'rareCandy' };
+    }
+
+    if (isKeyItem || id === 'key' || id.startsWith('key_')) {
+        if (unique && user.keyItems.includes(id)) {
+            return { ok: false, reason: 'already_has_key_item' };
+        }
+        if (!user.keyItems.includes(id)) user.keyItems.push(id);
+        return { ok: true, added: 1, storage: 'keyItems' };
+    }
+
+    const prev = getItemCount(user, id);
+    user.inventory[id] = prev + amount;
+    return { ok: true, added: amount, storage: 'inventory' };
+}
+
+function removeItemFromUser(user, itemId, qty = 1) {
+    ensureUserInventories(user);
+    const id = normalizeItemId(itemId);
+    const amount = Math.max(1, parseInt(qty, 10) || 1);
+    if (!id) return { ok: false, reason: 'invalid_item' };
+
+    if (id === 'pokeball') {
+        if ((user.pokeballs || 0) < amount) return { ok: false, reason: 'not_enough' };
+        user.pokeballs -= amount;
+        return { ok: true, removed: amount };
+    }
+    if (id === 'rareCandy') {
+        if ((user.rareCandy || 0) < amount) return { ok: false, reason: 'not_enough' };
+        user.rareCandy -= amount;
+        return { ok: true, removed: amount };
+    }
+
+    if (user.keyItems.includes(id)) {
+        // Itens-chave são tratados como 1 unidade
+        user.keyItems = user.keyItems.filter(k => k !== id);
+        return { ok: true, removed: 1 };
+    }
+
+    const prev = getItemCount(user, id);
+    if (prev < amount) return { ok: false, reason: 'not_enough' };
+    const next = prev - amount;
+    if (next <= 0) delete user.inventory[id];
+    else user.inventory[id] = next;
+    return { ok: true, removed: amount };
+}
+
 function pickWeightedPokemon(list) {
     let total = 0; list.forEach(p => total += (p.spawnChance || 1));
     let r = Math.random() * total;
@@ -97,12 +302,43 @@ async function createBattleInstance(baseId, level) {
 }
 
 function userPokemonToEntity(userPoke, baseData) { 
-    const movesObj = userPoke.moves.map(mid => { const libMove = MOVES_LIBRARY[mid]; return libMove ? { ...libMove, id: mid } : null; }).filter(m => m !== null); 
-    return { 
-        instanceId: userPoke._id.toString(), baseId: userPoke.baseId, name: userPoke.nickname || baseData.name, 
-        type: baseData.type, level: userPoke.level, maxHp: userPoke.stats.hp, hp: userPoke.currentHp > 0 ? userPoke.currentHp : 0, 
-        maxEnergy: userPoke.stats.energy, energy: userPoke.stats.energy, stats: userPoke.stats, 
-        moves: movesObj, sprite: baseData.sprite, isWild: false, xp: userPoke.xp, xpToNext: getXpForNextLevel(userPoke.level), status: null 
+    if (!userPoke || !baseData) return null;
+
+    const instanceId =
+        (userPoke._id && typeof userPoke._id.toString === 'function')
+            ? userPoke._id.toString()
+            : (userPoke.instanceId ? String(userPoke.instanceId) : `poke_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+
+    const level = Number.isFinite(userPoke.level) ? userPoke.level : parseInt(userPoke.level) || 1;
+    const stats = (userPoke.stats && Number.isFinite(userPoke.stats.hp)) ? userPoke.stats : calculateStats(baseData.baseStats, level);
+
+    const rawMoves = (Array.isArray(userPoke.learnedMoves) && userPoke.learnedMoves.length > 0)
+        ? userPoke.learnedMoves
+        : (Array.isArray(userPoke.moves) ? userPoke.moves : []);
+
+    const movesObj = rawMoves
+        .map(mid => { const libMove = MOVES_LIBRARY[mid]; return libMove ? { ...libMove, id: mid } : null; })
+        .filter(m => m !== null);
+
+    const currentHp = Number.isFinite(userPoke.currentHp) ? userPoke.currentHp : stats.hp;
+
+    return {
+        instanceId,
+        baseId: userPoke.baseId,
+        name: userPoke.nickname || baseData.name,
+        type: baseData.type,
+        level,
+        maxHp: stats.hp,
+        hp: currentHp > 0 ? currentHp : 0,
+        maxEnergy: stats.energy,
+        energy: stats.energy,
+        stats,
+        moves: movesObj,
+        sprite: baseData.sprite,
+        isWild: false,
+        xp: Number.isFinite(userPoke.xp) ? userPoke.xp : 0,
+        xpToNext: getXpForNextLevel(level),
+        status: null
     }; 
 }
 
@@ -145,25 +381,27 @@ function processAction(attacker, defender, move, logArray) {
 function performEnemyTurn(attacker, defender, events) { const move = attacker.moves[Math.floor(Math.random() * attacker.moves.length)]; processAction(attacker, defender, move, events); }
 
 // --- ROTAS GERAIS ---
-app.get('/', async (req, res) => { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: null, skinCount: SKIN_COUNT, starters }); });
-app.post('/login', async (req, res) => { const { username, password } = req.body; const user = await User.findOne({ username, password }); if (user) { res.redirect('/city?map=house1&userId=' + user._id); } else { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, starters }); } });
-app.post('/register', async (req, res) => { 
-    const { username, password, skin, starterId } = req.body; 
-    try { 
-        let starterTeam = []; let dex = [];
-        if (starterId) { 
-            const starter = await BasePokemon.findOne({ id: starterId, isStarter: true }); 
-            if (starter) { 
-                const stats = calculateStats(starter.baseStats, 1); 
-                let m = starter.movePool.filter(m => m.level <= 1).map(m => m.moveId); 
-                if(!m.length) m = ['tackle']; 
-                starterTeam.push({ baseId: starter.id, nickname: starter.name, level: 1, currentHp: stats.hp, stats: stats, moves: m, learnedMoves: m }); 
-                dex.push(starter.id);
-            } 
-        } 
-        const newUser = new User({ username, password, skin, pokemonTeam: starterTeam, pc: [], dex: dex }); 
-        await newUser.save(); res.redirect('/city?map=house1&userId=' + newUser._id); 
-    } catch (e) { const starters = await BasePokemon.find({ isStarter: true }).lean(); res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, starters }); } 
+app.get('/', async (req, res) => {
+    res.render('login', { error: null, skinCount: SKIN_COUNT });
+});
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username, password });
+    if (user) {
+        res.redirect('/city?map=house1&userId=' + user._id);
+    } else {
+        res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT });
+    }
+});
+app.post('/register', async (req, res) => {
+    const { username, password, skin } = req.body;
+    try {
+        const newUser = new User({ username, password, skin, pokemonTeam: [], pc: [], dex: [] });
+        await newUser.save();
+        res.redirect('/city?map=house1&userId=' + newUser._id);
+    } catch (e) {
+        res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT });
+    }
 });
 
 app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
@@ -302,7 +540,12 @@ app.post('/api/npc/move', async (req, res) => {
     if (!user || !user.isAdmin) return res.status(403).json({ error: 'Acesso negado' });
     try {
         const updated = await NPC.findByIdAndUpdate(npcId, { x: x, y: y, map: mapId }, { new: true });
-        if (updated) { const mapNpcs = await NPC.find({ map: mapId }).lean(); io.to(mapId).emit('npcs_list', mapNpcs); res.json({ success: true }); } 
+        if (updated) {
+            const mapNpcs = await NPC.find({ map: mapId }).lean();
+            npcCacheByMap[mapId] = mapNpcs;
+            io.to(mapId).emit('npcs_list', mapNpcs);
+            res.json({ success: true });
+        }
         else res.json({ error: 'NPC não encontrado' });
     } catch (e) { res.json({ error: e.message }); }
 });
@@ -310,7 +553,64 @@ app.post('/api/npc/move', async (req, res) => {
 // --- API NPC (CRUD) ---
 const npcUploadApi = upload.fields([{ name: 'npcSkinFile', maxCount: 1 }, { name: 'battleBgFile', maxCount: 1 }]);
 app.post('/api/npc/save', npcUploadApi, async (req, res) => {
-    const { userId, npcId, name, map, x, y, direction, skinSelect, dialogue, winDialogue, cooldownDialogue, money, teamJson, rewardType, rewardVal, rewardQty, cooldownMinutes } = req.body;
+    const {
+        userId,
+        npcId,
+        npcType,
+        name,
+        map,
+        x,
+        y,
+        direction,
+        skinSelect,
+        dialogue,
+        winDialogue,
+        cooldownDialogue,
+        money,
+        teamJson,
+        rewardType,
+        rewardVal,
+        rewardQty,
+        cooldownMinutes,
+        rewardKeyItem,
+        rewardUnique,
+        blocksMovement,
+
+        patrolEnabled,
+        patrolMode,
+        patrolSpeed,
+        patrolPingAx,
+        patrolPingAy,
+        patrolPingBx,
+        patrolPingBy,
+        patrolCircleCx,
+        patrolCircleCy,
+        patrolCircleRadius,
+        patrolCircleClockwise,
+
+        patrolPathJson,
+
+        interactEnabled,
+        interactRequiresItemId,
+        interactRequiresItemQty,
+        interactConsumesRequiredItem,
+        interactGivesItemId,
+        interactGivesItemQty,
+        interactGivesKeyItem,
+        interactGivesUnique,
+        interactFlagId,
+        interactSuccessDialogue,
+        interactNeedItemDialogue,
+        interactAlreadyDoneDialogue,
+        interactMoveDx,
+        interactMoveDy,
+        interactMoveDirection,
+
+        interactServiceType,
+        interactHealDialogue,
+        interactShopItemsJson,
+        interactStarterOptionsJson
+    } = req.body;
     const user = await User.findById(userId);
     if (!user || !user.isAdmin) return res.status(403).json({ error: 'Acesso negado' });
 
@@ -342,10 +642,129 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
             type: rewardType || 'none',
             value: rewardVal || '',
             qty: parseInt(rewardQty) || 1,
-            level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1
+            level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1,
+            keyItem: rewardKeyItem === 'on' || rewardKeyItem === true || rewardKeyItem === 'true',
+            unique: rewardUnique === 'on' || rewardUnique === true || rewardUnique === 'true'
+        };
+
+        const interact = {
+            enabled: interactEnabled === 'on' || interactEnabled === true || interactEnabled === 'true',
+
+            serviceType: (interactServiceType || '').trim(),
+            healDialogue: interactHealDialogue || '',
+            shopItems: (() => {
+                if (!interactShopItemsJson) return [];
+                try {
+                    const arr = JSON.parse(interactShopItemsJson);
+                    if (!Array.isArray(arr)) return [];
+                    return arr
+                        .map(x => ({
+                            itemId: (x && x.itemId) ? String(x.itemId).trim() : '',
+                            price: Math.max(0, parseInt(x && x.price, 10) || 0)
+                        }))
+                        .filter(x => x.itemId && x.price > 0);
+                } catch (_) {
+                    return [];
+                }
+            })(),
+
+            starterOptions: (() => {
+                if (!interactStarterOptionsJson) return [];
+                try {
+                    const raw = JSON.parse(interactStarterOptionsJson);
+                    const arr = Array.isArray(raw) ? raw : [];
+                    return Array.from(new Set(arr.map(x => String(x || '').trim()).filter(Boolean)));
+                } catch (_) {
+                    // Compat: também aceita lista "id1,id2,id3"
+                    return Array.from(
+                        new Set(
+                            String(interactStarterOptionsJson || '')
+                                .split(',')
+                                .map(s => s.trim())
+                                .filter(Boolean)
+                        )
+                    );
+                }
+            })(),
+
+            requiresItemId: interactRequiresItemId || '',
+            requiresItemQty: parseInt(interactRequiresItemQty) || 1,
+            consumesRequiredItem: interactConsumesRequiredItem === 'on' || interactConsumesRequiredItem === true || interactConsumesRequiredItem === 'true',
+            givesItemId: interactGivesItemId || '',
+            givesItemQty: parseInt(interactGivesItemQty) || 1,
+            givesKeyItem: interactGivesKeyItem === 'on' || interactGivesKeyItem === true || interactGivesKeyItem === 'true',
+            givesUnique: interactGivesUnique === 'on' || interactGivesUnique === true || interactGivesUnique === 'true',
+            flagId: interactFlagId || '',
+            successDialogue: interactSuccessDialogue || '',
+            needItemDialogue: interactNeedItemDialogue || '',
+            alreadyDoneDialogue: interactAlreadyDoneDialogue || '',
+            moveDx: parseFloat(interactMoveDx) || 0,
+            moveDy: parseFloat(interactMoveDy) || 0,
+            moveDirection: interactMoveDirection || ''
+        };
+
+        const patrolIsEnabled = patrolEnabled === 'on' || patrolEnabled === true || patrolEnabled === 'true';
+
+        const parsedPath = (() => {
+            if (!patrolPathJson) {
+                const prev = (previous && previous.patrol && previous.patrol.path) ? previous.patrol.path : null;
+                if (prev && Array.isArray(prev.points)) {
+                    return {
+                        loop: !!prev.loop,
+                        points: prev.points
+                            .map(p => ({
+                                x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
+                                y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                            }))
+                            .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
+                    };
+                }
+                return { loop: false, points: [] };
+            }
+            try {
+                const raw = JSON.parse(patrolPathJson);
+                const obj = Array.isArray(raw) ? { loop: false, points: raw } : raw;
+                const loop = !!(obj && obj.loop);
+                const pts = Array.isArray(obj && obj.points) ? obj.points : [];
+                const points = pts
+                    .map(p => ({
+                        x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
+                        y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                    }))
+                    .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+                return { loop, points };
+            } catch (_) {
+                return { loop: false, points: [] };
+            }
+        })();
+
+        const nextPatrol = {
+            enabled: patrolIsEnabled,
+            mode: (patrolMode || '').trim(),
+            speed: Math.max(0.1, parseFloat(patrolSpeed) || 6),
+            pingPong: {
+                ax: parseFloat(patrolPingAx) || 0,
+                ay: parseFloat(patrolPingAy) || 0,
+                bx: parseFloat(patrolPingBx) || 0,
+                by: parseFloat(patrolPingBy) || 0
+            },
+            circle: {
+                cx: parseFloat(patrolCircleCx) || 0,
+                cy: parseFloat(patrolCircleCy) || 0,
+                radius: Math.max(0, parseFloat(patrolCircleRadius) || 0),
+                clockwise: patrolCircleClockwise === 'on' || patrolCircleClockwise === true || patrolCircleClockwise === 'true'
+            },
+            path: {
+                loop: parsedPath.loop,
+                points: parsedPath.points
+            },
+            phaseOffsetMs: (previous && previous.patrol && Number.isFinite(previous.patrol.phaseOffsetMs))
+                ? previous.patrol.phaseOffsetMs
+                : Math.floor(Math.random() * 10000)
         };
 
         const npcData = {
+            npcType: (npcType || '').trim(),
             name,
             map,
             x: parseInt(x) || 50,
@@ -360,6 +779,9 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
             cooldownMinutes: parseInt(cooldownMinutes) || 0,
             team,
             reward,
+            blocksMovement: blocksMovement === 'on' || blocksMovement === true || blocksMovement === 'true',
+            interact,
+            patrol: nextPatrol,
             battleBackground: finalBattleBg
         };
 
@@ -378,9 +800,11 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
         const newMapId = npcData.map;
         if (previous && previous.map && previous.map !== newMapId) {
             const oldList = await NPC.find({ map: previous.map }).lean();
+            npcCacheByMap[previous.map] = oldList;
             io.to(previous.map).emit('npcs_list', oldList);
         }
         const mapList = await NPC.find({ map: newMapId }).lean();
+        npcCacheByMap[newMapId] = mapList;
         io.to(newMapId).emit('npcs_list', mapList);
 
         res.json({ success: true, npc: saved });
@@ -398,10 +822,411 @@ app.post('/api/npc/delete', async (req, res) => {
         if (!npc) return res.json({ error: 'NPC não encontrado' });
         await NPC.findByIdAndDelete(npcId);
         const mapList = await NPC.find({ map: npc.map }).lean();
+        npcCacheByMap[npc.map] = mapList;
         io.to(npc.map).emit('npcs_list', mapList);
         res.json({ success: true });
     } catch (e) {
         res.status(400).json({ error: e.message });
+    }
+});
+
+// --- API NPC (INTERAÇÃO DE HISTÓRIA/ITENS) ---
+app.post('/api/npc/interact', async (req, res) => {
+    try {
+        const { userId, npcId, playerX, playerY } = req.body;
+        const user = await User.findById(userId);
+        const npc = await NPC.findById(npcId);
+        if (!user || !npc) return res.status(404).json({ error: 'NPC ou usuário não encontrado' });
+
+        ensureUserInventories(user);
+        const interact = npc.interact || {};
+        if (!interact.enabled) {
+            return res.json({ success: false, noInteraction: true, text: npc.dialogue || '...' });
+        }
+
+        // Se o cliente enviou posição do player, faz o NPC olhar para ele e pausa a patrulha por alguns segundos.
+        // (Não salva no DB; é só em memória no cache)
+        try {
+            const px = parseFloat(playerX);
+            const py = parseFloat(playerY);
+            if (Number.isFinite(px) && Number.isFinite(py) && npc && npc.map) {
+                const mapId = npc.map;
+                let list = npcCacheByMap[mapId];
+                if (!Array.isArray(list)) {
+                    list = await NPC.find({ map: mapId }).lean();
+                    npcCacheByMap[mapId] = list;
+                }
+                const idx = list.findIndex(n => n && String(n._id) === String(npc._id));
+                if (idx >= 0) {
+                    const n = list[idx];
+                    const nx = typeof n.x === 'number' ? n.x : parseFloat(n.x) || 0;
+                    const ny = typeof n.y === 'number' ? n.y : parseFloat(n.y) || 0;
+                    const dx = px - nx;
+                    const dy = py - ny;
+                    const dir = computeDirectionFromDelta(dx, dy);
+                    list[idx] = { ...n, direction: dir, _faceDirection: dir, _pauseUntil: Date.now() + 8000 };
+                    io.to(mapId).emit('npcs_list', list);
+                }
+            }
+        } catch (_) {}
+
+        const serviceType = (interact.serviceType || '').trim();
+
+        const flagId = (interact.flagId && String(interact.flagId).trim()) ? String(interact.flagId).trim() : `npc_interact_${npc._id}`;
+
+        // Starter: usa flag global (não depende do flagId do NPC).
+        // Não marca flag aqui (marca só quando escolher). Só retorna ação com opções.
+        if (serviceType === 'starter') {
+            const already = !!user.storyFlags[STARTER_FLAG_ID];
+            if (already) {
+                const text = interact.alreadyDoneDialogue || 'Você já escolheu o seu monstro inicial.';
+                return res.json({ success: true, alreadyDone: true, text, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
+            }
+
+            const optionsRes = await getStarterOptionsForNpc(npc);
+            if (optionsRes && optionsRes.error) {
+                return res.json({ success: false, error: optionsRes.error });
+            }
+            const options = optionsRes;
+            if (!options || options.length < 3) {
+                return res.json({ success: false, error: 'Não há 3 monstros iniciais configurados (por NPC ou via isStarter=true).' });
+            }
+
+            const text = interact.successDialogue || npc.dialogue || 'Escolha o seu monstro inicial.';
+            return res.json({
+                success: true,
+                text,
+                action: { type: 'starter', options, flagId: STARTER_FLAG_ID, npcId: String(npc._id) },
+                inventory: user.inventory,
+                keyItems: user.keyItems,
+                storyFlags: user.storyFlags
+            });
+        }
+
+        // Para quests (serviceType=''), mantém o comportamento antigo (marca flag sempre).
+        // Para serviços (heal/shop), só usa flag quando for algo único (givesUnique).
+        const shouldUseFlag = serviceType === '' || !!interact.givesUnique;
+        const alreadyDone = shouldUseFlag ? !!user.storyFlags[flagId] : false;
+
+        if (alreadyDone && interact.givesUnique) {
+            const text = interact.alreadyDoneDialogue || npc.winDialogue || 'Já fiz isso por você.';
+            return res.json({ success: true, alreadyDone: true, text, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
+        }
+
+        const requiresId = normalizeItemId(interact.requiresItemId);
+        const requiresQty = Math.max(1, parseInt(interact.requiresItemQty, 10) || 1);
+        if (requiresId) {
+            const hasQty = getItemCount(user, requiresId);
+            if (hasQty < requiresQty) {
+                const needText = interact.needItemDialogue || `Você precisa de ${requiresQty}x ${requiresId}.`;
+                return res.json({ success: true, needsItem: true, text: needText, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
+            }
+        }
+
+        if (requiresId && interact.consumesRequiredItem) {
+            const removed = removeItemFromUser(user, requiresId, requiresQty);
+            if (!removed.ok) {
+                const needText = interact.needItemDialogue || `Você precisa de ${requiresQty}x ${requiresId}.`;
+                return res.json({ success: true, needsItem: true, text: needText, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
+            }
+        }
+
+        const giveId = normalizeItemId(interact.givesItemId);
+        const giveQty = Math.max(1, parseInt(interact.givesItemQty, 10) || 1);
+        let giveMsg = '';
+        if (giveId) {
+            const addRes = addItemToUser(user, giveId, giveQty, { keyItem: !!interact.givesKeyItem, unique: !!interact.givesUnique });
+            if (addRes.ok) {
+                giveMsg = addRes.storage === 'keyItems' ? `Recebeu o item-chave ${giveId}!` : `Recebeu ${giveQty}x ${giveId}!`;
+            } else if (addRes.reason === 'already_has_key_item') {
+                giveMsg = `Você já tem o item-chave ${giveId}.`;
+            }
+        }
+
+        if (shouldUseFlag) {
+            user.storyFlags[flagId] = true;
+        }
+
+        // Move NPC após sucesso (se configurado)
+        let npcMoved = false;
+        if ((interact.moveDx || 0) !== 0 || (interact.moveDy || 0) !== 0 || (interact.moveDirection && String(interact.moveDirection).trim())) {
+            const dx = parseFloat(interact.moveDx) || 0;
+            const dy = parseFloat(interact.moveDy) || 0;
+            npc.x = Math.max(0, Math.min(100, (npc.x || 0) + dx));
+            npc.y = Math.max(0, Math.min(100, (npc.y || 0) + dy));
+            if (interact.moveDirection) npc.direction = interact.moveDirection;
+            await npc.save();
+            npcMoved = true;
+            try {
+                const mapList = await NPC.find({ map: npc.map }).lean();
+                npcCacheByMap[npc.map] = mapList;
+                io.to(npc.map).emit('npcs_list', mapList);
+            } catch (_) {}
+        }
+
+        await user.save();
+
+        // Serviços: heal / shop
+        if (serviceType === 'heal') {
+            let count = 0;
+            for (let p of user.pokemonTeam) {
+                const base = await BasePokemon.findOne({ id: p.baseId });
+                if (base) {
+                    p.stats = calculateStats(base.baseStats, p.level);
+                    p.currentHp = p.stats.hp;
+                    count++;
+                }
+            }
+            await user.save();
+            const text = interact.healDialogue || interact.successDialogue || `Seus monstros foram curados! (${count})`;
+            return res.json({
+                success: true,
+                text,
+                action: { type: 'heal', healed: count },
+                npcMoved,
+                inventory: user.inventory,
+                keyItems: user.keyItems,
+                storyFlags: user.storyFlags
+            });
+        }
+
+        if (serviceType === 'shop') {
+            const items = Array.isArray(interact.shopItems) ? interact.shopItems : [];
+            const cleaned = items
+                .map(x => ({
+                    itemId: x && x.itemId ? String(x.itemId).trim() : '',
+                    price: Math.max(0, parseInt(x && x.price, 10) || 0)
+                }))
+                .filter(x => x.itemId && x.price > 0);
+
+            const text = interact.successDialogue || npc.dialogue || 'O que você quer comprar?';
+            return res.json({
+                success: true,
+                text,
+                action: { type: 'shop', items: cleaned },
+                npcMoved,
+                inventory: user.inventory,
+                keyItems: user.keyItems,
+                storyFlags: user.storyFlags
+            });
+        }
+
+        const successText = interact.successDialogue || giveMsg || npc.dialogue || 'Feito.';
+        return res.json({
+            success: true,
+            text: successText,
+            npcMoved,
+            inventory: user.inventory,
+            keyItems: user.keyItems,
+            storyFlags: user.storyFlags
+        });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// --- STARTER API (opções e escolha) ---
+app.get('/api/starter/options', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const user = userId ? await User.findById(userId) : null;
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        ensureUserInventories(user);
+        const options = await getStarterOptions();
+        const chosen = !!user.storyFlags[STARTER_FLAG_ID];
+        return res.json({ success: true, chosen, options });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+app.post('/api/starter/choose', async (req, res) => {
+    try {
+        const { userId, baseId, npcId } = req.body;
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        ensureUserInventories(user);
+
+        if (user.storyFlags[STARTER_FLAG_ID]) {
+            return res.status(400).json({ error: 'Você já escolheu o seu monstro inicial.' });
+        }
+
+        let allowedIds;
+        if (npcId) {
+            const npc = await NPC.findById(npcId);
+            const svc = npc && npc.interact ? String(npc.interact.serviceType || '').trim() : '';
+            if (!npc || svc !== 'starter') {
+                return res.status(400).json({ error: 'NPC de starter inválido.' });
+            }
+            const optionsRes = await getStarterOptionsForNpc(npc);
+            if (optionsRes && optionsRes.error) {
+                return res.status(400).json({ error: optionsRes.error });
+            }
+            allowedIds = new Set((optionsRes || []).map(o => o.id));
+        } else {
+            const options = await getStarterOptions();
+            allowedIds = new Set((options || []).map(o => o.id));
+        }
+        const pick = String(baseId || '').trim();
+        if (!allowedIds.has(pick)) {
+            return res.status(400).json({ error: 'Escolha inválida.' });
+        }
+
+        const starter = await BasePokemon.findOne({ id: pick }).lean();
+        if (!starter) return res.status(404).json({ error: 'Monstro não encontrado.' });
+
+        const stats = calculateStats(starter.baseStats, 1);
+        let moves = starter.movePool ? starter.movePool.filter(m => m.level <= 1).map(m => m.moveId) : [];
+        if (!moves.length) moves = ['tackle'];
+
+        user.pokemonTeam = Array.isArray(user.pokemonTeam) ? user.pokemonTeam : [];
+        user.pokemonTeam.push({
+            baseId: starter.id,
+            nickname: starter.name,
+            level: 1,
+            currentHp: stats.hp,
+            stats,
+            moves,
+            learnedMoves: moves,
+            xp: 0
+        });
+
+        user.dex = Array.isArray(user.dex) ? user.dex : [];
+        if (!user.dex.includes(starter.id)) user.dex.push(starter.id);
+
+        user.storyFlags[STARTER_FLAG_ID] = true;
+        await user.save();
+
+        return res.json({ success: true, picked: { id: starter.id, name: starter.name, sprite: starter.sprite || null }, storyFlags: user.storyFlags });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// --- API NPC (ENGAGE): pausa patrulha e faz o NPC olhar pro player ---
+app.post('/api/npc/engage', async (req, res) => {
+    try {
+        const { npcId, playerX, playerY, pauseMs } = req.body;
+        const npc = await NPC.findById(npcId).lean();
+        if (!npc) return res.status(404).json({ error: 'NPC não encontrado' });
+        const mapId = npc.map;
+        if (!mapId) return res.json({ success: true });
+
+        let list = npcCacheByMap[mapId];
+        if (!Array.isArray(list)) {
+            list = await NPC.find({ map: mapId }).lean();
+            npcCacheByMap[mapId] = list;
+        }
+
+        const px = parseFloat(playerX);
+        const py = parseFloat(playerY);
+        const pauseFor = Math.max(500, parseInt(pauseMs, 10) || 8000);
+
+        const idx = list.findIndex(n => n && String(n._id) === String(npcId));
+        if (idx >= 0 && Number.isFinite(px) && Number.isFinite(py)) {
+            const n = list[idx];
+            const nx = typeof n.x === 'number' ? n.x : parseFloat(n.x) || 0;
+            const ny = typeof n.y === 'number' ? n.y : parseFloat(n.y) || 0;
+            const dx = px - nx;
+            const dy = py - ny;
+            const dir = computeDirectionFromDelta(dx, dy);
+            list[idx] = { ...n, direction: dir, _faceDirection: dir, _pauseUntil: Date.now() + pauseFor };
+            io.to(mapId).emit('npcs_list', list);
+        }
+
+        return res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// --- API NPC (DISENGAGE): retoma patrulha após conversa/batalha ---
+app.post('/api/npc/disengage', async (req, res) => {
+    try {
+        const { npcId } = req.body;
+        const npc = await NPC.findById(npcId).lean();
+        if (!npc) return res.status(404).json({ error: 'NPC não encontrado' });
+        const mapId = npc.map;
+        if (!mapId) return res.json({ success: true });
+
+        let list = npcCacheByMap[mapId];
+        if (!Array.isArray(list)) {
+            list = await NPC.find({ map: mapId }).lean();
+            npcCacheByMap[mapId] = list;
+        }
+
+        const idx = list.findIndex(n => n && String(n._id) === String(npcId));
+        if (idx >= 0) {
+            const n = list[idx];
+            // Zera o estado efêmero de pausa/face (não persiste no DB)
+            const cleared = { ...n, _pauseUntil: 0 };
+            delete cleared._faceDirection;
+            list[idx] = cleared;
+            io.to(mapId).emit('npcs_list', list);
+        }
+
+        return res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+// --- API NPC SHOP (BUY) ---
+app.post('/api/npc/shop/buy', async (req, res) => {
+    try {
+        const { userId, npcId, itemId, qty } = req.body;
+        const q = Math.max(1, parseInt(qty, 10) || 1);
+        const user = await User.findById(userId);
+        const npc = await NPC.findById(npcId);
+        if (!user || !npc) return res.status(404).json({ error: 'NPC ou usuário não encontrado' });
+
+        ensureUserInventories(user);
+
+        const interact = npc.interact || {};
+        if (!interact.enabled || String(interact.serviceType || '').trim() !== 'shop') {
+            return res.status(400).json({ error: 'Este NPC não é uma loja.' });
+        }
+
+        const targetId = normalizeItemId(itemId);
+        if (!targetId) return res.status(400).json({ error: 'Item inválido.' });
+
+        const shopItems = Array.isArray(interact.shopItems) ? interact.shopItems : [];
+        const entry = shopItems.find(x => x && String(x.itemId).trim() === targetId);
+        const price = Math.max(0, parseInt(entry && entry.price, 10) || 0);
+        if (!entry || !price) return res.status(400).json({ error: 'Item não vendido por este NPC.' });
+
+        const cost = price * q;
+        if ((user.money || 0) < cost) return res.status(400).json({ error: 'Saldo insuficiente.' });
+        user.money = (user.money || 0) - cost;
+
+        // Compatibilidade: itens clássicos continuam atualizando campos próprios.
+        if (targetId === 'pokeball') {
+            user.pokeballs = (user.pokeballs || 0) + q;
+        } else if (targetId === 'rareCandy') {
+            user.rareCandy = (user.rareCandy || 0) + q;
+        } else {
+            const addRes = addItemToUser(user, targetId, q, { keyItem: false, unique: false });
+            if (!addRes.ok) return res.status(400).json({ error: 'Não foi possível adicionar o item.' });
+        }
+
+        await user.save();
+        return res.json({
+            success: true,
+            money: user.money,
+            pokeballs: user.pokeballs,
+            rareCandy: user.rareCandy,
+            inventory: user.inventory,
+            keyItems: user.keyItems,
+            storyFlags: user.storyFlags
+        });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
     }
 });
 
@@ -410,7 +1235,64 @@ app.get('/lab', async (req, res) => { const { userId } = req.query; const user =
 const npcUpload = upload.fields([{ name: 'npcSkinFile', maxCount: 1 }, { name: 'battleBgFile', maxCount: 1 }]);
 app.post('/lab/create-npc', npcUpload, async (req, res) => { 
     try { 
-        const { npcId, name, map, x, y, direction, skinSelect, dialogue, winDialogue, cooldownDialogue, money, teamJson, rewardType, rewardVal, rewardQty, cooldownMinutes, userId, battleBg } = req.body; 
+        const {
+            npcId,
+            name,
+            map,
+            x,
+            y,
+            direction,
+            skinSelect,
+            dialogue,
+            winDialogue,
+            cooldownDialogue,
+            money,
+            teamJson,
+            rewardType,
+            rewardVal,
+            rewardQty,
+            cooldownMinutes,
+            rewardKeyItem,
+            rewardUnique,
+            blocksMovement,
+
+            patrolEnabled,
+            patrolMode,
+            patrolSpeed,
+            patrolPingAx,
+            patrolPingAy,
+            patrolPingBx,
+            patrolPingBy,
+            patrolCircleCx,
+            patrolCircleCy,
+            patrolCircleRadius,
+            patrolCircleClockwise,
+
+            patrolPathJson,
+
+            interactEnabled,
+            interactRequiresItemId,
+            interactRequiresItemQty,
+            interactConsumesRequiredItem,
+            interactGivesItemId,
+            interactGivesItemQty,
+            interactGivesKeyItem,
+            interactGivesUnique,
+            interactFlagId,
+            interactSuccessDialogue,
+            interactNeedItemDialogue,
+            interactAlreadyDoneDialogue,
+            interactMoveDx,
+            interactMoveDy,
+            interactMoveDirection,
+
+            interactServiceType,
+            interactHealDialogue,
+            interactShopItemsJson,
+
+            userId,
+            battleBg
+        } = req.body; 
         let finalSkin = skinSelect, isCustom = false; 
         if (req.files['npcSkinFile']) { finalSkin = `data:${req.files['npcSkinFile'][0].mimetype};base64,${req.files['npcSkinFile'][0].buffer.toString('base64')}`; isCustom = true; } 
         else if (npcId && !skinSelect) { const old = await NPC.findById(npcId); if(old) { finalSkin = old.skin; isCustom = old.isCustomSkin; } } 
@@ -418,18 +1300,565 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
         if (req.files['battleBgFile']) { finalBattleBg = `data:${req.files['battleBgFile'][0].mimetype};base64,${req.files['battleBgFile'][0].buffer.toString('base64')}`; }
         else if (npcId) { const old = await NPC.findById(npcId); if(old && old.battleBackground) finalBattleBg = old.battleBackground; }
         let team = []; try { team = JSON.parse(teamJson); } catch (e) {} 
-        const reward = { type: rewardType || 'none', value: rewardVal || '', qty: parseInt(rewardQty) || 1, level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1 }; 
-        const npcData = { name, map, x: parseInt(x)||50, y: parseInt(y)||50, direction: direction||'down', skin: finalSkin, isCustomSkin: isCustom, dialogue, winDialogue, cooldownDialogue, moneyReward: parseInt(money)||0, cooldownMinutes: parseInt(cooldownMinutes) || 0, team, reward, battleBackground: finalBattleBg }; 
+        const reward = {
+            type: rewardType || 'none',
+            value: rewardVal || '',
+            qty: parseInt(rewardQty) || 1,
+            level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1,
+            keyItem: rewardKeyItem === 'on' || rewardKeyItem === true || rewardKeyItem === 'true',
+            unique: rewardUnique === 'on' || rewardUnique === true || rewardUnique === 'true'
+        }; 
+
+        const interact = {
+            enabled: interactEnabled === 'on' || interactEnabled === true || interactEnabled === 'true',
+
+            serviceType: (interactServiceType || '').trim(),
+            healDialogue: interactHealDialogue || '',
+            shopItems: (() => {
+                if (!interactShopItemsJson) return [];
+                try {
+                    const arr = JSON.parse(interactShopItemsJson);
+                    if (!Array.isArray(arr)) return [];
+                    return arr
+                        .map(x => ({
+                            itemId: (x && x.itemId) ? String(x.itemId).trim() : '',
+                            price: Math.max(0, parseInt(x && x.price, 10) || 0)
+                        }))
+                        .filter(x => x.itemId && x.price > 0);
+                } catch (_) {
+                    return [];
+                }
+            })(),
+
+            requiresItemId: interactRequiresItemId || '',
+            requiresItemQty: parseInt(interactRequiresItemQty) || 1,
+            consumesRequiredItem: interactConsumesRequiredItem === 'on' || interactConsumesRequiredItem === true || interactConsumesRequiredItem === 'true',
+            givesItemId: interactGivesItemId || '',
+            givesItemQty: parseInt(interactGivesItemQty) || 1,
+            givesKeyItem: interactGivesKeyItem === 'on' || interactGivesKeyItem === true || interactGivesKeyItem === 'true',
+            givesUnique: interactGivesUnique === 'on' || interactGivesUnique === true || interactGivesUnique === 'true',
+            flagId: interactFlagId || '',
+            successDialogue: interactSuccessDialogue || '',
+            needItemDialogue: interactNeedItemDialogue || '',
+            alreadyDoneDialogue: interactAlreadyDoneDialogue || '',
+            moveDx: parseFloat(interactMoveDx) || 0,
+            moveDy: parseFloat(interactMoveDy) || 0,
+            moveDirection: interactMoveDirection || ''
+        };
+
+        const prevNpc = npcId ? await NPC.findById(npcId).lean() : null;
+        const patrolIsEnabled = patrolEnabled === 'on' || patrolEnabled === true || patrolEnabled === 'true';
+
+        const parsedPath = (() => {
+            if (!patrolPathJson) {
+                const prev = (prevNpc && prevNpc.patrol && prevNpc.patrol.path) ? prevNpc.patrol.path : null;
+                if (prev && Array.isArray(prev.points)) {
+                    return {
+                        loop: !!prev.loop,
+                        points: prev.points
+                            .map(p => ({
+                                x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
+                                y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                            }))
+                            .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
+                    };
+                }
+                return { loop: false, points: [] };
+            }
+            try {
+                const raw = JSON.parse(patrolPathJson);
+                const obj = Array.isArray(raw) ? { loop: false, points: raw } : raw;
+                const loop = !!(obj && obj.loop);
+                const pts = Array.isArray(obj && obj.points) ? obj.points : [];
+                const points = pts
+                    .map(p => ({
+                        x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
+                        y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                    }))
+                    .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+                return { loop, points };
+            } catch (_) {
+                return { loop: false, points: [] };
+            }
+        })();
+
+        const patrol = {
+            enabled: patrolIsEnabled,
+            mode: (patrolMode || '').trim(),
+            speed: Math.max(0.1, parseFloat(patrolSpeed) || 6),
+            pingPong: {
+                ax: parseFloat(patrolPingAx) || 0,
+                ay: parseFloat(patrolPingAy) || 0,
+                bx: parseFloat(patrolPingBx) || 0,
+                by: parseFloat(patrolPingBy) || 0
+            },
+            circle: {
+                cx: parseFloat(patrolCircleCx) || 0,
+                cy: parseFloat(patrolCircleCy) || 0,
+                radius: Math.max(0, parseFloat(patrolCircleRadius) || 0),
+                clockwise: patrolCircleClockwise === 'on' || patrolCircleClockwise === true || patrolCircleClockwise === 'true'
+            },
+            path: {
+                loop: parsedPath.loop,
+                points: parsedPath.points
+            },
+            phaseOffsetMs: (prevNpc && prevNpc.patrol && Number.isFinite(prevNpc.patrol.phaseOffsetMs))
+                ? prevNpc.patrol.phaseOffsetMs
+                : Math.floor(Math.random() * 10000)
+        };
+
+        const npcData = {
+            name,
+            map,
+            x: parseInt(x)||50,
+            y: parseInt(y)||50,
+            direction: direction||'down',
+            skin: finalSkin,
+            isCustomSkin: isCustom,
+            dialogue,
+            winDialogue,
+            cooldownDialogue,
+            moneyReward: parseInt(money)||0,
+            cooldownMinutes: parseInt(cooldownMinutes) || 0,
+            team,
+            reward,
+            blocksMovement: blocksMovement === 'on' || blocksMovement === true || blocksMovement === 'true',
+            interact,
+            patrol,
+            battleBackground: finalBattleBg
+        }; 
         if (npcId) { if (!req.files['npcSkinFile'] && skinSelect && !skinSelect.startsWith('data:')) { npcData.skin = skinSelect; npcData.isCustomSkin = false; } await NPC.findByIdAndUpdate(npcId, npcData); } else { await new NPC(npcData).save(); } 
         res.redirect('/lab?userId=' + userId); 
     } catch (e) { console.error(e); res.send("Erro: " + e.message); } 
 });
+
+// --- CACHE & PATROL DE NPCs (MOVIMENTO AUTOMÁTICO) ---
+// Mantém a última lista de NPCs por mapa para evitar query no DB a cada tick.
+
+function computeDirectionFromDelta(dx, dy) {
+    if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+    return dy > 0 ? 'down' : 'up';
+}
+
+function computeNpcPatrolPosition(npc, nowMs) {
+    if (npc && npc._pauseUntil && nowMs < npc._pauseUntil) {
+        return {
+            x: (typeof npc.x === 'number') ? npc.x : parseFloat(npc.x) || 0,
+            y: (typeof npc.y === 'number') ? npc.y : parseFloat(npc.y) || 0,
+            direction: npc._faceDirection || npc.direction || 'down'
+        };
+    }
+    const p = npc && npc.patrol;
+    if (!p || !p.enabled) return null;
+    const mode = (p.mode || '').trim();
+    const speed = Math.max(0.1, parseFloat(p.speed) || 6); // %/s
+    const phase = parseInt(p.phaseOffsetMs, 10) || 0;
+    const tNow = nowMs + phase;
+
+    if (mode === 'pingpong') {
+        const ax = (p.pingPong && Number.isFinite(p.pingPong.ax)) ? p.pingPong.ax : 0;
+        const ay = (p.pingPong && Number.isFinite(p.pingPong.ay)) ? p.pingPong.ay : 0;
+        const bx = (p.pingPong && Number.isFinite(p.pingPong.bx)) ? p.pingPong.bx : 0;
+        const by = (p.pingPong && Number.isFinite(p.pingPong.by)) ? p.pingPong.by : 0;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const dist = Math.hypot(dx, dy);
+        if (!Number.isFinite(dist) || dist < 0.01) return null;
+
+        const travelMs = (dist / speed) * 1000;
+        const period = Math.max(1, travelMs * 2);
+        const phaseIn = (tNow % period) / travelMs; // 0..2
+        const goingToB = phaseIn <= 1;
+        const u = goingToB ? phaseIn : (2 - phaseIn); // 0..1
+        const x = ax + dx * u;
+        const y = ay + dy * u;
+        const dir = goingToB ? computeDirectionFromDelta(dx, dy) : computeDirectionFromDelta(-dx, -dy);
+        return { x, y, direction: dir };
+    }
+
+    if (mode === 'circle') {
+        const cx = (p.circle && Number.isFinite(p.circle.cx)) ? p.circle.cx : 0;
+        const cy = (p.circle && Number.isFinite(p.circle.cy)) ? p.circle.cy : 0;
+        const r = (p.circle && Number.isFinite(p.circle.radius)) ? Math.max(0, p.circle.radius) : 0;
+        if (r <= 0.01) return null;
+
+        const circumference = 2 * Math.PI * r;
+        const period = Math.max(1, (circumference / speed) * 1000);
+        const frac = (tNow % period) / period; // 0..1
+        const clockwise = !!(p.circle && p.circle.clockwise);
+        const ang = (clockwise ? 1 : -1) * (frac * 2 * Math.PI);
+
+        const x = cx + r * Math.cos(ang);
+        const y = cy + r * Math.sin(ang);
+
+        // Tangente para direção
+        const tx = clockwise ? (-Math.sin(ang)) : (Math.sin(ang));
+        const ty = clockwise ? (Math.cos(ang)) : (-Math.cos(ang));
+        const dir = computeDirectionFromDelta(tx, ty);
+        return { x, y, direction: dir };
+    }
+
+    if (mode === 'path') {
+        const ptsRaw = (p.path && Array.isArray(p.path.points)) ? p.path.points : [];
+        const pts = ptsRaw
+            .map(q => ({
+                x: Number.isFinite(q && q.x) ? q.x : parseFloat(q && q.x) || 0,
+                y: Number.isFinite(q && q.y) ? q.y : parseFloat(q && q.y) || 0
+            }))
+            .filter(q => Number.isFinite(q.x) && Number.isFinite(q.y));
+
+        if (pts.length < 2) return null;
+
+        const segs = [];
+        let total = 0;
+        for (let i = 0; i < pts.length - 1; i++) {
+            const a = pts[i];
+            const b = pts[i + 1];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const len = Math.hypot(dx, dy);
+            if (len > 0.0001) {
+                segs.push({ a, b, dx, dy, len });
+                total += len;
+            }
+        }
+        // Fecha o loop (último -> primeiro)
+        const loop = !!(p.path && p.path.loop);
+        if (loop) {
+            const a = pts[pts.length - 1];
+            const b = pts[0];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const len = Math.hypot(dx, dy);
+            if (len > 0.0001) {
+                segs.push({ a, b, dx, dy, len });
+                total += len;
+            }
+        }
+
+        if (!Number.isFinite(total) || total < 0.0001 || segs.length === 0) return null;
+
+        const distPerMs = speed / 1000;
+        const traveled = (tNow * distPerMs);
+
+        // loop=true => percurso circular
+        // loop=false => vai-e-volta pela rota (pingpong)
+        const period = loop ? total : (total * 2);
+        const posInPeriod = ((traveled % period) + period) % period;
+        const goingForward = loop ? true : (posInPeriod <= total);
+        const distAlong = loop ? posInPeriod : (goingForward ? posInPeriod : (period - posInPeriod));
+
+        let acc = 0;
+        for (const s of segs) {
+            if (acc + s.len >= distAlong) {
+                const u = (distAlong - acc) / s.len;
+                const x = s.a.x + s.dx * u;
+                const y = s.a.y + s.dy * u;
+                const dir = goingForward
+                    ? computeDirectionFromDelta(s.dx, s.dy)
+                    : computeDirectionFromDelta(-s.dx, -s.dy);
+                return { x, y, direction: dir };
+            }
+            acc += s.len;
+        }
+
+        // fallback: fim do trajeto
+        const last = segs[segs.length - 1];
+        const dir = goingForward
+            ? computeDirectionFromDelta(last.dx, last.dy)
+            : computeDirectionFromDelta(-last.dx, -last.dy);
+        return { x: last.b.x, y: last.b.y, direction: dir };
+    }
+
+    return null;
+}
+
+const NPC_PATROL_TICK_MS = 350;
+setInterval(async () => {
+    try {
+        const now = Date.now();
+        const activeMaps = Array.from(new Set(Object.values(players || {}).map(p => p && p.map).filter(Boolean)));
+        if (activeMaps.length === 0) return;
+
+        for (const mapId of activeMaps) {
+            let list = npcCacheByMap[mapId];
+            if (!Array.isArray(list)) {
+                try {
+                    list = await NPC.find({ map: mapId }).lean();
+                    npcCacheByMap[mapId] = list;
+                } catch (_) {
+                    continue;
+                }
+            }
+
+            let hasPatrol = false;
+            const updated = list.map(n => {
+                const pos = computeNpcPatrolPosition(n, now);
+                if (!pos) return n;
+                hasPatrol = true;
+                return { ...n, x: pos.x, y: pos.y, direction: pos.direction };
+            });
+
+            if (hasPatrol) {
+                io.to(mapId).emit('npcs_list', updated);
+            }
+        }
+    } catch (e) {
+        console.error('NPC patrol tick error', e);
+    }
+}, NPC_PATROL_TICK_MS);
 app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), spawnChance: parseFloat(spawnChance) || 10, isStarter: isStarter === 'on', evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool }; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BasePokemon.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BasePokemon(data).save(); } res.redirect(req.header('Referer') || '/'); });
 app.post('/lab/delete', async (req, res) => { try { const { id } = req.body; if (id) await BasePokemon.deleteOne({ id }); res.redirect(req.get('referer')); } catch (e) { res.send('Erro ao excluir: ' + e.message); } });
 app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
-app.get('/api/pc', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if (!user) return res.json({ error: 'User not found' }); const formatList = async (list) => { const output = []; for (let p of list) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) output.push(userPokemonToEntity(p, base)); } return output; }; const pcList = user.pc || []; const team = await formatList(user.pokemonTeam); const pc = await formatList(pcList); res.json({ team, pc }); });
-app.post('/api/pc/move', async (req, res) => { const { userId, pokemonId, from, to } = req.body; const user = await User.findById(userId); if (!user) return res.json({ error: 'Usuário não encontrado.' }); if (!user.pc) user.pc = []; const sourceList = from === 'team' ? user.pokemonTeam : user.pc; const destList = to === 'team' ? user.pokemonTeam : user.pc; if (from === to) return res.json({ success: true }); if (to === 'team' && destList.length >= 6) return res.json({ error: 'Sua equipe já tem 6 Monstros!' }); if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Você não pode ficar sem Monstros na equipe!' }); const index = sourceList.findIndex(p => p._id.toString() === pokemonId); if (index === -1) return res.json({ error: 'Monstro não encontrado.' }); const [poke] = sourceList.splice(index, 1); destList.push(poke); await user.save(); res.json({ success: true }); });
-app.get('/api/me', async (req, res) => { const { userId } = req.query; if(!userId) return res.status(400).json({ error: 'No ID' }); const user = await User.findById(userId); if(!user) return res.status(404).json({ error: 'User not found' }); const teamWithSprites = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); const nextXp = getXpForNextLevel(p.level); const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves; teamWithSprites.push({ instanceId: p._id, name: p.nickname, level: p.level, hp: p.currentHp, maxHp: p.stats.hp, xp: p.xp, xpToNext: nextXp, sprite: base ? base.sprite : '', moves: p.moves, learnedMoves: allLearned }); } res.json({ team: teamWithSprites, allMoves: MOVES_LIBRARY, money: user.money || 0, pokeballs: user.pokeballs || 0, rareCandy: user.rareCandy || 0 }); });
+app.get('/api/pc', async (req, res) => {
+    const { userId } = req.query;
+    const user = await User.findById(userId);
+    if (!user) return res.json({ error: 'User not found' });
+
+    const formatList = async (list) => {
+        const output = [];
+        const safeList = Array.isArray(list) ? list : [];
+        for (let p of safeList) {
+            if (!p || !p.baseId) continue;
+            const base = await BasePokemon.findOne({ id: p.baseId });
+            if (!base) continue;
+            const ent = userPokemonToEntity(p, base);
+            if (ent) output.push(ent);
+        }
+        return output;
+    };
+
+    const pcList = Array.isArray(user.pc) ? user.pc : [];
+    const team = await formatList(user.pokemonTeam);
+    const pc = await formatList(pcList);
+    res.json({ team, pc });
+});
+app.post('/api/pc/move', async (req, res) => {
+    const { userId, pokemonId, from, to } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.json({ error: 'Usuário não encontrado.' });
+    if (!user.pc) user.pc = [];
+    if (!user.pokemonTeam) user.pokemonTeam = [];
+
+    const sourceList = from === 'team' ? user.pokemonTeam : user.pc;
+    const destList = to === 'team' ? user.pokemonTeam : user.pc;
+    if (from === to) return res.json({ success: true });
+    if (to === 'team' && destList.length >= 6) return res.json({ error: 'Sua equipe já tem 6 Monstros!' });
+    if (from === 'team' && sourceList.length <= 1) return res.json({ error: 'Você não pode ficar sem Monstros na equipe!' });
+
+    const index = sourceList.findIndex(p => {
+        if (!p) return false;
+        const pid = (p._id && typeof p._id.toString === 'function') ? p._id.toString() : (p.instanceId ? String(p.instanceId) : '');
+        return pid === pokemonId;
+    });
+    if (index === -1) return res.json({ error: 'Monstro não encontrado.' });
+    const [poke] = sourceList.splice(index, 1);
+    destList.push(poke);
+    await user.save();
+    res.json({ success: true });
+});
+app.get('/api/me', async (req, res) => {
+    const { userId } = req.query;
+    if(!userId) return res.status(400).json({ error: 'No ID' });
+    const user = await User.findById(userId);
+    if(!user) return res.status(404).json({ error: 'User not found' });
+    ensureUserInventories(user);
+
+    const teamWithSprites = [];
+    for(let p of (user.pokemonTeam || [])) {
+        const base = await BasePokemon.findOne({ id: p.baseId });
+        const nextXp = getXpForNextLevel(p.level);
+        const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves;
+        teamWithSprites.push({
+            instanceId: p._id,
+            name: p.nickname,
+            level: p.level,
+            hp: p.currentHp,
+            maxHp: p.stats.hp,
+            xp: p.xp,
+            xpToNext: nextXp,
+            sprite: base ? base.sprite : '',
+            moves: p.moves,
+            learnedMoves: allLearned
+        });
+    }
+
+    res.json({
+        team: teamWithSprites,
+        allMoves: MOVES_LIBRARY,
+        money: user.money || 0,
+        pokeballs: user.pokeballs || 0,
+        rareCandy: user.rareCandy || 0,
+        inventory: user.inventory,
+        keyItems: user.keyItems,
+        storyFlags: user.storyFlags
+    });
+});
+
+// Catálogo central de itens (no DB)
+app.get('/api/items/catalog', async (req, res) => {
+    try {
+        // garante cache pelo menos uma vez
+        if (!ITEM_CATALOG_CACHE || !Array.isArray(ITEM_CATALOG_CACHE)) await refreshItemCatalogCache();
+        res.json({ success: true, items: ITEM_CATALOG_CACHE });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Falha ao carregar catálogo.' });
+    }
+});
+
+// Servir ícone PNG do catálogo (32x32) direto do DB
+app.get('/api/items/icon/:itemId.png', async (req, res) => {
+    try {
+        const itemId = String(req.params.itemId || '').trim();
+        if (!itemId) return res.status(400).end();
+        const it = await ItemDefinition.findOne({ id: itemId }).lean();
+        if (!it || !it.iconPngBase64) return res.status(404).end();
+        const buf = Buffer.from(String(it.iconPngBase64), 'base64');
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.end(buf);
+    } catch (e) {
+        return res.status(500).end();
+    }
+});
+
+// Admin: criar/atualizar item no catálogo
+app.post('/api/items/upsert', async (req, res) => {
+    try {
+        const { userId, item } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatório' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+
+        const rawId = item && (item.id || item.itemId);
+        const id = String(rawId || '').trim();
+        if (!id) return res.status(400).json({ success: false, error: 'id obrigatório' });
+
+        const name = String((item && item.name) || id).trim();
+        const type = (String((item && item.type) || 'consumable').trim() === 'key') ? 'key' : 'consumable';
+
+        const existing = await ItemDefinition.findOne({ id });
+        if (!existing) {
+            await ItemDefinition.create({ id, name, type, iconPngBase64: '', updatedAt: Date.now() });
+        } else {
+            existing.name = name;
+            existing.type = type;
+            existing.updatedAt = Date.now();
+            await existing.save();
+        }
+
+        await refreshItemCatalogCache();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao salvar item.' });
+    }
+});
+
+// Admin: remover item do catálogo
+app.post('/api/items/delete', async (req, res) => {
+    try {
+        const { userId, itemId } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatório' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+        const id = String(itemId || '').trim();
+        if (!id) return res.status(400).json({ success: false, error: 'itemId obrigatório' });
+
+        await ItemDefinition.deleteOne({ id });
+        await refreshItemCatalogCache();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao remover item.' });
+    }
+});
+
+// Admin: setar ícone PNG 32x32 (base64) no catálogo
+app.post('/api/items/icon/set', async (req, res) => {
+    try {
+        const { userId, itemId, pngBase64 } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatório' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+
+        const id = String(itemId || '').trim();
+        if (!id) return res.status(400).json({ success: false, error: 'itemId obrigatório' });
+        const b64 = String(pngBase64 || '').trim();
+        if (!b64) return res.status(400).json({ success: false, error: 'pngBase64 obrigatório' });
+
+        const buf = Buffer.from(b64, 'base64');
+        const dim = parsePngDimensions(buf);
+        if (!dim) return res.status(400).json({ success: false, error: 'Arquivo não é PNG válido.' });
+        if (dim.width !== 32 || dim.height !== 32) {
+            return res.status(400).json({ success: false, error: `Ícone precisa ser 32x32. Recebido: ${dim.width}x${dim.height}` });
+        }
+
+        const it = await ItemDefinition.findOne({ id });
+        if (!it) return res.status(404).json({ success: false, error: 'Item não existe no catálogo.' });
+        it.iconPngBase64 = b64;
+        it.updatedAt = Date.now();
+        await it.save();
+
+        await refreshItemCatalogCache();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao salvar ícone.' });
+    }
+});
+
+// Dev/Admin: dar item para jogador (usa catálogo pra key/consumable)
+app.post('/api/dev/inventory/grant', async (req, res) => {
+    try {
+        const { userId, targetUserId, itemId, qty } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatório' });
+        const admin = await User.findById(userId);
+        if (!admin || !admin.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+
+        const tgtId = String(targetUserId || userId).trim();
+        const user = await User.findById(tgtId);
+        if (!user) return res.status(404).json({ success: false, error: 'Usuário alvo não encontrado' });
+        ensureUserInventories(user);
+
+        const id = String(itemId || '').trim();
+        const amount = Math.max(1, parseInt(qty, 10) || 1);
+        if (!id) return res.status(400).json({ success: false, error: 'itemId obrigatório' });
+
+        const def = getItemDefFromCache(id);
+        const isKey = def && def.type === 'key';
+        const result = addItemToUser(user, id, amount, { keyItem: !!isKey, unique: !!isKey });
+        if (!result.ok) return res.status(400).json({ success: false, error: result.reason || 'Falha ao adicionar item' });
+
+        await user.save();
+        res.json({ success: true, inventory: user.inventory, keyItems: user.keyItems });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao dar item.' });
+    }
+});
+
+// Dev/Admin: remover item do jogador
+app.post('/api/dev/inventory/revoke', async (req, res) => {
+    try {
+        const { userId, targetUserId, itemId, qty } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatório' });
+        const admin = await User.findById(userId);
+        if (!admin || !admin.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+
+        const tgtId = String(targetUserId || userId).trim();
+        const user = await User.findById(tgtId);
+        if (!user) return res.status(404).json({ success: false, error: 'Usuário alvo não encontrado' });
+        ensureUserInventories(user);
+
+        const id = String(itemId || '').trim();
+        const amount = Math.max(1, parseInt(qty, 10) || 1);
+        if (!id) return res.status(400).json({ success: false, error: 'itemId obrigatório' });
+
+        const result = removeItemFromUser(user, id, amount);
+        if (!result.ok) return res.status(400).json({ success: false, error: result.reason || 'Falha ao remover item' });
+        await user.save();
+        res.json({ success: true, inventory: user.inventory, keyItems: user.keyItems });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao remover item.' });
+    }
+});
 app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.pokemonTeam) { const base = await BasePokemon.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Monstros curados!` }); });
 app.post('/api/equip-move', async (req, res) => { const { userId, pokemonId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.pokemonTeam.id(pokemonId); if(!poke) return res.json({error: "Pokemon not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
 app.post('/api/set-lead', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.pokemonTeam.findIndex(p => p._id.toString() === pokemonId); if (index > 0) { const poke = user.pokemonTeam.splice(index, 1)[0]; user.pokemonTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
@@ -437,10 +1866,32 @@ app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId
 app.post('/api/buy-item', async (req, res) => { const { userId, itemId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const prices = { pokeball: 50, rareCandy: 2000 }; if(!prices[itemId]) return res.json({ error: 'Item inválido' }); const cost = prices[itemId] * q; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' }); user.money = (user.money || 0) - cost; if(itemId === 'pokeball') user.pokeballs = (user.pokeballs || 0) + q; if(itemId === 'rareCandy') user.rareCandy = (user.rareCandy || 0) + q; await user.save(); res.json({ success: true, money: user.money, pokeballs: user.pokeballs, rareCandy: user.rareCandy }); });
 app.post('/api/use-item', async (req, res) => { const { userId, itemId, pokemonId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(itemId === 'rareCandy') { if(!pokemonId) return res.json({ error: 'pokemonId required' }); let poke = null; try { poke = user.pokemonTeam.id(pokemonId); } catch(e) { poke = user.pokemonTeam.find(p => p._id.toString() === (pokemonId || '')); } if(!poke) return res.json({ error: 'Pokemon not found' }); if((user.rareCandy || 0) < q) return res.json({ error: 'Not enough RareCandy' }); const oldLevel = poke.level || 1; poke.level = Math.min(100, oldLevel + q); user.rareCandy = (user.rareCandy || 0) - q; let base = await BasePokemon.findOne({ id: poke.baseId }); let evolved = false; if (base) { if (base.movePool) { const newMove = base.movePool.find(m => m.level === poke.level); if (newMove) { if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves]; if (!poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } } } if (base.evolution && poke.level >= base.evolution.level) { const nextPoke = await BasePokemon.findOne({ id: base.evolution.targetId }); if (nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; base = nextPoke; evolved = true; if (!user.dex) user.dex = []; if (!user.dex.includes(nextPoke.id)) { user.dex.push(nextPoke.id); } } } poke.stats = calculateStats(base.baseStats, poke.level); poke.currentHp = poke.stats.hp; } await user.save(); return res.json({ success: true, rareCandy: user.rareCandy, evolved: evolved, pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname } }); } return res.json({ error: 'Item cannot be used here' }); });
 
+// Consumir item do inventário genérico / itens-chave
+app.post('/api/inventory/consume', async (req, res) => {
+    try {
+        const { userId, itemId, qty } = req.body;
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        ensureUserInventories(user);
+
+        const q = Math.max(1, parseInt(qty, 10) || 1);
+        const removed = removeItemFromUser(user, itemId, q);
+        if (!removed.ok) return res.json({ error: 'Not enough items' });
+
+        await user.save();
+        return res.json({ success: true, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
 // --- BATTLE ROUTES ---
 app.post('/battle/wild', async (req, res) => { 
     const { userId, currentMap, currentX, currentY } = req.body; 
     const user = await User.findById(userId); 
+    if (!user) return res.json({ error: 'User not found' });
+    if (!user.pokemonTeam || user.pokemonTeam.length === 0) return res.json({ error: 'Você precisa pegar seu monstro inicial com o Professor.', needStarter: true });
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0]; 
     if(!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Todos os seus Monstros estão desmaiados!" }); 
     
@@ -488,6 +1939,29 @@ app.post('/battle/npc', async (req, res) => {
     const npc = await NPC.findById(npcId);
     if (!user || !npc) return res.json({ error: "NPC não encontrado." });
 
+    // Enforce: treinador uma vez (cooldownMinutes<=0) ou repetível com cooldown.
+    try {
+        const record = Array.isArray(user.defeatedNPCs)
+            ? user.defeatedNPCs.find(r => r && String(r.npcId) === String(npc._id))
+            : null;
+        if (record) {
+            const defeatedAt = record.defeatedAt || 0;
+            const cooldownMins = npc.cooldownMinutes || 0;
+            if (cooldownMins <= 0) {
+                return res.json({ error: npc.winDialogue || 'Você já me venceu! Bom trabalho.', alreadyDefeated: true });
+            }
+            const diffMinutes = (Date.now() - defeatedAt) / 60000;
+            if (diffMinutes < cooldownMins) {
+                const remaining = Math.ceil(cooldownMins - diffMinutes);
+                return res.json({
+                    error: (npc.cooldownDialogue || 'Estou descansando...') + ` (${remaining}m)`,
+                    cooldownRemainingMinutes: remaining
+                });
+            }
+        }
+    } catch (_) {}
+
+    if (!user.pokemonTeam || user.pokemonTeam.length === 0) return res.json({ error: 'Você precisa pegar seu monstro inicial com o Professor.', needStarter: true });
     const userPokeData = user.pokemonTeam.find(p => p.currentHp > 0) || user.pokemonTeam[0];
     if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Monstros estão desmaiados!" });
     
@@ -569,6 +2043,11 @@ app.get('/battle/:id', async (req, res) => {
         
         if(battle.returnX) returnUrl += `&x=${battle.returnX}`;
         if(battle.returnY) returnUrl += `&y=${battle.returnY}`;
+
+        // Se foi batalha contra NPC, ao voltar retoma patrulha imediatamente.
+        if (battle.type === 'local' && battle.npcId) {
+            returnUrl += `&resumeNpcId=${encodeURIComponent(String(battle.npcId))}`;
+        }
     } else {
         returnUrl = `/lobby?userId=${battle.userId}`;
     }
@@ -682,7 +2161,32 @@ app.post('/api/turn', async (req, res) => {
                         if (recordIndex !== -1) { user.defeatedNPCs[recordIndex].defeatedAt = Date.now(); } else { user.defeatedNPCs.push({ npcId: npcIdStr, defeatedAt: Date.now() }); }
                         events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); 
                         if (npc && npc.reward && npc.reward.type !== 'none') {
-                            if (npc.reward.type === 'item') { const itemMap = { 'pokeball': 'pokeballs', 'rareCandy': 'rareCandy' }; const field = itemMap[npc.reward.value]; if (field) { user[field] = (user[field] || 0) + (npc.reward.qty || 1); events.push({ type: 'MSG', text: `Recebeu ${npc.reward.qty}x ${npc.reward.value}!` }); } } else if (npc.reward.type === 'pokemon') { const rewardBase = await BasePokemon.findOne({ id: npc.reward.value }); if (rewardBase) { const rewardLvl = npc.reward.level || 1; const rStats = calculateStats(rewardBase.baseStats, rewardLvl); let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['tackle']; const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves }; if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPoke); else user.pc.push(newPoke); if (!user.dex) user.dex = []; if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); } events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` }); } }
+                            if (npc.reward.type === 'item') {
+                                ensureUserInventories(user);
+                                const itemId = normalizeItemId(npc.reward.value);
+                                const qty = Math.max(1, parseInt(npc.reward.qty, 10) || 1);
+                                const addRes = addItemToUser(user, itemId, qty, { keyItem: !!npc.reward.keyItem, unique: !!npc.reward.unique });
+                                if (addRes.ok) {
+                                    const msg = (addRes.storage === 'keyItems')
+                                        ? `Recebeu o item-chave ${itemId}!`
+                                        : `Recebeu ${qty}x ${itemId}!`;
+                                    events.push({ type: 'MSG', text: msg });
+                                } else if (addRes.reason === 'already_has_key_item') {
+                                    events.push({ type: 'MSG', text: `Você já tem o item-chave ${itemId}.` });
+                                }
+                            } else if (npc.reward.type === 'pokemon') {
+                                const rewardBase = await BasePokemon.findOne({ id: npc.reward.value });
+                                if (rewardBase) {
+                                    const rewardLvl = npc.reward.level || 1;
+                                    const rStats = calculateStats(rewardBase.baseStats, rewardLvl);
+                                    let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['tackle'];
+                                    const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves };
+                                    if (user.pokemonTeam.length < 6) user.pokemonTeam.push(newPoke); else user.pc.push(newPoke);
+                                    if (!user.dex) user.dex = [];
+                                    if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); }
+                                    events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` });
+                                }
+                            }
                         }
                         await user.save(); 
                     } 
@@ -714,6 +2218,7 @@ io.on('connection', (socket) => {
             socket.join(data.map); 
             let mapNpcs = [];
             try { mapNpcs = await NPC.find({ map: data.map }).lean(); } catch(e) {}
+            npcCacheByMap[data.map] = mapNpcs;
             socket.emit('npcs_list', mapNpcs);
             
             const startX = data.x || 50; 

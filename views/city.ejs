@@ -31,6 +31,7 @@
         #objects-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
         .map-object { position: absolute; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
+
         .map-object.dev-object { pointer-events: auto !important; cursor: pointer; outline: 1px dashed rgba(236, 240, 241, 0.9); background-color: rgba(255,255,255,0.04); }
 
         /* Iluminação */
@@ -62,21 +63,59 @@
         #transitionOverlay { position: fixed; inset: 0; background: #000; z-index: 99999; opacity: 1; pointer-events: auto; transition: opacity 0.3s ease-in-out; }
         #transitionOverlay.hidden { opacity: 0; pointer-events: none; }
 
+        /* Preview Msg (usado por preview de portal e captura por clique no dev) */
+        #previewMsg { display:none; position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:9000; font-size:11px; background: rgba(241,196,15,0.95); color:#0f172a; padding:8px 10px; border:1px solid #f39c12; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.55); pointer-events: auto; }
+        #previewMsgInner { display:flex; align-items:center; gap:10px; }
+        #previewMsgText { font-weight: 900; letter-spacing: 0.2px; }
+        #previewCancelBtn { display:none; background:#1e293b; color:#fff; border:1px solid #334155; padding:6px 8px; border-radius: 10px; cursor:pointer; font-weight: 900; font-family: 'Rajdhani', sans-serif; }
+        #previewCancelBtn:hover { background:#334155; }
+        #gameArea.dev-click-capture #previewCancelBtn { display:inline-flex; }
+
         /* ADMIN */
         #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; max-height: calc(100vh - 20px); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto; }
 
         /* Deixa a lista de botões rolável quando ficar grande */
         #devTools { overflow-y: auto; max-height: calc(100vh - 170px); padding-right: 6px; }
-        #adminToolbar button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: bold; border-radius: 6px; transition: 0.2s; }
-        #adminToolbar button:hover { background: #334155; }
+        #adminToolbar button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: 900; border-radius: 10px; transition: 0.15s; letter-spacing: 0.2px; }
+        #adminToolbar button:hover { background: #334155; border-color: #475569; }
+        #adminToolbar button:active { transform: translateY(1px); }
         #adminToolbar button.active { background: #f1c40f; color: #0f172a; border-color: #f39c12; }
+
+        /* Variações (sem inline style) */
+        #adminToolbar button.devBtn--orange { background: rgba(230, 126, 34, 0.18); border-color: #d35400; color: #ffd7b0; }
+        #adminToolbar button.devBtn--orange:hover { background: rgba(230, 126, 34, 0.28); }
+
+        #adminToolbar button.devBtn--green { background: rgba(46, 204, 113, 0.10); border-color: #2ecc71; color: #b7f7d2; }
+        #adminToolbar button.devBtn--green:hover { background: rgba(46, 204, 113, 0.18); }
+
+        #adminToolbar button.devBtn--blue { background: rgba(52, 152, 219, 0.12); border-color: #3498db; color: #cbe7ff; }
+        #adminToolbar button.devBtn--blue:hover { background: rgba(52, 152, 219, 0.20); }
+
+        #adminToolbar button.devBtn--purple { background: rgba(155, 89, 182, 0.12); border-color: #9b59b6; color: #ecd6ff; }
+        #adminToolbar button.devBtn--purple:hover { background: rgba(155, 89, 182, 0.20); }
+
+        #adminToolbar button.devBtn--gray { background: rgba(149, 165, 166, 0.12); border-color: #95a5a6; color: #ecf0f1; }
+        #adminToolbar button.devBtn--gray:hover { background: rgba(149, 165, 166, 0.20); }
+
+        #adminToolbar button.devBtn--yellow { background: rgba(241, 196, 15, 0.92); border-color: #f39c12; color: #0f172a; }
+        #adminToolbar button.devBtn--yellow:hover { filter: brightness(1.05); }
+
+        #adminToolbar button.devBtn--light { background: rgba(189, 195, 199, 0.92); border-color: #bdc3c7; color: #0f172a; }
+        #adminToolbar button.devBtn--light:hover { filter: brightness(1.05); }
+
+        #adminToolbar button.devBtn--danger { background: rgba(192, 57, 43, 0.22); border-color: #e74c3c; color: #ffd0cc; }
+        #adminToolbar button.devBtn--danger:hover { background: rgba(192, 57, 43, 0.32); }
+
+        #devTools .devDivider { height: 1px; background: #334155; margin: 4px 0; }
+        #devTools .devSectionTitle { font-size: 0.62rem; color: #94a3b8; font-weight: 900; letter-spacing: 0.9px; text-transform: uppercase; margin: 6px 0 2px; }
+        #devTools .devSection { display:flex; flex-direction:column; gap: 5px; }
 
         /* NPC Editor (janela PC) */
         #npcEditorOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200000; display: none; align-items: center; justify-content: center; padding: 18px; pointer-events: auto; }
         #npcEditorWindow { width: min(920px, 96vw); height: min(720px, 92vh); background: rgba(15, 23, 42, 0.98); border: 1px solid #334155; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.75); display: flex; flex-direction: column; overflow: hidden; }
         #npcEditorHeader { display:flex; justify-content: space-between; align-items:center; padding: 12px 14px; border-bottom: 1px solid #334155; }
         #npcEditorHeader h3 { margin: 0; font-size: 14px; color: #f1c40f; letter-spacing: 0.5px; }
-        #npcEditorHeader .actions { display:flex; gap: 8px; }
+        #npcEditorHeader .actions { display:flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         #npcEditorHeader button { background: #1e293b; color: white; border: 1px solid #334155; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-weight: 700; }
         #npcEditorHeader button.primary { background: #2ecc71; border-color: #27ae60; color: #052e16; }
         #npcEditorHeader button.danger { background: #c0392b; border-color: #e74c3c; }
@@ -95,11 +134,335 @@
         .npcField textarea { min-height: 70px; resize: vertical; }
         .npcDivider { height: 1px; background: #334155; margin: 10px 0; }
         .npcHint { font-size: 11px; color: #94a3b8; line-height: 1.35; }
+
+        /* Botões do formulário de NPC (modo dev) */
+        .npcBtn { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 8px 10px; cursor: pointer; font-family: 'Rajdhani', sans-serif; font-weight: 900; border-radius: 10px; transition: 0.15s; }
+        .npcBtn:hover { background: #334155; border-color: #475569; }
+        .npcBtn:active { transform: translateY(1px); }
+        .npcBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* Deixa os campos com foco mais claros */
+        .npcField input:focus, .npcField select:focus, .npcField textarea:focus { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.16); }
+
+        .npcSectionTitle { font-size: 12px; font-weight: 900; color: #e2e8f0; letter-spacing: 0.4px; margin: 2px 0 6px; }
+        .npcInlineHelp { background: rgba(255,255,255,0.03); border: 1px solid #334155; border-radius: 10px; padding: 10px; }
+
+        /* Seções do formulário de NPC */
+        .npcBlock { border: 1px solid #334155; border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.02); margin-bottom: 10px; }
+        .npcBlockHeader { display:flex; gap: 10px; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+        .npcBlockTitle { font-size: 12px; font-weight: 900; color: #e2e8f0; letter-spacing: 0.5px; }
+        .npcBlockDesc { font-size: 11px; color: #94a3b8; line-height: 1.25; text-align: right; }
+
+        /* Picker visual de monstros (time do NPC) */
+        .npcMonRow { display: grid; grid-template-columns: 1fr 90px 46px; gap: 8px; align-items: center; }
+        .npcMonCard { display:flex; align-items:center; gap:10px; padding: 8px; border: 1px solid #334155; border-radius: 12px; background: rgba(255,255,255,0.03); }
+        .npcMonImg { width: 42px; height: 42px; border-radius: 10px; background: #0b1220; border: 1px solid #334155; background-size: cover; background-position: center; flex: none; }
+        .npcMonMeta { min-width: 0; }
+        .npcMonName { font-weight: 900; font-size: 12px; color: #fff; line-height: 1.1; }
+        .npcMonId { font-size: 11px; color: #94a3b8; overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .npcBtnSmall { padding: 7px 9px; border-radius: 10px; font-weight: 800; }
+
+        #npcEdMonsterPickerWrap { margin-top: 10px; }
+        #npcEdMonsterPicker { border: 1px solid #334155; border-radius: 12px; background: rgba(0,0,0,0.2); padding: 10px; max-height: 240px; overflow: auto; }
+        .npcPickerGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .npcPickerItem { display:flex; align-items:center; gap:8px; padding: 8px; border: 1px solid #334155; border-radius: 12px; background: rgba(255,255,255,0.03); cursor: pointer; }
+        .npcPickerItem:hover { border-color: #f1c40f; background: rgba(241, 196, 15, 0.08); }
+        .npcPickerName { font-weight: 900; font-size: 11px; color:#fff; line-height: 1.1; }
+        .npcPickerSub { font-size: 10px; color:#94a3b8; }
         
         .collision-box { position: absolute; background: transparent; z-index: 5; }
         .grass-patch { position: absolute; z-index: 4; background: transparent; }
         .portal-box { position: absolute; z-index: 6; background: transparent; }
         .interact-box { position: absolute; z-index: 6; background: transparent; }
+
+        /* --- CONTROLE VIRTUAL (TESTE) --- */
+        #controlsDock {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            /* acima do chat */
+            bottom: calc(max(20px, env(safe-area-inset-bottom) + 15px) + 78px);
+            width: 92%;
+            max-width: 500px;
+            z-index: 10001;
+            display: block;
+            height: 140px;
+            pointer-events: none;
+        }
+
+        #controlsDock * { pointer-events: auto; }
+
+        #controlsLeft {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+        }
+
+        #controlsCenter {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+        }
+
+        #controlsRight {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #startBtn {
+            position: static;
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.18);
+            border: 1px solid rgba(51, 65, 85, 0.55);
+            color: #fff;
+            border-radius: 12px;
+            padding: 8px 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        #virtualPadInteract {
+            position: static;
+            pointer-events: auto;
+            width: 64px;
+            height: 64px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.18);
+            border: 1px solid rgba(51, 65, 85, 0.55);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+
+        #virtualPadB {
+            position: static;
+            pointer-events: auto;
+            width: 64px;
+            height: 64px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.18);
+            border: 1px solid rgba(51, 65, 85, 0.55);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+
+        #virtualPadB:active {
+            transform: translateY(1px);
+            background: rgba(11, 18, 32, 0.35);
+        }
+
+        #virtualPadInteract:active {
+            transform: translateY(1px);
+            background: rgba(11, 18, 32, 0.35);
+        }
+
+        #virtualPadWrap {
+            position: static;
+            pointer-events: auto;
+            display: block;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        #virtualPad {
+            width: 132px;
+            height: 132px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 6px;
+            /* MUITO transparente pra não atrapalhar o mapa */
+            background: rgba(15, 23, 42, 0.18);
+            border: 1px solid rgba(51, 65, 85, 0.55);
+            border-radius: 16px;
+            padding: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+
+        .vpadBtn {
+            background: rgba(30, 41, 59, 0.22);
+            color: #fff;
+            border: 1px solid rgba(51, 65, 85, 0.55);
+            border-radius: 12px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .vpadBtn:active {
+            transform: translateY(1px);
+            background: rgba(11, 18, 32, 0.35);
+        }
+
+        /* START (substitui o menu flutuante) */
+        #startMenuOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 12000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            pointer-events: auto;
+        }
+        #startMenuWindow {
+            width: min(420px, 92vw);
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid #334155;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+        #startMenuHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-bottom: 1px solid #334155;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+        }
+        #startMenuClose {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+        }
+        #startMenuBody {
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .startMenuBtn {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 14px 10px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            text-align: center;
+        }
+        .startMenuBtn:active { transform: translateY(1px); background: #0b1220; }
+
+        /* STARTER PICKER (full-screen) */
+        #starterPickerOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 12100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            pointer-events: auto;
+        }
+        #starterPickerWindow {
+            width: min(860px, 96vw);
+            background: rgba(15, 23, 42, 0.98);
+            border: 1px solid #334155;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+        #starterPickerHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-bottom: 1px solid #334155;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+        }
+        #starterPickerClose {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+        }
+        #starterPickerBody {
+            padding: 14px;
+        }
+        #starterPickerHint {
+            color: rgba(255,255,255,0.9);
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        #starterPickerGrid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .starterCard {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 14px;
+            padding: 14px;
+            cursor: pointer;
+            color: #fff;
+            text-align: center;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+        }
+        .starterCard:active { transform: translateY(1px); background: #0b1220; }
+        .starterSprite {
+            width: 144px;
+            height: 144px;
+            image-rendering: pixelated;
+            display: block;
+            margin: 0 auto 10px;
+        }
+        .starterName {
+            font-size: 18px;
+            letter-spacing: 0.3px;
+        }
+        #starterPickerFooter {
+            margin-top: 12px;
+            color: rgba(255,255,255,0.75);
+            font-size: 12px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 800;
+        }
+
+        .vpadSpacer { background: transparent; border: none; }
         
         /* Dev Styles */
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; cursor: pointer; }
@@ -126,6 +489,11 @@
 <body>
     <%- include('partials/menu') %>
 
+    <style>
+        /* Esconde o menu flutuante antigo (agora usamos START) */
+        #floatMenu { display: none !important; }
+    </style>
+
     <!-- INPUTS ESCONDIDOS PARA UPLOAD -->
     <input type="file" id="uploadMapBg" accept="image/*" style="display:none" onchange="handleFileBg(this, 'map')">
     <input type="file" id="uploadBattleBg" accept="image/*" style="display:none" onchange="handleFileBg(this, 'battle')">
@@ -138,27 +506,45 @@
             MAPA: <span style="color:#2ecc71; font-weight:bold; user-select:all;"><%= mapData.mapId %></span>
         </div>
 
-        <button id="btnDevMode" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
+        <button id="btnDevMode" class="devBtn--yellow" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
         <div id="devTools" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
-            <button id="btnToolMoveNpc" onclick="selectTool('moveNpc')" style="background:#e67e22; color:white; border-color:#d35400;">🧍 MOVER NPC</button>
-            <div style="height:1px; background:#444; margin:2px 0;"></div>
-            <button id="btnToolSpawn" onclick="selectTool('spawn')" style="border-color: #2ecc71; color: #2ecc71;">📍 SET SPAWN</button>
-            <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
-            <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
-            <button id="btnToolPortal" onclick="selectTool('portal')" style="border-color: #3498db; color: #3498db;">🟦 PORTAL</button>
-            <button id="btnToolInteract" onclick="selectTool('interact')" style="border-color:#9b59b6; color:#d2b4de;">🟪 INTERAÇÃO</button>
-            <button id="btnToolObject" onclick="selectTool('object')" style="border-color:#95a5a6; color:#ecf0f1;">🪑 OBJETO</button>
-            
-            <button id="btnToolBg" onclick="document.getElementById('uploadMapBg').click()" style="background:#f39c12; color:black;">🖼️ FUNDO MAPA</button>
-            <button id="btnToolBattleBg" onclick="document.getElementById('uploadBattleBg').click()" style="background:#e74c3c; color:white;">⚔️ FUNDO BATALHA</button>
-            <button id="btnToolChroma" onclick="openChromaTool()" style="background:#1e293b; color:white; border-color:#f1c40f;">🎨 REMOVER FUNDO</button>
-            <button id="btnToolNpcEditor" onclick="openNpcEditor()" style="background:#1e293b; color:white; border-color:#e67e22;">🧪 NPCs</button>
-            
-            <button id="btnToolSize" onclick="changeSize()" style="background:#f1c40f; color:black;">📏 TAMANHO</button>
-            <button id="btnToolLight" onclick="changeLight()" style="background:#bdc3c7; color:black;">💡 ILUMINAÇÃO</button>
-            <button id="btnToolDelete" onclick="selectTool('delete')" style="background:#c0392b; color:white; border-color:#e74c3c;">🗑️ APAGAR</button>
-            <button onclick="undoLast()">↩️ DESFAZER</button>
-            <button onclick="saveMapToServer()" style="background:#27ae60; border-color:#2ecc71; color:white;">💾 SALVAR MAPA</button>
+            <div class="devSectionTitle">NPC</div>
+            <div class="devSection">
+                <button id="btnToolMoveNpc" class="devBtn--orange" onclick="selectTool('moveNpc')">🧍 MOVER NPC</button>
+                <button id="btnToolNpcEditor" class="devBtn--orange" onclick="openNpcEditor()">🧪 NPCs</button>
+            </div>
+
+            <div class="devDivider"></div>
+
+            <div class="devSectionTitle">Desenho</div>
+            <div class="devSection">
+                <button id="btnToolSpawn" class="devBtn--green" onclick="selectTool('spawn')">📍 SET SPAWN</button>
+                <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
+                <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
+                <button id="btnToolPortal" class="devBtn--blue" onclick="selectTool('portal')">🟦 PORTAL</button>
+                <button id="btnToolInteract" class="devBtn--purple" onclick="selectTool('interact')">🟪 INTERAÇÃO</button>
+                <button id="btnToolObject" class="devBtn--gray" onclick="selectTool('object')">🪑 OBJETO</button>
+            </div>
+
+            <div class="devDivider"></div>
+
+            <div class="devSectionTitle">Imagens</div>
+            <div class="devSection">
+                <button id="btnToolBg" class="devBtn--yellow" onclick="document.getElementById('uploadMapBg').click()">🖼️ FUNDO MAPA</button>
+                <button id="btnToolBattleBg" class="devBtn--danger" onclick="document.getElementById('uploadBattleBg').click()">⚔️ FUNDO BATALHA</button>
+                <button id="btnToolChroma" onclick="openChromaTool()">🎨 REMOVER FUNDO</button>
+            </div>
+
+            <div class="devDivider"></div>
+
+            <div class="devSectionTitle">Ações</div>
+            <div class="devSection">
+                <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">📏 TAMANHO</button>
+                <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">💡 ILUMINAÇÃO</button>
+                <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">🗑️ APAGAR</button>
+                <button onclick="undoLast()">↩️ DESFAZER</button>
+                <button class="devBtn--green" onclick="saveMapToServer()">💾 SALVAR MAPA</button>
+            </div>
         </div>
     </div>
     <% } %>
@@ -173,9 +559,70 @@
             <div id="dev-layer"></div>
             <div id="darkness-layer"></div>
             
-            <div id="previewMsg" style="display:none; position:absolute; top:10px; left:50%; transform:translateX(-50%); background:#f1c40f; color:#000; padding:5px; z-index:9000; font-size:10px;">CLIQUE NO DESTINO</div>
+            <div id="previewMsg">
+                <div id="previewMsgInner">
+                    <span id="previewMsgText">CLIQUE NO DESTINO</span>
+                    <button id="previewCancelBtn" type="button" onmousedown="event.stopPropagation()" onclick="event.stopPropagation(); npcCancelClickCapture();">Cancelar (Esc)</button>
+                </div>
+            </div>
         </div>
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
+    </div>
+
+    <div id="controlsDock">
+        <div id="controlsLeft">
+            <div id="virtualPadWrap">
+                <div id="virtualPad">
+                    <div class="vpadSpacer"></div>
+                    <button class="vpadBtn" type="button" data-vdir="up">▲</button>
+                    <div class="vpadSpacer"></div>
+                    <button class="vpadBtn" type="button" data-vdir="left">◀</button>
+                    <div class="vpadSpacer"></div>
+                    <button class="vpadBtn" type="button" data-vdir="right">▶</button>
+                    <div class="vpadSpacer"></div>
+                    <button class="vpadBtn" type="button" data-vdir="down">▼</button>
+                    <div class="vpadSpacer"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="controlsCenter">
+            <button id="startBtn" type="button" title="Menu">START</button>
+        </div>
+
+        <div id="controlsRight">
+            <button id="virtualPadB" type="button" title="Interagir (mapa)">B</button>
+            <button id="virtualPadInteract" type="button" title="Interagir">A</button>
+        </div>
+    </div>
+
+    <div id="startMenuOverlay" onclick="window.__closeStartMenu && window.__closeStartMenu()">
+        <div id="startMenuWindow" onclick="event.stopPropagation()">
+            <div id="startMenuHeader">
+                <div>MENU</div>
+                <button id="startMenuClose" type="button">FECHAR</button>
+            </div>
+            <div id="startMenuBody">
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokedex==='function') openPokedex();">📱 DEX</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">💻 PC</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">● EQUIPE</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">🎒 BOLSA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="starterPickerOverlay" onclick="window.__closeStarterPicker && window.__closeStarterPicker()">
+        <div id="starterPickerWindow" onclick="event.stopPropagation()">
+            <div id="starterPickerHeader">
+                <div id="starterPickerTitle">ESCOLHA SEU INICIAL</div>
+                <button id="starterPickerClose" type="button">FECHAR</button>
+            </div>
+            <div id="starterPickerBody">
+                <div id="starterPickerHint">Escolha seu monstro inicial:</div>
+                <div id="starterPickerGrid"></div>
+                <div id="starterPickerFooter">Essa escolha é única.</div>
+            </div>
+        </div>
     </div>
     
     <div id="toastContainer"></div>
@@ -188,6 +635,11 @@
                 <h3>NPCs do mapa: <span id="npcEditorMapId" style="color:#2ecc71"></span></h3>
                 <div class="actions">
                     <button type="button" onclick="newNpcDraft()">+ Novo NPC</button>
+                    <button type="button" onclick="newNpcDraftPreset('starter')">+ Starter (3)</button>
+                    <button type="button" onclick="newNpcDraftPreset('heal')">+ Cura</button>
+                    <button type="button" onclick="newNpcDraftPreset('shop')">+ Loja</button>
+                    <button type="button" onclick="newNpcDraftPreset('quest')">+ Quest</button>
+                    <button type="button" onclick="newNpcDraftPreset('trainer')">+ Treinador</button>
                     <button type="button" class="danger" onclick="deleteNpcFromEditor()">Excluir</button>
                     <button type="button" class="primary" onclick="saveNpcFromEditor()">Salvar</button>
                     <button type="button" onclick="closeNpcEditor()">Fechar</button>
@@ -200,7 +652,13 @@
                     <div id="npcEditorListItems"></div>
                 </div>
                 <div id="npcEditorFormWrap">
-                    <div class="npcFieldGrid">
+                    <div class="npcBlock">
+                        <div class="npcBlockHeader">
+                            <div class="npcBlockTitle">Geral</div>
+                            <div class="npcBlockDesc">Identidade, posição, aparência e regras básicas.</div>
+                        </div>
+
+                        <div class="npcFieldGrid">
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>ID</label>
                             <input id="npcEdId" type="text" disabled placeholder="Novo NPC" />
@@ -209,6 +667,19 @@
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Nome</label>
                             <input id="npcEdName" type="text" placeholder="Nome do NPC" />
+                        </div>
+
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Tipo (padronizado)</label>
+                            <select id="npcEdType" onchange="npcTypeUiSync(true)">
+                                <option value="decor">decorativo (sem ações)</option>
+                                <option value="quest">quest (itens/flag)</option>
+                                <option value="trainer">treinador (batalha)</option>
+                                <option value="starter">starter (inicial)</option>
+                                <option value="heal">curar time</option>
+                                <option value="shop">loja</option>
+                            </select>
+                            <div class="npcHint" style="margin-top:6px;">Escolha um tipo para organizar o editor e preencher defaults.</div>
                         </div>
 
                         <div class="npcField">
@@ -248,50 +719,91 @@
                             <input id="npcEdSkinFile" type="file" accept="image/*" />
                         </div>
 
-                        <div class="npcField">
+                        <div class="npcField" id="npcEdMoneyBox">
                             <label>Recompensa ($)</label>
                             <input id="npcEdMoney" type="number" min="0" step="1" />
                         </div>
-                        <div class="npcField">
+                        <div class="npcField" id="npcEdCooldownBox">
                             <label>Cooldown (min)</label>
                             <input id="npcEdCooldown" type="number" min="0" step="1" />
                         </div>
+
+                        <div class="npcField">
+                            <label>Bloqueia caminho?</label>
+                            <select id="npcEdBlocksMovement">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+                        </div>
                     </div>
 
-                    <div class="npcDivider"></div>
+                    <div class="npcBlock" id="npcEdBlockDialogues">
+                        <div class="npcBlockHeader">
+                            <div class="npcBlockTitle">Diálogos</div>
+                            <div class="npcBlockDesc">Falando normal, após vitória e durante cooldown.</div>
+                        </div>
 
-                    <div class="npcFieldGrid">
+                        <div class="npcFieldGrid">
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Diálogo</label>
                             <textarea id="npcEdDialogue" placeholder="Olá!"></textarea>
                         </div>
-                        <div class="npcField" style="grid-column: 1 / -1;">
+                        <div class="npcField" id="npcEdWinDialogueBox" style="grid-column: 1 / -1;">
                             <label>Diálogo pós-vitória</label>
                             <textarea id="npcEdWinDialogue" placeholder="Você já me venceu!"></textarea>
                         </div>
-                        <div class="npcField" style="grid-column: 1 / -1;">
+                        <div class="npcField" id="npcEdCooldownDialogueBox" style="grid-column: 1 / -1;">
                             <label>Diálogo em cooldown</label>
                             <textarea id="npcEdCooldownDialogue" placeholder="Estou descansando..."></textarea>
                         </div>
+                        </div>
                     </div>
 
-                    <div class="npcDivider"></div>
+                    <div class="npcBlock" id="npcEdBlockBattle">
+                        <div class="npcBlockHeader">
+                            <div class="npcBlockTitle">Batalha</div>
+                            <div class="npcBlockDesc">Background (opcional) e time do NPC.</div>
+                        </div>
 
-                    <div class="npcFieldGrid">
+                        <div class="npcFieldGrid">
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Battle background (upload opcional)</label>
                             <input id="npcEdBattleBgFile" type="file" accept="image/*" />
                         </div>
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Team JSON</label>
-                            <textarea id="npcEdTeamJson" class="code-area" style="min-height:120px" placeholder='[{"baseId":"pikachu","level":5}]'></textarea>
-                            <div class="npcHint">Formato: [{"baseId":"id_do_monstro","level":N}, ...]</div>
+                            <div class="npcHint">Editor visual (recomendado). Escolha o monstro pela foto/nome e defina o nível. O JSON é gerado automaticamente.</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
+                                <button type="button" class="npcBtn" onclick="npcEdTeamAddRow()">+ adicionar monstro</button>
+                                <button type="button" class="npcBtn" onclick="npcEdTeamClear()">limpar</button>
+                            </div>
+                            <div id="npcEdTeamRows" class="npcHint" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+                            <div id="npcEdMonsterPickerWrap" class="npcInlineHelp" style="display:none;">
+                                <div class="npcSectionTitle" id="npcEdMonsterPickerTitle">Escolher monstro</div>
+                                <div class="npcHint" style="margin-bottom:8px;">Clique em um monstro para preencher o slot selecionado.</div>
+                                <div id="npcEdMonsterPicker" class="npcPickerGrid"></div>
+                                <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                                    <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdCloseMonsterPicker()">fechar</button>
+                                </div>
+                            </div>
+                            <details style="margin-top:10px;">
+                                <summary class="npcHint" style="cursor:pointer;">Avançado (JSON)</summary>
+                                <textarea id="npcEdTeamJson" class="code-area" style="min-height:120px" placeholder='[{"baseId":"pikachu","level":5}]'></textarea>
+                                <div class="npcHint">Formato: [{"baseId":"id_do_monstro","level":N}, ...]</div>
+                            </details>
+                        </div>
                         </div>
                     </div>
 
-                    <div class="npcDivider"></div>
+                    <div class="npcBlock" id="npcEdBlockReward">
+                        <div class="npcBlockHeader">
+                            <div class="npcBlockTitle">Recompensa (pós-vitória)</div>
+                            <div class="npcBlockDesc">O que o jogador ganha ao vencer (se aplicável).</div>
+                        </div>
 
-                    <div class="npcFieldGrid">
+                        <div class="npcFieldGrid">
                         <div class="npcField">
                             <label>Reward type</label>
                             <select id="npcEdRewardType">
@@ -309,8 +821,272 @@
                             <input id="npcEdRewardQty" type="number" min="1" step="1" />
                         </div>
                         <div class="npcField">
+                            <label>Reward é item-chave?</label>
+                            <select id="npcEdRewardKeyItem">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+                        <div class="npcField">
+                            <label>Reward única?</label>
+                            <select id="npcEdRewardUnique">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+                        <div class="npcField">
                             <label>Dica</label>
                             <div class="npcHint">Para rewardType=pokemon, o qty vira level (como no lab).</div>
+                        </div>
+                        </div>
+                    </div>
+
+                    <div class="npcBlock" id="npcEdBlockInteract">
+                        <div class="npcBlockHeader">
+                            <div class="npcBlockTitle">Interação / Serviços</div>
+                            <div class="npcBlockDesc">Quest (itens/flag) ou serviço (cura/loja), sem batalha.</div>
+                        </div>
+
+                        <div class="npcFieldGrid">
+                        <div class="npcField">
+                            <label>Interação habilitada?</label>
+                            <select id="npcEdInteractEnabled">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+                        <div class="npcField" id="npcEdInteractConsumeBox">
+                            <label>Consumir item requerido?</label>
+                            <select id="npcEdInteractConsume">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractReqIdBox">
+                            <label>Requer item (ID)</label>
+                            <input id="npcEdInteractReqId" type="text" placeholder="ex: key_example" list="itemCatalogDatalist" />
+                        </div>
+                        <div class="npcField" id="npcEdInteractReqQtyBox">
+                            <label>Requer quantidade</label>
+                            <input id="npcEdInteractReqQty" type="number" min="1" step="1" />
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractGivesIdBox">
+                            <label>Dá item (ID)</label>
+                            <input id="npcEdInteractGivesId" type="text" placeholder="ex: rareCandy" list="itemCatalogDatalist" />
+                        </div>
+                        <div class="npcField" id="npcEdInteractGivesQtyBox">
+                            <label>Dá quantidade</label>
+                            <input id="npcEdInteractGivesQty" type="number" min="1" step="1" />
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractGivesKeyBox">
+                            <label>Recompensa é item-chave?</label>
+                            <select id="npcEdInteractGivesKey">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+                        <div class="npcField" id="npcEdInteractGivesUniqueBox">
+                            <label>Recompensa única?</label>
+                            <select id="npcEdInteractGivesUnique">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractFlagBox" style="grid-column: 1 / -1;">
+                            <label>Flag ID (opcional)</label>
+                            <input id="npcEdInteractFlag" type="text" placeholder="ex: got_key_from_oldman" />
+                        </div>
+
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Fala de sucesso</label>
+                            <textarea id="npcEdInteractSuccess" placeholder="Perfeito! Aqui está..."></textarea>
+                        </div>
+
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Serviço do NPC (opcional)</label>
+                            <select id="npcEdInteractServiceType" onchange="npcInteractServiceUiSync()">
+                                <option value="">quest/itens (padrão)</option>
+                                <option value="heal">curar time</option>
+                                <option value="shop">loja</option>
+                                   <option value="starter">starter (inicial)</option>
+                            </select>
+                            <div class="npcHint" style="margin-top:6px;">Para heal/shop, não marca flag automaticamente (é repetível por padrão).</div>
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractHealBox" style="grid-column: 1 / -1; display:none;">
+                            <label>Texto de cura (se serviço=curar)</label>
+                            <textarea id="npcEdInteractHealDialogue" placeholder="Posso curar seus monstros!"></textarea>
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractStarterBox" style="grid-column: 1 / -1; display:none;">
+                            <label>Starter options (se serviço=starter)</label>
+                            <div class="npcHint">Escolha 3 monstros. Se deixar vazio, usa os 3 do banco (isStarter=true).</div>
+                            <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; margin-top:8px;">
+                                <select id="npcEdStarterOpt1">
+                                    <option value="">(vazio)</option>
+                                    <% (entities || []).forEach(p => { %>
+                                        <option value="<%= p.id %>"><%= p.name %> (<%= p.id %>)</option>
+                                    <% }) %>
+                                </select>
+                                <select id="npcEdStarterOpt2">
+                                    <option value="">(vazio)</option>
+                                    <% (entities || []).forEach(p => { %>
+                                        <option value="<%= p.id %>"><%= p.name %> (<%= p.id %>)</option>
+                                    <% }) %>
+                                </select>
+                                <select id="npcEdStarterOpt3">
+                                    <option value="">(vazio)</option>
+                                    <% (entities || []).forEach(p => { %>
+                                        <option value="<%= p.id %>"><%= p.name %> (<%= p.id %>)</option>
+                                    <% }) %>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="npcField" id="npcEdInteractShopBox" style="grid-column: 1 / -1; display:none;">
+                            <label>Itens da loja (JSON) (se serviço=loja)</label>
+                            <div class="npcHint">Editor visual (recomendado). O JSON é gerado automaticamente.</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
+                                <button type="button" class="npcBtn" onclick="npcEdShopAddRow()">+ adicionar item</button>
+                                <button type="button" class="npcBtn" onclick="npcEdShopAddPreset('pokeball', 50)">+ CatchCube</button>
+                                <button type="button" class="npcBtn" onclick="npcEdShopAddPreset('rareCandy', 2000)">+ Rare Candy</button>
+                                <button type="button" class="npcBtn" onclick="npcEdShopClear()">limpar</button>
+                            </div>
+                            <div id="npcEdShopRows" class="npcHint" style="display:flex; flex-direction:column; gap:8px;"></div>
+                            <details style="margin-top:10px;">
+                                <summary class="npcHint" style="cursor:pointer;">Avançado (JSON)</summary>
+                                <textarea id="npcEdInteractShopItemsJson" placeholder='[{"itemId":"pokeball","price":50}]'></textarea>
+                            </details>
+                        </div>
+                        <div class="npcField" id="npcEdInteractNeedBox">
+                            <label>Fala se faltar item</label>
+                            <textarea id="npcEdInteractNeed" placeholder="Você precisa de algo..."></textarea>
+                        </div>
+                        <div class="npcField" id="npcEdInteractDoneBox">
+                            <label>Fala se já concluído</label>
+                            <textarea id="npcEdInteractDone" placeholder="Já fiz isso por você."></textarea>
+                        </div>
+
+                        <div class="npcField">
+                            <label>Mover NPC dx (%)</label>
+                            <input id="npcEdInteractDx" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>Mover NPC dy (%)</label>
+                            <input id="npcEdInteractDy" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Definir movimento por clique</label>
+                            <div class="npcHint">Clique no mapa para escolher o DESTINO final. O editor calcula dx/dy automaticamente a partir do X/Y do NPC.</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:6px;">
+                                <button type="button" class="npcBtn" onclick="npcInteractMovePickByClick()">📍 escolher destino no mapa</button>
+                            </div>
+                        </div>
+                        <div class="npcField">
+                            <label>Direção após mover</label>
+                            <select id="npcEdInteractDir">
+                                <option value="">(manter)</option>
+                                <option value="down">Baixo</option>
+                                <option value="up">Cima</option>
+                                <option value="left">Esquerda</option>
+                                <option value="right">Direita</option>
+                            </select>
+                        </div>
+                        </div>
+                    </div>
+
+                    <div class="npcBlock" style="margin-bottom:0;">
+                        <div class="npcBlockHeader">
+                            <div class="npcBlockTitle">Patrulha (movimento automático)</div>
+                            <div class="npcBlockDesc">PingPong, Circle ou Path (waypoints por clique).</div>
+                        </div>
+
+                        <div class="npcFieldGrid">
+                        <div class="npcField">
+                            <label>Patrulha habilitada?</label>
+                            <select id="npcEdPatrolEnabled">
+                                <option value="false">não</option>
+                                <option value="true">sim</option>
+                            </select>
+                        </div>
+                        <div class="npcField">
+                            <label>Modo</label>
+                            <select id="npcEdPatrolMode" onchange="npcPatrolModeUiSync()">
+                                <option value="pingpong">pingpong</option>
+                                <option value="circle">circle</option>
+                                <option value="path">path</option>
+                            </select>
+                        </div>
+                        <div class="npcField">
+                            <label>Velocidade (%/s)</label>
+                            <input id="npcEdPatrolSpeed" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>Círculo horário?</label>
+                            <select id="npcEdPatrolClockwise">
+                                <option value="true">sim</option>
+                                <option value="false">não</option>
+                            </select>
+                        </div>
+
+                        <div class="npcField">
+                            <label>PingPong A.x</label>
+                            <input id="npcEdPatrolAx" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>PingPong A.y</label>
+                            <input id="npcEdPatrolAy" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>PingPong B.x</label>
+                            <input id="npcEdPatrolBx" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>PingPong B.y</label>
+                            <input id="npcEdPatrolBy" type="number" step="0.5" />
+                        </div>
+
+                        <div class="npcField">
+                            <label>Círculo centro.x</label>
+                            <input id="npcEdPatrolCx" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>Círculo centro.y</label>
+                            <input id="npcEdPatrolCy" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>Raio (%)</label>
+                            <input id="npcEdPatrolRadius" type="number" step="0.5" />
+                        </div>
+                        <div class="npcField">
+                            <label>Dica</label>
+                            <div class="npcHint">Se modo=pingpong, usa A/B. Se modo=circle, usa centro/raio.</div>
+                        </div>
+
+                        <div class="npcField" id="npcEdPatrolPathBox" style="grid-column: 1 / -1; display:none;">
+                            <label>Path (waypoints)</label>
+                            <div class="npcHint">Defina a rota clicando no mapa (recomendado). Requer pelo menos 2 pontos.</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
+                                <button type="button" class="npcBtn" onclick="npcPathAddByClick()">📍 adicionar ponto clicando</button>
+                                <button type="button" class="npcBtn" onclick="npcPathAddFromInputs()">+ adicionar ponto</button>
+                                <button type="button" class="npcBtn" onclick="npcPathAddFromNpcPos()">+ do NPC</button>
+                                <button type="button" class="npcBtn" onclick="npcPathClear()">limpar</button>
+                                <label class="npcHint" style="display:flex; align-items:center; gap:6px;">
+                                    <input id="npcEdPatrolPathLoop" type="checkbox" onchange="npcPathSetLoop(this.checked)" /> loop
+                                </label>
+                            </div>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <span class="npcHint">x</span>
+                                <input id="npcEdPatrolPathX" type="number" step="0.5" style="width:90px;" />
+                                <span class="npcHint">y</span>
+                                <input id="npcEdPatrolPathY" type="number" step="0.5" style="width:90px;" />
+                            </div>
+                            <div id="npcEdPatrolPathRows" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;"></div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -346,7 +1122,17 @@
         applyMapVisuals(mapConfig);
     </script>
 
+    <script>
+        // Esta página tem renderer próprio de NPC (suave + animado).
+        window.DISABLE_GLOBAL_NPC_RENDER = true;
+    </script>
+
     <script src="/scripts/common.js"></script>
+
+    <script>
+        // Lista completa de monstros (puxada do servidor)
+        window.allMonsters = <%- JSON.stringify(entities || []) %>;
+    </script>
 
     <script>
         // --- GLOBAIS ---
@@ -354,6 +1140,264 @@
         const gameArea = document.getElementById('gameArea');
         window.myId = null; 
         const MOVEMENT_SPEED = 55; 
+        const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
+
+        // ===== Helpers p/ editor visual (Team/Shop) =====
+        function resolveImg(src) {
+            const s = String(src || '');
+            return (s.startsWith('http') || s.startsWith('data:')) ? s : ('/uploads/' + s);
+        }
+
+        const NPC_EDITOR_POKEDEX = Array.isArray(window.allMonsters)
+            ? window.allMonsters
+                .filter(p => p && p.id)
+                .map(p => ({ id: String(p.id), name: String(p.name || p.id), sprite: String(p.sprite || '') }))
+            : [];
+
+        function npcFindMonster(baseId) {
+            const sid = String(baseId || '').trim();
+            if (!sid) return null;
+            return NPC_EDITOR_POKEDEX.find(p => p.id === sid) || null;
+        }
+
+        let npcEdTeamPickIndex = null;
+        function npcEdOpenMonsterPicker(slotIndex) {
+            npcEdTeamPickIndex = slotIndex;
+            const wrap = document.getElementById('npcEdMonsterPickerWrap');
+            const title = document.getElementById('npcEdMonsterPickerTitle');
+            const grid = document.getElementById('npcEdMonsterPicker');
+            if (!wrap || !grid) return;
+            if (title) title.innerText = `Escolher monstro (slot #${(slotIndex || 0) + 1})`;
+
+            wrap.style.display = 'block';
+            grid.innerHTML = '';
+
+            if (!NPC_EDITOR_POKEDEX.length) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Nenhum monstro encontrado no servidor.';
+                grid.appendChild(empty);
+                return;
+            }
+
+            NPC_EDITOR_POKEDEX.forEach(mon => {
+                const item = document.createElement('div');
+                item.className = 'npcPickerItem';
+
+                const img = document.createElement('div');
+                img.className = 'npcMonImg';
+                if (mon.sprite) img.style.backgroundImage = `url('${resolveImg(mon.sprite)}')`;
+
+                const meta = document.createElement('div');
+                meta.style.minWidth = '0';
+                meta.innerHTML = `<div class="npcPickerName">${escapeHtml(mon.name)}</div><div class="npcPickerSub">${escapeHtml(mon.id)}</div>`;
+
+                item.appendChild(img);
+                item.appendChild(meta);
+                item.onclick = () => {
+                    if (npcEdTeamPickIndex === null || npcEdTeamPickIndex === undefined) return;
+                    if (!npcEdTeamState[npcEdTeamPickIndex]) return;
+                    npcEdTeamState[npcEdTeamPickIndex].baseId = mon.id;
+                    npcEdCloseMonsterPicker();
+                    npcEdTeamRender();
+                };
+
+                grid.appendChild(item);
+            });
+        }
+
+        function npcEdCloseMonsterPicker() {
+            npcEdTeamPickIndex = null;
+            const wrap = document.getElementById('npcEdMonsterPickerWrap');
+            if (wrap) wrap.style.display = 'none';
+        }
+
+        let npcEdTeamState = [];
+        function npcEdTeamRender() {
+            const host = document.getElementById('npcEdTeamRows');
+            if (!host) return;
+            host.innerHTML = '';
+
+            if (!npcEdTeamState.length) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Sem monstros no time.';
+                host.appendChild(empty);
+                return;
+            }
+
+            npcEdTeamState.forEach((row, idx) => {
+                const line = document.createElement('div');
+                line.className = 'npcMonRow';
+
+                const mon = npcFindMonster(row.baseId);
+
+                const card = document.createElement('div');
+                card.className = 'npcMonCard';
+
+                const img = document.createElement('div');
+                img.className = 'npcMonImg';
+                if (mon && mon.sprite) img.style.backgroundImage = `url('${resolveImg(mon.sprite)}')`;
+
+                const meta = document.createElement('div');
+                meta.className = 'npcMonMeta';
+                const name = mon ? mon.name : (row.baseId ? row.baseId : 'Escolha um monstro');
+                const idText = mon ? mon.id : (row.baseId ? row.baseId : '');
+                meta.innerHTML = `<div class="npcMonName">${escapeHtml(name)}</div><div class="npcMonId">${escapeHtml(idText)}</div>`;
+
+                const pickBtn = document.createElement('button');
+                pickBtn.type = 'button';
+                pickBtn.className = 'npcBtn npcBtnSmall';
+                pickBtn.innerText = row.baseId ? 'trocar' : 'escolher';
+                pickBtn.onclick = () => npcEdOpenMonsterPicker(idx);
+
+                card.appendChild(img);
+                card.appendChild(meta);
+                card.appendChild(pickBtn);
+
+                const lvl = document.createElement('input');
+                lvl.type = 'number';
+                lvl.min = '1';
+                lvl.step = '1';
+                lvl.value = String(row.level || 1);
+                lvl.oninput = () => { npcEdTeamState[idx].level = parseInt(lvl.value, 10) || 1; };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'npcBtn';
+                rm.style.background = '#e74c3c';
+                rm.innerText = 'X';
+                rm.onclick = () => {
+                    npcEdTeamState.splice(idx, 1);
+                    npcEdCloseMonsterPicker();
+                    npcEdTeamRender();
+                };
+
+                line.appendChild(card);
+                line.appendChild(lvl);
+                line.appendChild(rm);
+                host.appendChild(line);
+            });
+        }
+
+        function npcEdTeamLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                if (Array.isArray(arr)) {
+                    npcEdTeamState = arr
+                        .filter(x => x && x.baseId)
+                        .map(x => ({ baseId: String(x.baseId), level: Math.max(1, parseInt(x.level, 10) || 1) }));
+                } else npcEdTeamState = [];
+            } catch (_) {
+                npcEdTeamState = [];
+            }
+            npcEdCloseMonsterPicker();
+            npcEdTeamRender();
+        }
+
+        function npcEdTeamToJson() {
+            return JSON.stringify((npcEdTeamState || [])
+                .filter(x => x && x.baseId)
+                .map(x => ({ baseId: String(x.baseId), level: Math.max(1, parseInt(x.level, 10) || 1) }))
+            );
+        }
+
+        function npcEdTeamAddRow() {
+            npcEdTeamState.push({ baseId: '', level: 5 });
+            npcEdTeamRender();
+        }
+
+        function npcEdTeamClear() {
+            npcEdTeamState = [];
+            npcEdCloseMonsterPicker();
+            npcEdTeamRender();
+        }
+
+        let npcEdShopState = [];
+        function npcEdShopRender() {
+            const host = document.getElementById('npcEdShopRows');
+            if (!host) return;
+            host.innerHTML = '';
+
+            if (!npcEdShopState.length) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Sem itens configurados.';
+                host.appendChild(empty);
+                return;
+            }
+
+            npcEdShopState.forEach((row, idx) => {
+                const line = document.createElement('div');
+                line.style.display = 'grid';
+                line.style.gridTemplateColumns = '1fr 110px 46px';
+                line.style.gap = '8px';
+                line.style.alignItems = 'center';
+
+                const itemId = document.createElement('input');
+                itemId.placeholder = 'itemId (ex: pokeball)';
+                itemId.value = row.itemId || '';
+                itemId.setAttribute('list', 'itemCatalogDatalist');
+                itemId.oninput = () => { npcEdShopState[idx].itemId = itemId.value; };
+
+                const price = document.createElement('input');
+                price.type = 'number';
+                price.min = '0';
+                price.step = '1';
+                price.placeholder = 'preço';
+                price.value = String(row.price || 0);
+                price.oninput = () => { npcEdShopState[idx].price = parseInt(price.value, 10) || 0; };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'npcBtn';
+                rm.style.background = '#e74c3c';
+                rm.innerText = 'X';
+                rm.onclick = () => { npcEdShopState.splice(idx, 1); npcEdShopRender(); };
+
+                line.appendChild(itemId);
+                line.appendChild(price);
+                line.appendChild(rm);
+                host.appendChild(line);
+            });
+        }
+
+        function npcEdShopLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                if (Array.isArray(arr)) {
+                    npcEdShopState = arr
+                        .filter(x => x && (x.itemId || x.id))
+                        .map(x => ({ itemId: String(x.itemId || x.id).trim(), price: Math.max(0, parseInt(x.price, 10) || 0) }));
+                } else npcEdShopState = [];
+            } catch (_) {
+                npcEdShopState = [];
+            }
+            npcEdShopRender();
+        }
+
+        function npcEdShopToJson() {
+            return JSON.stringify((npcEdShopState || [])
+                .filter(x => x && String(x.itemId || '').trim())
+                .map(x => ({ itemId: String(x.itemId || '').trim(), price: Math.max(0, parseInt(x.price, 10) || 0) }))
+                .filter(x => x.itemId && x.price > 0)
+            );
+        }
+
+        function npcEdShopAddRow() {
+            npcEdShopState.push({ itemId: '', price: 50 });
+            npcEdShopRender();
+        }
+
+        function npcEdShopAddPreset(itemId, price) {
+            npcEdShopState.push({ itemId: String(itemId || '').trim(), price: Math.max(0, parseInt(price, 10) || 0) });
+            npcEdShopRender();
+        }
+
+        function npcEdShopClear() {
+            npcEdShopState = [];
+            npcEdShopRender();
+        }
 
         window.isMoving = false;
         window.isTeleporting = false;
@@ -373,6 +1417,9 @@
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
+        window.USER_INVENTORY = <%- JSON.stringify(user.inventory || {}) %>;
+        window.USER_KEY_ITEMS = <%- JSON.stringify(user.keyItems || []) %>;
+        window.STORY_FLAGS = <%- JSON.stringify(user.storyFlags || {}) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
         
         // --- LÓGICA DE SPAWN INICIAL ---
@@ -445,14 +1492,22 @@
             if (el) {
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
                 const distance = Math.sqrt(Math.pow(data.x - currentLeft, 2) + Math.pow(data.y - currentTop, 2)); 
-                const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
+                let duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
+                // Durante o D-pad, evita micro-durações que deixam o movimento "travado".
+                if (data.id === window.myId && window.__virtualPadHolding) {
+                    const minDur = typeof window.__virtualPadTickS === 'number' ? window.__virtualPadTickS : 0;
+                    if (minDur > 0) duration = Math.max(duration, minDur);
+                }
                 el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
                 void el.offsetWidth; el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
                 if (duration > 0) { 
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
                     el.walkTimeout = setTimeout(() => { 
-                        el.classList.remove('walking'); 
+                        // Se estiver segurando o D-pad, mantém a animação ligada.
+                        if (!(data.id === window.myId && window.__virtualPadHolding)) {
+                            el.classList.remove('walking');
+                        }
                         if (data.id === window.myId) { window.isMoving = false; checkTriggers(data.x, data.y); }
                     }, duration * 1000); 
                 } else if(data.id === window.myId) { window.isMoving = false; }
@@ -463,22 +1518,99 @@
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
 
         socket.on('npcs_list', (npcs) => {
-            currentNpcsCache = Array.isArray(npcs) ? npcs : [];
-            document.querySelectorAll('.npc-entity').forEach(n => n.remove());
-            npcs.forEach(npc => {
-                const div = document.createElement('div');
-                div.className = 'player npc-entity'; div.id = `npc-${npc._id}`;
-                div.style.left = npc.x + '%'; div.style.top = npc.y + '%'; div.style.zIndex = Math.floor(npc.y);
-                if (npc.name && npc.name.toLowerCase().includes('(kid)')) div.classList.add('kid-scale');
-                if (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:'))) { div.style.backgroundImage = `url('${npc.skin}')`; } 
-                else { div.style.backgroundImage = `url('/uploads/${npc.skin || 'char1'}.png')`; }
+            const list = Array.isArray(npcs) ? npcs : [];
+            currentNpcsCache = list;
+
+            const seen = new Set();
+            list.forEach(npc => {
+                if (!npc || !npc._id) return;
+                const npcId = String(npc._id);
+                seen.add(npcId);
+
+                let div = document.getElementById(`npc-${npcId}`);
+                const isNew = !div;
+                if (!div) {
+                    div = document.createElement('div');
+                    div.className = 'player npc-entity';
+                    div.id = `npc-${npcId}`;
+                    div.onclick = (e) => {
+                        e.stopPropagation();
+                        const latest = (currentNpcsCache || []).find(n => String(n._id) === npcId) || npc;
+                        if (devMode) {
+                            if (currentTool === 'moveNpc') selectNpcToMove(npcId);
+                        } else {
+                            moveToAndTalkToNPC(latest);
+                        }
+                    };
+                    gameArea.appendChild(div);
+                }
+
+                // Skin / label / flags
+                const isKid = npc.name && String(npc.name).toLowerCase().includes('(kid)');
+                div.classList.toggle('kid-scale', !!isKid);
+
+                const skinUrl = (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:')))
+                    ? npc.skin
+                    : `/uploads/${npc.skin || 'char1'}.png`;
+                if (div.dataset.skinUrl !== skinUrl) {
+                    div.style.backgroundImage = `url('${skinUrl}')`;
+                    div.dataset.skinUrl = skinUrl;
+                }
+
+                const displayName = String(npc.name || 'NPC').replace(/\(kid\)/i, '').trim();
+                let label = div.querySelector('.player-name');
+                if (!label) {
+                    label = document.createElement('div');
+                    label.className = 'player-name';
+                    div.appendChild(label);
+                }
+                if (label.innerText !== displayName) label.innerText = displayName;
+
+                // Movement (smooth + walking)
+                const targetX = (typeof npc.x === 'number') ? npc.x : parseFloat(npc.x) || 50;
+                const targetY = (typeof npc.y === 'number') ? npc.y : parseFloat(npc.y) || 50;
+                const currentLeft = parseFloat(div.style.left);
+                const currentTop = parseFloat(div.style.top);
+
+                if (isNew || !Number.isFinite(currentLeft) || !Number.isFinite(currentTop)) {
+                    div.style.transition = 'none';
+                    div.style.left = targetX + '%';
+                    div.style.top = targetY + '%';
+                } else {
+                    const distance = Math.hypot(targetX - currentLeft, targetY - currentTop);
+
+                    // Se veio um salto grande (ex: admin move), não anima atravessando o mapa.
+                    if (distance > 25) {
+                        div.style.transition = 'none';
+                        div.style.left = targetX + '%';
+                        div.style.top = targetY + '%';
+                        div.classList.remove('walking');
+                    } else {
+                        // O servidor emite posições de patrol a cada ~350ms. Se usarmos duration por MOVEMENT_SPEED,
+                        // a transição fica curtíssima (ex: 30-50ms) e o resto do tempo “para”, dando sensação travada.
+                        const duration = distance > 0 ? Math.max((distance / MOVEMENT_SPEED), NPC_SERVER_TICK_S) : 0;
+                        div.style.transition = `top ${duration}s linear, left ${duration}s linear`;
+                        void div.offsetWidth;
+                        div.style.left = targetX + '%';
+                        div.style.top = targetY + '%';
+                        if (duration > 0.01) {
+                            div.classList.add('walking');
+                            if (div.walkTimeout) clearTimeout(div.walkTimeout);
+                            div.walkTimeout = setTimeout(() => div.classList.remove('walking'), (duration * 1000) + 50);
+                        }
+                    }
+                }
+
+                div.style.zIndex = Math.floor(targetY);
                 div.setAttribute('data-dir', npc.direction || 'down');
-                const displayName = npc.name.replace(/\(kid\)/i, '').trim();
-                const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; div.appendChild(label);
-                div.onclick = (e) => { e.stopPropagation(); if(devMode) { 
-                    if(currentTool === 'moveNpc') selectNpcToMove(npc._id);
-                } else moveToAndTalkToNPC(npc); };
-                gameArea.appendChild(div);
+
+                // Preserve dev selection highlight
+                div.classList.toggle('dev-selected', devMode && selectedNpcId === npcId);
+            });
+
+            document.querySelectorAll('.npc-entity').forEach(el => {
+                const id = (el.id || '').replace('npc-', '');
+                if (!seen.has(id)) el.remove();
             });
         });
 
@@ -533,6 +1665,7 @@
 
             document.getElementById('npcEdId').value = '';
             document.getElementById('npcEdName').value = '';
+            document.getElementById('npcEdType').value = 'decor';
             document.getElementById('npcEdMap').value = currentMapId;
             document.getElementById('npcEdDir').value = 'down';
             document.getElementById('npcEdX').value = px;
@@ -548,11 +1681,326 @@
 
             document.getElementById('npcEdBattleBgFile').value = '';
             document.getElementById('npcEdTeamJson').value = '[]';
+            npcEdTeamState = [];
+            npcEdTeamRender();
 
             document.getElementById('npcEdRewardType').value = 'none';
             document.getElementById('npcEdRewardVal').value = '';
             document.getElementById('npcEdRewardQty').value = 1;
+
+            document.getElementById('npcEdBlocksMovement').value = 'false';
+            document.getElementById('npcEdRewardKeyItem').value = 'false';
+            document.getElementById('npcEdRewardUnique').value = 'false';
+
+            document.getElementById('npcEdInteractEnabled').value = 'false';
+            document.getElementById('npcEdInteractConsume').value = 'false';
+            document.getElementById('npcEdInteractReqId').value = '';
+            document.getElementById('npcEdInteractReqQty').value = 1;
+            document.getElementById('npcEdInteractGivesId').value = '';
+            document.getElementById('npcEdInteractGivesQty').value = 1;
+            document.getElementById('npcEdInteractGivesKey').value = 'false';
+            document.getElementById('npcEdInteractGivesUnique').value = 'false';
+            document.getElementById('npcEdInteractFlag').value = '';
+            document.getElementById('npcEdInteractSuccess').value = '';
+            document.getElementById('npcEdInteractServiceType').value = '';
+            document.getElementById('npcEdInteractHealDialogue').value = '';
+            document.getElementById('npcEdInteractShopItemsJson').value = '';
+            npcEdShopState = [];
+            npcEdShopRender();
+
+            const s1 = document.getElementById('npcEdStarterOpt1');
+            const s2 = document.getElementById('npcEdStarterOpt2');
+            const s3 = document.getElementById('npcEdStarterOpt3');
+            if (s1) s1.value = '';
+            if (s2) s2.value = '';
+            if (s3) s3.value = '';
+
+            document.getElementById('npcEdInteractNeed').value = '';
+            document.getElementById('npcEdInteractDone').value = '';
+            document.getElementById('npcEdInteractDx').value = 0;
+            document.getElementById('npcEdInteractDy').value = 0;
+            document.getElementById('npcEdInteractDir').value = '';
+
+            document.getElementById('npcEdPatrolEnabled').value = 'false';
+            document.getElementById('npcEdPatrolMode').value = 'pingpong';
+            document.getElementById('npcEdPatrolSpeed').value = 6;
+            document.getElementById('npcEdPatrolClockwise').value = 'true';
+
+            document.getElementById('npcEdPatrolAx').value = px;
+            document.getElementById('npcEdPatrolAy').value = py;
+            document.getElementById('npcEdPatrolBx').value = Math.min(100, px + 6);
+            document.getElementById('npcEdPatrolBy').value = py;
+
+            document.getElementById('npcEdPatrolCx').value = px;
+            document.getElementById('npcEdPatrolCy').value = py;
+            document.getElementById('npcEdPatrolRadius').value = 6;
+
+            npcEdPathState = { loop: false, points: [] };
+            const pxEl = document.getElementById('npcEdPatrolPathX');
+            const pyEl = document.getElementById('npcEdPatrolPathY');
+            if (pxEl) pxEl.value = px;
+            if (pyEl) pyEl.value = py;
+            npcPathRender();
+            npcPatrolModeUiSync();
+            npcInteractServiceUiSync();
+            npcTypeUiSync(false);
             renderNpcEditorList();
+        }
+
+        function newNpcDraftPreset(preset) {
+            newNpcDraft();
+
+            const p = String(preset || '').trim().toLowerCase();
+
+            // defaults úteis
+            if (p === 'starter') {
+                document.getElementById('npcEdType').value = 'starter';
+                document.getElementById('npcEdName').value = 'Professor';
+                document.getElementById('npcEdBlocksMovement').value = 'true';
+
+                document.getElementById('npcEdDialogue').value = 'Olá! Quer escolher seu inicial?';
+                document.getElementById('npcEdWinDialogue').value = '';
+                document.getElementById('npcEdCooldownDialogue').value = '';
+
+                document.getElementById('npcEdInteractEnabled').value = 'true';
+                document.getElementById('npcEdInteractServiceType').value = 'starter';
+                document.getElementById('npcEdInteractDone').value = 'Você já escolheu seu inicial.';
+                document.getElementById('npcEdInteractNeed').value = '';
+                document.getElementById('npcEdInteractSuccess').value = '';
+
+                // starter não usa itens/flag aqui
+                document.getElementById('npcEdInteractFlag').value = '';
+                document.getElementById('npcEdInteractConsume').value = 'false';
+                document.getElementById('npcEdInteractReqId').value = '';
+                document.getElementById('npcEdInteractReqQty').value = 1;
+                document.getElementById('npcEdInteractGivesId').value = '';
+                document.getElementById('npcEdInteractGivesQty').value = 1;
+                document.getElementById('npcEdInteractGivesKey').value = 'false';
+                document.getElementById('npcEdInteractGivesUnique').value = 'false';
+            }
+
+            if (p === 'heal') {
+                document.getElementById('npcEdType').value = 'heal';
+                document.getElementById('npcEdName').value = 'Enfermeira';
+                document.getElementById('npcEdBlocksMovement').value = 'true';
+                document.getElementById('npcEdDialogue').value = 'Posso curar seus monstros!';
+                document.getElementById('npcEdInteractEnabled').value = 'true';
+                document.getElementById('npcEdInteractServiceType').value = 'heal';
+                document.getElementById('npcEdInteractHealDialogue').value = 'Deixe comigo. Vou cuidar deles!';
+            }
+
+            if (p === 'shop') {
+                document.getElementById('npcEdType').value = 'shop';
+                document.getElementById('npcEdName').value = 'Vendedor';
+                document.getElementById('npcEdBlocksMovement').value = 'true';
+                document.getElementById('npcEdDialogue').value = 'Quer comprar alguma coisa?';
+                document.getElementById('npcEdInteractEnabled').value = 'true';
+                document.getElementById('npcEdInteractServiceType').value = 'shop';
+
+                // Preset simples de loja (pode editar depois)
+                const presetItems = JSON.stringify([
+                    { itemId: 'pokeball', price: 50 },
+                    { itemId: 'rareCandy', price: 2000 }
+                ]);
+                document.getElementById('npcEdInteractShopItemsJson').value = presetItems;
+                if (typeof npcEdShopLoadFromJson === 'function') npcEdShopLoadFromJson(presetItems);
+            }
+
+            if (p === 'quest') {
+                document.getElementById('npcEdType').value = 'quest';
+                document.getElementById('npcEdName').value = 'Morador';
+                document.getElementById('npcEdDialogue').value = 'Você pode me ajudar com uma tarefa?';
+                document.getElementById('npcEdInteractEnabled').value = 'true';
+                document.getElementById('npcEdInteractServiceType').value = '';
+                document.getElementById('npcEdInteractSuccess').value = 'Obrigado!';
+                document.getElementById('npcEdInteractDone').value = 'Já resolvemos isso. Obrigado!';
+                document.getElementById('npcEdInteractNeed').value = 'Você ainda não tem o que eu preciso.';
+            }
+
+            if (p === 'trainer') {
+                document.getElementById('npcEdType').value = 'trainer';
+                document.getElementById('npcEdName').value = 'Treinador';
+                document.getElementById('npcEdBlocksMovement').value = 'true';
+                document.getElementById('npcEdDialogue').value = 'Vamos batalhar!';
+                document.getElementById('npcEdWinDialogue').value = 'Boa luta!';
+                document.getElementById('npcEdCooldownDialogue').value = 'Estou descansando...';
+                document.getElementById('npcEdInteractEnabled').value = 'false';
+                document.getElementById('npcEdInteractServiceType').value = '';
+
+                // recompensa padrão pós-vitória
+                document.getElementById('npcEdRewardType').value = 'item';
+                document.getElementById('npcEdRewardVal').value = 'pokeball';
+                document.getElementById('npcEdRewardQty').value = 1;
+            }
+
+            npcInteractServiceUiSync();
+            npcTypeUiSync(false);
+            renderNpcEditorList();
+        }
+
+        function inferNpcTypeFromNpc(npc) {
+            try {
+                const explicit = npc && npc.npcType ? String(npc.npcType).trim() : '';
+                if (explicit) return explicit;
+                const svc = npc && npc.interact && npc.interact.serviceType ? String(npc.interact.serviceType).trim() : '';
+                if (svc === 'starter') return 'starter';
+                if (svc === 'heal') return 'heal';
+                if (svc === 'shop') return 'shop';
+                const hasTeam = !!(npc && Array.isArray(npc.team) && npc.team.length > 0);
+                if (hasTeam) return 'trainer';
+                const hasInteract = !!(npc && npc.interact && npc.interact.enabled);
+                if (hasInteract) return 'quest';
+                return 'decor';
+            } catch (_) {
+                return 'decor';
+            }
+        }
+
+        function npcTypeUiSync(applyPreset) {
+            const type = (document.getElementById('npcEdType').value || 'decor').trim();
+
+            const setDisp = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? '' : 'none';
+            };
+
+            const isTrainer = type === 'trainer';
+            const isDecor = type === 'decor';
+            const isQuest = type === 'quest';
+            const isStarter = type === 'starter';
+            const isHeal = type === 'heal';
+            const isShop = type === 'shop';
+
+            // Seções inteiras
+            setDisp('npcEdBlockBattle', isTrainer);
+            setDisp('npcEdBlockReward', isTrainer);
+            setDisp('npcEdBlockInteract', !isTrainer && !isDecor);
+            setDisp('npcEdBlockDialogues', !isDecor);
+
+            // Campos básicos que só fazem sentido em treinador
+            setDisp('npcEdMoneyBox', isTrainer);
+            setDisp('npcEdCooldownBox', isTrainer);
+            setDisp('npcEdWinDialogueBox', isTrainer);
+            setDisp('npcEdCooldownDialogueBox', isTrainer);
+
+            if (applyPreset) {
+                // Limpeza geral: evita "sobras" quando troca de tipo
+                if (!isTrainer) {
+                    // Treinador -> não-treinador: remove time/recompensa/cooldowns
+                    try {
+                        document.getElementById('npcEdMoney').value = 0;
+                        document.getElementById('npcEdCooldown').value = 0;
+                        document.getElementById('npcEdWinDialogue').value = '';
+                        document.getElementById('npcEdCooldownDialogue').value = '';
+
+                        document.getElementById('npcEdRewardType').value = 'none';
+                        document.getElementById('npcEdRewardVal').value = '';
+                        document.getElementById('npcEdRewardQty').value = 1;
+                        document.getElementById('npcEdRewardKeyItem').value = 'false';
+                        document.getElementById('npcEdRewardUnique').value = 'false';
+
+                        npcEdTeamState = [];
+                        npcEdTeamRender();
+                        document.getElementById('npcEdTeamJson').value = '[]';
+                    } catch (_) {}
+                }
+
+                // Interact/service: limpar se o tipo não usa
+                if (isTrainer || isDecor) {
+                    try {
+                        document.getElementById('npcEdInteractEnabled').value = 'false';
+                        document.getElementById('npcEdInteractServiceType').value = '';
+                        document.getElementById('npcEdInteractFlag').value = '';
+                        document.getElementById('npcEdInteractConsume').value = 'false';
+                        document.getElementById('npcEdInteractReqId').value = '';
+                        document.getElementById('npcEdInteractReqQty').value = 1;
+                        document.getElementById('npcEdInteractGivesId').value = '';
+                        document.getElementById('npcEdInteractGivesQty').value = 1;
+                        document.getElementById('npcEdInteractGivesKey').value = 'false';
+                        document.getElementById('npcEdInteractGivesUnique').value = 'false';
+                        document.getElementById('npcEdInteractSuccess').value = '';
+                        document.getElementById('npcEdInteractNeed').value = '';
+                        document.getElementById('npcEdInteractDone').value = '';
+                        document.getElementById('npcEdInteractHealDialogue').value = '';
+                        npcEdShopState = [];
+                        npcEdShopRender();
+                        const s1 = document.getElementById('npcEdStarterOpt1');
+                        const s2 = document.getElementById('npcEdStarterOpt2');
+                        const s3 = document.getElementById('npcEdStarterOpt3');
+                        if (s1) s1.value = '';
+                        if (s2) s2.value = '';
+                        if (s3) s3.value = '';
+                    } catch (_) {}
+                }
+
+                if (isDecor) {
+                    document.getElementById('npcEdInteractEnabled').value = 'false';
+                    document.getElementById('npcEdInteractServiceType').value = '';
+                }
+
+                if (isQuest) {
+                    document.getElementById('npcEdInteractEnabled').value = 'true';
+                    document.getElementById('npcEdInteractServiceType').value = '';
+                }
+
+                if (isTrainer) {
+                    document.getElementById('npcEdInteractEnabled').value = 'false';
+                    document.getElementById('npcEdInteractServiceType').value = '';
+                }
+
+                if (isStarter) {
+                    document.getElementById('npcEdInteractEnabled').value = 'true';
+                    document.getElementById('npcEdInteractServiceType').value = 'starter';
+                    if (!document.getElementById('npcEdInteractDone').value) {
+                        document.getElementById('npcEdInteractDone').value = 'Você já escolheu seu inicial.';
+                    }
+                    // starter não usa quest/itens
+                    try {
+                        document.getElementById('npcEdInteractFlag').value = '';
+                        document.getElementById('npcEdInteractConsume').value = 'false';
+                        document.getElementById('npcEdInteractReqId').value = '';
+                        document.getElementById('npcEdInteractReqQty').value = 1;
+                        document.getElementById('npcEdInteractGivesId').value = '';
+                        document.getElementById('npcEdInteractGivesQty').value = 1;
+                        document.getElementById('npcEdInteractGivesKey').value = 'false';
+                        document.getElementById('npcEdInteractGivesUnique').value = 'false';
+                    } catch (_) {}
+                }
+
+                if (isHeal) {
+                    document.getElementById('npcEdInteractEnabled').value = 'true';
+                    document.getElementById('npcEdInteractServiceType').value = 'heal';
+                    // heal não usa quest/itens
+                    try {
+                        document.getElementById('npcEdInteractFlag').value = '';
+                        document.getElementById('npcEdInteractConsume').value = 'false';
+                        document.getElementById('npcEdInteractReqId').value = '';
+                        document.getElementById('npcEdInteractReqQty').value = 1;
+                        document.getElementById('npcEdInteractGivesId').value = '';
+                        document.getElementById('npcEdInteractGivesQty').value = 1;
+                        document.getElementById('npcEdInteractGivesKey').value = 'false';
+                        document.getElementById('npcEdInteractGivesUnique').value = 'false';
+                    } catch (_) {}
+                }
+
+                if (isShop) {
+                    document.getElementById('npcEdInteractEnabled').value = 'true';
+                    document.getElementById('npcEdInteractServiceType').value = 'shop';
+                    // shop não usa quest/itens
+                    try {
+                        document.getElementById('npcEdInteractFlag').value = '';
+                        document.getElementById('npcEdInteractConsume').value = 'false';
+                        document.getElementById('npcEdInteractReqId').value = '';
+                        document.getElementById('npcEdInteractReqQty').value = 1;
+                        document.getElementById('npcEdInteractGivesId').value = '';
+                        document.getElementById('npcEdInteractGivesQty').value = 1;
+                        document.getElementById('npcEdInteractGivesKey').value = 'false';
+                        document.getElementById('npcEdInteractGivesUnique').value = 'false';
+                    } catch (_) {}
+                }
+            }
+
+            npcInteractServiceUiSync();
         }
 
         function loadNpcToEditor(npcId) {
@@ -562,6 +2010,7 @@
 
             document.getElementById('npcEdId').value = npc._id;
             document.getElementById('npcEdName').value = npc.name || '';
+            document.getElementById('npcEdType').value = inferNpcTypeFromNpc(npc);
             document.getElementById('npcEdMap').value = npc.map || currentMapId;
             document.getElementById('npcEdDir').value = npc.direction || 'down';
             document.getElementById('npcEdX').value = Math.round(npc.x || 50);
@@ -579,9 +2028,80 @@
             document.getElementById('npcEdBattleBgFile').value = '';
 
             document.getElementById('npcEdTeamJson').value = JSON.stringify(npc.team || [], null, 2);
+            npcEdTeamLoadFromJson(document.getElementById('npcEdTeamJson').value);
             document.getElementById('npcEdRewardType').value = (npc.reward && npc.reward.type) ? npc.reward.type : 'none';
             document.getElementById('npcEdRewardVal').value = (npc.reward && npc.reward.value) ? npc.reward.value : '';
             document.getElementById('npcEdRewardQty').value = (npc.reward && npc.reward.qty) ? npc.reward.qty : 1;
+
+            document.getElementById('npcEdBlocksMovement').value = npc.blocksMovement ? 'true' : 'false';
+            document.getElementById('npcEdRewardKeyItem').value = (npc.reward && npc.reward.keyItem) ? 'true' : 'false';
+            document.getElementById('npcEdRewardUnique').value = (npc.reward && npc.reward.unique) ? 'true' : 'false';
+
+            document.getElementById('npcEdInteractEnabled').value = (npc.interact && npc.interact.enabled) ? 'true' : 'false';
+            document.getElementById('npcEdInteractConsume').value = (npc.interact && npc.interact.consumesRequiredItem) ? 'true' : 'false';
+            document.getElementById('npcEdInteractReqId').value = (npc.interact && npc.interact.requiresItemId) ? npc.interact.requiresItemId : '';
+            document.getElementById('npcEdInteractReqQty').value = (npc.interact && npc.interact.requiresItemQty) ? npc.interact.requiresItemQty : 1;
+            document.getElementById('npcEdInteractGivesId').value = (npc.interact && npc.interact.givesItemId) ? npc.interact.givesItemId : '';
+            document.getElementById('npcEdInteractGivesQty').value = (npc.interact && npc.interact.givesItemQty) ? npc.interact.givesItemQty : 1;
+            document.getElementById('npcEdInteractGivesKey').value = (npc.interact && npc.interact.givesKeyItem) ? 'true' : 'false';
+            document.getElementById('npcEdInteractGivesUnique').value = (npc.interact && npc.interact.givesUnique) ? 'true' : 'false';
+            document.getElementById('npcEdInteractFlag').value = (npc.interact && npc.interact.flagId) ? npc.interact.flagId : '';
+            document.getElementById('npcEdInteractSuccess').value = (npc.interact && npc.interact.successDialogue) ? npc.interact.successDialogue : '';
+            document.getElementById('npcEdInteractServiceType').value = (npc.interact && npc.interact.serviceType) ? npc.interact.serviceType : '';
+            document.getElementById('npcEdInteractHealDialogue').value = (npc.interact && npc.interact.healDialogue) ? npc.interact.healDialogue : '';
+            document.getElementById('npcEdInteractShopItemsJson').value = (npc.interact && npc.interact.shopItems) ? JSON.stringify(npc.interact.shopItems) : '';
+            npcEdShopLoadFromJson(document.getElementById('npcEdInteractShopItemsJson').value);
+
+            try {
+                const arr = (npc.interact && Array.isArray(npc.interact.starterOptions)) ? npc.interact.starterOptions : [];
+                const list = arr.map(x => String(x || '').trim()).filter(Boolean);
+                const s1 = document.getElementById('npcEdStarterOpt1');
+                const s2 = document.getElementById('npcEdStarterOpt2');
+                const s3 = document.getElementById('npcEdStarterOpt3');
+                if (s1) s1.value = list[0] || '';
+                if (s2) s2.value = list[1] || '';
+                if (s3) s3.value = list[2] || '';
+            } catch (_) {}
+
+            npcInteractServiceUiSync();
+            document.getElementById('npcEdInteractNeed').value = (npc.interact && npc.interact.needItemDialogue) ? npc.interact.needItemDialogue : '';
+            document.getElementById('npcEdInteractDone').value = (npc.interact && npc.interact.alreadyDoneDialogue) ? npc.interact.alreadyDoneDialogue : '';
+            document.getElementById('npcEdInteractDx').value = (npc.interact && typeof npc.interact.moveDx === 'number') ? npc.interact.moveDx : (npc.interact && npc.interact.moveDx ? npc.interact.moveDx : 0);
+            document.getElementById('npcEdInteractDy').value = (npc.interact && typeof npc.interact.moveDy === 'number') ? npc.interact.moveDy : (npc.interact && npc.interact.moveDy ? npc.interact.moveDy : 0);
+            document.getElementById('npcEdInteractDir').value = (npc.interact && npc.interact.moveDirection) ? npc.interact.moveDirection : '';
+
+            document.getElementById('npcEdPatrolEnabled').value = (npc.patrol && npc.patrol.enabled) ? 'true' : 'false';
+            document.getElementById('npcEdPatrolMode').value = (npc.patrol && npc.patrol.mode) ? npc.patrol.mode : 'pingpong';
+            document.getElementById('npcEdPatrolSpeed').value = (npc.patrol && npc.patrol.speed) ? npc.patrol.speed : 6;
+            document.getElementById('npcEdPatrolClockwise').value = (npc.patrol && npc.patrol.circle && npc.patrol.circle.clockwise) ? 'true' : 'false';
+
+            document.getElementById('npcEdPatrolAx').value = (npc.patrol && npc.patrol.pingPong && npc.patrol.pingPong.ax !== undefined) ? npc.patrol.pingPong.ax : (Math.round(npc.x || 50));
+            document.getElementById('npcEdPatrolAy').value = (npc.patrol && npc.patrol.pingPong && npc.patrol.pingPong.ay !== undefined) ? npc.patrol.pingPong.ay : (Math.round(npc.y || 50));
+            document.getElementById('npcEdPatrolBx').value = (npc.patrol && npc.patrol.pingPong && npc.patrol.pingPong.bx !== undefined) ? npc.patrol.pingPong.bx : (Math.min(100, (Math.round(npc.x || 50)) + 6));
+            document.getElementById('npcEdPatrolBy').value = (npc.patrol && npc.patrol.pingPong && npc.patrol.pingPong.by !== undefined) ? npc.patrol.pingPong.by : (Math.round(npc.y || 50));
+
+            document.getElementById('npcEdPatrolCx').value = (npc.patrol && npc.patrol.circle && npc.patrol.circle.cx !== undefined) ? npc.patrol.circle.cx : (Math.round(npc.x || 50));
+            document.getElementById('npcEdPatrolCy').value = (npc.patrol && npc.patrol.circle && npc.patrol.circle.cy !== undefined) ? npc.patrol.circle.cy : (Math.round(npc.y || 50));
+            document.getElementById('npcEdPatrolRadius').value = (npc.patrol && npc.patrol.circle && npc.patrol.circle.radius !== undefined) ? npc.patrol.circle.radius : 6;
+
+            // Path (waypoints)
+            const path = (npc.patrol && npc.patrol.path) ? npc.patrol.path : null;
+            npcEdPathState = {
+                loop: !!(path && path.loop),
+                points: Array.isArray(path && path.points)
+                    ? path.points.map(p => ({ x: clamp01_100(p && p.x), y: clamp01_100(p && p.y) }))
+                    : []
+            };
+            const pxEl = document.getElementById('npcEdPatrolPathX');
+            const pyEl = document.getElementById('npcEdPatrolPathY');
+            if (pxEl) pxEl.value = Math.round(npc.x || 50);
+            if (pyEl) pyEl.value = Math.round(npc.y || 50);
+            const loopEl = document.getElementById('npcEdPatrolPathLoop');
+            if (loopEl) loopEl.checked = !!npcEdPathState.loop;
+            npcPathRender();
+            npcPatrolModeUiSync();
+
+            npcTypeUiSync(false);
 
             renderNpcEditorList();
         }
@@ -591,6 +2111,8 @@
             const fd = new FormData();
             fd.append('userId', window.CURRENT_USER_ID);
             if (npcEditorSelectedId) fd.append('npcId', npcEditorSelectedId);
+
+            fd.append('npcType', document.getElementById('npcEdType').value || 'decor');
 
             fd.append('name', document.getElementById('npcEdName').value || 'NPC');
             fd.append('map', document.getElementById('npcEdMap').value || currentMapId);
@@ -603,11 +2125,64 @@
             fd.append('dialogue', document.getElementById('npcEdDialogue').value || '');
             fd.append('winDialogue', document.getElementById('npcEdWinDialogue').value || '');
             fd.append('cooldownDialogue', document.getElementById('npcEdCooldownDialogue').value || '');
-            fd.append('teamJson', document.getElementById('npcEdTeamJson').value || '[]');
+            fd.append('teamJson', npcEdTeamToJson());
 
             fd.append('rewardType', document.getElementById('npcEdRewardType').value || 'none');
             fd.append('rewardVal', document.getElementById('npcEdRewardVal').value || '');
             fd.append('rewardQty', document.getElementById('npcEdRewardQty').value || '1');
+
+            fd.append('blocksMovement', document.getElementById('npcEdBlocksMovement').value === 'true' ? 'true' : 'false');
+            fd.append('rewardKeyItem', document.getElementById('npcEdRewardKeyItem').value === 'true' ? 'true' : 'false');
+            fd.append('rewardUnique', document.getElementById('npcEdRewardUnique').value === 'true' ? 'true' : 'false');
+
+            fd.append('interactEnabled', document.getElementById('npcEdInteractEnabled').value === 'true' ? 'true' : 'false');
+            fd.append('interactConsumesRequiredItem', document.getElementById('npcEdInteractConsume').value === 'true' ? 'true' : 'false');
+            fd.append('interactRequiresItemId', document.getElementById('npcEdInteractReqId').value || '');
+            fd.append('interactRequiresItemQty', document.getElementById('npcEdInteractReqQty').value || '1');
+            fd.append('interactGivesItemId', document.getElementById('npcEdInteractGivesId').value || '');
+            fd.append('interactGivesItemQty', document.getElementById('npcEdInteractGivesQty').value || '1');
+            fd.append('interactGivesKeyItem', document.getElementById('npcEdInteractGivesKey').value === 'true' ? 'true' : 'false');
+            fd.append('interactGivesUnique', document.getElementById('npcEdInteractGivesUnique').value === 'true' ? 'true' : 'false');
+            fd.append('interactFlagId', document.getElementById('npcEdInteractFlag').value || '');
+            fd.append('interactSuccessDialogue', document.getElementById('npcEdInteractSuccess').value || '');
+            fd.append('interactServiceType', document.getElementById('npcEdInteractServiceType').value || '');
+            fd.append('interactHealDialogue', document.getElementById('npcEdInteractHealDialogue').value || '');
+            fd.append('interactShopItemsJson', npcEdShopToJson());
+
+            // Starter options (por NPC)
+            try {
+                const s1 = (document.getElementById('npcEdStarterOpt1') && document.getElementById('npcEdStarterOpt1').value) ? document.getElementById('npcEdStarterOpt1').value : '';
+                const s2 = (document.getElementById('npcEdStarterOpt2') && document.getElementById('npcEdStarterOpt2').value) ? document.getElementById('npcEdStarterOpt2').value : '';
+                const s3 = (document.getElementById('npcEdStarterOpt3') && document.getElementById('npcEdStarterOpt3').value) ? document.getElementById('npcEdStarterOpt3').value : '';
+                const opts = [s1, s2, s3].map(x => String(x || '').trim()).filter(Boolean);
+                const uniq = Array.from(new Set(opts));
+                fd.append('interactStarterOptionsJson', JSON.stringify(uniq));
+            } catch (_) {
+                fd.append('interactStarterOptionsJson', '[]');
+            }
+
+            fd.append('interactNeedItemDialogue', document.getElementById('npcEdInteractNeed').value || '');
+            fd.append('interactAlreadyDoneDialogue', document.getElementById('npcEdInteractDone').value || '');
+            fd.append('interactMoveDx', document.getElementById('npcEdInteractDx').value || '0');
+            fd.append('interactMoveDy', document.getElementById('npcEdInteractDy').value || '0');
+            fd.append('interactMoveDirection', document.getElementById('npcEdInteractDir').value || '');
+
+            fd.append('patrolEnabled', document.getElementById('npcEdPatrolEnabled').value === 'true' ? 'true' : 'false');
+            fd.append('patrolMode', document.getElementById('npcEdPatrolMode').value || '');
+            fd.append('patrolSpeed', document.getElementById('npcEdPatrolSpeed').value || '6');
+            fd.append('patrolPingAx', document.getElementById('npcEdPatrolAx').value || '0');
+            fd.append('patrolPingAy', document.getElementById('npcEdPatrolAy').value || '0');
+            fd.append('patrolPingBx', document.getElementById('npcEdPatrolBx').value || '0');
+            fd.append('patrolPingBy', document.getElementById('npcEdPatrolBy').value || '0');
+            fd.append('patrolCircleCx', document.getElementById('npcEdPatrolCx').value || '0');
+            fd.append('patrolCircleCy', document.getElementById('npcEdPatrolCy').value || '0');
+            fd.append('patrolCircleRadius', document.getElementById('npcEdPatrolRadius').value || '0');
+            fd.append('patrolCircleClockwise', document.getElementById('npcEdPatrolClockwise').value === 'true' ? 'true' : 'false');
+
+            // Path JSON (quando modo=path)
+            if ((document.getElementById('npcEdPatrolMode').value || '') === 'path') {
+                fd.append('patrolPathJson', JSON.stringify({ loop: !!npcEdPathState.loop, points: npcEdPathState.points || [] }));
+            }
 
             const skinFile = document.getElementById('npcEdSkinFile').files && document.getElementById('npcEdSkinFile').files[0];
             if (skinFile) fd.append('npcSkinFile', skinFile);
@@ -624,6 +2199,222 @@
                 alert('Erro ao salvar NPC: ' + (data.error || res.statusText || 'erro'));
             }
         }
+
+        // --- Patrol Path (waypoints) UI helpers ---
+        let npcEdPathState = { loop: false, points: [] };
+
+        function clamp01_100(n) {
+            const v = parseFloat(n);
+            if (!Number.isFinite(v)) return 0;
+            return Math.max(0, Math.min(100, parseFloat(v.toFixed(1))));
+        }
+
+        function npcPatrolModeUiSync() {
+            const mode = (document.getElementById('npcEdPatrolMode').value || '').trim();
+            const box = document.getElementById('npcEdPatrolPathBox');
+            if (box) box.style.display = (mode === 'path') ? 'block' : 'none';
+        }
+
+        function npcInteractServiceUiSync() {
+            const svc = (document.getElementById('npcEdInteractServiceType').value || '').trim();
+            const healBox = document.getElementById('npcEdInteractHealBox');
+            const shopBox = document.getElementById('npcEdInteractShopBox');
+            const starterBox = document.getElementById('npcEdInteractStarterBox');
+            if (healBox) healBox.style.display = (svc === 'heal') ? 'block' : 'none';
+            if (shopBox) shopBox.style.display = (svc === 'shop') ? 'block' : 'none';
+            if (starterBox) starterBox.style.display = (svc === 'starter') ? 'block' : 'none';
+
+            // Mostra só campos relevantes (editor por categoria, simples)
+            const showQuestFields = (svc === '' || svc === '');
+            const showReq = (svc === '');
+            const showGive = (svc === '');
+            const showFlag = (svc === '');
+
+            const setDisp = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? '' : 'none';
+            };
+
+            setDisp('npcEdInteractConsumeBox', showReq);
+            setDisp('npcEdInteractReqIdBox', showReq);
+            setDisp('npcEdInteractReqQtyBox', showReq);
+            setDisp('npcEdInteractGivesIdBox', showGive);
+            setDisp('npcEdInteractGivesQtyBox', showGive);
+            setDisp('npcEdInteractGivesKeyBox', showGive);
+            setDisp('npcEdInteractGivesUniqueBox', showGive);
+            setDisp('npcEdInteractFlagBox', showFlag);
+            setDisp('npcEdInteractNeedBox', showQuestFields);
+            setDisp('npcEdInteractDoneBox', true); // vale para todos (starter usa "já escolhido")
+        }
+
+        function npcPathSetLoop(v) {
+            npcEdPathState.loop = !!v;
+        }
+
+        function npcPathAddFromInputs() {
+            const x = clamp01_100(document.getElementById('npcEdPatrolPathX').value);
+            const y = clamp01_100(document.getElementById('npcEdPatrolPathY').value);
+            npcEdPathState.points.push({ x, y });
+            npcPathRender();
+        }
+
+        function npcPathAddFromNpcPos() {
+            const x = clamp01_100(document.getElementById('npcEdX').value);
+            const y = clamp01_100(document.getElementById('npcEdY').value);
+            npcEdPathState.points.push({ x, y });
+            npcPathRender();
+        }
+
+        function npcPathClear() {
+            npcEdPathState.points = [];
+            npcPathRender();
+        }
+
+        function npcBeginClickCapture(message, onPick) {
+            // Mostra aviso e fecha a janela do editor para permitir clique no mapa
+            try {
+                const pm = document.getElementById('previewMsg');
+                const txt = document.getElementById('previewMsgText');
+                if (txt) txt.textContent = message || 'CLIQUE NO MAPA';
+                else if (pm) pm.textContent = message || 'CLIQUE NO MAPA';
+                if (pm) pm.style.display = 'block';
+                const ga = document.getElementById('gameArea');
+                if (ga) {
+                    ga.classList.add('preview-mode');
+                    ga.classList.add('dev-click-capture');
+                }
+            } catch (_) {}
+
+            let wasOpen = false;
+            try {
+                const ov = document.getElementById('npcEditorOverlay');
+                if (ov) {
+                    wasOpen = window.getComputedStyle(ov).display !== 'none';
+                    ov.style.display = 'none';
+                }
+            } catch (_) {}
+
+            const prev = currentTool;
+            currentTool = null;
+            pendingPortalData = null;
+
+            window.__devClickCapture = {
+                prevTool: prev,
+                restoreNpcEditor: wasOpen,
+                onPick
+            };
+        }
+
+        function npcCancelClickCapture() {
+            const cap = window.__devClickCapture;
+            if (!cap) return;
+            window.__devClickCapture = null;
+
+            try {
+                const pm = document.getElementById('previewMsg');
+                if (pm) pm.style.display = 'none';
+                const ga = document.getElementById('gameArea');
+                if (ga) {
+                    ga.classList.remove('preview-mode');
+                    ga.classList.remove('dev-click-capture');
+                }
+            } catch (_) {}
+
+            if (cap && cap.restoreNpcEditor) {
+                try { document.getElementById('npcEditorOverlay').style.display = 'flex'; } catch (_) {}
+            }
+            if (cap && cap.prevTool !== undefined) {
+                currentTool = cap.prevTool;
+            }
+        }
+
+        function npcPathAddByClick() {
+            npcBeginClickCapture('CLIQUE PARA ADICIONAR PONTO DA ROTA', (x, y) => {
+                npcEdPathState.points.push({ x: clamp01_100(x), y: clamp01_100(y) });
+                npcPathRender();
+            });
+        }
+
+        function npcInteractMovePickByClick() {
+            npcBeginClickCapture('CLIQUE PARA ESCOLHER O DESTINO DO NPC', (x, y) => {
+                const nx = clamp01_100(document.getElementById('npcEdX').value);
+                const ny = clamp01_100(document.getElementById('npcEdY').value);
+                const dx = parseFloat((clamp01_100(x) - nx).toFixed(1));
+                const dy = parseFloat((clamp01_100(y) - ny).toFixed(1));
+                document.getElementById('npcEdInteractDx').value = String(dx);
+                document.getElementById('npcEdInteractDy').value = String(dy);
+            });
+        }
+
+        function npcPathRender() {
+            const rows = document.getElementById('npcEdPatrolPathRows');
+            const loopEl = document.getElementById('npcEdPatrolPathLoop');
+            if (loopEl) loopEl.checked = !!npcEdPathState.loop;
+            if (!rows) return;
+            rows.innerHTML = '';
+
+            if (!npcEdPathState.points || npcEdPathState.points.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Nenhum ponto.';
+                rows.appendChild(empty);
+                return;
+            }
+
+            npcEdPathState.points.forEach((p, idx) => {
+                const line = document.createElement('div');
+                line.style.display = 'flex';
+                line.style.gap = '8px';
+                line.style.alignItems = 'center';
+
+                const label = document.createElement('div');
+                label.className = 'npcHint';
+                label.style.minWidth = '60px';
+                label.innerText = `#${idx + 1}`;
+
+                const xIn = document.createElement('input');
+                xIn.type = 'number';
+                xIn.step = '0.5';
+                xIn.value = p.x;
+                xIn.style.width = '90px';
+                xIn.onchange = () => {
+                    npcEdPathState.points[idx].x = clamp01_100(xIn.value);
+                    npcPathRender();
+                };
+
+                const yIn = document.createElement('input');
+                yIn.type = 'number';
+                yIn.step = '0.5';
+                yIn.value = p.y;
+                yIn.style.width = '90px';
+                yIn.onchange = () => {
+                    npcEdPathState.points[idx].y = clamp01_100(yIn.value);
+                    npcPathRender();
+                };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'npcBtn';
+                rm.innerText = 'remover';
+                rm.onclick = () => {
+                    npcEdPathState.points.splice(idx, 1);
+                    npcPathRender();
+                };
+
+                line.appendChild(label);
+                line.appendChild(document.createTextNode('x'));
+                line.appendChild(xIn);
+                line.appendChild(document.createTextNode('y'));
+                line.appendChild(yIn);
+                line.appendChild(rm);
+                rows.appendChild(line);
+            });
+        }
+
+        try {
+            const modeSel = document.getElementById('npcEdPatrolMode');
+            if (modeSel) modeSel.addEventListener('change', npcPatrolModeUiSync);
+        } catch (_) {}
 
         async function deleteNpcFromEditor() {
             if (!isAdmin) return;
@@ -687,6 +2478,35 @@
         // --- INTERAÇÕES ---
         window.interactWithNPC = function(npc) {
             window.isInteracting = true; window.isMoving = false;
+
+            async function disengageNow() {
+                try {
+                    if (npc && npc._id) {
+                        await fetch('/api/npc/disengage', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ npcId: npc._id })
+                        });
+                    }
+                } catch (_) {}
+            }
+
+            // Pausa a patrulha e faz o NPC olhar para o jogador.
+            try {
+                const myEl = document.getElementById(`p-${window.myId}`);
+                if (myEl && npc && npc._id) {
+                    fetch('/api/npc/engage', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            npcId: npc._id,
+                            playerX: parseFloat(myEl.style.left),
+                            playerY: parseFloat(myEl.style.top),
+                            pauseMs: 8000
+                        })
+                    }).catch(() => {});
+                }
+            } catch (_) {}
             const cleanName = npc.name.replace(/\(kid\)/i, '').trim();
             const defeatedList = window.DEFEATED_NPCS || [];
             const record = defeatedList.find(r => (r === npc._id) || (r.npcId === npc._id));
@@ -701,30 +2521,340 @@
                     else { dialogueText = npc.dialogue || "Vamos batalhar novamente!"; showBattleOptions = true; }
                 }
             }
+            const hasInteract = !!(npc.interact && npc.interact.enabled);
             const canBattle = npc.team && npc.team.length > 0;
-            const buttons = (canBattle && showBattleOptions) ? [{ text: 'BATALHAR', value: true, class: 'confirm' }, { text: 'SAIR', value: false, class: 'cancel' }] : [];
-            setDialogImageStyle('pixel');
-            showRPGDialog(cleanName, npc.skin, dialogueText, buttons).then(accepted => {
-                window.isInteracting = false; 
-                if (accepted === true && canBattle && showBattleOptions) {
-                    performTransition(() => {
-                        let mapParam = currentMapId === 'city' ? 'city' : `city?map=${currentMapId}`;
-                        fetch('/battle/npc', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, currentMap: mapParam, currentX: parseFloat(document.getElementById(`p-${window.myId}`).style.left), currentY: parseFloat(document.getElementById(`p-${window.myId}`).style.top) }) })
-                        .then(r => r.json()).then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; });
+
+            async function runNpcTalk() {
+                try {
+                    const myEl = document.getElementById(`p-${window.myId}`);
+                    const px = myEl ? parseFloat(myEl.style.left) : null;
+                    const py = myEl ? parseFloat(myEl.style.top) : null;
+                    const res = await fetch('/api/npc/interact', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
                     });
+                    const data = await res.json().catch(() => ({}));
+                    if (data.inventory) window.USER_INVENTORY = data.inventory;
+                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
+                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                    const text = (data && data.text) ? data.text : '...';
+
+                    if (data && data.action && data.action.type === 'starter') {
+                        const options = Array.isArray(data.action.options) ? data.action.options.slice(0, 3) : [];
+                        if (options.length < 3) {
+                            await showRPGDialog(cleanName, npc.skin, 'Erro: opções de starter insuficientes.');
+                            await disengageNow();
+                            return;
+                        }
+
+                        if (typeof window.__openStarterPicker === 'function') {
+                            window.__openStarterPicker({
+                                npcName: cleanName,
+                                npcSkin: npc.skin,
+                                npcId: npc._id,
+                                hintText: text,
+                                options
+                            });
+                        }
+
+                        await disengageNow();
+                        return;
+                    }
+
+                    await showRPGDialog(cleanName, npc.skin, text, [], () => disengageNow());
+
+                    if (data && data.action && data.action.type === 'shop') {
+                        await openNpcShop(cleanName, npc.skin, npc._id, data.action.items || []);
+                    }
+                } catch (e) {
+                    if (typeof showToast === 'function') showToast('Erro ao interagir.', { bg: '#e74c3c' });
                 }
+                await disengageNow();
+            }
+
+            function runNpcBattle() {
+                performTransition(() => {
+                    let mapParam = currentMapId === 'city' ? 'city' : `city?map=${currentMapId}`;
+                    fetch('/battle/npc', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            userId: window.CURRENT_USER_ID,
+                            npcId: npc._id,
+                            currentMap: mapParam,
+                            currentX: parseFloat(document.getElementById(`p-${window.myId}`).style.left),
+                            currentY: parseFloat(document.getElementById(`p-${window.myId}`).style.top)
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => { if(data.battleId) window.location.href = '/battle/' + data.battleId; });
+                });
+            }
+
+            // Se já escolheu o starter, não mostra a fala "de escolher" no menu inicial.
+            try {
+                const svc = (npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
+                const chosen = !!(window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
+                if (hasInteract && svc === 'starter' && chosen) {
+                    dialogueText = (npc.interact && npc.interact.alreadyDoneDialogue)
+                        ? npc.interact.alreadyDoneDialogue
+                        : 'Você já escolheu o seu monstro inicial.';
+                }
+            } catch (_) {}
+
+            // Evita diálogo duplicado: se o starter já foi escolhido, não precisa de "FALAR".
+            let canTalk = hasInteract;
+            try {
+                const svc = (npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
+                const chosen = !!(window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
+                if (hasInteract && svc === 'starter' && chosen) {
+                    canTalk = false;
+                }
+            } catch (_) {}
+
+            const hasTalkOption = !!canTalk;
+            const hasBattleOption = !!(canBattle && showBattleOptions);
+
+            // Simplificação: se não há escolha real, não abre o menu "FALAR/SAIR".
+            if (hasTalkOption && !hasBattleOption) {
+                window.isInteracting = false;
+                runNpcTalk();
+                return;
+            }
+            if (!hasTalkOption && hasBattleOption) {
+                window.isInteracting = false;
+                runNpcBattle();
+                return;
+            }
+            if (!hasTalkOption && !hasBattleOption) {
+                setDialogImageStyle('pixel');
+                showRPGDialog(cleanName, npc.skin, dialogueText, [], () => disengageNow());
+                return;
+            }
+
+            // Caso com escolha real (ex.: treinador com talk + battle): mantém menu.
+            let buttons = [];
+            if (hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
+            if (hasBattleOption) buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
+            buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
+            setDialogImageStyle('pixel');
+            showRPGDialog(cleanName, npc.skin, dialogueText, buttons, (result) => {
+                if (result === 'exit' || result === true || result === undefined || result === null) {
+                    disengageNow();
+                }
+            }, { keepOpenForValues: ['talk'] }).then(async (choice) => {
+                window.isInteracting = false;
+
+                if (choice === 'talk') {
+                    await runNpcTalk();
+                    return;
+                }
+
+                if (choice === 'battle') {
+                    runNpcBattle();
+                    return;
+                }
+
+                await disengageNow();
             });
         };
+
+        (function setupStarterPicker() {
+            const overlay = document.getElementById('starterPickerOverlay');
+            const closeBtn = document.getElementById('starterPickerClose');
+            const titleEl = document.getElementById('starterPickerTitle');
+            const hintEl = document.getElementById('starterPickerHint');
+            const gridEl = document.getElementById('starterPickerGrid');
+            if (!overlay || !closeBtn || !titleEl || !hintEl || !gridEl) return;
+
+            function close() {
+                overlay.style.display = 'none';
+                gridEl.innerHTML = '';
+                if (typeof window !== 'undefined') window.isInteracting = false;
+            }
+
+            function open(payload) {
+                const npcName = payload && payload.npcName ? String(payload.npcName) : 'NPC';
+                const npcSkin = payload && payload.npcSkin ? String(payload.npcSkin) : '';
+                const npcId = payload && payload.npcId ? String(payload.npcId) : '';
+                const hintText = payload && payload.hintText ? String(payload.hintText) : 'Escolha seu monstro inicial:';
+                const options = Array.isArray(payload && payload.options) ? payload.options.slice(0, 3) : [];
+
+                if (typeof window !== 'undefined') window.isInteracting = true;
+                titleEl.textContent = `ESCOLHA SEU INICIAL — ${npcName}`;
+                hintEl.textContent = hintText;
+                gridEl.innerHTML = '';
+
+                options.forEach(o => {
+                    const baseId = o && o.id ? String(o.id) : '';
+                    const name = o && o.name ? String(o.name) : baseId;
+                    const sprite = o && o.sprite ? String(o.sprite) : '';
+
+                    const card = document.createElement('button');
+                    card.type = 'button';
+                    card.className = 'starterCard';
+                    card.setAttribute('data-starter-id', baseId);
+
+                    const img = document.createElement('img');
+                    img.className = 'starterSprite';
+                    img.alt = name;
+                    if (sprite) img.src = sprite;
+                    else img.style.display = 'none';
+
+                    const nm = document.createElement('div');
+                    nm.className = 'starterName';
+                    nm.textContent = name;
+
+                    card.appendChild(img);
+                    card.appendChild(nm);
+
+                    card.onclick = async () => {
+                        card.disabled = true;
+                        try {
+                            const pickRes = await fetch('/api/starter/choose', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: window.CURRENT_USER_ID, baseId, npcId })
+                            });
+                            const pickData = await pickRes.json().catch(() => ({}));
+                            if (pickData && pickData.error) {
+                                card.disabled = false;
+                                await showRPGDialog(npcName, npcSkin, pickData.error);
+                                return;
+                            }
+                            if (pickData && pickData.storyFlags) window.STORY_FLAGS = pickData.storyFlags;
+                            const chosenName = (pickData.picked && pickData.picked.name) ? pickData.picked.name : 'seu monstro';
+                            close();
+                            await showRPGDialog(npcName, npcSkin, `Você escolheu ${chosenName}! Boa sorte na jornada.`);
+                        } catch (e) {
+                            card.disabled = false;
+                            await showRPGDialog(npcName, npcSkin, 'Erro ao escolher o monstro inicial.');
+                        }
+                    };
+
+                    gridEl.appendChild(card);
+                });
+
+                overlay.style.display = 'flex';
+            }
+
+            window.__openStarterPicker = open;
+            window.__closeStarterPicker = close;
+            closeBtn.onclick = () => close();
+        })();
 
         window.moveToAndTalkToNPC = function(npc) {
             if (window.isMoving || window.isInteracting || window.isTeleporting) return;
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
-            const dx = npc.x - parseFloat(myPlayer.style.left); const dy = npc.y - parseFloat(myPlayer.style.top); const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist > 9) {
-                const ratio = 8 / dist; window.isMoving = true; socket.emit('move_player', { x: npc.x - (dx * ratio), y: npc.y - (dy * ratio) });
-                setTimeout(() => { window.isMoving = false; interactWithNPC(npc); }, (dist / MOVEMENT_SPEED) * 1000);
-            } else { interactWithNPC(npc); }
+
+            // Assim que "aborda" (clica), pausa a patrulha e vira pro jogador.
+            try {
+                if (npc && npc._id) {
+                    fetch('/api/npc/engage', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            npcId: npc._id,
+                            playerX: parseFloat(myPlayer.style.left),
+                            playerY: parseFloat(myPlayer.style.top),
+                            pauseMs: 8000
+                        })
+                    }).catch(() => {});
+                }
+            } catch (_) {}
+
+            const currX = parseFloat(myPlayer.style.left);
+            const currY = parseFloat(myPlayer.style.top);
+            const npcX = (typeof npc.x === 'number') ? npc.x : parseFloat(npc.x);
+            const npcY = (typeof npc.y === 'number') ? npc.y : parseFloat(npc.y);
+            const dx = npcX - currX;
+            const dy = npcY - currY;
+            const dist = Math.hypot(dx, dy);
+
+            // Se já está perto, inicia o menu direto.
+            if (dist <= 9) {
+                interactWithNPC(npc);
+                return;
+            }
+
+            // Tenta parar "em frente" ao NPC, mas respeitando paredes/colisões.
+            const ratio = 8 / dist;
+            let desiredX = npcX - (dx * ratio);
+            let desiredY = npcY - (dy * ratio);
+            desiredX = Math.max(0, Math.min(100, desiredX));
+            desiredY = Math.max(0, Math.min(100, desiredY));
+
+            const safeDest = getSafeTarget(currX, currY, desiredX, desiredY);
+            const moveDist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+            if (moveDist < 0.1) {
+                if (typeof showToast === 'function') showToast('Caminho bloqueado.', { bg: '#e74c3c' });
+                return;
+            }
+
+            window.isMoving = true;
+            socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+            const travelTime = (moveDist / MOVEMENT_SPEED) * 1000;
+
+            setTimeout(() => {
+                window.isMoving = false;
+
+                const me = document.getElementById(`p-${window.myId}`);
+                const px = me ? parseFloat(me.style.left) : currX;
+                const py = me ? parseFloat(me.style.top) : currY;
+                const remain = Math.hypot(npcX - px, npcY - py);
+
+                if (remain <= 9) {
+                    interactWithNPC(npc);
+                } else {
+                    if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
+                }
+            }, travelTime + 60);
         };
+
+        async function openNpcShop(npcName, npcSkin, npcId, items) {
+            const list = Array.isArray(items) ? items : [];
+            if (list.length === 0) {
+                await showRPGDialog(npcName, npcSkin, 'Desculpe, estou sem itens agora.');
+                return;
+            }
+
+            while (true) {
+                const buttons = list.slice(0, 5).map(it => ({
+                    text: `${it.itemId} - $${it.price}`,
+                    value: `buy:${it.itemId}`,
+                    class: 'confirm'
+                }));
+                buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
+
+                const choice = await showRPGDialog(npcName, npcSkin, 'Escolha um item:', buttons);
+                if (!choice || choice === 'exit') return;
+                if (!String(choice).startsWith('buy:')) continue;
+
+                const itemId = String(choice).slice(4);
+                const qtyRaw = prompt('Quantidade para comprar?', '1');
+                const qty = Math.max(1, parseInt(qtyRaw, 10) || 1);
+
+                try {
+                    const res = await fetch('/api/npc/shop/buy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId, itemId, qty })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!data || !data.success) {
+                        await showRPGDialog(npcName, npcSkin, (data && data.error) ? data.error : 'Erro na compra.');
+                        continue;
+                    }
+                    if (data.inventory) window.USER_INVENTORY = data.inventory;
+                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
+                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                    await showRPGDialog(npcName, npcSkin, `Compra realizada: ${qty}x ${itemId}!`);
+                } catch (e) {
+                    await showRPGDialog(npcName, npcSkin, 'Erro ao conectar ao servidor.');
+                }
+            }
+        }
 
         async function handleObjectInteraction(obj) {
             window.isInteracting = true; window.isMoving = false;
@@ -775,7 +2905,14 @@
             const steps = 25;
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps; const px = currX + (targetX - currX) * t; const py = currY + (targetY - currY) * t;
-                const hit = collisionMap.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                const hitWall = collisionMap.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                const hitNpc = (currentNpcsCache || []).some(n => {
+                    if (!n || !n.blocksMovement) return false;
+                    const nx = typeof n.x === 'number' ? n.x : 0;
+                    const ny = typeof n.y === 'number' ? n.y : 0;
+                    return Math.abs(px - nx) <= 2.2 && Math.abs(py - ny) <= 2.2;
+                });
+                const hit = hitWall || hitNpc;
                 if (hit) return { x: currX + (targetX - currX) * ((i - 1) / steps), y: currY + (targetY - currY) * ((i - 1) / steps) };
             }
             return { x: targetX, y: targetY };
@@ -792,7 +2929,54 @@
 
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
-                performTransition(() => {
+                performTransition(async () => {
+                    const inv = window.USER_INVENTORY || {};
+                    const keys = window.USER_KEY_ITEMS || [];
+
+                    const getInvCount = (id) => {
+                        if (!id) return 0;
+                        if (Array.isArray(keys) && keys.includes(id)) return 1;
+                        const raw = inv[id];
+                        const n = parseInt(raw, 10);
+                        return Number.isFinite(n) ? n : 0;
+                    };
+
+                    const reqKey = (portal.requiresKeyItem || '').trim();
+                    const reqItem = (portal.requiresItemId || portal.requiresItem || '').trim();
+                    const reqQty = Math.max(1, parseInt(portal.requiresItemQty, 10) || 1);
+
+                    if (reqKey && !(Array.isArray(keys) && keys.includes(reqKey))) {
+                        if (typeof showToast === 'function') showToast(portal.lockedText || `Precisa do item-chave: ${reqKey}`, { bg: '#e74c3c' });
+                        return;
+                    }
+
+                    if (reqItem && getInvCount(reqItem) < reqQty) {
+                        if (typeof showToast === 'function') showToast(portal.lockedText || `Precisa de ${reqQty}x ${reqItem}`, { bg: '#e74c3c' });
+                        return;
+                    }
+
+                    if (portal.consumesItem && reqItem) {
+                        try {
+                            const res = await fetch('/api/inventory/consume', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: window.CURRENT_USER_ID, itemId: reqItem, qty: reqQty })
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (data && data.success) {
+                                if (data.inventory) window.USER_INVENTORY = data.inventory;
+                                if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
+                                if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                            } else {
+                                if (typeof showToast === 'function') showToast(portal.lockedText || 'Não foi possível usar o item.', { bg: '#e74c3c' });
+                                return;
+                            }
+                        } catch (e) {
+                            if (typeof showToast === 'function') showToast('Erro ao usar item.', { bg: '#e74c3c' });
+                            return;
+                        }
+                    }
+
                     let extra = '';
                     if (portal.targetX !== undefined && portal.targetY !== undefined && !isNaN(portal.targetX)) {
                         extra = `&x=${portal.targetX}&y=${portal.targetY}`;
@@ -805,6 +2989,41 @@
 
         // --- CONTROLES ---
         gameViewport.addEventListener('mousedown', (e) => {
+            // Captura de clique (usado pelo editor de NPC: rota e mover após item)
+            if (window.__devClickCapture && typeof window.__devClickCapture.onPick === 'function') {
+                // Botão direito cancela
+                if (e.button === 2) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    npcCancelClickCapture();
+                    return;
+                }
+                e.stopPropagation();
+                const rect = gameArea.getBoundingClientRect();
+                const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1));
+                const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
+                const cap = window.__devClickCapture;
+                window.__devClickCapture = null;
+
+                // UI: volta pro editor se ele estava aberto
+                try {
+                    const pm = document.getElementById('previewMsg');
+                    if (pm) pm.style.display = 'none';
+                    document.getElementById('gameArea').classList.remove('preview-mode');
+                    document.getElementById('gameArea').classList.remove('dev-click-capture');
+                } catch (_) {}
+                if (cap && cap.restoreNpcEditor) {
+                    try { document.getElementById('npcEditorOverlay').style.display = 'flex'; } catch (_) {}
+                }
+                // Restaura tool anterior
+                if (cap && cap.prevTool !== undefined) {
+                    currentTool = cap.prevTool;
+                }
+
+                try { cap.onPick(clickX, clickY); } catch (_) {}
+                return;
+            }
+
             if (devMode) {
                 if (currentTool === 'moveNpc' && selectedNpcId) {
                     e.stopPropagation();
@@ -820,13 +3039,20 @@
                     const rect = gameArea.getBoundingClientRect(); 
                     const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
                     const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
-                    
-                    portalsMap.push({
+
+                    const patch = {
                         ...pendingPortalData.rect,
                         targetMap: pendingPortalData.mapId,
                         targetX: clickX,
                         targetY: clickY
-                    });
+                    };
+
+                    const editIndex = pendingPortalData.editIndex;
+                    if (editIndex !== null && editIndex !== undefined && portalsMap[editIndex]) {
+                        portalsMap[editIndex] = { ...portalsMap[editIndex], ...patch };
+                    } else {
+                        portalsMap.push(patch);
+                    }
                     
                     pendingPortalData = null;
                     applyMapVisuals(mapConfig); 
@@ -834,7 +3060,7 @@
                     document.getElementById('gameArea').classList.remove('preview-mode');
                     document.querySelectorAll('.player').forEach(p => p.style.display = 'block');
                     
-                    showToast("Portal criado!");
+                    showToast((editIndex !== null && editIndex !== undefined) ? "Portal atualizado!" : "Portal criado!");
                     renderMapObjects();
                     return;
                 }
@@ -854,6 +3080,22 @@
             }
             handleInput(e);
         });
+
+        // Durante a captura por clique, evita abrir menu e permite cancelar
+        gameViewport.addEventListener('contextmenu', (e) => {
+            if (window.__devClickCapture) {
+                e.preventDefault();
+                e.stopPropagation();
+                npcCancelClickCapture();
+            }
+        });
+
+        // ESC cancela captura por clique
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && window.__devClickCapture) {
+                npcCancelClickCapture();
+            }
+        });
         
         gameViewport.addEventListener('touchstart', (e) => {
             if (e.target.closest('#chatBar')) return;
@@ -862,7 +3104,8 @@
 
         function handleInput(e, targetElement = null) {
             const target = targetElement || e.target;
-            if (target.closest('#chatBar') || window.isMoving || window.isTeleporting || window.isInteracting) return;
+            if (target.closest('#chatBar') || window.isTeleporting || window.isInteracting || window.__virtualPadHolding) return;
+            if (target.closest('#virtualPadWrap')) return;
             if (target.closest('.npc-entity')) return;
 
             const rect = gameArea.getBoundingClientRect();
@@ -904,6 +3147,246 @@
         const chatIn = document.getElementById('chatInput');
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
+
+        // START (menu)
+        (function setupStartMenu() {
+            const startBtn = document.getElementById('startBtn');
+            const overlay = document.getElementById('startMenuOverlay');
+            const closeBtn = document.getElementById('startMenuClose');
+            if (!startBtn || !overlay) return;
+
+            function open() { overlay.style.display = 'flex'; }
+            function close() { overlay.style.display = 'none'; }
+            window.__closeStartMenu = close;
+
+            startBtn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
+            if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlay.style.display !== 'none') close();
+            });
+        })();
+
+        // --- CONTROLE VIRTUAL (TESTE) ---
+        (function setupVirtualPad() {
+            const wrap = document.getElementById('virtualPadWrap');
+            const interactBtn = document.getElementById('virtualPadInteract');
+            const bBtn = document.getElementById('virtualPadB');
+            if (!wrap) return;
+
+            // Sem botão ON/OFF: controle sempre ativo
+            const enabled = true;
+
+            const state = { dir: null, intervalId: null, vx: null, vy: null };
+
+            // Tick do D-pad (ms). Mantém o passo coerente com MOVEMENT_SPEED pra ficar linear.
+            const TICK_MS = 140;
+            window.__virtualPadTickS = TICK_MS / 1000;
+
+            function stop() {
+                window.__virtualPadHolding = false;
+                state.dir = null;
+                state.vx = null;
+                state.vy = null;
+                if (state.intervalId) {
+                    clearInterval(state.intervalId);
+                    state.intervalId = null;
+                }
+
+                const myPlayer = document.getElementById(`p-${window.myId}`);
+                if (myPlayer) myPlayer.classList.remove('walking');
+            }
+
+            function step(dir) {
+                if (!enabled) return;
+                if (window.isTeleporting || window.isInteracting) return;
+
+                const myPlayer = document.getElementById(`p-${window.myId}`);
+                if (!myPlayer) return;
+
+                // Posição "virtual" (alvo) para evitar travar em passos
+                const currX = (state.vx === null || state.vx === undefined) ? parseFloat(myPlayer.style.left) : state.vx;
+                const currY = (state.vy === null || state.vy === undefined) ? parseFloat(myPlayer.style.top) : state.vy;
+
+                // Passo baseado na velocidade do jogo (% por segundo) * tempo do tick
+                const STEP = Math.max(0.6, MOVEMENT_SPEED * (TICK_MS / 1000));
+                const STEP_X = STEP;
+                const STEP_Y = STEP * 0.75;
+                let desiredX = currX;
+                let desiredY = currY;
+                if (dir === 'up') desiredY -= STEP_Y;
+                if (dir === 'down') desiredY += STEP_Y;
+                if (dir === 'left') desiredX -= STEP_X;
+                if (dir === 'right') desiredX += STEP_X;
+
+                desiredX = Math.max(0, Math.min(100, desiredX));
+                desiredY = Math.max(0, Math.min(100, desiredY));
+
+                const safeDest = getSafeTarget(currX, currY, desiredX, desiredY);
+                const moveDist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
+                if (moveDist < 0.05) {
+                    // bloqueado: para de andar (não fica vibrando)
+                    stop();
+                    return;
+                }
+
+                // Mantém animação e direção enquanto segura
+                myPlayer.setAttribute('data-dir', dir);
+                myPlayer.classList.add('walking');
+
+                socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+
+                state.vx = safeDest.x;
+                state.vy = safeDest.y;
+            }
+
+            function start(dir) {
+                if (!enabled) return;
+                stop();
+                window.__virtualPadHolding = true;
+                state.dir = dir;
+                const myPlayer = document.getElementById(`p-${window.myId}`);
+                if (myPlayer) {
+                    state.vx = parseFloat(myPlayer.style.left);
+                    state.vy = parseFloat(myPlayer.style.top);
+                }
+                step(dir);
+                state.intervalId = setInterval(() => step(dir), TICK_MS);
+            }
+
+            function findNearestNpc(myX, myY) {
+                const list = Array.isArray(window.currentNpcsCache) ? window.currentNpcsCache : (Array.isArray(currentNpcsCache) ? currentNpcsCache : []);
+                let best = null;
+                let bestDist = Infinity;
+                for (const n of list) {
+                    if (!n || !n._id) continue;
+                    const nx = (typeof n.x === 'number') ? n.x : parseFloat(n.x);
+                    const ny = (typeof n.y === 'number') ? n.y : parseFloat(n.y);
+                    if (!Number.isFinite(nx) || !Number.isFinite(ny)) continue;
+                    const d = Math.hypot(nx - myX, ny - myY);
+                    if (d < bestDist) { best = n; bestDist = d; }
+                }
+                return { npc: best, dist: bestDist };
+            }
+
+            function virtualInteract() {
+                if (window.isTeleporting || window.isInteracting) return;
+                const myPlayer = document.getElementById(`p-${window.myId}`);
+                if (!myPlayer) return;
+                const myX = parseFloat(myPlayer.style.left);
+                const myY = parseFloat(myPlayer.style.top);
+                if (!Number.isFinite(myX) || !Number.isFinite(myY)) return;
+
+                const { npc, dist } = findNearestNpc(myX, myY);
+                if (!npc || !Number.isFinite(dist) || dist > 30) {
+                    return;
+                }
+
+                // Se estiver perto, interage direto; se não, anda até ele (sem atravessar parede)
+                if (dist <= 9) {
+                    try { interactWithNPC(npc); } catch (_) {}
+                } else {
+                    try { moveToAndTalkToNPC(npc); } catch (_) {}
+                }
+            }
+
+            function virtualInteractMap() {
+                if (window.isTeleporting || window.isInteracting) return;
+                const myPlayer = document.getElementById(`p-${window.myId}`);
+                if (!myPlayer) return;
+                const px = parseFloat(myPlayer.style.left);
+                const py = parseFloat(myPlayer.style.top);
+
+                const list = Array.isArray(interactsMap) ? interactsMap : [];
+                const dir = (myPlayer.getAttribute('data-dir') || 'down').toLowerCase();
+                const FRONT = 4.0; // quão "na frente" checar
+                let fx = px;
+                let fy = py;
+                if (dir === 'up') fy -= FRONT;
+                else if (dir === 'down') fy += FRONT;
+                else if (dir === 'left') fx -= FRONT;
+                else if (dir === 'right') fx += FRONT;
+
+                fx = Math.max(0, Math.min(100, fx));
+                fy = Math.max(0, Math.min(100, fy));
+
+                // Procura um interact que contenha o ponto à frente.
+                // Se houver mais de um, pega o mais próximo do ponto.
+                let best = null;
+                let bestD = Infinity;
+                for (const obj of list) {
+                    if (!obj) continue;
+                    const ox = (typeof obj.x === 'number') ? obj.x : parseFloat(obj.x) || 0;
+                    const oy = (typeof obj.y === 'number') ? obj.y : parseFloat(obj.y) || 0;
+                    const ow = (typeof obj.w === 'number') ? obj.w : parseFloat(obj.w) || 0;
+                    const oh = (typeof obj.h === 'number') ? obj.h : parseFloat(obj.h) || 0;
+                    if (fx < ox || fx > (ox + ow) || fy < oy || fy > (oy + oh)) continue;
+
+                    const cx = ox + (ow / 2);
+                    const cy = oy + (oh / 2);
+                    const d = Math.hypot(cx - fx, cy - fy);
+                    if (d < bestD) { best = obj; bestD = d; }
+                }
+
+                if (!best) {
+                    return;
+                }
+
+                try {
+                    handleObjectInteraction(best);
+                } catch (_) {
+                    if (typeof showToast === 'function') showToast('Erro ao interagir.', { bg: '#e74c3c' });
+                }
+            }
+
+            // Botão A (interagir)
+            if (interactBtn) {
+                interactBtn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                interactBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    virtualInteract();
+                });
+            }
+
+            // Botão B (interagir com objetos do mapa)
+            if (bBtn) {
+                bBtn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                bBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    virtualInteractMap();
+                });
+            }
+
+            // Botões do D-pad
+            wrap.querySelectorAll('[data-vdir]').forEach(btn => {
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    btn.setPointerCapture(e.pointerId);
+                    start(btn.getAttribute('data-vdir'));
+                });
+                btn.addEventListener('pointerup', (e) => { e.preventDefault(); e.stopPropagation(); stop(); });
+                btn.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); stop(); });
+                btn.addEventListener('lostpointercapture', () => stop());
+            });
+
+            // Soltou em qualquer lugar
+            function stopIfVirtualPadActive() {
+                if (!window.__virtualPadHolding && !state.intervalId) return;
+                stop();
+            }
+            document.addEventListener('pointerup', stopIfVirtualPadActive);
+            document.addEventListener('pointercancel', stopIfVirtualPadActive);
+
+            // wrap já está visível por padrão
+        })();
         
         // --- DEV TOOLS (ATUALIZADO) ---
         function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
@@ -1032,6 +3515,89 @@
             renderMapObjects();
         }
 
+        async function startPortalPreview(rect, targetMapId, editIndex = null) {
+            pendingPortalData = { rect, mapId: targetMapId, editIndex };
+            showToast("Carregando mapa de destino...", {bg: '#3498db'});
+
+            try {
+                const res = await fetch('/api/map/' + targetMapId);
+                const targetMapData = await res.json();
+
+                // Aplica visual do mapa de destino temporariamente
+                applyMapVisuals(targetMapData);
+
+                // Esconde players e npcs para limpar a visão
+                document.querySelectorAll('.player').forEach(p => p.style.display = 'none');
+
+                // Ativa modo preview
+                gameAreaEl.classList.add('preview-mode');
+                try {
+                    const txt = document.getElementById('previewMsgText');
+                    if (txt) txt.textContent = 'CLIQUE NO DESTINO';
+                } catch (_) {}
+                document.getElementById('previewMsg').style.display = 'block';
+
+                // Remove caixas do mapa atual
+                document.getElementById('collision-container').innerHTML = '';
+                document.getElementById('grass-container').innerHTML = '';
+                document.getElementById('portal-container').innerHTML = '';
+                document.getElementById('interacts-container').innerHTML = '';
+                document.getElementById('objects-container').innerHTML = '';
+                document.getElementById('dev-layer').innerHTML = '';
+            } catch(err) {
+                alert("Erro ao carregar mapa: " + err);
+                pendingPortalData = null;
+            }
+        }
+
+        async function editPortalAt(index) {
+            if (!devMode || !isAdmin) return;
+            const portal = portalsMap[index];
+            if (!portal) return;
+
+            const target = prompt('ID do Mapa de Destino:', portal.targetMap || '');
+            if (target === null) return;
+            portal.targetMap = (target || '').trim();
+
+            const reqKey = prompt('Requer Item-Chave (ID). Vazio = nenhum:', portal.requiresKeyItem || '');
+            if (reqKey === null) return;
+            portal.requiresKeyItem = (reqKey || '').trim();
+
+            const existingReqItem = portal.requiresItemId || portal.requiresItem || '';
+            const reqItem = prompt('Requer Item (ID). Vazio = nenhum:', existingReqItem);
+            if (reqItem === null) return;
+            portal.requiresItemId = (reqItem || '').trim();
+
+            const reqQty = prompt('Requer Quantidade (padrão 1):', portal.requiresItemQty !== undefined ? String(portal.requiresItemQty) : '1');
+            if (reqQty === null) return;
+            portal.requiresItemQty = Math.max(1, parseInt(reqQty, 10) || 1);
+
+            const lockedText = prompt('Texto quando travado (opcional):', portal.lockedText || '');
+            if (lockedText === null) return;
+            portal.lockedText = lockedText || '';
+
+            portal.consumesItem = confirm('Consumir o item requerido ao atravessar?');
+
+            if (confirm('Definir local de destino VISUALMENTE (preview)?')) {
+                await startPortalPreview({ x: portal.x, y: portal.y, w: portal.w, h: portal.h }, portal.targetMap, index);
+                return;
+            }
+
+            const tx = prompt('Destino X (0-100). Vazio = não definir:', portal.targetX !== undefined ? String(portal.targetX) : '');
+            if (tx !== null) {
+                if (String(tx).trim() === '') delete portal.targetX;
+                else portal.targetX = Math.max(0, Math.min(100, parseFloat(tx) || 0));
+            }
+            const ty = prompt('Destino Y (0-100). Vazio = não definir:', portal.targetY !== undefined ? String(portal.targetY) : '');
+            if (ty !== null) {
+                if (String(ty).trim() === '') delete portal.targetY;
+                else portal.targetY = Math.max(0, Math.min(100, parseFloat(ty) || 0));
+            }
+
+            showToast('Portal atualizado!', { bg: '#2ecc71' });
+            renderMapObjects();
+        }
+
         function handleDevClick(e) {
             e.stopPropagation();
         }
@@ -1076,8 +3642,28 @@
             interactsMap.forEach((r, i) => document.getElementById('interacts-container').appendChild(createDiv('interact-box', r, interactsMap, i)));
             
             portalsMap.forEach((r, i) => {
-                const d = createDiv('portal-box', r, portalsMap, i);
-                if(isAdmin && devMode) d.classList.add('dev-portal');
+                const d = document.createElement('div');
+                d.className = 'portal-box';
+                d.style.left = r.x + '%';
+                d.style.top = r.y + '%';
+                d.style.width = r.w + '%';
+                d.style.height = r.h + '%';
+
+                if (devMode && isAdmin) {
+                    d.classList.add('dev-portal');
+                    d.onclick = (ev) => {
+                        ev.stopPropagation();
+                        if (currentTool === 'delete') {
+                            if (confirm('Apagar portal?')) { portalsMap.splice(i, 1); renderMapObjects(); }
+                            return;
+                        }
+                        if (currentTool === 'portal') {
+                            editPortalAt(i);
+                            return;
+                        }
+                    };
+                }
+
                 document.getElementById('portal-container').appendChild(d);
             });
 
@@ -1191,36 +3777,7 @@
                         const target = prompt("ID do Mapa de Destino (ex: house1):");
                         if(target) {
                             if(confirm("Definir o local de destino VISUALMENTE? (Clique OK para ver o mapa de destino e clicar no local)")) {
-                                // MODO PREVIEW
-                                pendingPortalData = { rect: newRect, mapId: target };
-                                showToast("Carregando mapa de destino...", {bg: '#3498db'});
-                                
-                                try {
-                                    const res = await fetch('/api/map/' + target);
-                                    const targetMapData = await res.json();
-                                    
-                                    // Aplica visual do mapa de destino temporariamente
-                                    applyMapVisuals(targetMapData);
-                                    
-                                    // Esconde players e npcs para limpar a visão
-                                    document.querySelectorAll('.player').forEach(p => p.style.display = 'none');
-                                    
-                                    // Ativa modo preview
-                                    gameAreaEl.classList.add('preview-mode');
-                                    document.getElementById('previewMsg').style.display = 'block';
-                                    
-                                    // Remove caixas do mapa atual
-                                    document.getElementById('collision-container').innerHTML = '';
-                                    document.getElementById('grass-container').innerHTML = '';
-                                    document.getElementById('portal-container').innerHTML = '';
-                                    document.getElementById('interacts-container').innerHTML = '';
-                                    document.getElementById('objects-container').innerHTML = '';
-                                    document.getElementById('dev-layer').innerHTML = '';
-                                    
-                                } catch(err) {
-                                    alert("Erro ao carregar mapa: " + err);
-                                    pendingPortalData = null;
-                                }
+                                await startPortalPreview(newRect, target, null);
                             } else {
                                 // MODO PADRÃO
                                 portalsMap.push({ ...newRect, targetMap: target });

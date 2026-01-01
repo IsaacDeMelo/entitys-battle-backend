@@ -56,6 +56,14 @@
         #imgPreview, #npcImgPreview { margin-top:10px; height:80px; border:1px dashed #444; border-radius: 6px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.2); color: #555; overflow: hidden; }
         #imgPreview img, #npcImgPreview img { height: 100%; object-fit: contain; }
         .code-area { font-family: 'Consolas', monospace; color: #2ecc71; background: #000; border: 1px solid #333; padding: 10px; font-size: 0.85rem; line-height: 1.4; }
+        .mini-btn { width: auto; padding: 8px 10px; border-radius: 8px; border: 1px solid #334155; background: rgba(255,255,255,0.06); color: #fff; font-weight: 700; }
+        .mini-btn:hover { background: rgba(255,255,255,0.10); }
+        .row-list { display:flex; flex-direction:column; gap:8px; }
+        .row-item { display:grid; grid-template-columns: 1fr 90px 46px; gap:10px; align-items:center; }
+        .row-item.shop { grid-template-columns: 1fr 110px 46px; }
+        .row-remove { background: var(--danger); border: none; color: #fff; border-radius: 8px; height: 40px; }
+        details.advanced { border: 1px solid #334155; border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.15); }
+        details.advanced summary { cursor: pointer; font-weight: 800; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -291,8 +299,25 @@
                     </div>
 
                     <h4 style="margin-top:20px;">🎒 EQUIPE POKEMON</h4>
-                    <label style="margin-bottom:5px;">Formato JSON: <code>[{"baseId":"bulbasaur", "level":5}]</code></label>
-                    <textarea name="teamJson" id="npcTeam" class="code-area" style="height:80px;" placeholder='[{"baseId":"bulbasaur", "level":5}, {"baseId":"charmander", "level":5}]'></textarea>
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                        <button type="button" class="mini-btn" onclick="npcTeamAddRow()">+ adicionar monstro</button>
+                        <button type="button" class="mini-btn" onclick="npcTeamClear()">limpar</button>
+                        <div style="font-size:0.85rem; color:#9aa7bd;">(gera o JSON automaticamente)</div>
+                    </div>
+
+                    <div id="npcTeamRows" class="row-list"></div>
+
+                    <details class="advanced" style="margin-top:10px;">
+                        <summary>Avançado (JSON)</summary>
+                        <textarea name="teamJson" id="npcTeam" class="code-area" style="height:100px;" placeholder='[{"baseId":"bulbasaur", "level":5}]'></textarea>
+                    </details>
+
+                    <select id="npcTeamPokemonOptionsTemplate" class="hidden">
+                        <option value="">-- escolha um monstro --</option>
+                        <% pokemons.forEach(p => { %>
+                            <option value="<%= p.id %>"><%= p.name %> (<%= p.id %>)</option>
+                        <% }) %>
+                    </select>
 
                     <h4 style="margin-top:20px;">🎁 ITEM DE RECOMPENSA (Opcional)</h4>
                     <div class="form-grid">
@@ -300,6 +325,203 @@
                         <div><label>ID do Item/Pokemon</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: pokeball, rareCandy" autocomplete="off"></div>
                         <div><label>Quantidade</label><input type="number" name="rewardQty" id="npcRewQty" value="1"></div>
                         <input type="hidden" name="rewardType" id="npcRewType" value="item">
+                    </div>
+
+                    <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                            <input type="checkbox" name="rewardKeyItem" id="npcRewardKeyItem" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Recompensa é item-chave?</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                            <input type="checkbox" name="rewardUnique" id="npcRewardUnique" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Recompensa única?</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                            <input type="checkbox" name="blocksMovement" id="npcBlocksMovement" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">NPC bloqueia caminho?</span>
+                        </label>
+                    </div>
+
+                    <h4 style="margin-top:20px;">🧩 INTERAÇÃO (Quest / Itens)</h4>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                        <input type="checkbox" name="interactEnabled" id="npcInteractEnabled" style="width:auto;"> <span style="font-weight:bold; color:var(--warning);">Habilitar interação (além/sem batalha)</span>
+                    </label>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Serviço do NPC (opcional)</label>
+                            <select name="interactServiceType" id="npcInteractServiceType">
+                                <option value="">Quest / Itens (padrão)</option>
+                                <option value="heal">Curar time</option>
+                                <option value="shop">Loja</option>
+                            </select>
+                            <div class="hint" style="margin-top:6px; color:#9aa7bd; font-size:0.85rem;">Para "Curar time" e "Loja", a interação NÃO é única por padrão.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Texto de cura (se serviço = Curar time)</label>
+                            <input type="text" name="interactHealDialogue" id="npcInteractHealDialogue" placeholder="Posso curar seus monstros!" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Itens da loja (JSON) (se serviço = Loja)</label>
+                            <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                                <button type="button" class="mini-btn" onclick="npcShopAddRow()">+ adicionar item</button>
+                                <button type="button" class="mini-btn" onclick="npcShopAddPreset('pokeball', 50)">+ CatchCube</button>
+                                <button type="button" class="mini-btn" onclick="npcShopAddPreset('rareCandy', 2000)">+ Rare Candy</button>
+                                <button type="button" class="mini-btn" onclick="npcShopClear()">limpar</button>
+                            </div>
+
+                            <div id="npcShopRows" class="row-list"></div>
+
+                            <details class="advanced" style="margin-top:10px;">
+                                <summary>Avançado (JSON)</summary>
+                                <textarea name="interactShopItemsJson" id="npcInteractShopItemsJson" placeholder='[{"itemId":"pokeball","price":50}]'></textarea>
+                            </details>
+
+                            <datalist id="itemIdSuggestions">
+                                <option value="pokeball"></option>
+                                <option value="rareCandy"></option>
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Requer Item (ID)</label>
+                            <input type="text" name="interactRequiresItemId" id="npcInteractReqId" placeholder="ex: key, key_forest" autocomplete="off">
+                        </div>
+                        <div>
+                            <label>Requer Quantidade</label>
+                            <input type="number" name="interactRequiresItemQty" id="npcInteractReqQty" value="1">
+                        </div>
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                            <input type="checkbox" name="interactConsumesRequiredItem" id="npcInteractConsume" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Consumir item requerido?</span>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Dá Item (ID)</label>
+                            <input type="text" name="interactGivesItemId" id="npcInteractGivesId" placeholder="ex: rareCandy, key_gate" autocomplete="off">
+                        </div>
+                        <div>
+                            <label>Dá Quantidade</label>
+                            <input type="number" name="interactGivesItemQty" id="npcInteractGivesQty" value="1">
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <label style="flex:1; display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                                <input type="checkbox" name="interactGivesKeyItem" id="npcInteractGivesKey" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">É item-chave?</span>
+                            </label>
+                            <label style="flex:1; display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                                <input type="checkbox" name="interactGivesUnique" id="npcInteractGivesUnique" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Único?</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Flag ID (opcional, p/ marcar concluído)</label>
+                            <input type="text" name="interactFlagId" id="npcInteractFlag" placeholder="ex: got_key_from_oldman" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Fala de Sucesso</label>
+                            <input type="text" name="interactSuccessDialogue" id="npcInteractSuccess" placeholder="Perfeito! Aqui está sua recompensa." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="half-width">
+                            <label>Fala se faltar item</label>
+                            <input type="text" name="interactNeedItemDialogue" id="npcInteractNeed" placeholder="Você precisa de algo..." autocomplete="off">
+                        </div>
+                        <div>
+                            <label>Fala se já concluído</label>
+                            <input type="text" name="interactAlreadyDoneDialogue" id="npcInteractDone" placeholder="Já fiz isso por você." autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Mover NPC dx (em %)</label>
+                            <input type="number" name="interactMoveDx" id="npcInteractDx" value="0" step="0.5">
+                        </div>
+                        <div>
+                            <label>Mover NPC dy (em %)</label>
+                            <input type="number" name="interactMoveDy" id="npcInteractDy" value="0" step="0.5">
+                        </div>
+                        <div>
+                            <label>Direção após mover</label>
+                            <select name="interactMoveDirection" id="npcInteractDir">
+                                <option value="">(manter)</option>
+                                <option value="down">Baixo</option>
+                                <option value="up">Cima</option>
+                                <option value="left">Esquerda</option>
+                                <option value="right">Direita</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top:20px;">🚶 MOVIMENTO (Patrulha)</h4>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                        <input type="checkbox" name="patrolEnabled" id="npcPatrolEnabled" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">NPC anda automaticamente?</span>
+                    </label>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Modo</label>
+                            <select name="patrolMode" id="npcPatrolMode">
+                                <option value="pingpong">Vai e volta (A ↔ B)</option>
+                                <option value="circle">Círculo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Velocidade (% do mapa / s)</label>
+                            <input type="number" name="patrolSpeed" id="npcPatrolSpeed" value="6" step="0.5">
+                        </div>
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                            <input type="checkbox" name="patrolCircleClockwise" id="npcPatrolClockwise" style="width:auto;" checked> <span style="font-weight:bold; color:var(--accent);">Círculo horário?</span>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>PingPong A.x</label>
+                            <input type="number" name="patrolPingAx" id="npcPatrolAx" value="50" step="0.5">
+                        </div>
+                        <div>
+                            <label>PingPong A.y</label>
+                            <input type="number" name="patrolPingAy" id="npcPatrolAy" value="50" step="0.5">
+                        </div>
+                        <div>
+                            <label>PingPong B.x</label>
+                            <input type="number" name="patrolPingBx" id="npcPatrolBx" value="56" step="0.5">
+                        </div>
+                        <div>
+                            <label>PingPong B.y</label>
+                            <input type="number" name="patrolPingBy" id="npcPatrolBy" value="50" step="0.5">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Círculo Centro.x</label>
+                            <input type="number" name="patrolCircleCx" id="npcPatrolCx" value="50" step="0.5">
+                        </div>
+                        <div>
+                            <label>Círculo Centro.y</label>
+                            <input type="number" name="patrolCircleCy" id="npcPatrolCy" value="50" step="0.5">
+                        </div>
+                        <div>
+                            <label>Raio (% do mapa)</label>
+                            <input type="number" name="patrolCircleRadius" id="npcPatrolRadius" value="6" step="0.5">
+                        </div>
+                        <div class="npc-hint" style="display:flex; align-items:center; color:#aaa; font-size:12px;">
+                            Dica: pingpong ignora círculo e vice-versa.
+                        </div>
                     </div>
 
                     <div class="btn-row">
@@ -366,6 +588,43 @@
             document.getElementById('npcForm').reset(); document.getElementById('npcId').value = ""; 
             document.getElementById('npcImgPreview').innerHTML = ""; document.getElementById('battleBgPreview').innerHTML = "Padrão";
             document.getElementById('npcTeam').value = '[{"baseId":"bulbasaur", "level":5}]'; 
+            document.getElementById('npcRewardKeyItem').checked = false;
+            document.getElementById('npcRewardUnique').checked = false;
+            document.getElementById('npcBlocksMovement').checked = false;
+
+            document.getElementById('npcInteractEnabled').checked = false;
+            document.getElementById('npcInteractServiceType').value = '';
+            document.getElementById('npcInteractHealDialogue').value = '';
+            document.getElementById('npcInteractShopItemsJson').value = '';
+            document.getElementById('npcInteractReqId').value = '';
+            document.getElementById('npcInteractReqQty').value = 1;
+            document.getElementById('npcInteractConsume').checked = false;
+            document.getElementById('npcInteractGivesId').value = '';
+            document.getElementById('npcInteractGivesQty').value = 1;
+            document.getElementById('npcInteractGivesKey').checked = false;
+            document.getElementById('npcInteractGivesUnique').checked = false;
+            document.getElementById('npcInteractFlag').value = '';
+            document.getElementById('npcInteractSuccess').value = '';
+            document.getElementById('npcInteractNeed').value = '';
+            document.getElementById('npcInteractDone').value = '';
+            document.getElementById('npcInteractDx').value = 0;
+            document.getElementById('npcInteractDy').value = 0;
+            document.getElementById('npcInteractDir').value = '';
+
+            document.getElementById('npcPatrolEnabled').checked = false;
+            document.getElementById('npcPatrolMode').value = 'pingpong';
+            document.getElementById('npcPatrolSpeed').value = 6;
+            document.getElementById('npcPatrolAx').value = 50;
+            document.getElementById('npcPatrolAy').value = 50;
+            document.getElementById('npcPatrolBx').value = 56;
+            document.getElementById('npcPatrolBy').value = 50;
+            document.getElementById('npcPatrolCx').value = 50;
+            document.getElementById('npcPatrolCy').value = 50;
+            document.getElementById('npcPatrolRadius').value = 6;
+            document.getElementById('npcPatrolClockwise').checked = true;
+
+            npcTeamLoadFromJson(document.getElementById('npcTeam').value);
+            npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
         }
         
         function loadNpc(n) {
@@ -377,10 +636,54 @@
             document.getElementById('npcDialogue').value = n.dialogue || ''; document.getElementById('npcWinDialogue').value = n.winDialogue || '';
             document.getElementById('npcCdDialogue').value = n.cooldownDialogue || ''; document.getElementById('npcCooldown').value = n.cooldownMinutes || 0;
             if(n.team) { const cleanTeam = n.team.map(t => ({ baseId: t.baseId, level: t.level })); document.getElementById('npcTeam').value = JSON.stringify(cleanTeam); }
+            npcTeamLoadFromJson(document.getElementById('npcTeam').value);
             if(!n.isCustomSkin) document.getElementById('npcSkinSelect').value = n.skin; 
             else document.getElementById('npcImgPreview').innerHTML = `<img src="${n.skin}" style="height:100%;">`;
             if(n.battleBackground && n.battleBackground.startsWith('data:')) { document.getElementById('battleBgPreview').innerHTML = `<img src="${n.battleBackground}" style="height:100%;">`; }
-            if(n.reward) { document.getElementById('npcRewVal').value = n.reward.value || ''; document.getElementById('npcRewQty').value = n.reward.qty || 1; }
+            if(n.reward) { 
+                document.getElementById('npcRewVal').value = n.reward.value || ''; 
+                document.getElementById('npcRewQty').value = n.reward.qty || 1;
+                document.getElementById('npcRewardKeyItem').checked = !!n.reward.keyItem;
+                document.getElementById('npcRewardUnique').checked = !!n.reward.unique;
+            }
+
+            document.getElementById('npcBlocksMovement').checked = !!n.blocksMovement;
+
+            if(n.interact) {
+                document.getElementById('npcInteractEnabled').checked = !!n.interact.enabled;
+                document.getElementById('npcInteractServiceType').value = n.interact.serviceType || '';
+                document.getElementById('npcInteractHealDialogue').value = n.interact.healDialogue || '';
+                document.getElementById('npcInteractShopItemsJson').value = n.interact.shopItems ? JSON.stringify(n.interact.shopItems) : '';
+                npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
+                document.getElementById('npcInteractReqId').value = n.interact.requiresItemId || '';
+                document.getElementById('npcInteractReqQty').value = n.interact.requiresItemQty || 1;
+                document.getElementById('npcInteractConsume').checked = !!n.interact.consumesRequiredItem;
+                document.getElementById('npcInteractGivesId').value = n.interact.givesItemId || '';
+                document.getElementById('npcInteractGivesQty').value = n.interact.givesItemQty || 1;
+                document.getElementById('npcInteractGivesKey').checked = !!n.interact.givesKeyItem;
+                document.getElementById('npcInteractGivesUnique').checked = !!n.interact.givesUnique;
+                document.getElementById('npcInteractFlag').value = n.interact.flagId || '';
+                document.getElementById('npcInteractSuccess').value = n.interact.successDialogue || '';
+                document.getElementById('npcInteractNeed').value = n.interact.needItemDialogue || '';
+                document.getElementById('npcInteractDone').value = n.interact.alreadyDoneDialogue || '';
+                document.getElementById('npcInteractDx').value = n.interact.moveDx || 0;
+                document.getElementById('npcInteractDy').value = n.interact.moveDy || 0;
+                document.getElementById('npcInteractDir').value = n.interact.moveDirection || '';
+            }
+
+            if(n.patrol) {
+                document.getElementById('npcPatrolEnabled').checked = !!n.patrol.enabled;
+                document.getElementById('npcPatrolMode').value = n.patrol.mode || 'pingpong';
+                document.getElementById('npcPatrolSpeed').value = n.patrol.speed || 6;
+                document.getElementById('npcPatrolAx').value = (n.patrol.pingPong && n.patrol.pingPong.ax !== undefined) ? n.patrol.pingPong.ax : 50;
+                document.getElementById('npcPatrolAy').value = (n.patrol.pingPong && n.patrol.pingPong.ay !== undefined) ? n.patrol.pingPong.ay : 50;
+                document.getElementById('npcPatrolBx').value = (n.patrol.pingPong && n.patrol.pingPong.bx !== undefined) ? n.patrol.pingPong.bx : 56;
+                document.getElementById('npcPatrolBy').value = (n.patrol.pingPong && n.patrol.pingPong.by !== undefined) ? n.patrol.pingPong.by : 50;
+                document.getElementById('npcPatrolCx').value = (n.patrol.circle && n.patrol.circle.cx !== undefined) ? n.patrol.circle.cx : 50;
+                document.getElementById('npcPatrolCy').value = (n.patrol.circle && n.patrol.circle.cy !== undefined) ? n.patrol.circle.cy : 50;
+                document.getElementById('npcPatrolRadius').value = (n.patrol.circle && n.patrol.circle.radius !== undefined) ? n.patrol.circle.radius : 6;
+                document.getElementById('npcPatrolClockwise').checked = !!(n.patrol.circle && n.patrol.circle.clockwise);
+            }
         }
         
         function deleteItem(formId) { 
@@ -392,6 +695,196 @@
                 document.getElementById(formId).submit(); 
             } 
         }
+
+        // ======== EDITOR VISUAL: TEAM ========
+        let npcTeamRowsState = [];
+
+        function npcTeamRender() {
+            const container = document.getElementById('npcTeamRows');
+            if (!container) return;
+            container.innerHTML = '';
+
+            npcTeamRowsState.forEach((row, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'row-item';
+
+                const sel = document.createElement('select');
+                sel.innerHTML = document.getElementById('npcTeamPokemonOptionsTemplate').innerHTML;
+                sel.value = row.baseId || '';
+                sel.onchange = () => { npcTeamRowsState[idx].baseId = sel.value; npcTeamSyncJson(); };
+
+                const lvl = document.createElement('input');
+                lvl.type = 'number';
+                lvl.min = '1';
+                lvl.step = '1';
+                lvl.value = String(row.level || 1);
+                lvl.oninput = () => { npcTeamRowsState[idx].level = parseInt(lvl.value, 10) || 1; npcTeamSyncJson(); };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'row-remove';
+                rm.innerText = 'X';
+                rm.onclick = () => { npcTeamRowsState.splice(idx, 1); npcTeamRender(); npcTeamSyncJson(); };
+
+                wrap.appendChild(sel);
+                wrap.appendChild(lvl);
+                wrap.appendChild(rm);
+                container.appendChild(wrap);
+            });
+
+            if (npcTeamRowsState.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#9aa7bd';
+                empty.style.fontSize = '0.9rem';
+                empty.innerText = 'Sem monstros no time.';
+                container.appendChild(empty);
+            }
+        }
+
+        function npcTeamSyncJson() {
+            const out = (npcTeamRowsState || [])
+                .filter(x => x && x.baseId)
+                .map(x => ({ baseId: String(x.baseId), level: Math.max(1, parseInt(x.level, 10) || 1) }));
+            document.getElementById('npcTeam').value = JSON.stringify(out);
+        }
+
+        function npcTeamLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                if (Array.isArray(arr)) {
+                    npcTeamRowsState = arr
+                        .filter(x => x && x.baseId)
+                        .map(x => ({ baseId: String(x.baseId), level: Math.max(1, parseInt(x.level, 10) || 1) }));
+                } else {
+                    npcTeamRowsState = [];
+                }
+            } catch (_) {
+                npcTeamRowsState = [];
+            }
+            npcTeamRender();
+            npcTeamSyncJson();
+        }
+
+        function npcTeamAddRow() {
+            npcTeamRowsState.push({ baseId: '', level: 5 });
+            npcTeamRender();
+            npcTeamSyncJson();
+        }
+
+        function npcTeamClear() {
+            npcTeamRowsState = [];
+            npcTeamRender();
+            npcTeamSyncJson();
+        }
+
+        // Mantém sincronizado caso o usuário edite o JSON manualmente.
+        document.addEventListener('input', (e) => {
+            if (e && e.target && e.target.id === 'npcTeam') {
+                npcTeamLoadFromJson(e.target.value);
+            }
+        });
+
+        // ======== EDITOR VISUAL: SHOP ========
+        let npcShopRowsState = [];
+
+        function npcShopRender() {
+            const container = document.getElementById('npcShopRows');
+            if (!container) return;
+            container.innerHTML = '';
+
+            npcShopRowsState.forEach((row, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'row-item shop';
+
+                const itemId = document.createElement('input');
+                itemId.placeholder = 'itemId (ex: pokeball)';
+                itemId.setAttribute('list', 'itemIdSuggestions');
+                itemId.value = row.itemId || '';
+                itemId.oninput = () => { npcShopRowsState[idx].itemId = itemId.value; npcShopSyncJson(); };
+
+                const price = document.createElement('input');
+                price.type = 'number';
+                price.min = '0';
+                price.step = '1';
+                price.placeholder = 'preço';
+                price.value = String(row.price || 0);
+                price.oninput = () => { npcShopRowsState[idx].price = parseInt(price.value, 10) || 0; npcShopSyncJson(); };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'row-remove';
+                rm.innerText = 'X';
+                rm.onclick = () => { npcShopRowsState.splice(idx, 1); npcShopRender(); npcShopSyncJson(); };
+
+                wrap.appendChild(itemId);
+                wrap.appendChild(price);
+                wrap.appendChild(rm);
+                container.appendChild(wrap);
+            });
+
+            if (npcShopRowsState.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#9aa7bd';
+                empty.style.fontSize = '0.9rem';
+                empty.innerText = 'Sem itens configurados.';
+                container.appendChild(empty);
+            }
+        }
+
+        function npcShopSyncJson() {
+            const out = (npcShopRowsState || [])
+                .filter(x => x && String(x.itemId || '').trim())
+                .map(x => ({ itemId: String(x.itemId || '').trim(), price: Math.max(0, parseInt(x.price, 10) || 0) }))
+                .filter(x => x.itemId && x.price > 0);
+            document.getElementById('npcInteractShopItemsJson').value = JSON.stringify(out);
+        }
+
+        function npcShopLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                if (Array.isArray(arr)) {
+                    npcShopRowsState = arr
+                        .filter(x => x && (x.itemId || x.id))
+                        .map(x => ({ itemId: String(x.itemId || x.id).trim(), price: Math.max(0, parseInt(x.price, 10) || 0) }));
+                } else {
+                    npcShopRowsState = [];
+                }
+            } catch (_) {
+                npcShopRowsState = [];
+            }
+            npcShopRender();
+            npcShopSyncJson();
+        }
+
+        function npcShopAddRow() {
+            npcShopRowsState.push({ itemId: '', price: 50 });
+            npcShopRender();
+            npcShopSyncJson();
+        }
+
+        function npcShopAddPreset(itemId, price) {
+            npcShopRowsState.push({ itemId: String(itemId || '').trim(), price: Math.max(0, parseInt(price, 10) || 0) });
+            npcShopRender();
+            npcShopSyncJson();
+        }
+
+        function npcShopClear() {
+            npcShopRowsState = [];
+            npcShopRender();
+            npcShopSyncJson();
+        }
+
+        document.addEventListener('input', (e) => {
+            if (e && e.target && e.target.id === 'npcInteractShopItemsJson') {
+                npcShopLoadFromJson(e.target.value);
+            }
+        });
+
+        // Inicializa editores (novo NPC)
+        setTimeout(() => {
+            npcTeamLoadFromJson(document.getElementById('npcTeam')?.value || '[]');
+            npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson')?.value || '[]');
+        }, 0);
     </script>
 </body>
 </html>

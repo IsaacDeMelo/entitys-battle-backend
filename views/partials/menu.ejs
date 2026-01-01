@@ -197,6 +197,11 @@
         /* BAG */
         .bag-header-money { text-align:center; padding:15px; font-size:1.2rem; color:#fbbf24; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:15px; background: rgba(0,0,0,0.2); border-radius: 12px; }
         .bag-item-row { display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border-glass); }
+        .bag-tabs { display:flex; gap:10px; margin: 10px 0 15px 0; }
+        .bag-tab { flex:1; padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); background: rgba(255,255,255,0.03); color:#fff; font-weight: 800; cursor:pointer; text-transform: uppercase; }
+        .bag-tab.active { background: rgba(251, 191, 36, 0.18); border-color: rgba(251, 191, 36, 0.35); color:#fbbf24; }
+        .bag-item-icon { width: 42px; height: 42px; margin-right: 15px; image-rendering: pixelated; object-fit: contain; }
+        .bag-empty { padding: 20px; text-align:center; color:#aaa; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 12px; }
         
         /* SKILL EDITOR */
         .skill-item { background:#1f2937; padding:12px; border-radius:8px; border:1px solid transparent; cursor:pointer; transition: 0.2s; }
@@ -309,8 +314,11 @@
         </div>
     </div>
 
+    <datalist id="itemCatalogDatalist"></datalist>
+
     <script>
         const USER_ID = '<%= user._id %>';
+        const IS_ADMIN = <%= user.isAdmin ? 'true' : 'false' %>;
         let isSelectingMode = false;
         let currentMonId = null;
         let GLOBAL_MOVES_LIB = {};
@@ -345,6 +353,55 @@
             if (id === 'modalPokemon') isSelectingMode = false; 
             if (id === 'modalPC') closePCAction();
         }
+
+        // Catálogo de itens (DB)
+        window.ITEM_CATALOG = [];
+        window.ITEM_CATALOG_MAP = new Map();
+
+        async function loadItemCatalog(force = false) {
+            try {
+                if (!force && Array.isArray(window.ITEM_CATALOG) && window.ITEM_CATALOG.length) return window.ITEM_CATALOG;
+                const rc = await fetch('/api/items/catalog');
+                const dc = await rc.json().catch(() => ({}));
+                const list = (dc && dc.success && Array.isArray(dc.items)) ? dc.items : [];
+                window.ITEM_CATALOG = list;
+                window.ITEM_CATALOG_MAP = new Map(list.map(it => [String(it.id), it]));
+
+                // Preenche datalist global (usado no editor de NPCs)
+                try {
+                    const dl = document.getElementById('itemCatalogDatalist');
+                    if (dl) {
+                        dl.innerHTML = '';
+                        list.forEach(it => {
+                            const opt = document.createElement('option');
+                            opt.value = String(it.id || '');
+                            opt.label = String(it.name || it.id || '');
+                            dl.appendChild(opt);
+                        });
+                    }
+                } catch (_) {}
+
+                return list;
+            } catch (_) {
+                window.ITEM_CATALOG = [];
+                window.ITEM_CATALOG_MAP = new Map();
+                return [];
+            }
+        }
+
+        function getItemMeta(id) {
+            const key = String(id || '');
+            return (window.ITEM_CATALOG_MAP && window.ITEM_CATALOG_MAP.get(key)) || null;
+        }
+
+        function getItemIconUrl(id) {
+            const meta = getItemMeta(id);
+            if (meta && meta.hasIcon) return `/api/items/icon/${encodeURIComponent(String(id))}.png`;
+            return '';
+        }
+
+        // Carrega catálogo uma vez ao abrir a página (melhora dev editor)
+        setTimeout(() => { loadItemCatalog(false); }, 0);
 
         /* --- EQUIPE / MONSTROS --- */
         async function openPokemon() { 
@@ -515,17 +572,239 @@
             try {
                 const r = await fetch(`/api/me?userId=${USER_ID}`); 
                 const d = await r.json(); 
+
+                await loadItemCatalog(true);
                 
                 // HEADER COM DINHEIRO
                 let html = `<div class="bag-header-money">💰 Dinheiro: <b>$${d.money || 0}</b></div>`;
-                
-                const itemRow = (icon, nome, qtd, action) => `<div class="bag-item-row"><div style="font-size:1.8rem; margin-right:15px;">${icon}</div><div style="flex:1;"><div style="font-weight:700; font-size:1.1rem; color:#fff;">${nome}</div><div style="color:#aaa; font-size:0.8rem;">Qtd: ${qtd}</div></div>${action?action:''}</div>`;
-                
-                html += itemRow('📦', 'CatchCubes', d.pokeballs||0);
-                const btn = `<button onclick="startRareCandySelection()" style="background:var(--accent-primary); border:none; padding:8px 16px; border-radius:8px; color:white; font-weight:bold;">USAR</button>`;
-                html += itemRow('🍬', 'Rare Candy', d.rareCandy||0, (d.rareCandy>0 ? btn : ''));
-                
+
+                html += `
+                    <div class="bag-tabs">
+                        <button id="bagTabItems" class="bag-tab active" type="button">ITENS</button>
+                        <button id="bagTabKeys" class="bag-tab" type="button">KEY ITENS</button>
+                    </div>
+                    <div id="bagTabBody"></div>
+                `;
+
                 document.getElementById('bagItemsContent').innerHTML = html;
+
+                const tabItems = document.getElementById('bagTabItems');
+                const tabKeys = document.getElementById('bagTabKeys');
+                const body = document.getElementById('bagTabBody');
+
+                const itemRow = (meta, nome, qtd, actionHtml) => {
+                    const iconUrl = meta && meta.id ? getItemIconUrl(meta.id) : '';
+                    const iconHtml = iconUrl
+                        ? `<img class="bag-item-icon" src="${iconUrl}" alt="${nome}">`
+                        : `<div style="font-size:1.8rem; margin-right:15px;">📦</div>`;
+                    const qtyHtml = (qtd !== null && qtd !== undefined)
+                        ? `<div style="color:#aaa; font-size:0.8rem;">Qtd: ${qtd}</div>`
+                        : `<div style="color:#aaa; font-size:0.8rem;">Item-chave</div>`;
+                    return `
+                        <div class="bag-item-row">
+                            ${iconHtml}
+                            <div style="flex:1;">
+                                <div style="font-weight:700; font-size:1.1rem; color:#fff;">${nome}</div>
+                                ${qtyHtml}
+                            </div>
+                            ${actionHtml || ''}
+                        </div>
+                    `;
+                };
+
+                function getMeta(id) {
+                    return getItemMeta(id);
+                }
+
+                function renderItemsTab() {
+                    if (!body) return;
+                    const parts = [];
+
+                    // Itens "legados" (pokeballs/rareCandy)
+                    const metaBall = getMeta('pokeball');
+                    parts.push(itemRow(metaBall, (metaBall && metaBall.name) ? metaBall.name : 'CatchCube', d.pokeballs || 0));
+
+                    const metaCandy = getMeta('rareCandy');
+                    const btn = `<button onclick="startRareCandySelection()" style="background:var(--accent-primary); border:none; padding:8px 16px; border-radius:8px; color:white; font-weight:bold;">USAR</button>`;
+                    parts.push(itemRow(metaCandy, (metaCandy && metaCandy.name) ? metaCandy.name : 'Rare Candy', d.rareCandy || 0, ((d.rareCandy || 0) > 0 ? btn : '')));
+
+                    // Inventário genérico
+                    const inv = (d && d.inventory && typeof d.inventory === 'object') ? d.inventory : {};
+                    const keys = Object.keys(inv);
+                    keys.sort((a, b) => a.localeCompare(b));
+                    keys.forEach(id => {
+                        const qty = parseInt(inv[id], 10);
+                        if (!Number.isFinite(qty) || qty <= 0) return;
+                        const meta = getMeta(id);
+                        const name = (meta && meta.name) ? meta.name : id;
+                        parts.push(itemRow(meta, name, qty));
+                    });
+
+                    body.innerHTML = parts.length ? parts.join('') : `<div class="bag-empty">Sem itens.</div>`;
+                }
+
+                function renderKeysTab() {
+                    if (!body) return;
+                    const keys = Array.isArray(d && d.keyItems) ? d.keyItems.slice() : [];
+                    keys.sort((a, b) => String(a).localeCompare(String(b)));
+                    if (!keys.length) {
+                        body.innerHTML = `<div class="bag-empty">Sem key itens.</div>`;
+                        return;
+                    }
+                    const parts = keys.map(id => {
+                        const meta = getMeta(id);
+                        const name = (meta && meta.name) ? meta.name : String(id);
+                        return itemRow(meta, name, null);
+                    });
+                    body.innerHTML = parts.join('');
+                }
+
+                function renderAdminPanel() {
+                    if (!IS_ADMIN) return '';
+                    return `
+                        <div style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+                            <div style="color:#fbbf24; font-weight:900; margin-bottom:8px;">DEV MODE — ITENS</div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 100px; gap:10px; margin-bottom:10px;">
+                                <input id="devItemId" list="itemCatalogDatalist" placeholder="itemId (ex: pokeball, key_porta1)" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
+                                <input id="devItemQty" type="number" min="1" step="1" value="1" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
+                            </div>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button id="devGrantBtn" class="btn-pc-action" style="background: var(--success); color:#fff; width:auto; padding:12px 14px;">+ DAR</button>
+                                <button id="devRevokeBtn" class="btn-pc-action" style="background: #ef4444; color:#fff; width:auto; padding:12px 14px;">- TIRAR</button>
+                            </div>
+
+                            <div style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+                                <div style="color:#fff; font-weight:900; margin-bottom:8px;">CATÁLOGO (DB)</div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                                    <input id="catItemId" list="itemCatalogDatalist" placeholder="id (ex: key_porta1)" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
+                                    <input id="catItemName" placeholder="nome" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                                    <select id="catItemType" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;">
+                                        <option value="consumable">consumível</option>
+                                        <option value="key">key item</option>
+                                    </select>
+                                    <input id="catItemIcon" type="file" accept="image/png" style="padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
+                                </div>
+                                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                    <button id="catSaveBtn" class="btn-pc-action" style="background: var(--accent-primary); color:#fff; width:auto; padding:12px 14px;">SALVAR/CRIAR</button>
+                                    <button id="catDeleteBtn" class="btn-pc-action" style="background: #334155; color:#fff; width:auto; padding:12px 14px;">DELETAR</button>
+                                </div>
+                                <div style="margin-top:8px; color:#aaa; font-size:0.8rem;">Ícone precisa ser PNG 32x32.</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                function setActive(which) {
+                    if (!tabItems || !tabKeys) return;
+                    tabItems.classList.toggle('active', which === 'items');
+                    tabKeys.classList.toggle('active', which === 'keys');
+                    if (which === 'keys') renderKeysTab(); else renderItemsTab();
+                }
+
+                if (tabItems) tabItems.onclick = () => setActive('items');
+                if (tabKeys) tabKeys.onclick = () => setActive('keys');
+                setActive('items');
+
+                // Admin tools
+                if (IS_ADMIN && body) {
+                    const adminHtml = renderAdminPanel();
+                    if (adminHtml) {
+                        // injeta abaixo das abas
+                        const bagRoot = document.getElementById('bagItemsContent');
+                        if (bagRoot && !bagRoot.querySelector('#devGrantBtn')) {
+                            bagRoot.insertAdjacentHTML('beforeend', adminHtml);
+
+                            const grantBtn = document.getElementById('devGrantBtn');
+                            const revokeBtn = document.getElementById('devRevokeBtn');
+                            const devId = document.getElementById('devItemId');
+                            const devQty = document.getElementById('devItemQty');
+
+                            async function doGrant(isGrant) {
+                                const itemId = devId ? String(devId.value || '').trim() : '';
+                                const qty = devQty ? Math.max(1, parseInt(devQty.value, 10) || 1) : 1;
+                                if (!itemId) return alert('Informe o itemId.');
+                                const url = isGrant ? '/api/dev/inventory/grant' : '/api/dev/inventory/revoke';
+                                const resp = await fetch(url, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: USER_ID, itemId, qty })
+                                });
+                                const data = await resp.json().catch(() => ({}));
+                                if (!data || !data.success) return alert(data.error || 'Falha.');
+                                // reabre mochila pra atualizar visual
+                                openBag();
+                            }
+
+                            if (grantBtn) grantBtn.onclick = () => doGrant(true);
+                            if (revokeBtn) revokeBtn.onclick = () => doGrant(false);
+
+                            const catSaveBtn = document.getElementById('catSaveBtn');
+                            const catDeleteBtn = document.getElementById('catDeleteBtn');
+                            const catId = document.getElementById('catItemId');
+                            const catName = document.getElementById('catItemName');
+                            const catType = document.getElementById('catItemType');
+                            const catIcon = document.getElementById('catItemIcon');
+
+                            async function saveCatalog() {
+                                const id = catId ? String(catId.value || '').trim() : '';
+                                const name = catName ? String(catName.value || '').trim() : '';
+                                const type = catType ? String(catType.value || 'consumable') : 'consumable';
+                                if (!id) return alert('Informe o id do item.');
+
+                                const r1 = await fetch('/api/items/upsert', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: USER_ID, item: { id, name, type } })
+                                });
+                                const d1 = await r1.json().catch(() => ({}));
+                                if (!d1 || !d1.success) return alert(d1.error || 'Falha ao salvar item.');
+
+                                // ícone (opcional)
+                                if (catIcon && catIcon.files && catIcon.files[0]) {
+                                    const f = catIcon.files[0];
+                                    if (f.type !== 'image/png') return alert('Ícone precisa ser PNG.');
+                                    const reader = new FileReader();
+                                    const b64 = await new Promise((resolve, reject) => {
+                                        reader.onload = () => resolve(String(reader.result || ''));
+                                        reader.onerror = reject;
+                                        reader.readAsDataURL(f);
+                                    });
+                                    const stripped = b64.replace(/^data:image\/png;base64,/, '');
+                                    const r2 = await fetch('/api/items/icon/set', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ userId: USER_ID, itemId: id, pngBase64: stripped })
+                                    });
+                                    const d2 = await r2.json().catch(() => ({}));
+                                    if (!d2 || !d2.success) return alert(d2.error || 'Falha ao salvar ícone.');
+                                }
+
+                                await loadItemCatalog(true);
+                                openBag();
+                            }
+
+                            async function deleteCatalog() {
+                                const id = catId ? String(catId.value || '').trim() : '';
+                                if (!id) return alert('Informe o id do item.');
+                                const r1 = await fetch('/api/items/delete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: USER_ID, itemId: id })
+                                });
+                                const d1 = await r1.json().catch(() => ({}));
+                                if (!d1 || !d1.success) return alert(d1.error || 'Falha ao deletar.');
+                                await loadItemCatalog(true);
+                                openBag();
+                            }
+
+                            if (catSaveBtn) catSaveBtn.onclick = saveCatalog;
+                            if (catDeleteBtn) catDeleteBtn.onclick = deleteCatalog;
+                        }
+                    }
+                }
             } catch(e) {
                 document.getElementById('bagItemsContent').innerHTML = "Erro ao carregar mochila.";
             }

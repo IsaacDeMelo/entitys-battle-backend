@@ -69,6 +69,9 @@
         
         window.isPlayerMoving = false;
         window.isInteracting = false;
+
+        // Esta página já renderiza NPCs com movimento suave.
+        window.DISABLE_GLOBAL_NPC_RENDER = true;
     </script>
 
     <script src="/scripts/common.js"></script>
@@ -77,6 +80,8 @@
         const gameArea = document.getElementById('gameArea');
         const allMonsters = <%- JSON.stringify(typeof entities !== 'undefined' ? entities : []) %>;
         let myId = null; const MOVEMENT_SPEED = 55;
+        const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
+        let currentNpcsCache = [];
         
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
         
@@ -164,6 +169,110 @@
         
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
+
+        function getSafeTarget(currX, currY, targetX, targetY) {
+            const steps = 25;
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const px = currX + (targetX - currX) * t;
+                const py = currY + (targetY - currY) * t;
+                const hitNpc = (currentNpcsCache || []).some(n => {
+                    if (!n || !n.blocksMovement) return false;
+                    const nx = typeof n.x === 'number' ? n.x : parseFloat(n.x) || 0;
+                    const ny = typeof n.y === 'number' ? n.y : parseFloat(n.y) || 0;
+                    return Math.abs(px - nx) <= 2.2 && Math.abs(py - ny) <= 2.2;
+                });
+                if (hitNpc) {
+                    const tPrev = (i - 1) / steps;
+                    return { x: currX + (targetX - currX) * tPrev, y: currY + (targetY - currY) * tPrev };
+                }
+            }
+            return { x: targetX, y: targetY };
+        }
+
+        socket.on('npcs_list', (npcs) => {
+            const list = Array.isArray(npcs) ? npcs : [];
+            currentNpcsCache = list;
+
+            const seen = new Set();
+            list.forEach(npc => {
+                if (!npc || !npc._id) return;
+                const npcId = String(npc._id);
+                seen.add(npcId);
+
+                let div = document.getElementById(`npc-${npcId}`);
+                const isNew = !div;
+                if (!div) {
+                    div = document.createElement('div');
+                    div.className = 'player npc-entity';
+                    div.id = `npc-${npcId}`;
+                    gameArea.appendChild(div);
+
+                    div.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (window.isPlayerMoving || window.isInteracting) return;
+                        const id = (div.id || '').replace('npc-', '');
+                        const found = (currentNpcsCache || []).find(n => n && String(n._id) === String(id));
+                        if (found && typeof moveToAndTalkToNPC === 'function') moveToAndTalkToNPC(found);
+                    });
+                }
+
+                const skinUrl = (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:')))
+                    ? npc.skin
+                    : `/uploads/${npc.skin || 'char1'}.png`;
+                if (div.dataset.skinUrl !== skinUrl) {
+                    div.style.backgroundImage = `url('${skinUrl}')`;
+                    div.dataset.skinUrl = skinUrl;
+                }
+
+                const displayName = String(npc.name || 'NPC').replace(/\(kid\)/i, '').trim();
+                let label = div.querySelector('.player-name');
+                if (!label) {
+                    label = document.createElement('div');
+                    label.className = 'player-name';
+                    div.appendChild(label);
+                }
+                if (label.innerText !== displayName) label.innerText = displayName;
+
+                const targetX = (typeof npc.x === 'number') ? npc.x : parseFloat(npc.x) || 50;
+                const targetY = (typeof npc.y === 'number') ? npc.y : parseFloat(npc.y) || 50;
+                const currentLeft = parseFloat(div.style.left);
+                const currentTop = parseFloat(div.style.top);
+
+                if (isNew || !Number.isFinite(currentLeft) || !Number.isFinite(currentTop)) {
+                    div.style.transition = 'none';
+                    div.style.left = targetX + '%';
+                    div.style.top = targetY + '%';
+                } else {
+                    const distance = Math.hypot(targetX - currentLeft, targetY - currentTop);
+                    if (distance > 25) {
+                        div.style.transition = 'none';
+                        div.style.left = targetX + '%';
+                        div.style.top = targetY + '%';
+                        div.classList.remove('walking');
+                    } else {
+                        const duration = distance > 0 ? Math.max((distance / MOVEMENT_SPEED), NPC_SERVER_TICK_S) : 0;
+                        div.style.transition = `top ${duration}s linear, left ${duration}s linear`;
+                        void div.offsetWidth;
+                        div.style.left = targetX + '%';
+                        div.style.top = targetY + '%';
+                        if (duration > 0.01) {
+                            div.classList.add('walking');
+                            if (div.walkTimeout) clearTimeout(div.walkTimeout);
+                            div.walkTimeout = setTimeout(() => div.classList.remove('walking'), (duration * 1000) + 50);
+                        }
+                    }
+                }
+
+                div.style.zIndex = Math.floor(targetY);
+                div.setAttribute('data-dir', npc.direction || 'down');
+            });
+
+            document.querySelectorAll('.npc-entity').forEach(el => {
+                const id = (el.id || '').replace('npc-', '');
+                if (!seen.has(id)) el.remove();
+            });
+        });
         
         socket.on('encounter_found', () => {
             window.isPlayerMoving = true; showToast("🌿 Um Monstro selvagem apareceu!");
@@ -197,11 +306,15 @@
         gameArea.addEventListener('click', (e) => {
             if (window.isPlayerMoving || window.isInteracting) return;
             const rect = gameArea.getBoundingClientRect(); const targetX = ((e.clientX - rect.left) / rect.width) * 100; const targetY = ((e.clientY - rect.top) / rect.height) * 100;
-            window.isPlayerMoving = true; socket.emit('move_player', { x: targetX, y: targetY });
+            const myEl = document.getElementById(`p-${myId}`);
+            const currX = myEl ? (parseFloat(myEl.style.left) || 50) : targetX;
+            const currY = myEl ? (parseFloat(myEl.style.top) || 50) : targetY;
+            const safe = getSafeTarget(currX, currY, targetX, targetY);
+            window.isPlayerMoving = true; socket.emit('move_player', { x: safe.x, y: safe.y });
             
             const elements = document.elementsFromPoint(e.clientX, e.clientY);
             const grassEl = elements.find(el => el.classList && el.classList.contains('grass-patch'));
-            if (grassEl) socket.emit('check_encounter', { grassId: grassEl.id, x: targetX, y: targetY });
+            if (grassEl) socket.emit('check_encounter', { grassId: grassEl.id, x: safe.x, y: safe.y });
         });
 
         window.addEventListener('beforeunload', () => { showLoading(); });

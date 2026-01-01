@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "id": "pokeball",
+      "name": "CatchCube",
+      "type": "consumable",
+      "icon": "/items/catchcube.svg"
+    },
+    {
+      "id": "rareCandy",
+      "name": "Rare Candy",
+      "type": "consumable",
+      "icon": "/items/rarecandy.svg"
+    },
+    {
+      "id": "key_example",
+      "name": "Chave (exemplo)",
+      "type": "key",
+      "icon": "/items/key.svg"
+    }
+  ]
+}
