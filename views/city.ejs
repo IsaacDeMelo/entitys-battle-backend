@@ -1140,7 +1140,25 @@
         const gameArea = document.getElementById('gameArea');
         window.myId = null; 
         const MOVEMENT_SPEED = 55; 
+        // Velocidade do player em pixels/s (para não ficar mais rápido na horizontal em telas largas)
+        const PLAYER_MOVE_PX_PER_S = 320;
+        const MIN_PLAYER_MOVE_S = 0.08; // garante animação mesmo em passos pequenos
         const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
+
+        function calcMoveDurationS(fromX, fromY, toX, toY) {
+            try {
+                if (!gameArea) return 0;
+                const rect = gameArea.getBoundingClientRect();
+                const dx = (toX - fromX) * (rect.width / 100);
+                const dy = (toY - fromY) * (rect.height / 100);
+                const distPx = Math.hypot(dx, dy);
+                if (!(distPx > 0)) return 0;
+                const dur = distPx / PLAYER_MOVE_PX_PER_S;
+                return Math.max(MIN_PLAYER_MOVE_S, dur);
+            } catch (_) {
+                return 0;
+            }
+        }
 
         // ===== Helpers p/ editor visual (Team/Shop) =====
         function resolveImg(src) {
@@ -1490,17 +1508,29 @@
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
+                // Se a animação foi iniciada no clique antes do servidor responder, limpa o timeout local
+                if (data.id === window.myId && el.__preWalkTimeout) {
+                    clearTimeout(el.__preWalkTimeout);
+                    el.__preWalkTimeout = null;
+                }
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
-                const distance = Math.sqrt(Math.pow(data.x - currentLeft, 2) + Math.pow(data.y - currentTop, 2)); 
-                let duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
+                let duration = calcMoveDurationS(currentLeft, currentTop, data.x, data.y);
                 // Durante o D-pad, evita micro-durações que deixam o movimento "travado".
                 if (data.id === window.myId && window.__virtualPadHolding) {
                     const minDur = typeof window.__virtualPadTickS === 'number' ? window.__virtualPadTickS : 0;
                     if (minDur > 0) duration = Math.max(duration, minDur);
                 }
-                el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
+                let easing = 'linear';
+                // Suaviza o início apenas quando o movimento foi disparado por clique/toque (1 vez)
+                if (data.id === window.myId && window.__useEaseForNextMove) {
+                    // Curva com início mais lento (evita "arrancada")
+                    easing = 'cubic-bezier(0.30, 0.00, 0.60, 1.00)';
+                    window.__useEaseForNextMove = false;
+                }
+                el.style.transition = `top ${duration}s ${easing}, left ${duration}s ${easing}`; 
                 void el.offsetWidth; el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
                 if (duration > 0) { 
+                    // Começa a animação imediatamente (mesmo em passos pequenos)
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
                     el.walkTimeout = setTimeout(() => { 
@@ -3123,17 +3153,70 @@
             const hitObj = interactsMap.find(obj => targetX >= obj.x && targetX <= (obj.x + obj.w) && targetY >= obj.y && targetY <= (obj.y + obj.h));
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
             const currX = parseFloat(myPlayer.style.left); const currY = parseFloat(myPlayer.style.top);
-            const safeDest = getSafeTarget(currX, currY, targetX, targetY);
-            const distance = Math.sqrt(Math.pow(safeDest.x - currX, 2) + Math.pow(safeDest.y - currY, 2));
-            if (distance < 0.1) return;
+            // Para clique no chão, limita o tamanho do passo (um clique não pode atravessar o mapa)
+            let desiredX = targetX;
+            let desiredY = targetY;
+            if (!hitObj) {
+                const dxPct = desiredX - currX;
+                const dyPct = desiredY - currY;
+                try {
+                    const rectPx = gameArea.getBoundingClientRect();
+                    const dxPx = dxPct * (rectPx.width / 100);
+                    const dyPx = dyPct * (rectPx.height / 100);
+                    const distPx = Math.hypot(dxPx, dyPx);
+                    const MAX_CLICK_MOVE_PX = 140;
+                    if (distPx > MAX_CLICK_MOVE_PX && distPx > 0) {
+                        const r = MAX_CLICK_MOVE_PX / distPx;
+                        desiredX = currX + dxPct * r;
+                        desiredY = currY + dyPct * r;
+                    }
+                } catch (_) {}
+            }
 
-            window.isMoving = true; setTimeout(() => window.isMoving = false, 2500); 
+            let safeDest = getSafeTarget(currX, currY, desiredX, desiredY);
+            // Threshold em PIXELS (evita "cliques curtos" virarem movimento 0 e não animarem)
+            let distPx = 0;
+            try {
+                const rectPx = gameArea.getBoundingClientRect();
+                const dxPx = (safeDest.x - currX) * (rectPx.width / 100);
+                const dyPx = (safeDest.y - currY) * (rectPx.height / 100);
+                distPx = Math.hypot(dxPx, dyPx);
+            } catch (_) {
+                distPx = 0;
+            }
+            if (!(distPx > 2)) return;
+
+            // Direção + animação já no primeiro toque
+            try {
+                const dx = safeDest.x - currX;
+                const dy = safeDest.y - currY;
+                let dir = 'down';
+                if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left';
+                else dir = dy > 0 ? 'down' : 'up';
+                myPlayer.setAttribute('data-dir', dir);
+                myPlayer.classList.add('walking');
+                // Se o servidor não responder (ou o movimento for bloqueado), evita ficar "estátua" com animação presa
+                if (myPlayer.__preWalkTimeout) clearTimeout(myPlayer.__preWalkTimeout);
+                myPlayer.__preWalkTimeout = setTimeout(() => {
+                    try {
+                        if (!window.__virtualPadHolding) myPlayer.classList.remove('walking');
+                    } catch (_) {}
+                }, 220);
+            } catch (_) {}
+
+            const travelS = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
+            const travelTime = Math.max(120, travelS * 1000);
+
+            window.isMoving = true;
+            setTimeout(() => { window.isMoving = false; }, Math.min(6000, travelTime + 200));
+            // Marca que o próximo movimento recebido do servidor deve ter easing (só para clique)
+            window.__useEaseForNextMove = true;
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
-            const dist = Math.hypot(safeDest.x - currX, safeDest.y - currY); const travelTime = (dist / MOVEMENT_SPEED) * 1000;
 
             if (hitObj) {
                 setTimeout(() => {
                     window.isMoving = false;
+                    try { myPlayer.classList.remove('walking'); } catch (_) {}
                     const newPx = parseFloat(myPlayer.style.left); const newPy = parseFloat(myPlayer.style.top);
                     const inRange = (newPx >= hitObj.x - 5 && newPx <= (hitObj.x + hitObj.w) + 5 && newPy >= hitObj.y - 5 && newPy <= (hitObj.y + hitObj.h) + 5);
                     if (inRange) handleObjectInteraction(hitObj); else if(typeof showToast === 'function') showToast("Muito longe...", {bg: '#e74c3c'});
@@ -3176,7 +3259,7 @@
             // Sem botão ON/OFF: controle sempre ativo
             const enabled = true;
 
-            const state = { dir: null, intervalId: null, vx: null, vy: null };
+            const state = { dir: null, intervalId: null, vx: null, vy: null, startedAt: 0 };
 
             // Tick do D-pad (ms). Mantém o passo coerente com MOVEMENT_SPEED pra ficar linear.
             const TICK_MS = 140;
@@ -3187,6 +3270,7 @@
                 state.dir = null;
                 state.vx = null;
                 state.vy = null;
+                state.startedAt = 0;
                 if (state.intervalId) {
                     clearInterval(state.intervalId);
                     state.intervalId = null;
@@ -3207,10 +3291,30 @@
                 const currX = (state.vx === null || state.vx === undefined) ? parseFloat(myPlayer.style.left) : state.vx;
                 const currY = (state.vy === null || state.vy === undefined) ? parseFloat(myPlayer.style.top) : state.vy;
 
-                // Passo baseado na velocidade do jogo (% por segundo) * tempo do tick
-                const STEP = Math.max(0.6, MOVEMENT_SPEED * (TICK_MS / 1000));
-                const STEP_X = STEP;
-                const STEP_Y = STEP * 0.75;
+                // Passo baseado em pixels (mantém velocidade igual na horizontal/vertical)
+                let STEP_X = 0;
+                let STEP_Y = 0;
+                try {
+                    const rect = gameArea.getBoundingClientRect();
+                    let stepPx = PLAYER_MOVE_PX_PER_S * (TICK_MS / 1000);
+                    // Ramp-up de aceleração no começo da arrancada do D-pad
+                    const now = Date.now();
+                    if (!state.startedAt) state.startedAt = now;
+                    const elapsed = now - state.startedAt;
+                    const ramp = Math.max(0, Math.min(1, elapsed / 250));
+                    const factor = 0.55 + (0.45 * ramp); // começa ~55% e chega em 100%
+                    stepPx = stepPx * factor;
+                    STEP_X = rect.width > 0 ? (stepPx / rect.width) * 100 : 0;
+                    STEP_Y = rect.height > 0 ? (stepPx / rect.height) * 100 : 0;
+                    // garante um mínimo pra não travar em telas muito grandes
+                    STEP_X = Math.max(0.35, STEP_X);
+                    STEP_Y = Math.max(0.35, STEP_Y);
+                } catch (_) {
+                    STEP_X = 0.6;
+                    STEP_Y = 0.6;
+                }
+                // D-pad deve ser linear (sem easing)
+                window.__useEaseForNextMove = false;
                 let desiredX = currX;
                 let desiredY = currY;
                 if (dir === 'up') desiredY -= STEP_Y;

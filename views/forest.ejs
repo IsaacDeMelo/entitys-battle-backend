@@ -80,8 +80,25 @@
         const gameArea = document.getElementById('gameArea');
         const allMonsters = <%- JSON.stringify(typeof entities !== 'undefined' ? entities : []) %>;
         let myId = null; const MOVEMENT_SPEED = 55;
+        const PLAYER_MOVE_PX_PER_S = 320;
+        const MIN_PLAYER_MOVE_S = 0.08;
         const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
         let currentNpcsCache = [];
+
+        function calcMoveDurationS(fromX, fromY, toX, toY) {
+            try {
+                if (!gameArea) return 0;
+                const rect = gameArea.getBoundingClientRect();
+                const dx = (toX - fromX) * (rect.width / 100);
+                const dy = (toY - fromY) * (rect.height / 100);
+                const distPx = Math.hypot(dx, dy);
+                if (!(distPx > 0)) return 0;
+                const dur = distPx / PLAYER_MOVE_PX_PER_S;
+                return Math.max(MIN_PLAYER_MOVE_S, dur);
+            } catch (_) {
+                return 0;
+            }
+        }
         
         const chatInput = document.getElementById('chatInput'); const chatBtn = document.getElementById('chatSend');
         
@@ -135,8 +152,7 @@
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
                 const currentLeft = parseFloat(el.style.left) || 50; const currentTop = parseFloat(el.style.top) || 50;
-                const dx = data.x - currentLeft; const dy = data.y - currentTop;
-                const distance = Math.sqrt(dx*dx + dy*dy); const duration = distance > 0 ? distance / MOVEMENT_SPEED : 0;
+                const duration = calcMoveDurationS(currentLeft, currentTop, data.x, data.y);
                 el.style.transition = `top ${duration}s linear, left ${duration}s linear`; 
                 void el.offsetWidth; 
                 el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);

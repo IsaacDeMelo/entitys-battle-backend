@@ -675,7 +675,11 @@
                             </div>
 
                             <div style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
-                                <div style="color:#fff; font-weight:900; margin-bottom:8px;">CATÁLOGO (DB)</div>
+                                <div style="color:#fff; font-weight:900; margin-bottom:8px;">CATÁLOGO (DB) — CRIAR/EDITAR</div>
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                                    <button id="catNewConsumableBtn" class="btn-pc-action" style="background:#1f2937; color:#fff; width:auto; padding:10px 12px;">NOVO CONSUMÍVEL</button>
+                                    <button id="catNewKeyBtn" class="btn-pc-action" style="background:#1f2937; color:#fff; width:auto; padding:10px 12px;">NOVO KEY ITEM</button>
+                                </div>
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
                                     <input id="catItemId" list="itemCatalogDatalist" placeholder="id (ex: key_porta1)" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
                                     <input id="catItemName" placeholder="nome" style="padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.25); color:#fff;" />
@@ -743,10 +747,20 @@
 
                             const catSaveBtn = document.getElementById('catSaveBtn');
                             const catDeleteBtn = document.getElementById('catDeleteBtn');
+                            const catNewConsumableBtn = document.getElementById('catNewConsumableBtn');
+                            const catNewKeyBtn = document.getElementById('catNewKeyBtn');
                             const catId = document.getElementById('catItemId');
                             const catName = document.getElementById('catItemName');
                             const catType = document.getElementById('catItemType');
                             const catIcon = document.getElementById('catItemIcon');
+
+                            function startNewCatalogItem(type) {
+                                if (catId) catId.value = '';
+                                if (catName) catName.value = '';
+                                if (catType) catType.value = type || 'consumable';
+                                if (catIcon) catIcon.value = '';
+                                try { if (catId) catId.focus(); } catch (_) {}
+                            }
 
                             async function saveCatalog() {
                                 const id = catId ? String(catId.value || '').trim() : '';
@@ -802,6 +816,8 @@
 
                             if (catSaveBtn) catSaveBtn.onclick = saveCatalog;
                             if (catDeleteBtn) catDeleteBtn.onclick = deleteCatalog;
+                            if (catNewConsumableBtn) catNewConsumableBtn.onclick = () => startNewCatalogItem('consumable');
+                            if (catNewKeyBtn) catNewKeyBtn.onclick = () => startNewCatalogItem('key');
                         }
                     }
                 }
