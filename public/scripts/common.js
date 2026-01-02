@@ -404,8 +404,13 @@ if (typeof socket !== 'undefined') {
             div.style.top = npc.y + '%';
             div.style.zIndex = Math.floor(npc.y);
 
-            if (npc.isCustomSkin) div.style.backgroundImage = `url('${npc.skin}')`;
-            else div.style.backgroundImage = `url('/uploads/${npc.skin}.png')`;
+            if (npc.isCustomSkin || (npc.skin && (npc.skin.startsWith('data:') || npc.skin.startsWith('http')))) {
+                div.style.backgroundImage = `url('${npc.skin}')`;
+            } else if (npc.skin) {
+                div.style.backgroundImage = `url('/skins/${encodeURIComponent(npc.skin)}.png')`;
+            } else {
+                div.style.backgroundImage = 'none';
+            }
             
             div.setAttribute('data-dir', npc.direction || 'down');
 
@@ -493,6 +498,64 @@ function moveToAndTalkToNPC(npc) {
 function interactWithNPC(npc) {
     const myId = window.CURRENT_USER_ID;
     const defeatedList = window.DEFEATED_NPCS || [];
+
+    function isStarterNpc(n) {
+        try {
+            const svc = (n && n.interact && n.interact.serviceType) ? String(n.interact.serviceType).trim() : '';
+            const type = (n && n.npcType) ? String(n.npcType).trim() : '';
+            return svc === 'starter' || type === 'starter';
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function escapeHtml(s) {
+        return String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    async function chooseStarterFlow(n, text, options) {
+        const list = Array.isArray(options) ? options.slice(0, 3) : [];
+        if (list.length < 3) {
+            await showRPGDialog(n.name, n.skin, 'Erro: opções de starter insuficientes.');
+            return;
+        }
+
+        const safeHtmlText = escapeHtml(text).replace(/\n/g, '<br>');
+        const buttons = [
+            ...list.map(o => ({
+                text: `ESCOLHER ${o && o.name ? String(o.name) : String(o && o.id ? o.id : '')}`.trim(),
+                value: String(o && o.id ? o.id : ''),
+                class: 'confirm'
+            })),
+            { text: 'SAIR', value: 'exit', class: 'cancel' }
+        ];
+
+        const pick = await showRPGDialog(n.name, n.skin, safeHtmlText, buttons, null, { allowHtml: true });
+        if (!pick || pick === 'exit') return;
+
+        try {
+            const res = await fetch('/api/starter/choose', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: myId, baseId: String(pick), npcId: n._id })
+            });
+            const data = await res.json().catch(() => ({}));
+            updateUserGlobals(data);
+            if (!res.ok || (data && data.error)) {
+                await showRPGDialog(n.name, n.skin, (data && data.error) ? data.error : 'Não foi possível escolher.');
+                return;
+            }
+            const chosenName = (data && data.picked && data.picked.name) ? data.picked.name : 'seu monstro';
+            await showRPGDialog(n.name, n.skin, `Você escolheu ${chosenName}! Boa sorte na jornada.`);
+        } catch (e) {
+            await showRPGDialog(n.name, n.skin, 'Erro ao escolher o monstro inicial.');
+        }
+    }
 
     function updateUserGlobals(payload) {
         if (!payload) return;
@@ -590,7 +653,7 @@ function interactWithNPC(npc) {
         }
     }
 
-    const hasInteract = !!(npc.interact && npc.interact.enabled);
+    const hasInteract = isStarterNpc(npc) || !!(npc.interact && npc.interact.enabled);
     const canBattle = npc.team && npc.team.length > 0;
 
     // NPC sem time: pode ser apenas diálogo OU interação de história
@@ -614,7 +677,40 @@ function interactWithNPC(npc) {
                 });
                 const data = await res.json().catch(() => ({}));
                 updateUserGlobals(data);
-                await showRPGDialog(npc.name, npc.skin, (data && data.text) ? data.text : (npc.dialogue || '...'));
+                const txt = (data && data.text) ? data.text : (npc.dialogue || '...');
+
+                if (data && data.alreadyDone && isStarterNpc(npc)) {
+                    await showRPGDialog(npc.name, npc.skin, txt);
+                    return;
+                }
+
+                if (data && data.action && data.action.type === 'starter') {
+                    await chooseStarterFlow(npc, txt, data.action.options);
+                    return;
+                }
+
+                // Fallback: NPC marcado como starter, mas backend não retornou action
+                if (isStarterNpc(npc)) {
+                    try {
+                        const optRes = await fetch(`/api/starter/options?userId=${encodeURIComponent(myId)}&npcId=${encodeURIComponent(String(npc._id || ''))}`);
+                        const optData = await optRes.json().catch(() => ({}));
+                        updateUserGlobals(optData);
+                        if (optData && optData.error) {
+                            await showRPGDialog(npc.name, npc.skin, optData.error);
+                            return;
+                        }
+                        if (optData && optData.chosen) {
+                            await showRPGDialog(npc.name, npc.skin, 'Você já escolheu o seu monstro inicial.');
+                            return;
+                        }
+                        await chooseStarterFlow(npc, txt, optData.options);
+                        return;
+                    } catch (_) {
+                        // ignore
+                    }
+                }
+
+                await showRPGDialog(npc.name, npc.skin, txt);
 
                 if (data && data.action && data.action.type === 'shop') {
                     await openNpcShop(data.action.items);
@@ -665,7 +761,37 @@ function interactWithNPC(npc) {
                 });
                 const data = await res.json().catch(() => ({}));
                 updateUserGlobals(data);
-                await showRPGDialog(npc.name, npc.skin, (data && data.text) ? data.text : '...');
+                const txt = (data && data.text) ? data.text : '...';
+
+                if (data && data.alreadyDone && isStarterNpc(npc)) {
+                    await showRPGDialog(npc.name, npc.skin, txt);
+                    return;
+                }
+
+                if (data && data.action && data.action.type === 'starter') {
+                    await chooseStarterFlow(npc, txt, data.action.options);
+                    return;
+                }
+
+                if (isStarterNpc(npc)) {
+                    try {
+                        const optRes = await fetch(`/api/starter/options?userId=${encodeURIComponent(myId)}&npcId=${encodeURIComponent(String(npc._id || ''))}`);
+                        const optData = await optRes.json().catch(() => ({}));
+                        updateUserGlobals(optData);
+                        if (optData && optData.error) {
+                            await showRPGDialog(npc.name, npc.skin, optData.error);
+                            return;
+                        }
+                        if (optData && optData.chosen) {
+                            await showRPGDialog(npc.name, npc.skin, 'Você já escolheu o seu monstro inicial.');
+                            return;
+                        }
+                        await chooseStarterFlow(npc, txt, optData.options);
+                        return;
+                    } catch (_) {}
+                }
+
+                await showRPGDialog(npc.name, npc.skin, txt);
 
                 if (data && data.action && data.action.type === 'shop') {
                     await openNpcShop(data.action.items);

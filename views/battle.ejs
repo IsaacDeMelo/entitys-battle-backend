@@ -25,6 +25,7 @@
         flex: 1; 
         /* Verifica se é base64/url ou arquivo local */
         background: url('<%= (bgImage.startsWith("http") || bgImage.startsWith("data:")) ? bgImage : "/uploads/" + bgImage %>') no-repeat center center; 
+        background-position: <%= (Number.isFinite(bgPosX) ? bgPosX : 50) %>% <%= (Number.isFinite(bgPosY) ? bgPosY : 50) %>%;
         background-size: cover; 
         position: relative; 
         overflow: hidden; 
@@ -219,7 +220,7 @@
             <div class="command-bubble" id="bubble-p2"></div>
             <div class="trainer" id="trainer-p2" 
                  data-skin="<%= p2.skin || 'char1' %>" 
-                 style="<%= (p2.isCustomSkin || (p2.skin && (p2.skin.startsWith('http') || p2.skin.startsWith('data:')))) ? 'background-image: url(\'' + p2.skin + '\')' : '' %><%= battleMode === 'wild' ? ';opacity:0;' : '' %>">
+                  style="<% const p2Skin = (p2 && p2.skin) ? String(p2.skin) : 'char1'; const p2Url = (p2.isCustomSkin || (p2Skin && (p2Skin.startsWith('http') || p2Skin.startsWith('data:')))) ? p2Skin : ((/^char\d+$/i.test(p2Skin)) ? ('/uploads/' + p2Skin + '.png') : ('/skins/' + p2Skin + '.png')); %>background-image: url('<%= p2Url %>');<%= battleMode === 'wild' ? 'opacity:0;' : '' %>">
             </div>
             <div class="sprite" id="sprite-p2">
                 <img src="<%= (p2.sprite.startsWith('http') || p2.sprite.startsWith('data:')) ? p2.sprite : '/uploads/' + p2.sprite %>">
@@ -228,7 +229,7 @@
 
         <div class="fighter p1-position" id="fighter-p1">
             <div class="command-bubble" id="bubble-p1"></div>
-            <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>"></div>
+            <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>" style="<% const p1Skin = (p1 && p1.skin) ? String(p1.skin) : 'char1'; const p1Url = (p1.isCustomSkin || (p1Skin && (p1Skin.startsWith('http') || p1Skin.startsWith('data:')))) ? p1Skin : ((/^char\d+$/i.test(p1Skin)) ? ('/uploads/' + p1Skin + '.png') : ('/skins/' + p1Skin + '.png')); %>background-image: url('<%= p1Url %>');"></div>
             <div class="sprite" id="sprite-p1">
                 <img src="<%= (p1.sprite.startsWith('http') || p1.sprite.startsWith('data:')) ? p1.sprite : '/uploads/' + p1.sprite %>">
             </div>
@@ -873,8 +874,15 @@
             winName.innerText = winner.name; loseName.innerText = loser.name; 
             winMon.src = winner.sprite; loseMon.src = loser.sprite; 
             
-            if(winner.isCustom || (winner.skin && winner.skin.startsWith('data:'))) winTrainer.style.backgroundImage = `url('${winner.skin}')`; else winTrainer.style.backgroundImage = `url('/uploads/${winner.skin}.png')`;
-            if(loser.isCustom || (loser.skin && loser.skin.startsWith('data:'))) loseTrainer.style.backgroundImage = `url('${loser.skin}')`; else loseTrainer.style.backgroundImage = `url('/uploads/${loser.skin}.png')`;
+            const toSkinUrl = (s) => {
+                const v = String(s || '').trim();
+                if (!v) return '/uploads/char1.png';
+                if (v.startsWith('data:') || v.startsWith('http')) return v;
+                if (/^char\d+$/i.test(v)) return `/uploads/${v}.png`;
+                return `/skins/${encodeURIComponent(v)}.png`;
+            };
+            winTrainer.style.backgroundImage = `url('${toSkinUrl(winner && winner.skin)}')`;
+            loseTrainer.style.backgroundImage = `url('${toSkinUrl(loser && loser.skin)}')`;
             
             if (isSpectator) { title.innerText = `VENCEDOR: ${winner.name}`; title.style.color = "#f1c40f"; } 
             else { 

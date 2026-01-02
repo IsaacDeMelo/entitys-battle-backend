@@ -6,7 +6,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
-const { BasePokemon, User, NPC, GameMap, ItemDefinition } = require('./models');
+const { BasePokemon, User, NPC, GameMap, ItemDefinition, PlayerSkin } = require('./models');
 const { processPngBuffer } = require('./lib/chromaKey');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
@@ -17,9 +17,30 @@ const GLOBAL_GRASS_CHANCE = 0.35;
 // --- STARTER (obtido via NPC no jogo) ---
 const STARTER_FLAG_ID = 'starter_chosen';
 
+function readStoryFlag(storyFlags, key) {
+    if (!storyFlags || typeof storyFlags !== 'object') return false;
+    const v = storyFlags[key];
+    if (v === true) return true;
+    if (v === false || v == null) return false;
+    if (typeof v === 'number') return v === 1;
+    if (typeof v === 'string') {
+        const s = v.trim().toLowerCase();
+        return s === 'true' || s === '1' || s === 'yes' || s === 'y';
+    }
+    return false;
+}
+
 async function getStarterOptions() {
-    const starters = await BasePokemon.find({ isStarter: true }).sort({ id: 1 }).limit(3).lean();
-    return starters.map(s => ({ id: s.id, name: s.name, sprite: s.sprite || null }));
+    // Preferência: pokémons marcados como isStarter.
+    let starters = await BasePokemon.find({ isStarter: true }).sort({ id: 1 }).limit(3).lean();
+
+    // Fallback: se o DB não tem 3 starters marcados, pega os 3 primeiros por id.
+    // (Evita ficar travado "sem starter" por falta de configuração.)
+    if (!Array.isArray(starters) || starters.length < 3) {
+        starters = await BasePokemon.find({}).sort({ id: 1 }).limit(3).lean();
+    }
+
+    return (starters || []).map(s => ({ id: s.id, name: s.name, sprite: s.sprite || null }));
 }
 
 async function getStarterOptionsForNpc(npc) {
@@ -121,6 +142,45 @@ const npcCacheByMap = {};
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+const skinUpload = multer({
+    storage,
+    limits: {
+        fileSize: 1024 * 1024 // 1MB
+    }
+});
+
+function isLegacyCharSkinId(s) {
+    return /^char\d+$/i.test(String(s || '').trim());
+}
+
+async function getDefaultSkinId() {
+    const s = await PlayerSkin.findOne({}).sort({ name: 1 }).lean();
+    return s ? String(s._id) : null;
+}
+
+async function ensureUserHasValidSkin(user) {
+    if (!user) return null;
+
+    const current = String(user.skin || '').trim();
+    if (current && !isLegacyCharSkinId(current)) {
+        const exists = await PlayerSkin.exists({ _id: current });
+        if (exists) return current;
+    }
+
+    const defId = await getDefaultSkinId();
+    if (!defId) return null;
+
+    if (String(user.skin || '') !== defId) {
+        user.skin = defId;
+        await user.save();
+    }
+    return defId;
+}
+
+function isPngBuffer(buf) {
+    return Buffer.isBuffer(buf) && buf.length >= 8 && buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]));
+}
+
 // --- CATÁLOGO DE ITENS (central, cacheado) ---
 let ITEM_CATALOG_CACHE = [];
 let ITEM_CATALOG_MAP = new Map();
@@ -183,6 +243,16 @@ function ensureUserInventories(user) {
     if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
     if (!Array.isArray(user.keyItems)) user.keyItems = [];
     if (!user.storyFlags || typeof user.storyFlags !== 'object') user.storyFlags = {};
+
+    // Normaliza a flag global do starter: evita casos onde ela ficou salva como string (ex.: "false"),
+    // o que quebraria checks com !! e esconderia opções no cliente.
+    if (Object.prototype.hasOwnProperty.call(user.storyFlags, STARTER_FLAG_ID)) {
+        user.storyFlags[STARTER_FLAG_ID] = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
+    }
+}
+
+function userHasAnyPokemon(user) {
+    return !!(user && Array.isArray(user.pokemonTeam) && user.pokemonTeam.length > 0);
 }
 
 function getItemCount(user, itemId) {
@@ -312,9 +382,12 @@ function userPokemonToEntity(userPoke, baseData) {
     const level = Number.isFinite(userPoke.level) ? userPoke.level : parseInt(userPoke.level) || 1;
     const stats = (userPoke.stats && Number.isFinite(userPoke.stats.hp)) ? userPoke.stats : calculateStats(baseData.baseStats, level);
 
-    const rawMoves = (Array.isArray(userPoke.learnedMoves) && userPoke.learnedMoves.length > 0)
-        ? userPoke.learnedMoves
-        : (Array.isArray(userPoke.moves) ? userPoke.moves : []);
+    // Prefer equipped moves (1-4 chosen in "equipe"); fall back to learnedMoves.
+    const equippedMoves = Array.isArray(userPoke.moves) ? userPoke.moves : [];
+    const learnedMoves = Array.isArray(userPoke.learnedMoves) ? userPoke.learnedMoves : [];
+    const rawMoves = (equippedMoves.length > 0 ? equippedMoves : learnedMoves)
+        .filter(Boolean)
+        .slice(0, 4);
 
     const movesObj = rawMoves
         .map(mid => { const libMove = MOVES_LIBRARY[mid]; return libMove ? { ...libMove, id: mid } : null; })
@@ -382,39 +455,111 @@ function performEnemyTurn(attacker, defender, events) { const move = attacker.mo
 
 // --- ROTAS GERAIS ---
 app.get('/', async (req, res) => {
-    res.render('login', { error: null, skinCount: SKIN_COUNT });
+    const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+    const err = (req.query && req.query.error) ? String(req.query.error) : null;
+    res.render('login', { error: err, skinCount: SKIN_COUNT, skins: skins || [] });
 });
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username, password });
     if (user) {
-        res.redirect('/city?map=house1&userId=' + user._id);
+        const okSkin = await ensureUserHasValidSkin(user);
+        if (!okSkin) {
+            const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+            return res.render('login', { error: 'Nenhuma skin cadastrada. Admin: crie skins no LAB antes de jogar.', skinCount: SKIN_COUNT, skins: skins || [] });
+        }
+        // Não força casa: deixa /city decidir com base na última localização
+        res.redirect('/city?userId=' + user._id);
     } else {
-        res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT });
+        const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+        res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, skins: skins || [] });
     }
 });
 app.post('/register', async (req, res) => {
     const { username, password, skin } = req.body;
     try {
-        const newUser = new User({ username, password, skin, pokemonTeam: [], pc: [], dex: [] });
+        const available = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+        if (!available || available.length === 0) {
+            return res.render('login', { error: 'Nenhuma skin cadastrada. Admin: crie skins no LAB antes de registrar.', skinCount: SKIN_COUNT, skins: [] });
+        }
+
+        const chosen = String(skin || '').trim();
+        if (!chosen || isLegacyCharSkinId(chosen)) {
+            return res.render('login', { error: 'Selecione uma skin válida (as skins antigas foram desativadas).', skinCount: SKIN_COUNT, skins: available });
+        }
+        const exists = await PlayerSkin.exists({ _id: chosen });
+        if (!exists) {
+            return res.render('login', { error: 'Skin inválida. Selecione uma das skins cadastradas.', skinCount: SKIN_COUNT, skins: available });
+        }
+
+        const newUser = new User({ username, password, skin: chosen, pokemonTeam: [], pc: [], dex: [] });
         await newUser.save();
-        res.redirect('/city?map=house1&userId=' + newUser._id);
+        res.redirect('/city?userId=' + newUser._id);
     } catch (e) {
-        res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT });
+        const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+        res.render('login', { error: 'Usuário já existe.', skinCount: SKIN_COUNT, skins: skins || [] });
     }
 });
 
-app.get('/lobby', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const teamData = []; for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); } const allPokes = await BasePokemon.find().lean(); res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT }); });
-app.get('/forest', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user) return res.redirect('/'); const allPokes = await BasePokemon.find().lean(); res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes }); });
+// Serve skins do DB como PNG
+app.get('/skins/:id.png', async (req, res) => {
+    try {
+        const id = String(req.params.id || '').trim();
+        if (!id) return res.status(404).end();
+        const skin = await PlayerSkin.findById(id).lean();
+        if (!skin || !skin.pngBase64) return res.status(404).end();
+        const buf = Buffer.from(String(skin.pngBase64), 'base64');
+        if (!isPngBuffer(buf)) return res.status(415).end();
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        return res.end(buf);
+    } catch (e) {
+        return res.status(500).end();
+    }
+});
+
+app.get('/lobby', async (req, res) => {
+    const { userId } = req.query;
+    const user = await User.findById(userId);
+    if (!user) return res.redirect('/');
+    const okSkin = await ensureUserHasValidSkin(user);
+    if (!okSkin) return res.redirect('/?error=' + encodeURIComponent('Nenhuma skin cadastrada. Admin: crie skins no LAB antes de jogar.'));
+
+    const teamData = [];
+    for (let p of user.pokemonTeam) {
+        const base = await BasePokemon.findOne({ id: p.baseId });
+        if (base) teamData.push(userPokemonToEntity(p, base));
+    }
+    const allPokes = await BasePokemon.find().lean();
+    res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT });
+});
+
+app.get('/forest', async (req, res) => {
+    const { userId } = req.query;
+    const user = await User.findById(userId);
+    if (!user) return res.redirect('/');
+    const okSkin = await ensureUserHasValidSkin(user);
+    if (!okSkin) return res.redirect('/?error=' + encodeURIComponent('Nenhuma skin cadastrada. Admin: crie skins no LAB antes de jogar.'));
+
+    const allPokes = await BasePokemon.find().lean();
+    res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes });
+});
 
 // --- ROTA CIDADE (ENGINE DE MAPA) ---
 app.get('/city', async (req, res) => {
     const { userId, from, map } = req.query;
     const user = await User.findById(userId);
     if (!user) return res.redirect('/');
+
+    // Bloqueia uso de skins antigas: força uma skin do DB (ou impede jogar se não existir)
+    const okSkin = await ensureUserHasValidSkin(user);
+    if (!okSkin) {
+        return res.redirect('/?error=' + encodeURIComponent('Nenhuma skin cadastrada. Admin: crie skins no LAB antes de jogar.'));
+    }
     
     // Tratamento de URL
-    let mapId = map || 'city';
+    const lastLoc = (user && user.lastLocation) ? user.lastLocation : null;
+    let mapId = map || (lastLoc && lastLoc.mapId) || 'house1';
     if(mapId.includes('?')) mapId = mapId.split('?')[0];
 
     // Carrega mapa do DB
@@ -425,20 +570,61 @@ app.get('/city', async (req, res) => {
 
     // Spawn Logic
     let startX = 50, startY = 50;
+    let startDir = 'down';
     if (req.query.x && req.query.y) {
         startX = parseFloat(req.query.x); startY = parseFloat(req.query.y);
+    } else if (lastLoc && lastLoc.mapId === mapId && typeof lastLoc.x === 'number' && typeof lastLoc.y === 'number') {
+        startX = lastLoc.x;
+        startY = lastLoc.y;
+        if (lastLoc.direction) startDir = String(lastLoc.direction);
     } else if (mapData.spawnPoint && typeof mapData.spawnPoint.x === 'number') {
         startX = mapData.spawnPoint.x; startY = mapData.spawnPoint.y;
     } else if (from === 'forest') {
         startX = 50; startY = 92;
     }
 
+    // Sanitiza
+    if (!Number.isFinite(startX)) startX = 50;
+    if (!Number.isFinite(startY)) startY = 50;
+    startX = Math.max(0, Math.min(100, startX));
+    startY = Math.max(0, Math.min(100, startY));
+    startDir = ['up', 'down', 'left', 'right'].includes(startDir) ? startDir : 'down';
+
     const allPokes = await BasePokemon.find().lean();
     const teamData = []; 
     for(let p of user.pokemonTeam) { const base = await BasePokemon.findOne({id: p.baseId}); if(base) teamData.push(userPokemonToEntity(p, base)); }
     
-    res.render('city', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, startX, startY, entities: allPokes, team: teamData, mapData: mapData }); 
+    res.render('city', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, startX, startY, startDir, entities: allPokes, team: teamData, mapData: mapData }); 
 });
+
+function clampPct(n, fallback = 50) {
+    const v = parseFloat(n);
+    if (!Number.isFinite(v)) return fallback;
+    return Math.max(0, Math.min(100, v));
+}
+
+function normalizeDir(dir) {
+    const d = String(dir || '').trim();
+    return ['up', 'down', 'left', 'right'].includes(d) ? d : 'down';
+}
+
+async function persistUserLocation(userId, mapId, x, y, direction) {
+    try {
+        if (!userId) return;
+        const update = {
+            lastLocation: {
+                mapId: String(mapId || 'house1'),
+                x: clampPct(x, 50),
+                y: clampPct(y, 50),
+                direction: normalizeDir(direction),
+                updatedAt: Date.now()
+            }
+        };
+        await User.findByIdAndUpdate(userId, { $set: update }).exec();
+    } catch (_) {
+        // silencioso: não deve derrubar o jogo
+    }
+}
 
 // --- API MAPAS ---
 app.post('/api/map/save', async (req, res) => {
@@ -459,7 +645,9 @@ app.post('/api/map/save', async (req, res) => {
                 height: mapData.height || 100, 
                 spawnPoint: mapData.spawnPoint,
                 darknessLevel: mapData.darknessLevel || 0, 
-                battleBackground: mapData.battleBackground 
+                battleBackground: mapData.battleBackground,
+                battleBgPosX: clampPct(mapData.battleBgPosX, 50),
+                battleBgPosY: clampPct(mapData.battleBgPosY, 50)
             }},
             { upsert: true, new: true }
         );
@@ -870,14 +1058,22 @@ app.post('/api/npc/interact', async (req, res) => {
             }
         } catch (_) {}
 
-        const serviceType = (interact.serviceType || '').trim();
+        const serviceType = String((interact.serviceType || npc.npcType || '')).trim();
 
         const flagId = (interact.flagId && String(interact.flagId).trim()) ? String(interact.flagId).trim() : `npc_interact_${npc._id}`;
 
         // Starter: usa flag global (não depende do flagId do NPC).
         // Não marca flag aqui (marca só quando escolher). Só retorna ação com opções.
         if (serviceType === 'starter') {
-            const already = !!user.storyFlags[STARTER_FLAG_ID];
+            let already = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
+
+            // Auto-heal: se a flag ficou marcada mas o jogador não tem nenhum pokémon,
+            // deixa escolher de novo (evita ficar travado "sem starter").
+            if (already && !userHasAnyPokemon(user)) {
+                user.storyFlags[STARTER_FLAG_ID] = false;
+                already = false;
+                try { await user.save(); } catch (_) {}
+            }
             if (already) {
                 const text = interact.alreadyDoneDialogue || 'Você já escolheu o seu monstro inicial.';
                 return res.json({ success: true, alreadyDone: true, text, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
@@ -889,7 +1085,7 @@ app.post('/api/npc/interact', async (req, res) => {
             }
             const options = optionsRes;
             if (!options || options.length < 3) {
-                return res.json({ success: false, error: 'Não há 3 monstros iniciais configurados (por NPC ou via isStarter=true).' });
+                return res.json({ success: false, error: 'Não há 3 monstros iniciais configurados.' });
             }
 
             const text = interact.successDialogue || npc.dialogue || 'Escolha o seu monstro inicial.';
@@ -1029,12 +1225,31 @@ app.post('/api/npc/interact', async (req, res) => {
 // --- STARTER API (opções e escolha) ---
 app.get('/api/starter/options', async (req, res) => {
     try {
-        const { userId } = req.query;
+        const { userId, npcId } = req.query;
         const user = userId ? await User.findById(userId) : null;
         if (!user) return res.status(404).json({ error: 'User not found' });
         ensureUserInventories(user);
-        const options = await getStarterOptions();
-        const chosen = !!user.storyFlags[STARTER_FLAG_ID];
+        let options;
+        if (npcId) {
+            const npc = await NPC.findById(String(npcId)).lean();
+            const svc = npc ? String(((npc.interact && npc.interact.serviceType) || npc.npcType || '')).trim() : '';
+            if (!npc || svc !== 'starter') {
+                return res.status(400).json({ error: 'NPC de starter inválido.' });
+            }
+            const optionsRes = await getStarterOptionsForNpc(npc);
+            if (optionsRes && optionsRes.error) {
+                return res.status(400).json({ error: optionsRes.error });
+            }
+            options = optionsRes;
+        } else {
+            options = await getStarterOptions();
+        }
+        let chosen = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
+        if (chosen && !userHasAnyPokemon(user)) {
+            user.storyFlags[STARTER_FLAG_ID] = false;
+            chosen = false;
+            try { await user.save(); } catch (_) {}
+        }
         return res.json({ success: true, chosen, options });
     } catch (e) {
         console.error(e);
@@ -1049,14 +1264,20 @@ app.post('/api/starter/choose', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found' });
         ensureUserInventories(user);
 
-        if (user.storyFlags[STARTER_FLAG_ID]) {
+        let alreadyChosen = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
+        if (alreadyChosen && !userHasAnyPokemon(user)) {
+            user.storyFlags[STARTER_FLAG_ID] = false;
+            alreadyChosen = false;
+        }
+
+        if (alreadyChosen) {
             return res.status(400).json({ error: 'Você já escolheu o seu monstro inicial.' });
         }
 
         let allowedIds;
         if (npcId) {
             const npc = await NPC.findById(npcId);
-            const svc = npc && npc.interact ? String(npc.interact.serviceType || '').trim() : '';
+            const svc = npc ? String(((npc.interact && npc.interact.serviceType) || npc.npcType || '')).trim() : '';
             if (!npc || svc !== 'starter') {
                 return res.status(400).json({ error: 'NPC de starter inválido.' });
             }
@@ -1231,7 +1452,59 @@ app.post('/api/npc/shop/buy', async (req, res) => {
 });
 
 // --- CRIAÇÃO DE NPC ---
-app.get('/lab', async (req, res) => { const { userId } = req.query; const user = await User.findById(userId); if(!user || !user.isAdmin) return res.redirect('/'); const pokemons = await BasePokemon.find(); const npcs = await NPC.find(); res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, user }); });
+app.get('/lab', async (req, res) => {
+    const { userId } = req.query;
+    const user = await User.findById(userId);
+    if (!user || !user.isAdmin) return res.redirect('/');
+    const pokemons = await BasePokemon.find();
+    const npcs = await NPC.find();
+    const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+    res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, skins: skins || [], user });
+});
+
+app.post('/lab/skins/create', skinUpload.single('skinFile'), async (req, res) => {
+    try {
+        const { userId, name, skinId } = req.body;
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.redirect('/');
+
+        const cleanName = String(name || '').trim();
+        if (!cleanName) return res.status(400).send('Nome inválido');
+        const id = String(skinId || '').trim();
+
+        if (id) {
+            const existing = await PlayerSkin.findById(id);
+            if (!existing) return res.status(404).send('Skin não encontrada');
+            existing.name = cleanName;
+            if (req.file && req.file.buffer) {
+                if (!isPngBuffer(req.file.buffer)) return res.status(415).send('Arquivo deve ser PNG');
+                existing.pngBase64 = req.file.buffer.toString('base64');
+            }
+            existing.updatedAt = Date.now();
+            await existing.save();
+        } else {
+            if (!req.file || !req.file.buffer) return res.status(400).send('Arquivo PNG obrigatório');
+            if (!isPngBuffer(req.file.buffer)) return res.status(415).send('Arquivo deve ser PNG');
+            const pngBase64 = req.file.buffer.toString('base64');
+            await PlayerSkin.create({ name: cleanName, pngBase64, createdAt: Date.now(), updatedAt: Date.now() });
+        }
+        return res.redirect('/lab?userId=' + userId);
+    } catch (e) {
+        return res.status(400).send('Erro ao salvar skin (nome duplicado?)');
+    }
+});
+
+app.post('/lab/skins/delete', async (req, res) => {
+    try {
+        const { userId, id } = req.body;
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.redirect('/');
+        await PlayerSkin.deleteOne({ _id: id });
+        return res.redirect('/lab?userId=' + userId);
+    } catch (e) {
+        return res.status(500).send('Erro ao excluir skin');
+    }
+});
 const npcUpload = upload.fields([{ name: 'npcSkinFile', maxCount: 1 }, { name: 'battleBgFile', maxCount: 1 }]);
 app.post('/lab/create-npc', npcUpload, async (req, res) => { 
     try { 
@@ -1906,6 +2179,8 @@ app.post('/battle/wild', async (req, res) => {
     const mapDoc = await GameMap.findOne({ mapId: mapName }).lean();
     let battleBgToUse = 'forest_bg.png';
     if (mapDoc && mapDoc.battleBackground) battleBgToUse = mapDoc.battleBackground;
+    const battleBgPosX = (mapDoc && Number.isFinite(mapDoc.battleBgPosX)) ? mapDoc.battleBgPosX : 50;
+    const battleBgPosY = (mapDoc && Number.isFinite(mapDoc.battleBgPosY)) ? mapDoc.battleBgPosY : 50;
 
     const possibleSpawns = await BasePokemon.find({ spawnLocation: mapName }); 
     if(possibleSpawns.length === 0) return res.json({ error: `Nada selvagem em '${mapName}'.` }); 
@@ -1928,7 +2203,8 @@ app.post('/battle/wild', async (req, res) => {
     }
 
     activeBattles[battleId] = { 
-        p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: battleBgToUse 
+        p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: battleBgToUse,
+        bgPosX: battleBgPosX, bgPosY: battleBgPosY
     }; 
     res.json({ battleId }); 
 });
@@ -1976,6 +2252,8 @@ app.post('/battle/npc', async (req, res) => {
     let finalBg = 'battle_bg.png';
     if (mapDoc && mapDoc.battleBackground) finalBg = mapDoc.battleBackground;
     if (npc.battleBackground && npc.battleBackground !== 'battle_bg.png') finalBg = npc.battleBackground;
+    const battleBgPosX = (mapDoc && Number.isFinite(mapDoc.battleBgPosX)) ? mapDoc.battleBgPosX : 50;
+    const battleBgPosY = (mapDoc && Number.isFinite(mapDoc.battleBgPosY)) ? mapDoc.battleBgPosY : 50;
 
     const npcTeamInstances = [];
     if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Monstros!" });
@@ -2003,12 +2281,13 @@ app.post('/battle/npc', async (req, res) => {
 
     activeBattles[battleId] = { 
         p1: p1Entity, p2: npcTeamInstances[0], npcReserve: npcTeamInstances, type: 'local', userId: user._id, turn: 1, npcId: npc._id,
-        returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: finalBg
+        returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: finalBg,
+        bgPosX: battleBgPosX, bgPosY: battleBgPosY
     }; 
     res.json({ battleId });
 });
 
-app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/lobby' }); });
+app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/lobby' }); });
 app.post('/battle', async (req, res) => { const { fighterId, playerName, playerSkin, userId } = req.body; const user = await User.findById(userId); if(!user) return res.redirect('/'); const userPokeData = user.pokemonTeam.id(fighterId); if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/lobby?userId=' + userId); const b1Base = await BasePokemon.findOne({ id: userPokeData.baseId }); const p1 = userPokemonToEntity(userPokeData, b1Base); p1.playerName = playerName; p1.skin = playerSkin; const allBases = await BasePokemon.find(); if(allBases.length === 0) return res.redirect('/lobby?userId=' + userId); const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; const cpuLevel = Math.max(1, p1.level); const s2 = calculateStats(randomBase.baseStats, cpuLevel); let cpuMoves = randomBase.movePool ? randomBase.movePool.filter(m => m.level <= cpuLevel).map(m => m.moveId) : []; if(cpuMoves.length === 0) cpuMoves = ['tackle']; if(cpuMoves.length > 4) cpuMoves = cpuMoves.sort(() => 0.5 - Math.random()).slice(0, 4); const p2 = { instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null }; const battleId = 'local_' + Date.now(); activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'lobby' }; res.redirect('/battle/' + battleId); });
 
 app.get('/battle/:id', async (req, res) => { 
@@ -2031,6 +2310,8 @@ app.get('/battle/:id', async (req, res) => {
     
     let bg = 'battle_bg.png';
     if (battle.customBackground) bg = battle.customBackground;
+    const bgPosX = Number.isFinite(battle.bgPosX) ? battle.bgPosX : 50;
+    const bgPosY = Number.isFinite(battle.bgPosY) ? battle.bgPosY : 50;
 
     // CORREÇÃO CRÍTICA DE URL
     let returnUrl = '/lobby';
@@ -2055,7 +2336,7 @@ app.get('/battle/:id', async (req, res) => {
     res.render('battle', { 
         p1: battle.p1, p2: battle.p2, battleId: req.params.id, battleMode: battle.type === 'local' ? 'manual' : battle.type, 
         isSpectator: false, myRoleId: battle.p1.instanceId, realUserId: battle.userId, playerName: battle.p1.playerName, playerSkin: battle.p1.skin, 
-        bgImage: bg, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable, returnUrl 
+        bgImage: bg, bgPosX, bgPosY, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable, returnUrl 
     }); 
 });
 
@@ -2221,16 +2502,44 @@ io.on('connection', (socket) => {
             npcCacheByMap[data.map] = mapNpcs;
             socket.emit('npcs_list', mapNpcs);
             
-            const startX = data.x || 50; 
-            const startY = data.y || 50; 
+            const startX = clampPct(data.x, 50);
+            const startY = clampPct(data.y, 50);
+            const startDir = normalizeDir(data.direction);
             
-            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: 'down', isSearching: false }; 
+            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, isSearching: false, _lastPersistAt: 0 }; 
             const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
             socket.emit('map_state', mapPlayers); 
             socket.to(data.map).emit('player_joined', players[socket.id]);
+
+            // Salva a localização inicial do mapa (útil em refresh/relogin)
+            persistUserLocation(data.userId, data.map, startX, startY, startDir);
         } catch(e) { console.error('Erro no socket enter_map', e); }
     });
-    socket.on('move_player', (data) => { if (players[socket.id]) { const p = players[socket.id]; const dx = data.x - p.x; const dy = data.y - p.y; let dir = p.direction; if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left'; else dir = dy > 0 ? 'down' : 'up'; p.x = data.x; p.y = data.y; p.direction = dir; io.to(p.map).emit('player_moved', { id: socket.id, x: data.x, y: data.y, direction: dir }); } });
+    socket.on('move_player', (data) => {
+        if (players[socket.id]) {
+            const p = players[socket.id];
+            const nextX = clampPct(data.x, p.x);
+            const nextY = clampPct(data.y, p.y);
+
+            const dx = nextX - p.x;
+            const dy = nextY - p.y;
+            let dir = p.direction;
+            if (Math.abs(dx) > Math.abs(dy)) dir = dx > 0 ? 'right' : 'left';
+            else dir = dy > 0 ? 'down' : 'up';
+
+            p.x = nextX;
+            p.y = nextY;
+            p.direction = dir;
+            io.to(p.map).emit('player_moved', { id: socket.id, x: nextX, y: nextY, direction: dir });
+
+            // Persistência com throttle para não sobrecarregar o DB
+            const now = Date.now();
+            if (!p._lastPersistAt || (now - p._lastPersistAt) >= 2000) {
+                p._lastPersistAt = now;
+                persistUserLocation(p.userId, p.map, p.x, p.y, p.direction);
+            }
+        }
+    });
     socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
     
   socket.on('check_encounter', (data) => { 
@@ -2239,7 +2548,17 @@ io.on('connection', (socket) => {
         }
     });
     
-    socket.on('disconnect', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if (players[socket.id]) { const map = players[socket.id].map; delete players[socket.id]; io.to(map).emit('player_left', socket.id); } });
+    socket.on('disconnect', () => {
+        matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id);
+        if (players[socket.id]) {
+            const p = players[socket.id];
+            const map = p.map;
+            // Salva a última posição ao sair
+            persistUserLocation(p.userId, p.map, p.x, p.y, p.direction);
+            delete players[socket.id];
+            io.to(map).emit('player_left', socket.id);
+        }
+    });
     socket.on('cancel_match', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if(players[socket.id]) { players[socket.id].isSearching = false; io.emit('player_updated', players[socket.id]); } });
     
     socket.on('find_match', async (fighterId, userId, playerName, playerSkin, bet = 0) => { 

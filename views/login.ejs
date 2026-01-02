@@ -155,7 +155,7 @@
         .character-sprite {
             width: 48px; 
             height: 48px;
-            background-image: url('/uploads/char1.png'); /* Padrão */
+            background-image: none;
             background-size: 400% auto; /* Lógica do 4x4 */
             image-rendering: pixelated;
             background-position-y: 0%; /* Olhando para baixo */
@@ -264,8 +264,12 @@
                 </div>
                 <div style="flex: 1;">
                     <select id="skinSelect" name="skin" onchange="updateSkinPreview(this.value)">
-                        <% for(let i=1; i<=skinCount; i++) { %>
-                            <option value="char<%=i%>">Visual #<%=i%></option>
+                        <% if (skins && skins.length > 0) { %>
+                            <% skins.forEach(s => { %>
+                                <option value="<%= s._id %>"><%= s.name %></option>
+                            <% }) %>
+                        <% } else { %>
+                            <option value="" disabled selected>Nenhuma skin cadastrada (admin: crie no LAB)</option>
                         <% } %>
                     </select>
                 </div>
@@ -297,8 +301,12 @@
         // Lógica do Preview de Skin
         function updateSkinPreview(skinName) {
             const previewEl = document.getElementById('charPreview');
-            // Assume que as imagens estão em /uploads/ e são PNGs
-            previewEl.style.backgroundImage = `url('/uploads/${skinName}.png')`;
+            const s = String(skinName || '').trim();
+            if (!s) {
+                previewEl.style.backgroundImage = 'none';
+                return;
+            }
+            previewEl.style.backgroundImage = `url('/skins/${encodeURIComponent(s)}.png')`;
         }
 
         // Inicializa o preview com o valor atual do select
@@ -306,6 +314,16 @@
             const select = document.getElementById('skinSelect');
             if(select && select.value) {
                 updateSkinPreview(select.value);
+            }
+
+            // Se não tiver skins cadastradas, desabilita o botão de registro.
+            const registerForm = document.getElementById('formRegister');
+            const registerBtn = registerForm ? registerForm.querySelector('button.btn-action') : null;
+            if (registerBtn) {
+                const hasOption = select && select.value;
+                registerBtn.disabled = !hasOption;
+                registerBtn.style.opacity = hasOption ? '1' : '0.6';
+                registerBtn.style.cursor = hasOption ? 'pointer' : 'not-allowed';
             }
         });
     </script>

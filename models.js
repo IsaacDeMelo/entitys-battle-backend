@@ -44,6 +44,16 @@ const UserSchema = new mongoose.Schema({
     storyFlags: { type: Object, default: {} },
 
     isAdmin: { type: Boolean, default: false },
+
+    // Última localização do jogador (para voltar exatamente onde parou)
+    lastLocation: {
+        mapId: { type: String, default: 'house1' },
+        x: { type: Number, default: 50 },
+        y: { type: Number, default: 50 },
+        direction: { type: String, default: 'down' },
+        updatedAt: { type: Number, default: 0 }
+    },
+
     pokemonTeam: [{
         baseId: String,
         nickname: String,
@@ -182,6 +192,10 @@ const MapSchema = new mongoose.Schema({
     name: String,
     bgImage: String, // Base64 ou URL
     battleBackground: String, // Fundo de batalha padrão deste mapa
+    // Ajuste fino do recorte (quando usado com background-size: cover no battle)
+    // 0-100 (%), onde 50/50 é centralizado.
+    battleBgPosX: { type: Number, default: 50 },
+    battleBgPosY: { type: Number, default: 50 },
     width: { type: Number, default: 100 }, // Tamanho em %
     height: { type: Number, default: 100 }, // Tamanho em %
     darknessLevel: { type: Number, default: 0 }, // 0.0 a 0.9
@@ -208,10 +222,20 @@ const ItemDefinitionSchema = new mongoose.Schema({
     updatedAt: { type: Number, default: () => Date.now() }
 });
 
+// --- PLAYER SKINS (catálogo de skins de criação, no DB) ---
+// pngBase64: PNG em base64 (sem prefixo data:)
+const PlayerSkinSchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true },
+    pngBase64: { type: String, required: true },
+    createdAt: { type: Number, default: () => Date.now() },
+    updatedAt: { type: Number, default: () => Date.now() }
+});
+
 const BasePokemon = mongoose.model('BasePokemon', PokemonSchema);
 const User = mongoose.model('User', UserSchema);
 const NPC = mongoose.model('NPC', NPCSchema);
 const GameMap = mongoose.model('GameMap', MapSchema);
 const ItemDefinition = mongoose.model('ItemDefinition', ItemDefinitionSchema);
+const PlayerSkin = mongoose.model('PlayerSkin', PlayerSkinSchema);
 
-module.exports = { BasePokemon, User, NPC, GameMap, ItemDefinition };
+module.exports = { BasePokemon, User, NPC, GameMap, ItemDefinition, PlayerSkin };

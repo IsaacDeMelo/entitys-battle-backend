@@ -22,6 +22,7 @@
         .list-item:hover { background: rgba(52, 152, 219, 0.1); border-left: 3px solid var(--accent); }
         .list-item img, .npc-thumb { width: 40px; height: 40px; border-radius: 50%; background-color: rgba(0,0,0,0.3); image-rendering: pixelated; object-fit: contain; flex-shrink: 0; border: 1px solid #444; }
         .npc-thumb { background-size: 400% auto; background-position: 0 0; }
+        .skin-thumb { width: 40px; height: 40px; border-radius: 8px; border: 1px solid #444; background: rgba(0,0,0,0.3); object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
         .item-info { flex: 1; overflow: hidden; }
         .item-name { font-weight: bold; color: #fff; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .item-sub { font-size: 0.7rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -112,6 +113,22 @@
                     </div>
                 <% }) %>
             </div>
+
+            <div id="list-skin" class="list-container">
+                <div class="sidebar-header">SKINS (<%= (skins || []).length %>)</div>
+                <div style="padding:10px;">
+                    <button class="btn-new" onclick="clearSkinForm()"><span>+</span> NOVA SKIN</button>
+                </div>
+                <% (skins || []).forEach(s => { %>
+                    <div class="list-item" onclick="loadSkin(<%= JSON.stringify(s) %>)">
+                        <img class="skin-thumb" src="/skins/<%= s._id %>.png" onerror="this.style.display='none'">
+                        <div class="item-info">
+                            <div class="item-name"><%= s.name %></div>
+                            <div class="item-sub">ID: <%= s._id %></div>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
         </div>
 
         <!-- EDITOR AREA -->
@@ -119,6 +136,7 @@
             <div class="tabs">
                 <button id="btn-tab-poke" class="tab-btn active" onclick="switchMode('poke')">POKEMON</button>
                 <button id="btn-tab-npc" class="tab-btn" onclick="switchMode('npc')">NPC</button>
+                <button id="btn-tab-skin" class="tab-btn" onclick="switchMode('skin')">SKINS</button>
             </div>
 
             <!-- ================= FORM POKEMON ================= -->
@@ -254,7 +272,9 @@
                             <label>Skin Padrão</label>
                             <select name="skinSelect" id="npcSkinSelect">
                                 <option value="">-- Personalizada --</option>
-                                <% for(let i=1; i<=12; i++){ %> <option value="char<%=i%>">Personagem <%=i%></option> <% } %>
+                                <% (skins || []).forEach(s => { %>
+                                    <option value="<%= s._id %>"><%= s.name %></option>
+                                <% }) %>
                             </select>
                         </div>
                         <div>
@@ -531,6 +551,35 @@
                 </form>
                 <form id="deleteNpcForm" action="/lab/delete-npc" method="POST" style="display:none;"><input type="hidden" name="id" id="deleteNpcId"></form>
             </div>
+
+            <!-- ================= FORM SKINS ================= -->
+            <div id="tab-skin" class="tab-content hidden">
+                <form id="skinForm" action="/lab/skins/create" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="userId" value="<%= user._id %>">
+                    <input type="hidden" name="skinId" id="skinId">
+
+                    <div class="form-grid">
+                        <div class="half-width">
+                            <label>Nome da Skin</label>
+                            <input type="text" name="name" id="skinName" required autocomplete="off">
+                        </div>
+                        <div>
+                            <label>PNG</label>
+                            <input type="file" name="skinFile" accept="image/png" onchange="previewImage(this, 'skinImgPreview')" required>
+                            <div id="skinImgPreview">Sem imagem</div>
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button type="submit" class="btn-save">💾 SALVAR SKIN</button>
+                        <button type="button" class="btn-delete" onclick="deleteSkin()">🗑️ EXCLUIR</button>
+                    </div>
+                </form>
+                <form id="deleteSkinForm" action="/lab/skins/delete" method="POST" style="display:none;">
+                    <input type="hidden" name="userId" value="<%= user._id %>">
+                    <input type="hidden" name="id" id="deleteSkinId">
+                </form>
+            </div>
         </div>
     </div>
     
@@ -625,6 +674,41 @@
 
             npcTeamLoadFromJson(document.getElementById('npcTeam').value);
             npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
+        }
+
+        function clearSkinForm() {
+            switchMode('skin');
+            const form = document.getElementById('skinForm');
+            if (form) form.reset();
+            document.getElementById('skinId').value = '';
+            document.getElementById('skinName').value = '';
+            const prev = document.getElementById('skinImgPreview');
+            if (prev) prev.innerHTML = 'Sem imagem';
+            const file = document.querySelector('#skinForm input[name="skinFile"]');
+            if (file) file.required = true;
+        }
+
+        function loadSkin(s) {
+            switchMode('skin');
+            clearSkinForm();
+            document.getElementById('skinId').value = s._id;
+            document.getElementById('deleteSkinId').value = s._id;
+            document.getElementById('skinName').value = s.name || '';
+            const prev = document.getElementById('skinImgPreview');
+            if (prev) prev.innerHTML = `<img src="/skins/${encodeURIComponent(s._id)}.png" style="height:100%; object-fit:contain;">`;
+
+            // Para evitar sobrescrever uma skin existente via /create (que só cria),
+            // removemos o required do arquivo quando estamos apenas visualizando.
+            const file = document.querySelector('#skinForm input[name="skinFile"]');
+            if (file) file.required = false;
+        }
+
+        function deleteSkin() {
+            const id = document.getElementById('deleteSkinId').value;
+            if (!id) return alert('Selecione uma skin na lista primeiro para excluir.');
+            if (confirm('Tem certeza que deseja excluir esta skin?')) {
+                document.getElementById('deleteSkinForm').submit();
+            }
         }
         
         function loadNpc(n) {

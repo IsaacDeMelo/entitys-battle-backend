@@ -471,6 +471,24 @@
         .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
         .dev-interact { background: rgba(155, 89, 182, 0.4) !important; border: 1px dashed #8e44ad; z-index: 21; pointer-events: auto !important; cursor: help; }
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
+
+        .devGroupHeader {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(30, 41, 59, 0.55);
+            color: #fff;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            letter-spacing: 0.3px;
+        }
+        .devGroupChevron { color:#94a3b8; font-weight:900; }
+        .devGroupBody { margin-top: 6px; }
         
         /* SPAWN POINT VISUAL (Apenas no Modo Dev) */
         .dev-spawn { 
@@ -507,43 +525,86 @@
         </div>
 
         <button id="btnDevMode" class="devBtn--yellow" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
-        <div id="devTools" style="display:none; flex-direction:column; gap:5px; margin-top:5px;">
-            <div class="devSectionTitle">NPC</div>
-            <div class="devSection">
-                <button id="btnToolMoveNpc" class="devBtn--orange" onclick="selectTool('moveNpc')">🧍 MOVER NPC</button>
-                <button id="btnToolNpcEditor" class="devBtn--orange" onclick="openNpcEditor()">🧪 NPCs</button>
+        <div id="devTools" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
+            <div class="devGroup" data-devgroup="npc">
+                <button type="button" class="devGroupHeader" onclick="toggleDevGroup('npc')">
+                    <span>NPC</span>
+                    <span class="devGroupChevron" id="devGroupChevron-npc">▾</span>
+                </button>
+                <div class="devGroupBody" id="devGroupBody-npc">
+                    <div class="devSection">
+                        <button id="btnToolMoveNpc" class="devBtn--orange" onclick="selectTool('moveNpc')">🧍 MOVER NPC</button>
+                        <button id="btnToolNpcEditor" class="devBtn--orange" onclick="openNpcEditor()">🧪 NPCs</button>
+                    </div>
+                </div>
             </div>
 
             <div class="devDivider"></div>
 
-            <div class="devSectionTitle">Desenho</div>
-            <div class="devSection">
-                <button id="btnToolSpawn" class="devBtn--green" onclick="selectTool('spawn')">📍 SET SPAWN</button>
-                <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
-                <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
-                <button id="btnToolPortal" class="devBtn--blue" onclick="selectTool('portal')">🟦 PORTAL</button>
-                <button id="btnToolInteract" class="devBtn--purple" onclick="selectTool('interact')">🟪 INTERAÇÃO</button>
-                <button id="btnToolObject" class="devBtn--gray" onclick="selectTool('object')">🪑 OBJETO</button>
+            <div class="devGroup" data-devgroup="draw">
+                <button type="button" class="devGroupHeader" onclick="toggleDevGroup('draw')">
+                    <span>Desenho</span>
+                    <span class="devGroupChevron" id="devGroupChevron-draw">▾</span>
+                </button>
+                <div class="devGroupBody" id="devGroupBody-draw">
+                    <div class="devSection">
+                        <button id="btnToolSpawn" class="devBtn--green" onclick="selectTool('spawn')">📍 SET SPAWN</button>
+                        <button id="btnToolCol" onclick="selectTool('collision')">🟥 PAREDE</button>
+                        <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
+                        <button id="btnToolPortal" class="devBtn--blue" onclick="selectTool('portal')">🟦 PORTAL</button>
+                        <button id="btnToolInteract" class="devBtn--purple" onclick="selectTool('interact')">🟪 INTERAÇÃO</button>
+                        <button id="btnToolObject" class="devBtn--gray" onclick="selectTool('object')">🪑 OBJETO</button>
+                    </div>
+                </div>
             </div>
 
             <div class="devDivider"></div>
 
-            <div class="devSectionTitle">Imagens</div>
-            <div class="devSection">
-                <button id="btnToolBg" class="devBtn--yellow" onclick="document.getElementById('uploadMapBg').click()">🖼️ FUNDO MAPA</button>
-                <button id="btnToolBattleBg" class="devBtn--danger" onclick="document.getElementById('uploadBattleBg').click()">⚔️ FUNDO BATALHA</button>
-                <button id="btnToolChroma" onclick="openChromaTool()">🎨 REMOVER FUNDO</button>
+            <div class="devGroup" data-devgroup="images">
+                <button type="button" class="devGroupHeader" onclick="toggleDevGroup('images')">
+                    <span>Imagens</span>
+                    <span class="devGroupChevron" id="devGroupChevron-images">▾</span>
+                </button>
+                <div class="devGroupBody" id="devGroupBody-images">
+                    <div class="devSection">
+                        <button id="btnToolBg" class="devBtn--yellow" onclick="document.getElementById('uploadMapBg').click()">🖼️ FUNDO MAPA</button>
+                        <button id="btnToolBattleBg" class="devBtn--danger" onclick="document.getElementById('uploadBattleBg').click()">⚔️ FUNDO BATALHA</button>
+                        <button id="btnToolChroma" onclick="openChromaTool()">🎨 REMOVER FUNDO</button>
+                    </div>
+
+                    <div id="battleBgPosPanel" style="display:none; flex-direction:column; gap:6px; margin-top:6px;">
+                        <div style="font-size:0.62rem; color:#94a3b8; font-weight:900; letter-spacing:0.9px; text-transform:uppercase;">Posição fundo batalha</div>
+                        <label style="display:flex; gap:8px; align-items:center; font-size:0.65rem;">
+                            X
+                            <input id="battleBgPosXRange" type="range" min="0" max="100" step="1" style="flex:1;" />
+                            <input id="battleBgPosXNum" type="number" min="0" max="100" step="1" style="width:64px;" />
+                        </label>
+                        <label style="display:flex; gap:8px; align-items:center; font-size:0.65rem;">
+                            Y
+                            <input id="battleBgPosYRange" type="range" min="0" max="100" step="1" style="flex:1;" />
+                            <input id="battleBgPosYNum" type="number" min="0" max="100" step="1" style="width:64px;" />
+                        </label>
+                        <div style="font-size:0.62rem; color:#aaa;">Dica: use X/Y pra escolher o recorte (cover). Depois clique em 💾 SALVAR MAPA.</div>
+                    </div>
+                </div>
             </div>
 
             <div class="devDivider"></div>
 
-            <div class="devSectionTitle">Ações</div>
-            <div class="devSection">
-                <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">📏 TAMANHO</button>
-                <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">💡 ILUMINAÇÃO</button>
-                <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">🗑️ APAGAR</button>
-                <button onclick="undoLast()">↩️ DESFAZER</button>
-                <button class="devBtn--green" onclick="saveMapToServer()">💾 SALVAR MAPA</button>
+            <div class="devGroup" data-devgroup="actions">
+                <button type="button" class="devGroupHeader" onclick="toggleDevGroup('actions')">
+                    <span>Ações</span>
+                    <span class="devGroupChevron" id="devGroupChevron-actions">▾</span>
+                </button>
+                <div class="devGroupBody" id="devGroupBody-actions">
+                    <div class="devSection">
+                        <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">📏 TAMANHO</button>
+                        <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">💡 ILUMINAÇÃO</button>
+                        <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">🗑️ APAGAR</button>
+                        <button onclick="undoLast()">↩️ DESFAZER</button>
+                        <button class="devBtn--green" onclick="saveMapToServer()">💾 SALVAR MAPA</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1120,6 +1181,60 @@
         }
 
         applyMapVisuals(mapConfig);
+
+        // Defaults para posicionamento do fundo de batalha (recorte no battle.ejs)
+        if (!Number.isFinite(mapConfig.battleBgPosX)) mapConfig.battleBgPosX = 50;
+        if (!Number.isFinite(mapConfig.battleBgPosY)) mapConfig.battleBgPosY = 50;
+
+        (function initBattleBgPosUi() {
+            const panel = document.getElementById('battleBgPosPanel');
+            const xr = document.getElementById('battleBgPosXRange');
+            const xn = document.getElementById('battleBgPosXNum');
+            const yr = document.getElementById('battleBgPosYRange');
+            const yn = document.getElementById('battleBgPosYNum');
+            if (!panel || !xr || !xn || !yr || !yn) return;
+
+            function clamp01to100(v, fallback) {
+                const n = parseFloat(v);
+                if (!Number.isFinite(n)) return fallback;
+                return Math.max(0, Math.min(100, n));
+            }
+
+            function syncFromConfig() {
+                const x = clamp01to100(mapConfig.battleBgPosX, 50);
+                const y = clamp01to100(mapConfig.battleBgPosY, 50);
+                xr.value = String(Math.round(x));
+                xn.value = String(Math.round(x));
+                yr.value = String(Math.round(y));
+                yn.value = String(Math.round(y));
+            }
+
+            function applyX(v) {
+                const x = clamp01to100(v, 50);
+                mapConfig.battleBgPosX = x;
+                xr.value = String(Math.round(x));
+                xn.value = String(Math.round(x));
+            }
+
+            function applyY(v) {
+                const y = clamp01to100(v, 50);
+                mapConfig.battleBgPosY = y;
+                yr.value = String(Math.round(y));
+                yn.value = String(Math.round(y));
+            }
+
+            xr.addEventListener('input', () => applyX(xr.value));
+            xn.addEventListener('input', () => applyX(xn.value));
+            yr.addEventListener('input', () => applyY(yr.value));
+            yn.addEventListener('input', () => applyY(yn.value));
+
+            xr.addEventListener('change', () => { if (typeof showToast === 'function') showToast('Posição X do fundo de batalha atualizada (salve o mapa).'); });
+            yr.addEventListener('change', () => { if (typeof showToast === 'function') showToast('Posição Y do fundo de batalha atualizada (salve o mapa).'); });
+
+            // Exibe o painel só para admins (o container existe apenas nesse caso)
+            panel.style.display = 'flex';
+            syncFromConfig();
+        })();
     </script>
 
     <script>
@@ -1141,7 +1256,8 @@
         window.myId = null; 
         const MOVEMENT_SPEED = 55; 
         // Velocidade do player em pixels/s (para não ficar mais rápido na horizontal em telas largas)
-        const PLAYER_MOVE_PX_PER_S = 320;
+        // (320 estava rápido demais na prática)
+        const PLAYER_MOVE_PX_PER_S = 200;
         const MIN_PLAYER_MOVE_S = 0.08; // garante animação mesmo em passos pequenos
         const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
 
@@ -1216,6 +1332,16 @@
                     if (npcEdTeamPickIndex === null || npcEdTeamPickIndex === undefined) return;
                     if (!npcEdTeamState[npcEdTeamPickIndex]) return;
                     npcEdTeamState[npcEdTeamPickIndex].baseId = mon.id;
+
+                    // Se começou a montar um time, isso é um treinador.
+                    try {
+                        const typeEl = document.getElementById('npcEdType');
+                        if (typeEl && String(typeEl.value || '').trim() !== 'trainer') {
+                            typeEl.value = 'trainer';
+                            npcTypeUiSync(false);
+                        }
+                    } catch (_) {}
+
                     npcEdCloseMonsterPicker();
                     npcEdTeamRender();
                 };
@@ -1309,6 +1435,18 @@
             } catch (_) {
                 npcEdTeamState = [];
             }
+
+            // Se o JSON tem time, isso é treinador.
+            try {
+                if (npcEdTeamState && npcEdTeamState.length) {
+                    const typeEl = document.getElementById('npcEdType');
+                    if (typeEl && String(typeEl.value || '').trim() !== 'trainer') {
+                        typeEl.value = 'trainer';
+                        npcTypeUiSync(false);
+                    }
+                }
+            } catch (_) {}
+
             npcEdCloseMonsterPicker();
             npcEdTeamRender();
         }
@@ -1322,6 +1460,16 @@
 
         function npcEdTeamAddRow() {
             npcEdTeamState.push({ baseId: '', level: 5 });
+
+            // Time = treinador -> mostra campos (cooldown, etc.)
+            try {
+                const typeEl = document.getElementById('npcEdType');
+                if (typeEl && String(typeEl.value || '').trim() !== 'trainer') {
+                    typeEl.value = 'trainer';
+                    npcTypeUiSync(false);
+                }
+            } catch (_) {}
+
             npcEdTeamRender();
         }
 
@@ -1443,24 +1591,20 @@
         // --- LÓGICA DE SPAWN INICIAL ---
         let queryString = window.location.search.replace(/&amp;/g, '&');
         const urlParams = new URLSearchParams(queryString);
-        
-        let startX = 50;
-        let startY = 50;
+
+        // Vem do servidor (que pode usar lastLocation do usuário)
+        let startX = <%= typeof startX === 'number' ? startX : 50 %>;
+        let startY = <%= typeof startY === 'number' ? startY : 50 %>;
 
         // 1. Prioridade: URL (Portal enviou coordenada específica)
         if (urlParams.get('x') && urlParams.get('y')) {
             startX = parseFloat(urlParams.get('x'));
             startY = parseFloat(urlParams.get('y'));
-        } 
-        // 2. Prioridade: Spawn Point Padrão do Mapa (Se existir no DB)
-        else if (mapConfig.spawnPoint && typeof mapConfig.spawnPoint.x === 'number') {
-            startX = mapConfig.spawnPoint.x;
-            startY = mapConfig.spawnPoint.y;
         }
         
         let currentMapId = mapConfig.mapId;
         if(currentMapId.includes('?')) currentMapId = currentMapId.split('?')[0];
-        let startDir = 'down';
+        let startDir = "<%= typeof startDir === 'string' ? startDir : 'down' %>";
 
         function setDialogImageStyle(mode) {
             setTimeout(() => {
@@ -1579,11 +1723,12 @@
                 const isKid = npc.name && String(npc.name).toLowerCase().includes('(kid)');
                 div.classList.toggle('kid-scale', !!isKid);
 
-                const skinUrl = (npc.skin && (npc.skin.startsWith('http') || npc.skin.startsWith('data:')))
-                    ? npc.skin
-                    : `/uploads/${npc.skin || 'char1'}.png`;
+                const rawNpcSkin = String(npc.skin || '').trim();
+                const skinUrl = (rawNpcSkin && (rawNpcSkin.startsWith('http') || rawNpcSkin.startsWith('data:')))
+                    ? rawNpcSkin
+                    : (rawNpcSkin ? `/skins/${encodeURIComponent(rawNpcSkin)}.png` : '');
                 if (div.dataset.skinUrl !== skinUrl) {
-                    div.style.backgroundImage = `url('${skinUrl}')`;
+                    div.style.backgroundImage = skinUrl ? `url('${skinUrl}')` : 'none';
                     div.dataset.skinUrl = skinUrl;
                 }
 
@@ -1909,7 +2054,8 @@
 
             // Campos básicos que só fazem sentido em treinador
             setDisp('npcEdMoneyBox', isTrainer);
-            setDisp('npcEdCooldownBox', isTrainer);
+            // Cooldown pode ser útil fora de "trainer" também (ex: limitar interação/uso)
+            setDisp('npcEdCooldownBox', !isDecor);
             setDisp('npcEdWinDialogueBox', isTrainer);
             setDisp('npcEdCooldownDialogueBox', isTrainer);
 
@@ -1919,7 +2065,6 @@
                     // Treinador -> não-treinador: remove time/recompensa/cooldowns
                     try {
                         document.getElementById('npcEdMoney').value = 0;
-                        document.getElementById('npcEdCooldown').value = 0;
                         document.getElementById('npcEdWinDialogue').value = '';
                         document.getElementById('npcEdCooldownDialogue').value = '';
 
@@ -1933,6 +2078,11 @@
                         npcEdTeamRender();
                         document.getElementById('npcEdTeamJson').value = '[]';
                     } catch (_) {}
+                }
+
+                // Decor não deve ter cooldown
+                if (isDecor) {
+                    try { document.getElementById('npcEdCooldown').value = 0; } catch (_) {}
                 }
 
                 // Interact/service: limpar se o tipo não usa
@@ -2509,6 +2659,11 @@
         window.interactWithNPC = function(npc) {
             window.isInteracting = true; window.isMoving = false;
 
+            function endInteraction() {
+                window.isInteracting = false;
+                window.isMoving = false;
+            }
+
             async function disengageNow() {
                 try {
                     if (npc && npc._id) {
@@ -2551,7 +2706,10 @@
                     else { dialogueText = npc.dialogue || "Vamos batalhar novamente!"; showBattleOptions = true; }
                 }
             }
-            const hasInteract = !!(npc.interact && npc.interact.enabled);
+            const svcForInteract = (npc && npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
+            const typeForInteract = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
+            const isStarterNpcForInteract = (svcForInteract === 'starter') || (typeForInteract === 'starter');
+            const hasInteract = isStarterNpcForInteract || !!(npc.interact && npc.interact.enabled);
             const canBattle = npc.team && npc.team.length > 0;
 
             async function runNpcTalk() {
@@ -2570,10 +2728,96 @@
                     if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
                     const text = (data && data.text) ? data.text : '...';
 
+                    // Fallback robusto para starter:
+                    // - Se o NPC é starter mas o backend não retornou action (ou retornou só texto),
+                    //   buscamos as opções via /api/starter/options e abrimos o picker.
+                    // - Isso evita ficar preso no "FECHAR" e evita o problema de paginação.
+                    try {
+                        const svcLocal = (npc && npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
+                        const typeLocal = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
+                        const isStarterNpc = (svcLocal === 'starter') || (typeLocal === 'starter');
+                        const hasStarterAction = !!(data && data.action && data.action.type === 'starter');
+                        const alreadyDone = !!(data && data.alreadyDone);
+                        if (isStarterNpc && !hasStarterAction && !alreadyDone) {
+                            const optRes = await fetch(`/api/starter/options?userId=${encodeURIComponent(window.CURRENT_USER_ID)}&npcId=${encodeURIComponent(String(npc._id || ''))}`);
+                            const optData = await optRes.json().catch(() => ({}));
+                            if (optData && optData.error) {
+                                await showRPGDialog(cleanName, npc.skin, optData.error);
+                                await disengageNow();
+                                return;
+                            }
+                            if (optData && optData.chosen) {
+                                const msg = (npc.interact && npc.interact.alreadyDoneDialogue)
+                                    ? npc.interact.alreadyDoneDialogue
+                                    : 'Você já escolheu o seu monstro inicial.';
+                                await showRPGDialog(cleanName, npc.skin, msg);
+                                await disengageNow();
+                                return;
+                            }
+
+                            const options = Array.isArray(optData && optData.options) ? optData.options.slice(0, 3) : [];
+                            if (options.length < 3) {
+                                await showRPGDialog(cleanName, npc.skin, 'Erro: opções de starter insuficientes.');
+                                await disengageNow();
+                                return;
+                            }
+
+                            function escapeHtml(s) {
+                                return String(s || '')
+                                    .replace(/&/g, '&amp;')
+                                    .replace(/</g, '&lt;')
+                                    .replace(/>/g, '&gt;')
+                                    .replace(/"/g, '&quot;')
+                                    .replace(/'/g, '&#039;');
+                            }
+                            const safeHtmlText = escapeHtml(text).replace(/\n/g, '<br>');
+                            const choose = await showRPGDialog(cleanName, npc.skin, safeHtmlText, [
+                                { text: 'ESCOLHER', value: 'choose', class: 'confirm' },
+                                { text: 'SAIR', value: 'exit', class: 'cancel' }
+                            ], null, { allowHtml: true });
+                            if (choose !== 'choose') {
+                                await disengageNow();
+                                return;
+                            }
+                            if (typeof window.__openStarterPicker === 'function') {
+                                window.__openStarterPicker({
+                                    npcName: cleanName,
+                                    npcSkin: npc.skin,
+                                    npcId: npc._id,
+                                    hintText: 'Escolha seu monstro inicial:',
+                                    options
+                                });
+                            }
+                            await disengageNow();
+                            return;
+                        }
+                    } catch (_) {}
+
                     if (data && data.action && data.action.type === 'starter') {
                         const options = Array.isArray(data.action.options) ? data.action.options.slice(0, 3) : [];
                         if (options.length < 3) {
                             await showRPGDialog(cleanName, npc.skin, 'Erro: opções de starter insuficientes.');
+                            await disengageNow();
+                            return;
+                        }
+
+                        // O showRPGDialog (normal) só mostra botões na ÚLTIMA página.
+                        // Para não "sumir" a opção quando o texto quebra em 2 partes, usamos allowHtml
+                        // (texto completo rolável + botões sempre visíveis).
+                        function escapeHtml(s) {
+                            return String(s || '')
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#039;');
+                        }
+                        const safeHtmlText = escapeHtml(text).replace(/\n/g, '<br>');
+                        const choose = await showRPGDialog(cleanName, npc.skin, safeHtmlText, [
+                            { text: 'ESCOLHER', value: 'choose', class: 'confirm' },
+                            { text: 'SAIR', value: 'exit', class: 'cancel' }
+                        ], null, { allowHtml: true });
+                        if (choose !== 'choose') {
                             await disengageNow();
                             return;
                         }
@@ -2583,7 +2827,7 @@
                                 npcName: cleanName,
                                 npcSkin: npc.skin,
                                 npcId: npc._id,
-                                hintText: text,
+                                hintText: 'Escolha seu monstro inicial:',
                                 options
                             });
                         }
@@ -2625,8 +2869,10 @@
             // Se já escolheu o starter, não mostra a fala "de escolher" no menu inicial.
             try {
                 const svc = (npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
-                const chosen = !!(window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
-                if (hasInteract && svc === 'starter' && chosen) {
+                const type = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
+                const rawChosen = (window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
+                const chosen = (rawChosen === true || rawChosen === 1 || rawChosen === '1' || String(rawChosen).trim().toLowerCase() === 'true');
+                if (hasInteract && (svc === 'starter' || type === 'starter') && chosen) {
                     dialogueText = (npc.interact && npc.interact.alreadyDoneDialogue)
                         ? npc.interact.alreadyDoneDialogue
                         : 'Você já escolheu o seu monstro inicial.';
@@ -2637,8 +2883,10 @@
             let canTalk = hasInteract;
             try {
                 const svc = (npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
-                const chosen = !!(window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
-                if (hasInteract && svc === 'starter' && chosen) {
+                const type = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
+                const rawChosen = (window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
+                const chosen = (rawChosen === true || rawChosen === 1 || rawChosen === '1' || String(rawChosen).trim().toLowerCase() === 'true');
+                if (hasInteract && (svc === 'starter' || type === 'starter') && chosen) {
                     canTalk = false;
                 }
             } catch (_) {}
@@ -2653,13 +2901,24 @@
                 return;
             }
             if (!hasTalkOption && hasBattleOption) {
-                window.isInteracting = false;
-                runNpcBattle();
+                // NPC com batalha (ex.: treinador) sem opção de fala/serviço: mostra um texto antes da batalha.
+                setDialogImageStyle('pixel');
+                showRPGDialog(cleanName, npc.skin, dialogueText, [
+                    { text: 'BATALHAR', value: 'battle', class: 'confirm' },
+                    { text: 'SAIR', value: 'exit', class: 'cancel' }
+                ]).then((choice) => {
+                    endInteraction();
+                    if (choice === 'battle') {
+                        runNpcBattle();
+                    } else {
+                        disengageNow();
+                    }
+                });
                 return;
             }
             if (!hasTalkOption && !hasBattleOption) {
                 setDialogImageStyle('pixel');
-                showRPGDialog(cleanName, npc.skin, dialogueText, [], () => disengageNow());
+                showRPGDialog(cleanName, npc.skin, dialogueText, [], () => { endInteraction(); disengageNow(); });
                 return;
             }
 
@@ -2824,7 +3083,8 @@
 
             window.isMoving = true;
             socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
-            const travelTime = (moveDist / MOVEMENT_SPEED) * 1000;
+            const travelS = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
+            const travelTime = Math.max(120, travelS * 1000);
 
             setTimeout(() => {
                 window.isMoving = false;
@@ -2925,7 +3185,16 @@
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
             if (p.name && p.name.toLowerCase().includes('(kid)')) { div.classList.add('kid-scale'); }
-            if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; div.appendChild(img); div.style.backgroundImage='none'; } else { div.style.backgroundImage = `url('/uploads/${p.skin || 'char1'}.png')`; }
+            function getSkinUrl(skinId) {
+                const s = String(skinId || '').trim();
+                if (!s) return '';
+                return `/skins/${encodeURIComponent(s)}.png`;
+            }
+            if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; div.appendChild(img); div.style.backgroundImage='none'; }
+            else {
+                const url = getSkinUrl(p.skin);
+                div.style.backgroundImage = url ? `url('${url}')` : 'none';
+            }
             const displayName = (p.name || "").replace(/\(kid\)/i, '').trim();
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; div.appendChild(label); 
             gameArea.appendChild(div); 
@@ -2935,7 +3204,7 @@
             const steps = 25;
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps; const px = currX + (targetX - currX) * t; const py = currY + (targetY - currY) * t;
-                const hitWall = collisionMap.some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                const hitWall = getActiveCollisionMap().some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
                 const hitNpc = (currentNpcsCache || []).some(n => {
                     if (!n || !n.blocksMovement) return false;
                     const nx = typeof n.x === 'number' ? n.x : 0;
@@ -2946,6 +3215,30 @@
                 if (hit) return { x: currX + (targetX - currX) * ((i - 1) / steps), y: currY + (targetY - currY) * ((i - 1) / steps) };
             }
             return { x: targetX, y: targetY };
+        }
+
+        function hasDefeatedNpc(npcId) {
+            try {
+                const id = String(npcId || '').trim();
+                if (!id) return false;
+                const list = window.DEFEATED_NPCS || [];
+                return (Array.isArray(list) ? list : []).some(r => {
+                    if (!r) return false;
+                    if (typeof r === 'string') return String(r) === id;
+                    return String(r.npcId || '') === id;
+                });
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function getActiveCollisionMap() {
+            const list = Array.isArray(collisionMap) ? collisionMap : [];
+            return list.filter(r => {
+                const unlockNpcId = r && (r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId);
+                if (!unlockNpcId) return true;
+                return !hasDefeatedNpc(unlockNpcId);
+            });
         }
 
         function checkTriggers(x, y) {
@@ -3186,6 +3479,9 @@
             }
             if (!(distPx > 2)) return;
 
+            const travelS = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
+            const travelTime = Math.max(120, travelS * 1000);
+
             // Direção + animação já no primeiro toque
             try {
                 const dx = safeDest.x - currX;
@@ -3201,11 +3497,8 @@
                     try {
                         if (!window.__virtualPadHolding) myPlayer.classList.remove('walking');
                     } catch (_) {}
-                }, 220);
+                }, Math.max(300, Math.min(2000, travelTime + 250)));
             } catch (_) {}
-
-            const travelS = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
-            const travelTime = Math.max(120, travelS * 1000);
 
             window.isMoving = true;
             setTimeout(() => { window.isMoving = false; }, Math.min(6000, travelTime + 200));
@@ -3494,7 +3787,33 @@
         
         // --- DEV TOOLS (ATUALIZADO) ---
         function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
-        function selectTool(tool) { currentTool = tool; pendingPortalData = null; document.querySelectorAll('#devTools button').forEach(b => b.classList.remove('active')); document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active'); }
+        function selectTool(tool) {
+            currentTool = tool;
+            pendingPortalData = null;
+            // Só limpa/ativa botões de ferramenta (não os headers das seções)
+            document.querySelectorAll('#devTools button[id^="btnTool"]').forEach(b => b.classList.remove('active'));
+            const target = document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1));
+            if (target) target.classList.add('active');
+        }
+
+        function toggleDevGroup(groupId) {
+            const body = document.getElementById('devGroupBody-' + groupId);
+            const chevron = document.getElementById('devGroupChevron-' + groupId);
+            if (!body) return;
+            const isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            if (chevron) chevron.textContent = isOpen ? '▸' : '▾';
+        }
+
+        // Estado inicial: tudo aberto
+        (function initDevGroups() {
+            ['npc', 'draw', 'images', 'actions'].forEach(id => {
+                const body = document.getElementById('devGroupBody-' + id);
+                const chevron = document.getElementById('devGroupChevron-' + id);
+                if (body) body.style.display = 'block';
+                if (chevron) chevron.textContent = '▾';
+            });
+        })();
 
         function openChromaTool() {
             const mapId = currentMapId || (mapConfig && mapConfig.mapId) || 'city';
@@ -3735,13 +4054,41 @@
                     d.classList.add('dev-'+cls.split('-')[0]);
                     d.onclick = (ev) => {
                         ev.stopPropagation();
+
+                        if (cls === 'collision-box' && currentTool === 'collision') {
+                            const current = (r && (r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId)) ? String(r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId) : '';
+                            const val = prompt('ID do NPC que libera essa parede ao ser derrotado. Vazio = nunca some:', current);
+                            if (val === null) return;
+                            const next = String(val || '').trim();
+                            if (next) {
+                                r.unlockNpcId = next;
+                            } else {
+                                delete r.unlockNpcId;
+                                delete r.unlockAfterNpcId;
+                                delete r.removeAfterNpcId;
+                            }
+                            renderMapObjects();
+                            return;
+                        }
+
                         if(currentTool === 'delete' && confirm('Apagar?')) { arr.splice(i, 1); renderMapObjects(); }
+                    }
+
+                    // Dica de configuração (hover)
+                    if (cls === 'collision-box') {
+                        const u = (r && (r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId)) ? String(r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId) : '';
+                        d.title = u ? (`Parede (some ao derrotar NPC: ${u})`) : 'Parede';
                     }
                 }
                 return d;
             };
 
-            collisionMap.forEach((r, i) => document.getElementById('collision-container').appendChild(createDiv('collision-box', r, collisionMap, i)));
+            // Colisões condicionais: a colisão ativa é sempre por jogador (baseado em DEFEATED_NPCS).
+            // Em DEV MODE admin, renderiza TODAS para facilitar edição, mas o movimento usa apenas as ativas.
+            const renderCollisionList = (devMode && isAdmin)
+                ? (Array.isArray(collisionMap) ? collisionMap : [])
+                : getActiveCollisionMap();
+            renderCollisionList.forEach((r, i) => document.getElementById('collision-container').appendChild(createDiv('collision-box', r, renderCollisionList, i)));
             grassMap.forEach((r, i) => document.getElementById('grass-container').appendChild(createDiv('grass-patch', r, grassMap, i)));
             interactsMap.forEach((r, i) => document.getElementById('interacts-container').appendChild(createDiv('interact-box', r, interactsMap, i)));
             
@@ -3848,7 +4195,13 @@
             if(tempBox) { 
                 const newRect = { x: parseFloat(parseFloat(tempBox.style.left).toFixed(1)), y: parseFloat(parseFloat(tempBox.style.top).toFixed(1)), w: parseFloat(parseFloat(tempBox.style.width).toFixed(1)), h: parseFloat(parseFloat(tempBox.style.height).toFixed(1)) }; 
                 if(newRect.w > 1 && newRect.h > 1) { 
-                    if(currentTool === 'collision') collisionMap.push(newRect);
+                    if(currentTool === 'collision') {
+                        const unlockNpcId = prompt('ID do NPC que libera essa parede ao ser derrotado. Vazio = nunca some:', '');
+                        if (unlockNpcId && String(unlockNpcId).trim()) {
+                            newRect.unlockNpcId = String(unlockNpcId).trim();
+                        }
+                        collisionMap.push(newRect);
+                    }
                     else if(currentTool === 'grass') grassMap.push(newRect);
                     else if(currentTool === 'interact') {
                         const type = prompt("Tipo (msg, item, both)?", "msg");

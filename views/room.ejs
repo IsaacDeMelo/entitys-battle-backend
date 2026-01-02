@@ -164,7 +164,7 @@
                 <div style="display:flex; gap:12px; align-items:center;">
                     <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
                         <div style="font-size:0.7rem; color:#9fb8ff; margin-bottom:6px;">Você</div>
-                        <div class="arena-char" style="background-image: url('<%= playerSkin ? ('/uploads/' + playerSkin + '.png') : '/uploads/char1.png' %>');"></div>
+                        <div class="arena-char" style="background-image: url('<%= playerSkin ? ('/skins/' + playerSkin + '.png') : '' %>');"></div>
                         <div style="margin-top:6px; font-weight:bold; color:#f1c40f;"> <%= playerName %> </div>
                     </div>
                     <div style="flex:1; background: linear-gradient(180deg,#0f1720,#081018); padding:12px; border-radius:8px; border:1px solid #2b3b4a; text-align:center;">
@@ -481,7 +481,9 @@
             if (p.sprite) { 
                 const img = document.createElement('img'); img.src = p.sprite.startsWith('http') || p.sprite.startsWith('data:') ? p.sprite : ('/uploads/' + p.sprite); img.style.width = '48px'; img.style.height = '48px'; img.style.objectFit = 'contain'; img.style.imageRendering = 'pixelated'; img.style.pointerEvents = 'none'; div.appendChild(img); div.style.backgroundImage = 'none'; 
             } else { 
-                const skinName = p.skin || 'char1'; div.style.backgroundImage = `url('/uploads/${skinName}.png')`; 
+                const skinName = String(p.skin || '').trim();
+                const url = skinName ? (`/skins/${encodeURIComponent(skinName)}.png`) : '';
+                div.style.backgroundImage = url ? `url('${url}')` : 'none'; 
             } 
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = p.name; div.appendChild(label); 
             
