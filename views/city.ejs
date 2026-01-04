@@ -10,9 +10,9 @@
     <style>
         /* --- 1. BASE --- */
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; touch-action: manipulation; }
-        body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; user-select: none; }
+        body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: flex-start; padding-top: env(safe-area-inset-top); user-select: none; }
         
-        #gameViewport { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background-color: #111; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; }
+        #gameViewport { position: relative; width: 100%; max-width: 420px; height: 100%; max-height: 900px; background-color: #111; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: flex-start; }
 
         #gameArea { 
             position: relative; width: 100%; height: 100%; 
@@ -183,7 +183,7 @@
             /* acima do chat */
             bottom: calc(max(20px, env(safe-area-inset-bottom) + 15px) + 78px);
             width: 92%;
-            max-width: 500px;
+            max-width: 420px;
             z-index: 10001;
             display: block;
             height: 140px;
@@ -389,7 +389,7 @@
             pointer-events: auto;
         }
         #starterPickerWindow {
-            width: min(860px, 96vw);
+            width: min(460px, 96vw);
             background: rgba(15, 23, 42, 0.98);
             border: 1px solid #334155;
             border-radius: 14px;
@@ -428,30 +428,36 @@
         }
         #starterPickerGrid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
         }
         .starterCard {
             background: #1e293b;
             border: 1px solid #334155;
             border-radius: 14px;
-            padding: 14px;
+            padding: 12px 10px;
             cursor: pointer;
             color: #fff;
             text-align: center;
             font-family: 'Rajdhani', sans-serif;
             font-weight: 900;
+            min-height: 170px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         .starterCard:active { transform: translateY(1px); background: #0b1220; }
         .starterSprite {
-            width: 144px;
-            height: 144px;
+            width: clamp(90px, 28vw, 132px);
+            height: clamp(90px, 28vw, 132px);
             image-rendering: pixelated;
             display: block;
-            margin: 0 auto 10px;
+            margin: 0;
         }
         .starterName {
-            font-size: 18px;
+            font-size: 16px;
             letter-spacing: 0.3px;
         }
         #starterPickerFooter {
@@ -525,7 +531,23 @@
         </div>
 
         <button id="btnDevMode" class="devBtn--yellow" onclick="toggleDevMode()">🛠️ ATIVAR EDIÇÃO</button>
+        <button id="btnDevPanel" style="display:none" onclick="toggleDevPanel()">📦 ESCONDER FERRAMENTAS</button>
         <div id="devTools" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
+            <div class="devGroup" data-devgroup="lab">
+                <button type="button" class="devGroupHeader" onclick="toggleDevGroup('lab')">
+                    <span>LAB</span>
+                    <span class="devGroupChevron" id="devGroupChevron-lab">▾</span>
+                </button>
+                <div class="devGroupBody" id="devGroupBody-lab">
+                    <div class="devSection">
+                        <button class="devBtn--yellow" onclick="openLabTool('/lab')">🧪 ABRIR LAB</button>
+                        <button onclick="openChromaTool()">🎨 REMOVER FUNDO</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="devDivider"></div>
+
             <div class="devGroup" data-devgroup="npc">
                 <button type="button" class="devGroupHeader" onclick="toggleDevGroup('npc')">
                     <span>NPC</span>
@@ -1569,6 +1591,24 @@
         window.isTeleporting = false;
         window.isInteracting = false;
 
+        // Cooldown de portal (persiste entre páginas para evitar "voltar pro lugar antigo" ao dar o primeiro passo)
+        window.__portalCooldownUntil = 0;
+        try {
+            const rawUntil = sessionStorage.getItem('__portalCooldownUntil');
+            const until = parseInt(rawUntil || '0', 10);
+            if (Number.isFinite(until)) window.__portalCooldownUntil = until;
+        } catch (_) {}
+
+        function isPortalCooldownActive() {
+            return Date.now() < (window.__portalCooldownUntil || 0);
+        }
+
+        function setPortalCooldown(ms = 1200) {
+            const until = Date.now() + Math.max(0, parseInt(ms, 10) || 0);
+            window.__portalCooldownUntil = until;
+            try { sessionStorage.setItem('__portalCooldownUntil', String(until)); } catch (_) {}
+        }
+
         let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null; 
         let selectedNpcId = null; 
         let pendingPortalData = null;
@@ -1619,20 +1659,31 @@
             }, 10);
         }
 
-        // --- TRANSIÇÃO RÁPIDA (FADE) ---
-        window.onload = function() {
-            setTimeout(() => { document.getElementById('transitionOverlay').classList.add('hidden'); }, 300);
-        };
+        function markMapReady() {
+            const overlay = document.getElementById('transitionOverlay');
+            if (!overlay) return;
+            // Deixa o fade ocorrer mesmo no primeiro frame
+            requestAnimationFrame(() => overlay.classList.add('hidden'));
+        }
 
         function performTransition(onMidPoint) {
             if(window.isTeleporting) return;
             window.isTeleporting = true; window.isMoving = false;
+            window.__transitionNavigating = false;
             const overlay = document.getElementById('transitionOverlay');
             overlay.classList.remove('hidden'); 
+            const FADE_MS = 280;
             setTimeout(async () => {
-                await onMidPoint();
-                setTimeout(() => { overlay.classList.add('hidden'); window.isTeleporting = false; }, 50);
-            }, 220); 
+                try {
+                    await onMidPoint();
+                } finally {
+                    // Se não houver navegação (portal bloqueado etc), volta com fade-out suave.
+                    if (!window.__transitionNavigating) {
+                        overlay.classList.add('hidden');
+                        setTimeout(() => { window.isTeleporting = false; }, FADE_MS);
+                    }
+                }
+            }, FADE_MS);
         }
 
         // --- SOCKETS ---
@@ -1645,6 +1696,7 @@
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => { if(el.id !== `p-${window.myId}`) el.remove(); });
             players.forEach(p => { if(p.id !== window.myId) createPlayerElement(p); else { const myEl = document.getElementById(`p-${window.myId}`); if(myEl && !window.isMoving) { myEl.style.left = p.x + '%'; myEl.style.top = p.y + '%'; } } });
             if (!document.getElementById(`p-${window.myId}`)) { createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: startX, y: startY, direction: startDir }); }
+            markMapReady();
         });
         
         socket.on('player_joined', (p) => { if(p.id !== window.myId) createPlayerElement(p); });
@@ -1652,6 +1704,26 @@
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
+                // Se estamos usando predição local no D-pad, o servidor pode ecoar exatamente
+                // o mesmo alvo e re-aplicar a mesma transição a cada tick, causando "vibração".
+                // Evita reprocessar quando não há mudança real de destino.
+                if (data.id === window.myId && window.__virtualPadHolding) {
+                    const curL = parseFloat(el.style.left);
+                    const curT = parseFloat(el.style.top);
+                    if (Number.isFinite(curL) && Number.isFinite(curT)) {
+                        const sameX = Math.abs(curL - data.x) < 0.001;
+                        const sameY = Math.abs(curT - data.y) < 0.001;
+                        if (sameX && sameY) {
+                            el.setAttribute('data-dir', data.direction);
+                            // Mesmo ignorando o eco (predição local), ainda precisamos checar portais.
+                            if (data.id === window.myId) {
+                                window.isMoving = false;
+                                try { checkTriggers(data.x, data.y); } catch (_) {}
+                            }
+                            return;
+                        }
+                    }
+                }
                 // Se a animação foi iniciada no clique antes do servidor responder, limpa o timeout local
                 if (data.id === window.myId && el.__preWalkTimeout) {
                     clearTimeout(el.__preWalkTimeout);
@@ -3242,13 +3314,8 @@
         }
 
         function checkTriggers(x, y) {
-            if (window.isTeleporting) return; 
-            
-            // SAÍDAS FIXAS
-            if (currentMapId === 'city') {
-                if (y > 95 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/forest?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
-                if (y < 5 && x > 30 && x < 70) { performTransition(() => { window.location.href = '/lobby?from=city&userId=' + window.CURRENT_USER_ID; }); return; }
-            }
+            if (window.isTeleporting) return;
+            if (isPortalCooldownActive()) return;
 
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
@@ -3305,6 +3372,8 @@
                         extra = `&x=${portal.targetX}&y=${portal.targetY}`;
                     }
                     const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
+                    setPortalCooldown(1300);
+                    window.__transitionNavigating = true;
                     window.location.href = newUrl;
                 });
             }
@@ -3401,7 +3470,8 @@
 
                 if (currentTool && currentTool !== 'moveNpc') { handleDevClick(e); return; }
             }
-            handleInput(e);
+            // CLICK-TO-MOVE DESATIVADO (usar apenas D-pad). Mantido aqui comentado para reativar facilmente.
+            // handleInput(e);
         });
 
         // Durante a captura por clique, evita abrir menu e permite cancelar
@@ -3420,10 +3490,11 @@
             }
         });
         
-        gameViewport.addEventListener('touchstart', (e) => {
-            if (e.target.closest('#chatBar')) return;
-            handleInput(e.touches[0], e.target);
-        }, {passive: false});
+        // CLICK-TO-MOVE DESATIVADO (mobile). Mantido comentado para reativar facilmente.
+        // gameViewport.addEventListener('touchstart', (e) => {
+        //     if (e.target.closest('#chatBar')) return;
+        //     handleInput(e.touches[0], e.target);
+        // }, {passive: false});
 
         function handleInput(e, targetElement = null) {
             const target = targetElement || e.target;
@@ -3552,7 +3623,18 @@
             // Sem botão ON/OFF: controle sempre ativo
             const enabled = true;
 
-            const state = { dir: null, intervalId: null, vx: null, vy: null, startedAt: 0 };
+            const state = {
+                dir: null,
+                rafId: null,
+                vx: null,
+                vy: null,
+                startedAt: 0,
+                lastTs: 0,
+                accMs: 0,
+                activePointers: new Map(),
+                order: [],
+                currentPointerId: null
+            };
 
             // Tick do D-pad (ms). Mantém o passo coerente com MOVEMENT_SPEED pra ficar linear.
             const TICK_MS = 140;
@@ -3564,13 +3646,63 @@
                 state.vx = null;
                 state.vy = null;
                 state.startedAt = 0;
-                if (state.intervalId) {
-                    clearInterval(state.intervalId);
-                    state.intervalId = null;
+                state.lastTs = 0;
+                state.accMs = 0;
+                state.activePointers.clear();
+                state.order = [];
+                state.currentPointerId = null;
+                if (state.rafId) {
+                    cancelAnimationFrame(state.rafId);
+                    state.rafId = null;
                 }
 
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (myPlayer) myPlayer.classList.remove('walking');
+            }
+
+            function pickCurrentDir() {
+                for (let i = state.order.length - 1; i >= 0; i--) {
+                    const pid = state.order[i];
+                    const d = state.activePointers.get(pid);
+                    if (d) {
+                        state.currentPointerId = pid;
+                        return d;
+                    }
+                }
+                state.currentPointerId = null;
+                return null;
+            }
+
+            function setDir(dir, pointerId) {
+                if (!dir) return;
+                window.__virtualPadHolding = true;
+                state.dir = dir;
+                state.currentPointerId = pointerId;
+                state.startedAt = Date.now();
+                if (!state.rafId) {
+                    state.lastTs = 0;
+                    state.accMs = 0;
+                    state.rafId = requestAnimationFrame(loop);
+                }
+            }
+
+            function loop(ts) {
+                if (!window.__virtualPadHolding || !state.dir) {
+                    state.rafId = null;
+                    return;
+                }
+                if (!state.lastTs) state.lastTs = ts;
+                const delta = ts - state.lastTs;
+                state.lastTs = ts;
+                state.accMs = Math.min(1000, state.accMs + delta);
+
+                while (state.accMs >= TICK_MS) {
+                    step(state.dir);
+                    state.accMs -= TICK_MS;
+                    if (!window.__virtualPadHolding || !state.dir) break;
+                }
+
+                state.rafId = requestAnimationFrame(loop);
             }
 
             function step(dir) {
@@ -3630,24 +3762,54 @@
                 myPlayer.setAttribute('data-dir', dir);
                 myPlayer.classList.add('walking');
 
+                // Predição local: aplica o movimento imediatamente no client.
+                // Isso remove o "travado"/"vibração" causado por jitter da rede/eco do servidor.
+                try {
+                    let duration = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
+                    const minDur = typeof window.__virtualPadTickS === 'number' ? window.__virtualPadTickS : 0;
+                    if (minDur > 0) duration = Math.max(duration, minDur);
+                    myPlayer.style.transition = `top ${duration}s linear, left ${duration}s linear`;
+                    void myPlayer.offsetWidth;
+                    myPlayer.style.left = safeDest.x + '%';
+                    myPlayer.style.top = safeDest.y + '%';
+                    myPlayer.style.zIndex = Math.floor(safeDest.y);
+                } catch (_) {}
+
                 socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
 
                 state.vx = safeDest.x;
                 state.vy = safeDest.y;
             }
 
-            function start(dir) {
+            function start(dir, pointerId) {
                 if (!enabled) return;
-                stop();
-                window.__virtualPadHolding = true;
-                state.dir = dir;
-                const myPlayer = document.getElementById(`p-${window.myId}`);
-                if (myPlayer) {
-                    state.vx = parseFloat(myPlayer.style.left);
-                    state.vy = parseFloat(myPlayer.style.top);
+                if (!window.__virtualPadHolding) {
+                    const myPlayer = document.getElementById(`p-${window.myId}`);
+                    if (myPlayer) {
+                        const x = parseFloat(myPlayer.style.left);
+                        const y = parseFloat(myPlayer.style.top);
+                        state.vx = Number.isFinite(x) ? x : 50;
+                        state.vy = Number.isFinite(y) ? y : 50;
+                    }
                 }
+                setDir(dir, pointerId);
                 step(dir);
-                state.intervalId = setInterval(() => step(dir), TICK_MS);
+            }
+
+            function releasePointer(pointerId) {
+                if (!state.activePointers.has(pointerId)) return;
+                state.activePointers.delete(pointerId);
+                state.order = state.order.filter(id => id !== pointerId);
+
+                if (state.activePointers.size === 0) {
+                    stop();
+                    return;
+                }
+
+                if (state.currentPointerId === pointerId) {
+                    const nextDir = pickCurrentDir();
+                    if (nextDir) setDir(nextDir, state.currentPointerId);
+                }
             }
 
             function findNearestNpc(myX, myY) {
@@ -3737,26 +3899,43 @@
 
             // Botão A (interagir)
             if (interactBtn) {
+                let lastInteractAt = 0;
                 interactBtn.addEventListener('pointerdown', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    const now = Date.now();
+                    if (now - lastInteractAt < 350) return;
+                    lastInteractAt = now;
+                    virtualInteract();
                 });
+                // Click pode disparar atrasado em mobile; deixa como fallback, mas protegido.
                 interactBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    const now = Date.now();
+                    if (now - lastInteractAt < 350) return;
+                    lastInteractAt = now;
                     virtualInteract();
                 });
             }
 
             // Botão B (interagir com objetos do mapa)
             if (bBtn) {
+                let lastBAt = 0;
                 bBtn.addEventListener('pointerdown', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    const now = Date.now();
+                    if (now - lastBAt < 350) return;
+                    lastBAt = now;
+                    virtualInteractMap();
                 });
                 bBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    const now = Date.now();
+                    if (now - lastBAt < 350) return;
+                    lastBAt = now;
                     virtualInteractMap();
                 });
             }
@@ -3767,26 +3946,59 @@
                     e.preventDefault();
                     e.stopPropagation();
                     btn.setPointerCapture(e.pointerId);
-                    start(btn.getAttribute('data-vdir'));
+                    const dir = btn.getAttribute('data-vdir');
+                    state.activePointers.set(e.pointerId, dir);
+                    state.order.push(e.pointerId);
+                    start(dir, e.pointerId);
                 });
-                btn.addEventListener('pointerup', (e) => { e.preventDefault(); e.stopPropagation(); stop(); });
-                btn.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); stop(); });
-                btn.addEventListener('lostpointercapture', () => stop());
+                btn.addEventListener('pointerup', (e) => { e.preventDefault(); e.stopPropagation(); releasePointer(e.pointerId); });
+                btn.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); releasePointer(e.pointerId); });
+                btn.addEventListener('lostpointercapture', (e) => { try { releasePointer(e.pointerId); } catch (_) {} });
             });
 
-            // Soltou em qualquer lugar
-            function stopIfVirtualPadActive() {
-                if (!window.__virtualPadHolding && !state.intervalId) return;
-                stop();
-            }
-            document.addEventListener('pointerup', stopIfVirtualPadActive);
-            document.addEventListener('pointercancel', stopIfVirtualPadActive);
+            // Segurança: só solta se era um pointer do D-pad
+            document.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
+            document.addEventListener('pointercancel', (e) => releasePointer(e.pointerId));
 
             // wrap já está visível por padrão
         })();
         
         // --- DEV TOOLS (ATUALIZADO) ---
-        function toggleDevMode() { devMode = !devMode; document.getElementById('devTools').style.display = devMode ? 'flex' : 'none'; document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO"; renderMapObjects(); }
+        let devPanelOpen = sessionStorage.getItem('devPanelOpen') !== '0';
+
+        function syncDevPanelButton() {
+            const btn = document.getElementById('btnDevPanel');
+            if (!btn) return;
+            btn.style.display = devMode ? 'block' : 'none';
+            btn.innerText = devPanelOpen ? '📦 ESCONDER FERRAMENTAS' : '📦 MOSTRAR FERRAMENTAS';
+        }
+
+        function setDevToolsVisible(visible) {
+            const panel = document.getElementById('devTools');
+            if (!panel) return;
+            panel.style.display = visible ? 'flex' : 'none';
+        }
+
+        function toggleDevPanel() {
+            if (!devMode) return;
+            devPanelOpen = !devPanelOpen;
+            sessionStorage.setItem('devPanelOpen', devPanelOpen ? '1' : '0');
+            setDevToolsVisible(devPanelOpen);
+            syncDevPanelButton();
+        }
+
+        function toggleDevMode() {
+            devMode = !devMode;
+            setDevToolsVisible(devMode && devPanelOpen);
+            document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO";
+            syncDevPanelButton();
+            renderMapObjects();
+        }
+
+        function openLabTool(path) {
+            const target = path || '/lab';
+            window.open(target, '_blank', 'noopener');
+        }
         function selectTool(tool) {
             currentTool = tool;
             pendingPortalData = null;
@@ -3805,13 +4017,13 @@
             if (chevron) chevron.textContent = isOpen ? '▸' : '▾';
         }
 
-        // Estado inicial: tudo aberto
+        // Estado inicial: tudo fechado (abre só quando o admin quiser)
         (function initDevGroups() {
-            ['npc', 'draw', 'images', 'actions'].forEach(id => {
+            ['lab', 'npc', 'draw', 'images', 'actions'].forEach(id => {
                 const body = document.getElementById('devGroupBody-' + id);
                 const chevron = document.getElementById('devGroupChevron-' + id);
-                if (body) body.style.display = 'block';
-                if (chevron) chevron.textContent = '▾';
+                if (body) body.style.display = 'none';
+                if (chevron) chevron.textContent = '▸';
             });
         })();
 

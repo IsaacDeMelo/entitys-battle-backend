@@ -12,7 +12,7 @@
    <style>
     :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-    body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; }
+    body { margin: 0; padding: 0; background: var(--bg-color); color: white; font-family: 'Roboto', sans-serif; overflow: hidden; width: 100vw; height: 100dvh; display: flex; flex-direction: column; align-items: center; }
     
     #global-loader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out; }
     .spinner { width: 50px; height: 50px; border: 5px solid rgba(255, 255, 255, 0.1); border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
@@ -25,13 +25,54 @@
         flex: 1; 
         /* Verifica se é base64/url ou arquivo local */
         background: url('<%= (bgImage.startsWith("http") || bgImage.startsWith("data:")) ? bgImage : "/uploads/" + bgImage %>') no-repeat center center; 
-        background-position: <%= (Number.isFinite(bgPosX) ? bgPosX : 50) %>% <%= (Number.isFinite(bgPosY) ? bgPosY : 50) %>%;
-        background-size: cover; 
+        background-position: calc(var(--bgPosX, 50) * 1%) calc(var(--bgPosY, 50) * 1%);
+        /* Zoom: 100 = tamanho base, >100 aproxima, <100 afasta */
+        background-size: calc(var(--bgZoom, 100) * 1%) auto;
         position: relative; 
         overflow: hidden; 
         z-index: 10; 
         image-rendering: pixelated; 
+        width: 100%;
+        max-width: 420px;
     }
+
+    .bottom-panel { width: 100%; max-width: 420px; margin: 0 auto; }
+    #bleachers, #chat-container { width: 100%; max-width: 420px; margin: 0 auto; }
+
+    /* Editor do battle background (admin) */
+    #bgEditor {
+        position: fixed;
+        left: 12px;
+        top: 12px;
+        z-index: 10050;
+        background: rgba(15, 15, 20, 0.92);
+        border: 2px solid #555;
+        border-radius: 10px;
+        padding: 10px;
+        width: min(360px, calc(100vw - 24px));
+        display: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        font-family: 'Press Start 2P', cursive;
+    }
+    #bgEditor h4 { margin: 0 0 10px 0; font-size: 0.65rem; color: #f1c40f; }
+    #bgEditor .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+    #bgEditor label { font-size: 0.5rem; color: #e2e8f0; }
+    #bgEditor input[type="range"] { width: 100%; }
+    #bgEditor .val { font-size: 0.55rem; color: #fff; min-width: 52px; text-align: right; }
+    #bgEditor .btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px; }
+    #bgEditor button {
+        background: #1e293b;
+        color: #fff;
+        border: 2px solid #64748b;
+        border-radius: 8px;
+        padding: 10px 8px;
+        font-family: inherit;
+        font-size: 0.55rem;
+        cursor: pointer;
+        box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+    }
+    #bgEditor button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.5); }
+    #bgEditor .hint { font-size: 0.5rem; color: #94a3b8; line-height: 1.4; margin-top: 6px; }
     
     .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 6px 10px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: 150px; font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     .hud-p1 { left: 10px; border-left: 5px solid #3498db; text-align: left; }
@@ -171,7 +212,7 @@
     .switch-item { display: flex; align-items: center; gap: 15px; padding: 12px; border: 1px solid #444; background: #222; margin-bottom: 10px; cursor: pointer; border-radius: 8px; transition: 0.2s; text-align: left; }
     .switch-item:hover { background: #333; border-color: #3498db; transform: translateX(5px); }
     .switch-sprite { width: 50px; height: 50px; image-rendering: pixelated; object-fit: contain; }
-    #floatingBagPanel { position: fixed; right: 15px; bottom: 220px; width: 280px; background: rgba(15, 20, 30, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; z-index: 80; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: none; color: #ddd; backdrop-filter: blur(10px); }
+    #floatingBagPanel { position: fixed; right: max(15px, calc(50vw - 210px + 15px)); bottom: 220px; width: 280px; background: rgba(15, 20, 30, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; z-index: 80; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: none; color: #ddd; backdrop-filter: blur(10px); }
     #floatingBagPanel h4 { margin: 0 0 12px 0; font-size: 0.8rem; color: #f1c40f; font-family: 'Press Start 2P'; border-bottom: 1px solid #333; padding-bottom: 8px; }
     #floatingBagPanel .bag-row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; }
     #floatingBagPanel .bag-item { flex:1; background: rgba(255,255,255,0.05); padding:10px; border-radius: 8px; font-size:0.9rem; text-align:center; border: 1px solid #333; }
@@ -180,9 +221,9 @@
     #floatingBagPanel .btn-small.use { background:#e67e22; color:#fff; box-shadow: 0 3px 0 #d35400; }
     #floatingBagPanel .btn-small.item { background:#f1c40f; color:#111; }
     #floatingBagPanel .close-x { position:absolute; right:10px; top:10px; background:transparent; border:none; color:#e74c3c; font-weight:900; cursor:pointer; font-size: 1.2rem; }
-    .floating-bag-button { position: fixed; right: 20px; bottom: 100px; z-index: 75; width:55px; height:55px; border-radius:50%; background: linear-gradient(135deg, #f39c12, #e67e22); border: 2px solid #fff; display:flex; align-items:center; justify-content:center; font-size: 24px; box-shadow:0 8px 25px rgba(0,0,0,0.6); cursor:pointer; transition: transform 0.2s; }
+    .floating-bag-button { position: fixed; right: max(20px, calc(50vw - 210px + 20px)); bottom: 100px; z-index: 75; width:55px; height:55px; border-radius:50%; background: linear-gradient(135deg, #f39c12, #e67e22); border: 2px solid #fff; display:flex; align-items:center; justify-content:center; font-size: 24px; box-shadow:0 8px 25px rgba(0,0,0,0.6); cursor:pointer; transition: transform 0.2s; }
     .floating-bag-button:active { transform: scale(0.9); }
-    .floating-hud-money { position: fixed; right: 20px; bottom: 165px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:12px; text-align:center; text-shadow: 2px 2px 0 #000; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
+    .floating-hud-money { position: fixed; right: max(20px, calc(50vw - 210px + 20px)); bottom: 165px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:12px; text-align:center; text-shadow: 2px 2px 0 #000; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
     .deploy-ball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 100; pointer-events: none; }
 </style>
 </head>
@@ -192,10 +233,38 @@
         <div class="loading-text">PREPARANDO ARENA...</div>
     </div>
 
-    <div class="arena">
+    <div class="arena" id="arena" style="--bgPosX:<%= (Number.isFinite(bgPosX) ? bgPosX : 50) %>; --bgPosY:<%= (Number.isFinite(bgPosY) ? bgPosY : 50) %>; --bgZoom:<%= (Number.isFinite(bgZoom) ? bgZoom : 100) %>;">
         <div class="flash-overlay" id="flashOverlay"></div>
         <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff; font-family:'Press Start 2P'; font-size:0.8rem; text-shadow:2px 2px 0 #000; z-index:500;">Aguardando...</div>
         <% if(isSpectator) { %> <div class="spectator-banner">MODO ESPECTADOR - APENAS OBSERVANDO</div> <% } %>
+
+        <div id="bgEditor">
+            <h4>AJUSTAR FUNDO DA BATALHA</h4>
+            <div class="row">
+                <label for="bgPosX">POS X</label>
+                <div class="val"><span id="bgPosXVal">50</span>%</div>
+            </div>
+            <input id="bgPosX" type="range" min="0" max="100" step="1" value="50" />
+
+            <div class="row" style="margin-top:8px;">
+                <label for="bgPosY">POS Y</label>
+                <div class="val"><span id="bgPosYVal">50</span>%</div>
+            </div>
+            <input id="bgPosY" type="range" min="0" max="100" step="1" value="50" />
+
+            <div class="row" style="margin-top:8px;">
+                <label for="bgZoom">ZOOM</label>
+                <div class="val"><span id="bgZoomVal">100</span>%</div>
+            </div>
+            <input id="bgZoom" type="range" min="50" max="250" step="5" value="100" />
+
+            <div class="btns">
+                <button id="bgSave" type="button">SALVAR</button>
+                <button id="bgReset" type="button">RESET</button>
+                <button id="bgClose" type="button">FECHAR</button>
+            </div>
+            <div class="hint">Dica: no modo de edição, você pode arrastar o dedo/mouse na arena para ajustar o recorte.</div>
+        </div>
 
         <div class="hud-panel hud-p1">
             <div class="poke-name"><span id="p1-name"><%= p1.name %></span> <span class="poke-lv">Lv.<span id="p1-lv"><%= p1.level %></span></span></div>
@@ -1060,4 +1129,123 @@
         }
     </script>
 </body>
+
+<script>
+    // --- Editor do BattleBG (admin) ---
+    (function initBattleBgEditor() {
+        const canEdit = <%= (canEditBg ? 'true' : 'false') %>;
+        const mapId = <%- JSON.stringify(typeof battleMapId !== 'undefined' ? battleMapId : null) %>;
+        const userId = <%- JSON.stringify(typeof realUserId !== 'undefined' ? realUserId : null) %>;
+
+        const params = new URLSearchParams(window.location.search || '');
+        const wantEdit = params.get('bgEdit') === '1';
+        if (!canEdit || !wantEdit || !mapId || !userId) return;
+
+        const arena = document.getElementById('arena');
+        const panel = document.getElementById('bgEditor');
+        const rx = document.getElementById('bgPosX');
+        const ry = document.getElementById('bgPosY');
+        const vx = document.getElementById('bgPosXVal');
+        const vy = document.getElementById('bgPosYVal');
+        const rz = document.getElementById('bgZoom');
+        const vz = document.getElementById('bgZoomVal');
+        const btnSave = document.getElementById('bgSave');
+        const btnReset = document.getElementById('bgReset');
+        const btnClose = document.getElementById('bgClose');
+        if (!arena || !panel || !rx || !ry || !vx || !vy || !rz || !vz || !btnSave || !btnReset || !btnClose) return;
+
+        function readVar(name, fallback) {
+            const raw = getComputedStyle(arena).getPropertyValue(name);
+            const v = parseFloat(raw);
+            return Number.isFinite(v) ? v : fallback;
+        }
+
+        function apply(x, y, zoom) {
+            const px = Math.max(0, Math.min(100, Math.round(x)));
+            const py = Math.max(0, Math.min(100, Math.round(y)));
+            const pz = Math.max(50, Math.min(250, Math.round(zoom / 5) * 5));
+            arena.style.setProperty('--bgPosX', String(px));
+            arena.style.setProperty('--bgPosY', String(py));
+            arena.style.setProperty('--bgZoom', String(pz));
+            rx.value = String(px);
+            ry.value = String(py);
+            vx.textContent = String(px);
+            vy.textContent = String(py);
+            rz.value = String(pz);
+            vz.textContent = String(pz);
+        }
+
+        // Inicializa com o que veio do server
+        apply(readVar('--bgPosX', 50), readVar('--bgPosY', 50), readVar('--bgZoom', 100));
+        panel.style.display = 'block';
+
+        rx.addEventListener('input', () => apply(parseFloat(rx.value), parseFloat(ry.value), parseFloat(rz.value)));
+        ry.addEventListener('input', () => apply(parseFloat(rx.value), parseFloat(ry.value), parseFloat(rz.value)));
+        rz.addEventListener('input', () => apply(parseFloat(rx.value), parseFloat(ry.value), parseFloat(rz.value)));
+
+        // Arrastar para ajustar
+        let dragging = false;
+        let startX = 0, startY = 0;
+        let basePosX = 50, basePosY = 50;
+
+        function onDown(e) {
+            // Não captura se clicar dentro do painel
+            if (e && e.target && panel.contains(e.target)) return;
+            dragging = true;
+            const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+            startX = p.clientX;
+            startY = p.clientY;
+            basePosX = parseFloat(rx.value);
+            basePosY = parseFloat(ry.value);
+        }
+
+        function onMove(e) {
+            if (!dragging) return;
+            const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+            const dx = p.clientX - startX;
+            const dy = p.clientY - startY;
+            // Sensibilidade: 2px = 1%
+            apply(basePosX + (dx / 2), basePosY + (dy / 2), parseFloat(rz.value));
+        }
+
+        function onUp() { dragging = false; }
+
+        arena.addEventListener('mousedown', onDown);
+        arena.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        arena.addEventListener('touchstart', onDown, { passive: true });
+        arena.addEventListener('touchmove', onMove, { passive: true });
+        window.addEventListener('touchend', onUp);
+        window.addEventListener('touchcancel', onUp);
+
+        btnReset.addEventListener('click', () => apply(50, 50, 100));
+        btnClose.addEventListener('click', () => {
+            panel.style.display = 'none';
+        });
+
+        btnSave.addEventListener('click', async () => {
+            const x = parseFloat(rx.value);
+            const y = parseFloat(ry.value);
+            const zoom = parseFloat(rz.value);
+            try {
+                const res = await fetch('/api/map/battlebg', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, mapId, bgPosX: x, bgPosY: y, bgZoom: zoom })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || (data && data.error)) {
+                    if (typeof showToast === 'function') showToast(data.error || 'Erro ao salvar.');
+                    else alert(data.error || 'Erro ao salvar.');
+                    return;
+                }
+                if (typeof showToast === 'function') showToast('Fundo da batalha salvo no mapa!');
+                else alert('Fundo da batalha salvo no mapa!');
+            } catch (_) {
+                if (typeof showToast === 'function') showToast('Erro ao salvar.');
+                else alert('Erro ao salvar.');
+            }
+        });
+    })();
+</script>
 </html>

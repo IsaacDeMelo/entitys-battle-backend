@@ -525,24 +525,14 @@ app.get('/lobby', async (req, res) => {
     const okSkin = await ensureUserHasValidSkin(user);
     if (!okSkin) return res.redirect('/?error=' + encodeURIComponent('Nenhuma skin cadastrada. Admin: crie skins no LAB antes de jogar.'));
 
-    const teamData = [];
-    for (let p of user.pokemonTeam) {
-        const base = await BasePokemon.findOne({ id: p.baseId });
-        if (base) teamData.push(userPokemonToEntity(p, base));
-    }
-    const allPokes = await BasePokemon.find().lean();
-    res.render('room', { user, playerName: user.username, playerSkin: user.skin, entities: allPokes, team: teamData, isAdmin: user.isAdmin, skinCount: SKIN_COUNT });
+    // Projeto focado no mapa/engine do City (modo "mobile" mesmo no PC).
+    return res.redirect('/city?from=lobby&userId=' + encodeURIComponent(userId));
 });
 
 app.get('/forest', async (req, res) => {
     const { userId } = req.query;
-    const user = await User.findById(userId);
-    if (!user) return res.redirect('/');
-    const okSkin = await ensureUserHasValidSkin(user);
-    if (!okSkin) return res.redirect('/?error=' + encodeURIComponent('Nenhuma skin cadastrada. Admin: crie skins no LAB antes de jogar.'));
-
-    const allPokes = await BasePokemon.find().lean();
-    res.render('forest', { user, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, entities: allPokes });
+    // Projeto focado no mapa/engine do City.
+    return res.redirect('/city?from=forest&userId=' + encodeURIComponent(userId));
 });
 
 // --- ROTA CIDADE (ENGINE DE MAPA) ---
@@ -568,6 +558,64 @@ app.get('/city', async (req, res) => {
         mapData = { mapId: mapId, name: 'Mapa', bgImage: '/uploads/route_map.png', collisions: [], grass: [], interacts: [], portals: [], objects: [], spawnPoint: null, width: 100, height: 100, darknessLevel: 0 };
     }
 
+    function asFiniteNumber(n) {
+        const v = parseFloat(n);
+        return Number.isFinite(v) ? v : null;
+    }
+
+    function clamp01to100(n, fallback = 50) {
+        const v = asFiniteNumber(n);
+        if (v === null) return fallback;
+        return Math.max(0, Math.min(100, v));
+    }
+
+    function pointHitsCollision(mapData, x, y) {
+        const px = asFiniteNumber(x);
+        const py = asFiniteNumber(y);
+        if (px === null || py === null) return false;
+        const list = Array.isArray(mapData && mapData.collisions) ? mapData.collisions : [];
+        for (const r of list) {
+            if (!r) continue;
+            const rx = asFiniteNumber(r.x);
+            const ry = asFiniteNumber(r.y);
+            const rw = asFiniteNumber(r.w);
+            const rh = asFiniteNumber(r.h);
+            if (rx === null || ry === null || rw === null || rh === null) continue;
+            if (px >= rx && px <= (rx + rw) && py >= ry && py <= (ry + rh)) return true;
+        }
+        return false;
+    }
+
+    function findNearestSafePoint(mapData, x, y) {
+        let sx = clamp01to100(x, 50);
+        let sy = clamp01to100(y, 50);
+        if (!pointHitsCollision(mapData, sx, sy)) return { x: sx, y: sy };
+
+        // Procura em anéis (perímetro) ao redor do ponto inicial.
+        const STEP = 0.75; // em %
+        const MAX_R = 15; // em %
+        for (let r = STEP; r <= MAX_R; r += STEP) {
+            // perímetro do quadrado [-r,r]
+            for (let dx = -r; dx <= r; dx += STEP) {
+                const top = { x: clamp01to100(sx + dx, sx), y: clamp01to100(sy - r, sy) };
+                if (!pointHitsCollision(mapData, top.x, top.y)) return top;
+                const bottom = { x: clamp01to100(sx + dx, sx), y: clamp01to100(sy + r, sy) };
+                if (!pointHitsCollision(mapData, bottom.x, bottom.y)) return bottom;
+            }
+            for (let dy = -r; dy <= r; dy += STEP) {
+                const left = { x: clamp01to100(sx - r, sx), y: clamp01to100(sy + dy, sy) };
+                if (!pointHitsCollision(mapData, left.x, left.y)) return left;
+                const right = { x: clamp01to100(sx + r, sx), y: clamp01to100(sy + dy, sy) };
+                if (!pointHitsCollision(mapData, right.x, right.y)) return right;
+            }
+        }
+
+        // Fallback final: tenta centro.
+        const cx = 50, cy = 50;
+        if (!pointHitsCollision(mapData, cx, cy)) return { x: cx, y: cy };
+        return { x: sx, y: sy };
+    }
+
     // Spawn Logic
     let startX = 50, startY = 50;
     let startDir = 'down';
@@ -577,8 +625,10 @@ app.get('/city', async (req, res) => {
         startX = lastLoc.x;
         startY = lastLoc.y;
         if (lastLoc.direction) startDir = String(lastLoc.direction);
-    } else if (mapData.spawnPoint && typeof mapData.spawnPoint.x === 'number') {
-        startX = mapData.spawnPoint.x; startY = mapData.spawnPoint.y;
+    } else if (mapData.spawnPoint && mapData.spawnPoint.x != null && mapData.spawnPoint.y != null) {
+        // Aceita number e string numérica
+        startX = parseFloat(mapData.spawnPoint.x);
+        startY = parseFloat(mapData.spawnPoint.y);
     } else if (from === 'forest') {
         startX = 50; startY = 92;
     }
@@ -589,6 +639,15 @@ app.get('/city', async (req, res) => {
     startX = Math.max(0, Math.min(100, startX));
     startY = Math.max(0, Math.min(100, startY));
     startDir = ['up', 'down', 'left', 'right'].includes(startDir) ? startDir : 'down';
+
+    // Garante que o spawn não fique dentro de colisões (parede)
+    try {
+        const safe = findNearestSafePoint(mapData, startX, startY);
+        startX = safe.x;
+        startY = safe.y;
+    } catch (_) {
+        // best-effort
+    }
 
     const allPokes = await BasePokemon.find().lean();
     const teamData = []; 
@@ -601,6 +660,13 @@ function clampPct(n, fallback = 50) {
     const v = parseFloat(n);
     if (!Number.isFinite(v)) return fallback;
     return Math.max(0, Math.min(100, v));
+}
+
+function clampZoomPct(n, fallback = 100) {
+    const v = parseFloat(n);
+    if (!Number.isFinite(v)) return fallback;
+    // Zoom em %: 50% a 250%
+    return Math.max(50, Math.min(250, v));
 }
 
 function normalizeDir(dir) {
@@ -647,7 +713,8 @@ app.post('/api/map/save', async (req, res) => {
                 darknessLevel: mapData.darknessLevel || 0, 
                 battleBackground: mapData.battleBackground,
                 battleBgPosX: clampPct(mapData.battleBgPosX, 50),
-                battleBgPosY: clampPct(mapData.battleBgPosY, 50)
+                battleBgPosY: clampPct(mapData.battleBgPosY, 50),
+                battleBgZoom: clampZoomPct(mapData.battleBgZoom, 100)
             }},
             { upsert: true, new: true }
         );
@@ -1065,15 +1132,9 @@ app.post('/api/npc/interact', async (req, res) => {
         // Starter: usa flag global (não depende do flagId do NPC).
         // Não marca flag aqui (marca só quando escolher). Só retorna ação com opções.
         if (serviceType === 'starter') {
-            let already = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
-
-            // Auto-heal: se a flag ficou marcada mas o jogador não tem nenhum pokémon,
-            // deixa escolher de novo (evita ficar travado "sem starter").
-            if (already && !userHasAnyPokemon(user)) {
-                user.storyFlags[STARTER_FLAG_ID] = false;
-                already = false;
-                try { await user.save(); } catch (_) {}
-            }
+            // Regra: só pode escolher UMA vez. Fallback: se já tem qualquer pokémon, também bloqueia.
+            // (Isso cobre casos onde a flag não persistiu por ser um Object "mixed".)
+            let already = readStoryFlag(user.storyFlags, STARTER_FLAG_ID) || userHasAnyPokemon(user);
             if (already) {
                 const text = interact.alreadyDoneDialogue || 'Você já escolheu o seu monstro inicial.';
                 return res.json({ success: true, alreadyDone: true, text, inventory: user.inventory, keyItems: user.keyItems, storyFlags: user.storyFlags });
@@ -1244,12 +1305,7 @@ app.get('/api/starter/options', async (req, res) => {
         } else {
             options = await getStarterOptions();
         }
-        let chosen = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
-        if (chosen && !userHasAnyPokemon(user)) {
-            user.storyFlags[STARTER_FLAG_ID] = false;
-            chosen = false;
-            try { await user.save(); } catch (_) {}
-        }
+        const chosen = readStoryFlag(user.storyFlags, STARTER_FLAG_ID) || userHasAnyPokemon(user);
         return res.json({ success: true, chosen, options });
     } catch (e) {
         console.error(e);
@@ -1264,12 +1320,7 @@ app.post('/api/starter/choose', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found' });
         ensureUserInventories(user);
 
-        let alreadyChosen = readStoryFlag(user.storyFlags, STARTER_FLAG_ID);
-        if (alreadyChosen && !userHasAnyPokemon(user)) {
-            user.storyFlags[STARTER_FLAG_ID] = false;
-            alreadyChosen = false;
-        }
-
+        const alreadyChosen = readStoryFlag(user.storyFlags, STARTER_FLAG_ID) || userHasAnyPokemon(user);
         if (alreadyChosen) {
             return res.status(400).json({ error: 'Você já escolheu o seu monstro inicial.' });
         }
@@ -1318,6 +1369,8 @@ app.post('/api/starter/choose', async (req, res) => {
         if (!user.dex.includes(starter.id)) user.dex.push(starter.id);
 
         user.storyFlags[STARTER_FLAG_ID] = true;
+        // storyFlags é um objeto "mixed"; garante persistência
+        user.markModified('storyFlags');
         await user.save();
 
         return res.json({ success: true, picked: { id: starter.id, name: starter.name, sprite: starter.sprite || null }, storyFlags: user.storyFlags });
@@ -2181,6 +2234,7 @@ app.post('/battle/wild', async (req, res) => {
     if (mapDoc && mapDoc.battleBackground) battleBgToUse = mapDoc.battleBackground;
     const battleBgPosX = (mapDoc && Number.isFinite(mapDoc.battleBgPosX)) ? mapDoc.battleBgPosX : 50;
     const battleBgPosY = (mapDoc && Number.isFinite(mapDoc.battleBgPosY)) ? mapDoc.battleBgPosY : 50;
+    const battleBgZoom = (mapDoc && Number.isFinite(mapDoc.battleBgZoom)) ? mapDoc.battleBgZoom : 100;
 
     const possibleSpawns = await BasePokemon.find({ spawnLocation: mapName }); 
     if(possibleSpawns.length === 0) return res.json({ error: `Nada selvagem em '${mapName}'.` }); 
@@ -2204,7 +2258,8 @@ app.post('/battle/wild', async (req, res) => {
 
     activeBattles[battleId] = { 
         p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: battleBgToUse,
-        bgPosX: battleBgPosX, bgPosY: battleBgPosY
+        bgPosX: battleBgPosX, bgPosY: battleBgPosY,
+        mapId: mapName
     }; 
     res.json({ battleId }); 
 });
@@ -2247,7 +2302,14 @@ app.post('/battle/npc', async (req, res) => {
     p1Entity.skin = user.skin;
 
     let mapName = 'city';
-    if (currentMap && currentMap.includes('map=')) { const match = currentMap.match(/map=([^&]+)/); if (match) mapName = match[1]; }
+    if (currentMap) {
+        if (currentMap.includes('map=')) {
+            const match = currentMap.match(/map=([^&]+)/);
+            if (match && match[1]) mapName = match[1];
+        } else if (currentMap !== 'city' && !currentMap.includes('?')) {
+            mapName = currentMap;
+        }
+    }
     const mapDoc = await GameMap.findOne({ mapId: mapName }).lean();
     let finalBg = 'battle_bg.png';
     if (mapDoc && mapDoc.battleBackground) finalBg = mapDoc.battleBackground;
@@ -2282,13 +2344,45 @@ app.post('/battle/npc', async (req, res) => {
     activeBattles[battleId] = { 
         p1: p1Entity, p2: npcTeamInstances[0], npcReserve: npcTeamInstances, type: 'local', userId: user._id, turn: 1, npcId: npc._id,
         returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: finalBg,
-        bgPosX: battleBgPosX, bgPosY: battleBgPosY
+        bgPosX: battleBgPosX, bgPosY: battleBgPosY, bgZoom: battleBgZoom,
+        mapId: mapName
     }; 
     res.json({ battleId });
 });
 
-app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/lobby' }); });
-app.post('/battle', async (req, res) => { const { fighterId, playerName, playerSkin, userId } = req.body; const user = await User.findById(userId); if(!user) return res.redirect('/'); const userPokeData = user.pokemonTeam.id(fighterId); if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/lobby?userId=' + userId); const b1Base = await BasePokemon.findOne({ id: userPokeData.baseId }); const p1 = userPokemonToEntity(userPokeData, b1Base); p1.playerName = playerName; p1.skin = playerSkin; const allBases = await BasePokemon.find(); if(allBases.length === 0) return res.redirect('/lobby?userId=' + userId); const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; const cpuLevel = Math.max(1, p1.level); const s2 = calculateStats(randomBase.baseStats, cpuLevel); let cpuMoves = randomBase.movePool ? randomBase.movePool.filter(m => m.level <= cpuLevel).map(m => m.moveId) : []; if(cpuMoves.length === 0) cpuMoves = ['tackle']; if(cpuMoves.length > 4) cpuMoves = cpuMoves.sort(() => 0.5 - Math.random()).slice(0, 4); const p2 = { instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null }; const battleId = 'local_' + Date.now(); activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'lobby' }; res.redirect('/battle/' + battleId); });
+// Atualiza somente o recorte/posição do battle background do mapa (admin)
+app.post('/api/map/battlebg', async (req, res) => {
+    try {
+        const { userId, mapId, bgPosX, bgPosY, bgZoom } = req.body || {};
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ error: 'Sem permissão' });
+        const id = String(mapId || '').trim();
+        if (!id) return res.status(400).json({ error: 'mapId inválido' });
+
+        const x = clampPct(bgPosX, 50);
+        const y = clampPct(bgPosY, 50);
+        const z = clampZoomPct(bgZoom, 100);
+
+        const updated = await GameMap.findOneAndUpdate(
+            { mapId: id },
+            { $set: { battleBgPosX: x, battleBgPosY: y, battleBgZoom: z } },
+            { new: true, upsert: false }
+        ).lean();
+
+        if (!updated) return res.status(404).json({ error: 'Mapa não encontrado' });
+        return res.json({
+            success: true,
+            battleBgPosX: updated.battleBgPosX,
+            battleBgPosY: updated.battleBgPosY,
+            battleBgZoom: updated.battleBgZoom
+        });
+    } catch (e) {
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/city' }); });
+app.post('/battle', async (req, res) => { const { fighterId, playerName, playerSkin, userId } = req.body; const user = await User.findById(userId); if(!user) return res.redirect('/'); const userPokeData = user.pokemonTeam.id(fighterId); if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/city?userId=' + userId); const b1Base = await BasePokemon.findOne({ id: userPokeData.baseId }); const p1 = userPokemonToEntity(userPokeData, b1Base); p1.playerName = playerName; p1.skin = playerSkin; const allBases = await BasePokemon.find(); if(allBases.length === 0) return res.redirect('/city?userId=' + userId); const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; const cpuLevel = Math.max(1, p1.level); const s2 = calculateStats(randomBase.baseStats, cpuLevel); let cpuMoves = randomBase.movePool ? randomBase.movePool.filter(m => m.level <= cpuLevel).map(m => m.moveId) : []; if(cpuMoves.length === 0) cpuMoves = ['tackle']; if(cpuMoves.length > 4) cpuMoves = cpuMoves.sort(() => 0.5 - Math.random()).slice(0, 4); const p2 = { instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null }; const battleId = 'local_' + Date.now(); activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' }; res.redirect('/battle/' + battleId); });
 
 app.get('/battle/:id', async (req, res) => { 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
@@ -2296,9 +2390,11 @@ app.get('/battle/:id', async (req, res) => {
     if(!battle) return res.redirect('/'); 
     
     let switchable = []; 
+    let canEditBg = false;
     if (battle.userId) { 
         const user = await User.findById(battle.userId); 
         if (user) { 
+            canEditBg = !!user.isAdmin;
             for (let p of user.pokemonTeam) { 
                 if (p._id.toString() !== battle.p1.instanceId && p.currentHp > 0) { 
                     const b = await BasePokemon.findOne({ id: p.baseId }); 
@@ -2312,15 +2408,17 @@ app.get('/battle/:id', async (req, res) => {
     if (battle.customBackground) bg = battle.customBackground;
     const bgPosX = Number.isFinite(battle.bgPosX) ? battle.bgPosX : 50;
     const bgPosY = Number.isFinite(battle.bgPosY) ? battle.bgPosY : 50;
+    const bgZoom = Number.isFinite(battle.bgZoom) ? battle.bgZoom : 100;
 
     // CORREÇÃO CRÍTICA DE URL
-    let returnUrl = '/lobby';
+    let returnUrl = '/city';
     if(battle.returnMap) {
         // Remove barra inicial se houver
         const cleanMap = battle.returnMap.startsWith('/') ? battle.returnMap.substring(1) : battle.returnMap;
+        const canonicalMap = (cleanMap === 'lobby' || cleanMap === 'forest') ? 'city' : cleanMap;
         // Verifica se já tem ?
-        const separator = cleanMap.includes('?') ? '&' : '?';
-        returnUrl = `/${cleanMap}${separator}userId=${battle.userId}`;
+        const separator = canonicalMap.includes('?') ? '&' : '?';
+        returnUrl = `/${canonicalMap}${separator}userId=${battle.userId}`;
         
         if(battle.returnX) returnUrl += `&x=${battle.returnX}`;
         if(battle.returnY) returnUrl += `&y=${battle.returnY}`;
@@ -2330,13 +2428,15 @@ app.get('/battle/:id', async (req, res) => {
             returnUrl += `&resumeNpcId=${encodeURIComponent(String(battle.npcId))}`;
         }
     } else {
-        returnUrl = `/lobby?userId=${battle.userId}`;
+        returnUrl = `/city?userId=${battle.userId}`;
     }
 
     res.render('battle', { 
         p1: battle.p1, p2: battle.p2, battleId: req.params.id, battleMode: battle.type === 'local' ? 'manual' : battle.type, 
         isSpectator: false, myRoleId: battle.p1.instanceId, realUserId: battle.userId, playerName: battle.p1.playerName, playerSkin: battle.p1.skin, 
-        bgImage: bg, bgPosX, bgPosY, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable, returnUrl 
+        bgImage: bg, bgPosX, bgPosY, bgZoom, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable, returnUrl,
+        battleMapId: battle.mapId || null,
+        canEditBg
     }); 
 });
 
@@ -2484,6 +2584,17 @@ io.on('connection', (socket) => {
     socket.on('join_room', (roomId) => { socket.join(roomId); });
     socket.on('enter_map', async (data) => { 
         try {
+            // Se o usuário foi excluído do DB mas ainda está com a página aberta,
+            // este socket pode continuar "online". Valida aqui e derruba o socket.
+            if (data && data.userId) {
+                const exists = await User.exists({ _id: data.userId });
+                if (!exists) {
+                    try { socket.emit('auth_error', { error: 'user_not_found' }); } catch (_) {}
+                    try { socket.disconnect(true); } catch (_) {}
+                    return;
+                }
+            }
+
             if (data && data.userId) { 
                 const existingEntry = Object.entries(players).find(([sid, p]) => p.userId && p.userId.toString() === data.userId.toString()); 
                 if (existingEntry) { 
@@ -2506,7 +2617,7 @@ io.on('connection', (socket) => {
             const startY = clampPct(data.y, 50);
             const startDir = normalizeDir(data.direction);
             
-            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, isSearching: false, _lastPersistAt: 0 }; 
+            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, isSearching: false, _lastPersistAt: 0, _lastUserCheckAt: Date.now() }; 
             const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
             socket.emit('map_state', mapPlayers); 
             socket.to(data.map).emit('player_joined', players[socket.id]);
@@ -2515,9 +2626,28 @@ io.on('connection', (socket) => {
             persistUserLocation(data.userId, data.map, startX, startY, startDir);
         } catch(e) { console.error('Erro no socket enter_map', e); }
     });
-    socket.on('move_player', (data) => {
+    socket.on('move_player', async (data) => {
         if (players[socket.id]) {
             const p = players[socket.id];
+
+            // Revalida o usuário no DB de tempos em tempos para não deixar "fantasma" online.
+            const nowCheck = Date.now();
+            if (p.userId && (!p._lastUserCheckAt || (nowCheck - p._lastUserCheckAt) >= 30000)) {
+                p._lastUserCheckAt = nowCheck;
+                try {
+                    const exists = await User.exists({ _id: p.userId });
+                    if (!exists) {
+                        const map = p.map;
+                        delete players[socket.id];
+                        try { io.to(map).emit('player_left', socket.id); } catch (_) {}
+                        try { socket.disconnect(true); } catch (_) {}
+                        return;
+                    }
+                } catch (_) {
+                    // se o DB falhar, não derruba o jogo
+                }
+            }
+
             const nextX = clampPct(data.x, p.x);
             const nextY = clampPct(data.y, p.y);
 

@@ -196,6 +196,8 @@ const MapSchema = new mongoose.Schema({
     // 0-100 (%), onde 50/50 é centralizado.
     battleBgPosX: { type: Number, default: 50 },
     battleBgPosY: { type: Number, default: 50 },
+    // Zoom do fundo de batalha em % (100 = padrão)
+    battleBgZoom: { type: Number, default: 100 },
     width: { type: Number, default: 100 }, // Tamanho em %
     height: { type: Number, default: 100 }, // Tamanho em %
     darknessLevel: { type: Number, default: 0 }, // 0.0 a 0.9

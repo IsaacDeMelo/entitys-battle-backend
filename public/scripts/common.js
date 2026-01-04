@@ -241,58 +241,51 @@ function showRPGDialog(npcName, npcSkin, text, buttons = [], onClose = null, opt
         }
 
         overlay.style.display = 'block';
+    // Quando o diálogo é aberto por um `pointerdown` (ex.: botão A no mobile),
+    // o navegador ainda dispara um `click` no `pointerup`. Se o overlay já estiver
+    // visível, esse click cai aqui e pula o typewriter instantaneamente.
+    // Para manter o efeito de digitação, ignoramos cliques muito cedo após abrir.
+    const openedAt = Date.now();
+    const IGNORE_EARLY_CLICK_MS = 750;
 
         const allowHtml = !!(opts && opts.allowHtml);
         const rawText = String(text ?? '');
-
+        let displayText = rawText;
         if (allowHtml) {
-            textEl.innerHTML = rawText;
-            arrowEl.style.display = 'none';
-
-            overlay.onclick = (e) => {
-                // Não fecha nem pagina por clique; só ignora.
-                if (e && e.target && e.target.tagName === 'BUTTON') return;
-            };
-
-            showButtons();
-            return;
+            try {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = rawText;
+                displayText = tmp.textContent || tmp.innerText || '';
+            } catch (_) {
+                displayText = rawText;
+            }
         }
 
-        const pages = paginateText(rawText, 90);
+        const pages = paginateText(displayText, 90);
         let pageIndex = 0;
         let charIndex = 0;
         let typeInterval = null;
         let isTyping = false;
-        let spans = []; // Array para guardar os elementos span
+        let currentPageText = '';
 
         function typeNextPage() {
             if (pageIndex >= pages.length) return;
 
             // 1. Limpa o texto anterior
-            textEl.innerHTML = '';
+            textEl.textContent = '';
             charIndex = 0;
             isTyping = true;
             arrowEl.style.display = 'none';
             optionsEl.style.display = 'none';
 
-            // 2. Prepara o conteúdo invisível (MÁGICA AQUI)
-            const content = pages[pageIndex];
-            spans = []; // Reset array
+            currentPageText = pages[pageIndex] || '';
+            clearInterval(typeInterval);
 
-            // Cria um span para cada letra e adiciona invisível
-            for (let i = 0; i < content.length; i++) {
-                const span = document.createElement('span');
-                span.textContent = content[i];
-                span.className = 'char-hidden'; // Começa invisível
-                textEl.appendChild(span);
-                spans.push(span);
-            }
-
-            // 3. Inicia o loop de revelação
+            // Inicia o loop de digitação (robusto, sem depender de CSS)
             typeInterval = setInterval(() => {
-                if (charIndex < spans.length) {
-                    spans[charIndex].className = 'char-visible'; // Revela
+                if (charIndex < currentPageText.length) {
                     charIndex++;
+                    textEl.textContent = currentPageText.slice(0, charIndex);
                 } else {
                     finishTyping();
                 }
@@ -302,9 +295,9 @@ function showRPGDialog(npcName, npcSkin, text, buttons = [], onClose = null, opt
         function finishTyping() {
             clearInterval(typeInterval);
             isTyping = false;
-            
-            // Força todos a ficarem visíveis imediatamente
-            spans.forEach(s => s.className = 'char-visible');
+
+            // Força o texto completo da página
+            textEl.textContent = currentPageText;
 
             if (pageIndex < pages.length - 1) {
                 arrowEl.style.display = 'block';
@@ -314,6 +307,7 @@ function showRPGDialog(npcName, npcSkin, text, buttons = [], onClose = null, opt
         }
 
         overlay.onclick = (e) => {
+            if (Date.now() - openedAt < IGNORE_EARLY_CLICK_MS) return;
             if (e.target.tagName === 'BUTTON') return; 
 
             if (isTyping) {
