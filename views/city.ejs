@@ -1285,6 +1285,7 @@
         // Sequenciamento simples para ignorar pacotes atrasados do servidor (Render pode atrasar ticks)
         let __moveSeqCounter = 0;
         let __lastMoveSeqReceived = 0;
+        let __virtualPadReleasedAt = 0;
 
         function calcMoveDurationS(fromX, fromY, toX, toY) {
             try {
@@ -1726,7 +1727,8 @@
                 // Se estamos usando predição local no D-pad, o servidor pode ecoar exatamente
                 // o mesmo alvo e re-aplicar a mesma transição a cada tick, causando "vibração".
                 // Evita reprocessar quando não há mudança real de destino.
-                if (data.id === window.myId && window.__virtualPadHolding) {
+                const recentlyReleased = __virtualPadReleasedAt && (Date.now() - __virtualPadReleasedAt) < 600;
+                if (data.id === window.myId && (window.__virtualPadHolding || recentlyReleased)) {
                     const curL = parseFloat(el.style.left);
                     const curT = parseFloat(el.style.top);
                     if (Number.isFinite(curL) && Number.isFinite(curT)) {
@@ -3678,6 +3680,7 @@
 
             function stop() {
                 window.__virtualPadHolding = false;
+                __virtualPadReleasedAt = Date.now();
                 state.dir = null;
                 state.vx = null;
                 state.vy = null;
