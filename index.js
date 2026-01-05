@@ -2316,6 +2316,7 @@ app.post('/battle/npc', async (req, res) => {
     if (npc.battleBackground && npc.battleBackground !== 'battle_bg.png') finalBg = npc.battleBackground;
     const battleBgPosX = (mapDoc && Number.isFinite(mapDoc.battleBgPosX)) ? mapDoc.battleBgPosX : 50;
     const battleBgPosY = (mapDoc && Number.isFinite(mapDoc.battleBgPosY)) ? mapDoc.battleBgPosY : 50;
+    const battleBgZoom = (mapDoc && Number.isFinite(mapDoc.battleBgZoom)) ? mapDoc.battleBgZoom : 100;
 
     const npcTeamInstances = [];
     if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Monstros!" });
