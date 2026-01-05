@@ -320,7 +320,7 @@
         #startMenuOverlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.75);
+            background: rgba(0,0,0,0.82);
             z-index: 12000;
             display: none;
             align-items: center;
@@ -329,52 +329,178 @@
             pointer-events: auto;
         }
         #startMenuWindow {
-            width: min(420px, 92vw);
-            background: rgba(15, 23, 42, 0.98);
-            border: 1px solid #334155;
-            border-radius: 14px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            width: min(360px, 90vw);
+            background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+            border: 3px solid #4a5568;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.1);
             overflow: hidden;
         }
         #startMenuHeader {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 14px;
-            border-bottom: 1px solid #334155;
-            color: #fff;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
-            letter-spacing: 0.5px;
+            padding: 10px 12px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            border-bottom: 2px solid #4a5568;
+            color: #f7fafc;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
         }
         #startMenuClose {
-            background: #1e293b;
-            color: #fff;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 8px 10px;
+            background: #2d3748;
+            color: #f7fafc;
+            border: 2px solid #4a5568;
+            border-radius: 4px;
+            padding: 6px 10px;
             cursor: pointer;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem;
+            box-shadow: 0 2px 0 #1a202c;
         }
+        #startMenuClose:active { transform: translateY(2px); box-shadow: none; }
         #startMenuBody {
-            padding: 12px 14px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
         .startMenuBtn {
-            background: #1e293b;
-            color: #fff;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 14px 10px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            color: #f7fafc;
+            border: 2px solid #4a5568;
+            border-radius: 6px;
+            padding: 12px 16px;
             cursor: pointer;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
-            text-align: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.65rem;
+            text-align: left;
+            position: relative;
+            box-shadow: 0 3px 0 #0f1419;
+            transition: all 0.1s;
         }
-        .startMenuBtn:active { transform: translateY(1px); background: #0b1220; }
+        .startMenuBtn:hover { background: linear-gradient(180deg, #3d4758 0%, #2a3038 100%); border-color: #718096; }
+        .startMenuBtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #0f1419; }
+        .startMenuBtn::before {
+            content: '▶';
+            position: absolute;
+            left: 8px;
+            color: #f7fafc;
+            font-size: 0.5rem;
+        }
+
+        /* BAG OVERLAY */
+        #bagOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 12100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            pointer-events: auto;
+        }
+        #bagWindow {
+            width: min(480px, 95vw);
+            max-height: 85vh;
+            background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+            border: 3px solid #4a5568;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #bagHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            border-bottom: 2px solid #4a5568;
+            color: #f7fafc;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+        }
+        #bagClose {
+            background: #2d3748;
+            color: #f7fafc;
+            border: 2px solid #4a5568;
+            border-radius: 4px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem;
+            box-shadow: 0 2px 0 #1a202c;
+        }
+        #bagClose:active { transform: translateY(2px); box-shadow: none; }
+        #bagBody {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        #bagEmpty {
+            text-align: center;
+            padding: 32px 16px;
+            color: #a0aec0;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            line-height: 1.6;
+        }
+        #bagList {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .bagItem {
+            background: linear-gradient(180deg, #2d3748 0%, #1a202c 100%);
+            border: 2px solid #4a5568;
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 0 #0f1419;
+        }
+        .bagItemIcon {
+            width: 32px;
+            height: 32px;
+            background: #1a202c;
+            border: 2px solid #2d3748;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            image-rendering: pixelated;
+        }
+        .bagItemIcon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .bagItemInfo {
+            flex: 1;
+            min-width: 0;
+        }
+        .bagItemName {
+            color: #f7fafc;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            margin-bottom: 4px;
+            text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+        }
+        .bagItemQty {
+            color: #a0aec0;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
 
         /* STARTER PICKER (full-screen) */
         #starterPickerOverlay {
@@ -686,10 +812,23 @@
                 <button id="startMenuClose" type="button">FECHAR</button>
             </div>
             <div id="startMenuBody">
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokedex==='function') openPokedex();">📱 DEX</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">💻 PC</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">● EQUIPE</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">🎒 BOLSA</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokedex==='function') openPokedex();">     DEX</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">     EQUIPE</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">     BOLSA</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">     PC</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bagOverlay" onclick="window.__closeBag && window.__closeBag()">
+        <div id="bagWindow" onclick="event.stopPropagation()">
+            <div id="bagHeader">
+                <div>BOLSA</div>
+                <button id="bagClose" type="button">FECHAR</button>
+            </div>
+            <div id="bagBody">
+                <div id="bagEmpty" style="display:none;">Sua bolsa está vazia.</div>
+                <div id="bagList"></div>
             </div>
         </div>
     </div>
@@ -3648,6 +3787,97 @@
             if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && overlay.style.display !== 'none') close();
+            });
+        })();
+
+        // BAG
+        window.openBag = function() {
+            const overlay = document.getElementById('bagOverlay');
+            const listEl = document.getElementById('bagList');
+            const emptyEl = document.getElementById('bagEmpty');
+            if (!overlay || !listEl || !emptyEl) return;
+
+            const inv = window.USER_INVENTORY || {};
+            const keys = window.USER_KEY_ITEMS || [];
+
+            // Item catalog (assumindo que está disponível globalmente ou hardcoded)
+            const ITEM_DEFS = {
+                pokeball: { name: 'CatchCube', icon: '/items/catchcube.svg' },
+                rareCandy: { name: 'Rare Candy', icon: '/items/rarecandy.svg' }
+            };
+
+            const items = [];
+            // Itens consumíveis
+            for (const [id, qty] of Object.entries(inv)) {
+                const n = parseInt(qty, 10);
+                if (Number.isFinite(n) && n > 0) {
+                    const def = ITEM_DEFS[id] || { name: id, icon: '' };
+                    items.push({ id, name: def.name, icon: def.icon, qty: n });
+                }
+            }
+            // Itens-chave
+            for (const id of keys) {
+                if (!items.find(it => it.id === id)) {
+                    const def = ITEM_DEFS[id] || { name: id, icon: '' };
+                    items.push({ id, name: def.name, icon: def.icon, qty: 1 });
+                }
+            }
+
+            listEl.innerHTML = '';
+            if (items.length === 0) {
+                emptyEl.style.display = 'block';
+            } else {
+                emptyEl.style.display = 'none';
+                items.forEach(it => {
+                    const div = document.createElement('div');
+                    div.className = 'bagItem';
+
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'bagItemIcon';
+                    if (it.icon) {
+                        const img = document.createElement('img');
+                        img.src = it.icon;
+                        img.alt = it.name;
+                        iconDiv.appendChild(img);
+                    } else {
+                        iconDiv.textContent = '?';
+                    }
+
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'bagItemInfo';
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'bagItemName';
+                    nameDiv.textContent = it.name;
+
+                    const qtyDiv = document.createElement('div');
+                    qtyDiv.className = 'bagItemQty';
+                    qtyDiv.textContent = 'x' + it.qty;
+
+                    infoDiv.appendChild(nameDiv);
+                    infoDiv.appendChild(qtyDiv);
+
+                    div.appendChild(iconDiv);
+                    div.appendChild(infoDiv);
+
+                    listEl.appendChild(div);
+                });
+            }
+
+            overlay.style.display = 'flex';
+        };
+
+        window.__closeBag = function() {
+            const overlay = document.getElementById('bagOverlay');
+            if (overlay) overlay.style.display = 'none';
+        };
+
+        (function setupBag() {
+            const closeBtn = document.getElementById('bagClose');
+            const overlay = document.getElementById('bagOverlay');
+            if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); window.__closeBag(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlay && overlay.style.display !== 'none') window.__closeBag();
             });
         })();
 
