@@ -1722,7 +1722,6 @@
                 if (data.id === window.myId) {
                     // Descarta ecos atrasados quando o D-pad está ativo
                     if (incomingSeq && __lastMoveSeqReceived && incomingSeq < __lastMoveSeqReceived) return;
-                    if (incomingSeq) __lastMoveSeqReceived = Math.max(__lastMoveSeqReceived, incomingSeq);
                 }
                 // Se estamos usando predição local no D-pad, o servidor pode ecoar exatamente
                 // o mesmo alvo e re-aplicar a mesma transição a cada tick, causando "vibração".
@@ -1731,6 +1730,20 @@
                     const curL = parseFloat(el.style.left);
                     const curT = parseFloat(el.style.top);
                     if (Number.isFinite(curL) && Number.isFinite(curT)) {
+                        // Ignora posições que "puxem para trás" durante o D-pad (pacote atrasado)
+                        const dir = (el.getAttribute('data-dir') || data.direction || 'down').toLowerCase();
+                        const distBack = Math.hypot(curL - data.x, curT - data.y);
+                        if (distBack > 0.8) {
+                            const behind = (dir === 'up' && data.y > curT)
+                                || (dir === 'down' && data.y < curT)
+                                || (dir === 'left' && data.x > curL)
+                                || (dir === 'right' && data.x < curL);
+                            if (behind) {
+                                // Não atualiza o seq porque este pacote foi descartado
+                                return;
+                            }
+                        }
+
                         const sameX = Math.abs(curL - data.x) < 0.001;
                         const sameY = Math.abs(curT - data.y) < 0.001;
                         if (sameX && sameY) {
@@ -1777,6 +1790,9 @@
                         if (data.id === window.myId) { window.isMoving = false; checkTriggers(data.x, data.y); }
                     }, duration * 1000); 
                 } else if(data.id === window.myId) { window.isMoving = false; }
+                if (data.id === window.myId && incomingSeq) {
+                    __lastMoveSeqReceived = Math.max(__lastMoveSeqReceived, incomingSeq);
+                }
             }
         });
         

@@ -2629,6 +2629,9 @@ io.on('connection', (socket) => {
     socket.on('move_player', async (data) => {
         if (players[socket.id]) {
             const p = players[socket.id];
+            const incomingSeq = Number(data && data.seq) || 0;
+            if (incomingSeq && p._lastSeq && incomingSeq < p._lastSeq) return;
+            if (incomingSeq) p._lastSeq = incomingSeq;
 
             // Revalida o usuário no DB de tempos em tempos para não deixar "fantasma" online.
             const nowCheck = Date.now();
