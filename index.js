@@ -2660,7 +2660,7 @@ io.on('connection', (socket) => {
             p.x = nextX;
             p.y = nextY;
             p.direction = dir;
-            io.to(p.map).emit('player_moved', { id: socket.id, x: nextX, y: nextY, direction: dir });
+            io.to(p.map).emit('player_moved', { id: socket.id, x: nextX, y: nextY, direction: dir, seq: data && data.seq });
 
             // Persistência com throttle para não sobrecarregar o DB
             const now = Date.now();

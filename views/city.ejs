@@ -1282,6 +1282,9 @@
         const PLAYER_MOVE_PX_PER_S = 200;
         const MIN_PLAYER_MOVE_S = 0.08; // garante animação mesmo em passos pequenos
         const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
+        // Sequenciamento simples para ignorar pacotes atrasados do servidor (Render pode atrasar ticks)
+        let __moveSeqCounter = 0;
+        let __lastMoveSeqReceived = 0;
 
         function calcMoveDurationS(fromX, fromY, toX, toY) {
             try {
@@ -1296,6 +1299,17 @@
             } catch (_) {
                 return 0;
             }
+        }
+
+        function nextMoveSeq() {
+            __moveSeqCounter = (__moveSeqCounter + 1) >>> 0; // mantém sempre não negativo
+            return __moveSeqCounter;
+        }
+
+        function emitMovePlayer(x, y) {
+            const seq = nextMoveSeq();
+            socket.emit('move_player', { x, y, seq });
+            return seq;
         }
 
         // ===== Helpers p/ editor visual (Team/Shop) =====
@@ -1704,6 +1718,12 @@
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
             if (el) {
+                const incomingSeq = Number(data.seq) || 0;
+                if (data.id === window.myId) {
+                    // Descarta ecos atrasados quando o D-pad está ativo
+                    if (incomingSeq && __lastMoveSeqReceived && incomingSeq < __lastMoveSeqReceived) return;
+                    if (incomingSeq) __lastMoveSeqReceived = Math.max(__lastMoveSeqReceived, incomingSeq);
+                }
                 // Se estamos usando predição local no D-pad, o servidor pode ecoar exatamente
                 // o mesmo alvo e re-aplicar a mesma transição a cada tick, causando "vibração".
                 // Evita reprocessar quando não há mudança real de destino.
@@ -3154,7 +3174,7 @@
             }
 
             window.isMoving = true;
-            socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+            emitMovePlayer(safeDest.x, safeDest.y);
             const travelS = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
             const travelTime = Math.max(120, travelS * 1000);
 
@@ -3575,7 +3595,7 @@
             setTimeout(() => { window.isMoving = false; }, Math.min(6000, travelTime + 200));
             // Marca que o próximo movimento recebido do servidor deve ter easing (só para clique)
             window.__useEaseForNextMove = true;
-            socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+            emitMovePlayer(safeDest.x, safeDest.y);
 
             if (hitObj) {
                 setTimeout(() => {
@@ -3775,7 +3795,7 @@
                     myPlayer.style.zIndex = Math.floor(safeDest.y);
                 } catch (_) {}
 
-                socket.emit('move_player', { x: safeDest.x, y: safeDest.y });
+                emitMovePlayer(safeDest.x, safeDest.y);
 
                 state.vx = safeDest.x;
                 state.vy = safeDest.y;
