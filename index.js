@@ -329,22 +329,19 @@ function removeItemFromUser(user, itemId, qty = 1) {
     const amount = Math.max(1, parseInt(qty, 10) || 1);
     if (!id) return { ok: false, reason: 'invalid_item' };
 
-    if ((user.bag[id] || 0) < amount) return { ok: false, reason: 'not_enough' };
-    user.bag[id] = (user.bag[id] || 0) - amount;
-    return { ok: true, removed: amount };
-
+    // Remoção de item-chave (único)
     if (user.keyItems.includes(id)) {
-        // Itens-chave são tratados como 1 unidade
         user.keyItems = user.keyItems.filter(k => k !== id);
-        return { ok: true, removed: 1 };
+        return { ok: true, removed: 1, storage: 'keyItems' };
     }
 
+    // Remoção de itens consumíveis da mochila
     const prev = getItemCount(user, id);
     if (prev < amount) return { ok: false, reason: 'not_enough' };
     const next = prev - amount;
     if (next <= 0) delete user.bag[id];
     else user.bag[id] = next;
-    return { ok: true, removed: amount };
+    return { ok: true, removed: amount, storage: 'bag' };
 }
 
 function pickWeightedEntity(list) {
@@ -674,6 +671,7 @@ app.get('/city', async (req, res) => {
             grass: [],
             interacts: [],
             portals: [],
+            storyBarriers: [],
             objects: [],
             spawnPoint: null,
             width: 100,
@@ -841,6 +839,7 @@ app.post('/api/map/save', async (req, res) => {
                 interacts: mapData.interacts, 
                 portals: mapData.portals, 
                 objects: mapData.objects || [],
+                storyBarriers: mapData.storyBarriers || [],
                 foregroundImage: mapData.foregroundImage || '',
                 bgImage: mapData.bgImage, 
                 width: mapData.width || 100, 
@@ -1644,22 +1643,17 @@ app.post('/api/npc/shop/buy', async (req, res) => {
         if ((user.money || 0) < cost) return res.status(400).json({ error: 'Saldo insuficiente.' });
         user.money = (user.money || 0) - cost;
 
-        // Compatibilidade: itens clássicos continuam atualizando campos próprios.
-        if (targetId === 'pokeball') {
-            user.pokeballs = (user.pokeballs || 0) + q;
-        } else if (targetId === 'rareCandy') {
-            user.rareCandy = (user.rareCandy || 0) + q;
-        } else {
-            const addRes = addItemToUser(user, targetId, q, { keyItem: false, unique: false });
-            if (!addRes.ok) return res.status(400).json({ error: 'Não foi possível adicionar o item.' });
-        }
+        // Normalização de IDs legados → catálogo unificado
+        const normalizedId = (targetId === 'pokeball') ? 'captureCube' : (targetId === 'rareCandy') ? 'levelUpCrystal' : targetId;
+        const addRes = addItemToUser(user, normalizedId, q, { keyItem: false, unique: false });
+        if (!addRes.ok) return res.status(400).json({ error: 'Não foi possível adicionar o item.' });
 
         await user.save();
         return res.json({
             success: true,
             money: user.money,
-            pokeballs: user.pokeballs,
-            rareCandy: user.rareCandy,
+            pokeballs: (user.bag && user.bag.captureCube) || user.pokeballs || 0,
+            rareCandy: (user.bag && user.bag.levelUpCrystal) || user.rareCandy || 0,
             bag: user.bag,
             keyItems: user.keyItems,
             storyFlags: user.storyFlags
@@ -2182,8 +2176,8 @@ app.get('/api/me', async (req, res) => {
         team: teamWithSprites,
         allMoves: MOVES_LIBRARY,
         money: user.money || 0,
-        pokeballs: user.pokeballs || 0,
-        rareCandy: user.rareCandy || 0,
+        pokeballs: (user.bag && user.bag.captureCube) || user.pokeballs || 0,
+        rareCandy: (user.bag && user.bag.levelUpCrystal) || user.rareCandy || 0,
         bag: user.bag,
         keyItems: user.keyItems,
         storyFlags: user.storyFlags
@@ -2358,8 +2352,89 @@ app.post('/api/heal', async (req, res) => { const { userId } = req.body; const u
 app.post('/api/equip-move', async (req, res) => { const { userId, pokemonId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.entityTeam.id(pokemonId); if(!poke) return res.json({error: "Pokemon not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
 app.post('/api/set-lead', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.entityTeam.findIndex(p => p._id.toString() === pokemonId); if (index > 0) { const poke = user.entityTeam.splice(index, 1)[0]; user.entityTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
 app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.entityTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último monstro.' }); const index = user.entityTeam.findIndex(p => p._id.toString() === pokemonId); if(index === -1) return res.json({ error: 'Pokemon not found' }); user.entityTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
-app.post('/api/buy-item', async (req, res) => { const { userId, itemId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const prices = { pokeball: 50, rareCandy: 2000 }; if(!prices[itemId]) return res.json({ error: 'Item inválido' }); const cost = prices[itemId] * q; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' }); user.money = (user.money || 0) - cost; if(itemId === 'pokeball') user.pokeballs = (user.pokeballs || 0) + q; if(itemId === 'rareCandy') user.rareCandy = (user.rareCandy || 0) + q; await user.save(); res.json({ success: true, money: user.money, pokeballs: user.pokeballs, rareCandy: user.rareCandy }); });
-app.post('/api/use-item', async (req, res) => { const { userId, itemId, pokemonId, qty } = req.body; const q = Math.max(1, parseInt(qty) || 1); const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(itemId === 'rareCandy') { if(!pokemonId) return res.json({ error: 'pokemonId required' }); let poke = null; try { poke = user.entityTeam.id(pokemonId); } catch(e) { poke = user.entityTeam.find(p => p._id.toString() === (pokemonId || '')); } if(!poke) return res.json({ error: 'Pokemon not found' }); if((user.rareCandy || 0) < q) return res.json({ error: 'Not enough RareCandy' }); const oldLevel = poke.level || 1; poke.level = Math.min(100, oldLevel + q); user.rareCandy = (user.rareCandy || 0) - q; let base = await BaseEntity.findOne({ id: poke.baseId }); let evolved = false; if (base) { if (base.movePool) { const newMove = base.movePool.find(m => m.level === poke.level); if (newMove) { if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves]; if (!poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } } } if (base.evolution && poke.level >= base.evolution.level) { const nextPoke = await BaseEntity.findOne({ id: base.evolution.targetId }); if (nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; base = nextPoke; evolved = true; if (!user.dex) user.dex = []; if (!user.dex.includes(nextPoke.id)) { user.dex.push(nextPoke.id); } } } poke.stats = calculateStats(base.baseStats, poke.level); poke.currentHp = poke.stats.hp; } await user.save(); return res.json({ success: true, rareCandy: user.rareCandy, evolved: evolved, pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname } }); } return res.json({ error: 'Item cannot be used here' }); });
+app.post('/api/buy-item', async (req, res) => {
+    const { userId, itemId, qty } = req.body;
+    const q = Math.max(1, parseInt(qty) || 1);
+    const prices = { pokeball: 50, rareCandy: 2000, captureCube: 50, levelUpCrystal: 2000 };
+    const user = await User.findById(userId);
+    if (!user) return res.json({ error: 'User not found' });
+    // Normaliza IDs legados para novos
+    const normalizedId = (itemId === 'pokeball') ? 'captureCube' : (itemId === 'rareCandy') ? 'levelUpCrystal' : String(itemId || '').trim();
+    if (!prices[normalizedId]) return res.json({ error: 'Item inválido' });
+    const cost = prices[normalizedId] * q;
+    if ((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' });
+    user.money = (user.money || 0) - cost;
+    ensureUserInventories(user);
+    const addRes = addItemToUser(user, normalizedId, q, { keyItem: false, unique: false });
+    if (!addRes.ok) return res.status(400).json({ error: 'Falha ao adicionar item' });
+    await user.save();
+    res.json({
+        success: true,
+        money: user.money,
+        pokeballs: (user.bag && user.bag.captureCube) || user.pokeballs || 0,
+        rareCandy: (user.bag && user.bag.levelUpCrystal) || user.rareCandy || 0,
+        bag: user.bag
+    });
+});
+app.post('/api/use-item', async (req, res) => {
+    const { userId, itemId, pokemonId, qty } = req.body;
+    const q = Math.max(1, parseInt(qty) || 1);
+    const user = await User.findById(userId);
+    if (!user) return res.json({ error: 'User not found' });
+
+    // Aceita IDs legados e novos; usa sempre o bag
+    const normalizedId = (itemId === 'rareCandy') ? 'levelUpCrystal' : String(itemId || '').trim();
+
+    if (normalizedId === 'levelUpCrystal') {
+        if (!pokemonId) return res.json({ error: 'pokemonId required' });
+        let poke = null;
+        try { poke = user.entityTeam.id(pokemonId); } catch(e) { poke = user.entityTeam.find(p => p._id.toString() === (pokemonId || '')); }
+        if (!poke) return res.json({ error: 'Pokemon not found' });
+        ensureUserInventories(user);
+        if ((user.bag.levelUpCrystal || 0) < q) return res.json({ error: 'Not enough LevelUpCrystal' });
+
+        const oldLevel = poke.level || 1;
+        poke.level = Math.min(100, oldLevel + q);
+        user.bag.levelUpCrystal = (user.bag.levelUpCrystal || 0) - q;
+
+        let base = await BaseEntity.findOne({ id: poke.baseId });
+        let evolved = false;
+        if (base) {
+            if (base.movePool) {
+                const newMove = base.movePool.find(m => m.level === poke.level);
+                if (newMove) {
+                    if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves];
+                    if (!poke.learnedMoves.includes(newMove.moveId)) {
+                        poke.learnedMoves.push(newMove.moveId);
+                        if (poke.moves.length < 4) poke.moves.push(newMove.moveId);
+                    }
+                }
+            }
+            if (base.evolution && poke.level >= base.evolution.level) {
+                const nextPoke = await BaseEntity.findOne({ id: base.evolution.targetId });
+                if (nextPoke) {
+                    poke.baseId = nextPoke.id;
+                    poke.nickname = nextPoke.name;
+                    base = nextPoke;
+                    evolved = true;
+                    if (!user.dex) user.dex = [];
+                    if (!user.dex.includes(nextPoke.id)) { user.dex.push(nextPoke.id); }
+                }
+            }
+            poke.stats = calculateStats(base.baseStats, poke.level);
+            poke.currentHp = poke.stats.hp;
+        }
+        await user.save();
+        return res.json({
+            success: true,
+            levelUpCrystal: user.bag.levelUpCrystal || 0,
+            rareCandy: (user.bag.levelUpCrystal || 0), // compat
+            evolved: evolved,
+            pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname }
+        });
+    }
+    return res.json({ error: 'Item cannot be used here' });
+});
 
 // Consumir item do inventário genérico / itens-chave
 app.post('/api/inventory/consume', async (req, res) => {
