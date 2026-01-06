@@ -103,7 +103,7 @@ const NPCSchema = new mongoose.Schema({
         healDialogue: { type: String, default: '' },
 
         // Itens vendidos quando serviceType='shop'
-        // Ex: [{ itemId: 'pokeball', price: 50 }, { itemId: 'rareCandy', price: 2000 }]
+        // Ex: [{ itemId: 'captureCube', price: 50 }, { itemId: 'levelUpCrystal', price: 2000 }]
         shopItems: { type: Array, default: [] },
 
         // Starter custom (quando serviceType='starter')
@@ -185,7 +185,7 @@ const NPCSchema = new mongoose.Schema({
         level: Number
     }],
     reward: {
-        type: { type: String }, // 'item', 'pokemon' ou 'none'
+        type: { type: String }, // 'item', 'entity' ou 'none'
         value: String,
         qty: Number,
         level: Number,
@@ -217,6 +217,7 @@ const MapSchema = new mongoose.Schema({
     grass: { type: Array, default: [] },
     interacts: { type: Array, default: [] },
     portals: { type: Array, default: [] },
+    storyBarriers: { type: Array, default: [] }, // Barreiras que aparecem/desaparecem com base em flags de história
 
     // Objetos decorativos do mapa (imagens PNG/base64 ou URL) com controle de z-index
     // Estrutura sugerida: { id, x, y, w, h, image, anchorY, zOffset, zMode }

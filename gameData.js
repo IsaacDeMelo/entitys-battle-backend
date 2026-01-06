@@ -52,65 +52,59 @@ const TypeChart = {
         [EntityType.METAL]: 0.5 
     },
     
-    // SKY: Strong against Forest (wind cuts), Beast (aerial advantage), weak to Earth (grounded)
+    // SKY: Strong against Forest (wind cuts), Beast (aerial advantage), Aqua (evaporate), weak to Earth (grounded)
     [EntityType.SKY]: { 
         [EntityType.FOREST]: 2, 
         [EntityType.BEAST]: 2,
         [EntityType.AQUA]: 2,
         [EntityType.SKY]: 0.5,
-        [EntityType.EARTH]: 0, 
+        [EntityType.EARTH]: 0.5, 
         [EntityType.METAL]: 0.5 
     },
     
-    // EARTH: Strong against Flame (smothers), Metal (ores), Sky (gravity), weak to Aqua, Forest
+    // EARTH: Strong against Flame (smothers), Metal (ores), Sky (gravity), Venom (absorbs), weak to Aqua, Forest
     [EntityType.EARTH]: { 
         [EntityType.FLAME]: 2, 
         [EntityType.METAL]: 2,
         [EntityType.SKY]: 2,
         [EntityType.VENOM]: 2,
         [EntityType.AQUA]: 0.5, 
-        [EntityType.FOREST]: 0.5,
-        [EntityType.SKY]: 0 
+        [EntityType.FOREST]: 0.5
     },
     
     // MYSTIC: Strong against Beast (magic vs physical), Venom (purifies), weak to Shadow and Metal
     [EntityType.MYSTIC]: { 
         [EntityType.BEAST]: 2, 
         [EntityType.VENOM]: 2,
-        [EntityType.SHADOW]: 2,
         [EntityType.MYSTIC]: 0.5,
-        [EntityType.SHADOW]: 0, 
+        [EntityType.SHADOW]: 0.5, 
         [EntityType.METAL]: 0.5 
     },
     
     // SHADOW: Strong against Mystic (dark magic), weak to itself and Mystic light
     [EntityType.SHADOW]: { 
         [EntityType.MYSTIC]: 2, 
-        [EntityType.SHADOW]: 2,
-        [EntityType.BEAST]: 0,
-        [EntityType.SHADOW]: 0.5,
-        [EntityType.MYSTIC]: 0.5 
+        [EntityType.BEAST]: 0.5,
+        [EntityType.SHADOW]: 0.5
     },
     
-    // METAL: Strong against Beast (weapons), Mystic (science vs magic), weak to Flame, Earth
+    // METAL: Strong against Beast (weapons), Mystic (science vs magic), Earth (ore), weak to Flame, Aqua
     [EntityType.METAL]: { 
         [EntityType.BEAST]: 2, 
         [EntityType.MYSTIC]: 2,
         [EntityType.EARTH]: 2,
         [EntityType.FLAME]: 0.5, 
-        [EntityType.EARTH]: 0.5,
         [EntityType.METAL]: 0.5,
         [EntityType.AQUA]: 0.5 
     },
     
-    // VENOM: Strong against Forest (poison plants), Beast (toxins), weak to Earth (absorbs) and Metal
+    // VENOM: Strong against Forest (poison plants), Beast (toxins), Mystic (corrupts), weak to Earth (absorbs), Shadow
     [EntityType.VENOM]: { 
         [EntityType.FOREST]: 2, 
         [EntityType.BEAST]: 2,
         [EntityType.MYSTIC]: 2,
         [EntityType.VENOM]: 0.5,
         [EntityType.EARTH]: 0.5, 
-        [EntityType.METAL]: 0,
         [EntityType.SHADOW]: 0.5 
     }
 };

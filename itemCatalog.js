@@ -4,8 +4,8 @@ const path = require('path');
 const CATALOG_PATH = path.join(__dirname, 'items.catalog.json');
 
 const DEFAULT_ITEMS = [
-  { id: 'pokeball', name: 'CatchCube', type: 'consumable', icon: '/items/catchcube.svg' },
-  { id: 'rareCandy', name: 'Rare Candy', type: 'consumable', icon: '/items/rarecandy.svg' }
+  { id: 'captureCube', name: 'Capture Cube', type: 'consumable', icon: '/items/catchcube.svg' },
+  { id: 'levelUpCrystal', name: 'Level Up Crystal', type: 'consumable', icon: '/items/levelupcrystal.svg' }
 ];
 
 function normalizeId(id) {

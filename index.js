@@ -1042,7 +1042,7 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
             type: rewardType || 'none',
             value: rewardVal || '',
             qty: parseInt(rewardQty) || 1,
-            level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1,
+            level: (rewardType === 'entity') ? (parseInt(rewardQty) || 1) : 1,
             keyItem: rewardKeyItem === 'on' || rewardKeyItem === true || rewardKeyItem === 'true',
             unique: rewardUnique === 'on' || rewardUnique === true || rewardUnique === 'true'
         };
@@ -1643,8 +1643,7 @@ app.post('/api/npc/shop/buy', async (req, res) => {
         if ((user.money || 0) < cost) return res.status(400).json({ error: 'Saldo insuficiente.' });
         user.money = (user.money || 0) - cost;
 
-        // Normalização de IDs legados → catálogo unificado
-        const normalizedId = (targetId === 'pokeball') ? 'captureCube' : (targetId === 'rareCandy') ? 'levelUpCrystal' : targetId;
+        const normalizedId = normalizeItemId(itemId);
         const addRes = addItemToUser(user, normalizedId, q, { keyItem: false, unique: false });
         if (!addRes.ok) return res.status(400).json({ error: 'Não foi possível adicionar o item.' });
 
@@ -1652,8 +1651,8 @@ app.post('/api/npc/shop/buy', async (req, res) => {
         return res.json({
             success: true,
             money: user.money,
-            pokeballs: (user.bag && user.bag.captureCube) || user.pokeballs || 0,
-            rareCandy: (user.bag && user.bag.levelUpCrystal) || user.rareCandy || 0,
+            captureCube: (user.bag && user.bag.captureCube) || 0,
+            levelUpCrystal: (user.bag && user.bag.levelUpCrystal) || 0,
             bag: user.bag,
             keyItems: user.keyItems,
             storyFlags: user.storyFlags
@@ -1669,10 +1668,10 @@ app.get('/lab', async (req, res) => {
     const { userId } = req.query;
     const user = await User.findById(userId);
     if (!user || !user.isAdmin) return res.redirect('/');
-    const pokemons = await BaseEntity.find();
+    const entities = await BaseEntity.find();
     const npcs = await NPC.find();
     const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
-    res.render('create', { types: EntityType, moves: MOVES_LIBRARY, pokemons, npcs, skins: skins || [], user });
+    res.render('create', { types: EntityType, moves: MOVES_LIBRARY, entities, npcs, skins: skins || [], user });
 });
 
 app.post('/lab/skins/create', skinUpload.single('skinFile'), async (req, res) => {
@@ -1792,7 +1791,7 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             type: rewardType || 'none',
             value: rewardVal || '',
             qty: parseInt(rewardQty) || 1,
-            level: (rewardType === 'pokemon') ? (parseInt(rewardQty) || 1) : 1,
+            level: (rewardType === 'entity') ? (parseInt(rewardQty) || 1) : 1,
             keyItem: rewardKeyItem === 'on' || rewardKeyItem === true || rewardKeyItem === 'true',
             unique: rewardUnique === 'on' || rewardUnique === true || rewardUnique === 'true'
         }; 
@@ -2123,7 +2122,7 @@ app.get('/api/pc', async (req, res) => {
     res.json({ team, pc });
 });
 app.post('/api/pc/move', async (req, res) => {
-    const { userId, pokemonId, from, to } = req.body;
+    const { userId, entityId, from, to } = req.body;
     const user = await User.findById(userId);
     if (!user) return res.json({ error: 'Usuário não encontrado.' });
     if (!user.pc) user.pc = [];
@@ -2138,7 +2137,7 @@ app.post('/api/pc/move', async (req, res) => {
     const index = sourceList.findIndex(p => {
         if (!p) return false;
         const pid = (p._id && typeof p._id.toString === 'function') ? p._id.toString() : (p.instanceId ? String(p.instanceId) : '');
-        return pid === pokemonId;
+        return pid === entityId;
     });
     if (index === -1) return res.json({ error: 'Monstro não encontrado.' });
     const [poke] = sourceList.splice(index, 1);
@@ -2349,17 +2348,17 @@ app.post('/api/dev/inventory/revoke', async (req, res) => {
     }
 });
 app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.entityTeam) { const base = await BaseEntity.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Monstros curados!` }); });
-app.post('/api/equip-move', async (req, res) => { const { userId, pokemonId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.entityTeam.id(pokemonId); if(!poke) return res.json({error: "Pokemon not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
-app.post('/api/set-lead', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.entityTeam.findIndex(p => p._id.toString() === pokemonId); if (index > 0) { const poke = user.entityTeam.splice(index, 1)[0]; user.entityTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
-app.post('/api/abandon-pokemon', async (req, res) => { const { userId, pokemonId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.entityTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último monstro.' }); const index = user.entityTeam.findIndex(p => p._id.toString() === pokemonId); if(index === -1) return res.json({ error: 'Pokemon not found' }); user.entityTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
+app.post('/api/equip-move', async (req, res) => { const { userId, entityId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.entityTeam.id(entityId); if(!poke) return res.json({error: "Entity not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
+app.post('/api/set-lead', async (req, res) => { const { userId, entityId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.entityTeam.findIndex(p => p._id.toString() === entityId); if (index > 0) { const poke = user.entityTeam.splice(index, 1)[0]; user.entityTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
+app.post('/api/abandon-entity', async (req, res) => { const { userId, entityId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.entityTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último monstro.' }); const index = user.entityTeam.findIndex(p => p._id.toString() === entityId); if(index === -1) return res.json({ error: 'Entity not found' }); user.entityTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
 app.post('/api/buy-item', async (req, res) => {
     const { userId, itemId, qty } = req.body;
     const q = Math.max(1, parseInt(qty) || 1);
-    const prices = { pokeball: 50, rareCandy: 2000, captureCube: 50, levelUpCrystal: 2000 };
+    const prices = { captureCube: 50, levelUpCrystal: 2000 };
     const user = await User.findById(userId);
     if (!user) return res.json({ error: 'User not found' });
     // Normaliza IDs legados para novos
-    const normalizedId = (itemId === 'pokeball') ? 'captureCube' : (itemId === 'rareCandy') ? 'levelUpCrystal' : String(itemId || '').trim();
+    const normalizedId = String(itemId || '').trim();
     if (!prices[normalizedId]) return res.json({ error: 'Item inválido' });
     const cost = prices[normalizedId] * q;
     if ((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' });
@@ -2383,13 +2382,13 @@ app.post('/api/use-item', async (req, res) => {
     if (!user) return res.json({ error: 'User not found' });
 
     // Aceita IDs legados e novos; usa sempre o bag
-    const normalizedId = (itemId === 'rareCandy') ? 'levelUpCrystal' : String(itemId || '').trim();
+    const normalizedId = String(itemId || '').trim();
 
     if (normalizedId === 'levelUpCrystal') {
         if (!pokemonId) return res.json({ error: 'pokemonId required' });
         let poke = null;
         try { poke = user.entityTeam.id(pokemonId); } catch(e) { poke = user.entityTeam.find(p => p._id.toString() === (pokemonId || '')); }
-        if (!poke) return res.json({ error: 'Pokemon not found' });
+        if (!poke) return res.json({ error: 'Entity not found' });
         ensureUserInventories(user);
         if ((user.bag.levelUpCrystal || 0) < q) return res.json({ error: 'Not enough LevelUpCrystal' });
 
@@ -2428,9 +2427,8 @@ app.post('/api/use-item', async (req, res) => {
         return res.json({
             success: true,
             levelUpCrystal: user.bag.levelUpCrystal || 0,
-            rareCandy: (user.bag.levelUpCrystal || 0), // compat
             evolved: evolved,
-            pokemon: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname }
+            entity: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname }
         });
     }
     return res.json({ error: 'Item cannot be used here' });
@@ -2483,7 +2481,7 @@ app.post('/battle/wild', async (req, res) => {
     const possibleSpawns = await BaseEntity.find({ spawnLocation: mapName }); 
     if(possibleSpawns.length === 0) return res.json({ error: `Nada selvagem em '${mapName}'.` }); 
     
-    const wildBase = pickWeightedPokemon(possibleSpawns); 
+    const wildBase = pickWeightedEntity(possibleSpawns); 
     const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
     const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
     const userBase = await BaseEntity.findOne({ id: userPokeData.baseId }); 
@@ -2829,7 +2827,7 @@ app.get('/battle/:id', async (req, res) => {
 app.post('/api/turn', async (req, res) => {
     const { battleId, action, moveId, isForced } = req.body; const battle = activeBattles[battleId]; if(!battle) { return res.json({ finished: true }); }
     try {
-        let p1 = battle.p1; const p2 = battle.p2; const events = []; let threwPokeball = false;
+        let p1 = battle.p1; const p2 = battle.p2; const events = []; let threwCaptureCube = false;
         
         if (action === 'switch') { 
             // Custom Battle - use p1Reserve instead of user.entityTeam
@@ -2877,7 +2875,7 @@ app.post('/api/turn', async (req, res) => {
                 const user = await User.findById(battle.userId); 
                 ensureUserInventories(user);
                 if((user.bag.captureCube || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem Capture Cubes!' }); return res.json({ events }); } 
-                user.bag.captureCube--; threwPokeball = true; 
+                user.bag.captureCube--; threwCaptureCube = true; 
                 
                 // --- SISTEMA DE CAPTURA CRIATIVO ---
                 
@@ -2937,7 +2935,7 @@ app.post('/api/turn', async (req, res) => {
                     if (!user.dex) user.dex = [];
                     if (!user.dex.includes(p2.baseId)) { user.dex.push(p2.baseId); }
                     await user.save(); delete activeBattles[battleId]; 
-                    return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwPokeball, shakes }); 
+                    return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwCaptureCube, shakes }); 
                 } else { 
                     await user.save(); 
                     const escapeMsgs = [
@@ -2978,7 +2976,7 @@ app.post('/api/turn', async (req, res) => {
                     return res.json({ events, forceSwitch: true, switchable });
                 }
                 delete activeBattles[battleId];
-                return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwPokeball });
+                return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwCaptureCube });
             }
             
             // Normal Battle
@@ -3020,7 +3018,7 @@ app.post('/api/turn', async (req, res) => {
                 }
                 
                 delete activeBattles[battleId];
-                return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwPokeball });
+                return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube });
             }
             
             // Normal Battle - give XP
@@ -3077,7 +3075,7 @@ app.post('/api/turn', async (req, res) => {
                                 } else if (addRes.reason === 'already_has_key_item') {
                                     events.push({ type: 'MSG', text: `Você já tem o item-chave ${itemId}.` });
                                 }
-                            } else if (npc.reward.type === 'pokemon') {
+                            } else if (npc.reward.type === 'entity') {
                                 const rewardBase = await BaseEntity.findOne({ id: npc.reward.value });
                                 if (rewardBase) {
                                     const rewardLvl = npc.reward.level || 1;
@@ -3102,7 +3100,7 @@ app.post('/api/turn', async (req, res) => {
         const p1PokeData = user ? user.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;
         const p1Xp = p1PokeData ? (p1PokeData.xp || 0) : 0;
         const p1XpNext = p1PokeData ? getXpForNextLevel(p1PokeData.level) : 100;
-        return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy, xp: p1Xp, xpToNext: p1XpNext }, p2State: { hp: p2.hp }, threw: threwPokeball });
+        return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy, xp: p1Xp, xpToNext: p1XpNext }, p2State: { hp: p2.hp }, threw: threwCaptureCube });
     } catch (err) { console.error(err); return res.json({ events: [{ type: 'MSG', text: 'Erro interno.' }], finished: true }); }
 });
 

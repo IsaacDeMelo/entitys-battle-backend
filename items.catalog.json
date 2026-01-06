@@ -1,16 +1,16 @@
 {
   "items": [
     {
-      "id": "pokeball",
-      "name": "CatchCube",
+      "id": "captureCube",
+      "name": "Capture Cube",
       "type": "consumable",
       "icon": "/items/catchcube.svg"
     },
     {
-      "id": "rareCandy",
-      "name": "Rare Candy",
+      "id": "levelUpCrystal",
+      "name": "Level Up Crystal",
       "type": "consumable",
-      "icon": "/items/rarecandy.svg"
+      "icon": "/items/levelupcrystal.svg"
     },
     {
       "id": "key_example",
