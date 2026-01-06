@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-// --- POKEMON SCHEMA ---
-const PokemonSchema = new mongoose.Schema({
+// --- ENTITY SCHEMA (Base creatures) ---
+const EntitySchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     name: String,
     type: String,
@@ -24,7 +24,7 @@ const PokemonSchema = new mongoose.Schema({
         level: Number
     },
     movePool: [{ moveId: String, level: Number }]
-});
+}, { collection: 'entities' });
 
 // --- USER SCHEMA ---
 const UserSchema = new mongoose.Schema({
@@ -32,12 +32,11 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: true },
     skin: { type: String, default: 'char1' },
     money: { type: Number, default: 1000 },
-    pokeballs: { type: Number, default: 5 },
-    rareCandy: { type: Number, default: 0 },
 
-    // Inventário genérico (itens arbitrários por id => quantidade)
-    // Mantém compatibilidade com pokeballs/rareCandy (que continuam existindo como campos próprios).
-    inventory: { type: Object, default: {} },
+    // Mochila: todos os itens em um único objeto
+    // Exemplo: { captureCube: 5, levelUpCrystal: 2, healPotion: 10 }
+    bag: { type: Object, default: { captureCube: 5, levelUpCrystal: 0 } },
+    
     // Itens-chave (únicos, usados para gates de história/portas)
     keyItems: { type: [String], default: [] },
     // Flags de história/progressão (quest states)
@@ -54,7 +53,7 @@ const UserSchema = new mongoose.Schema({
         updatedAt: { type: Number, default: 0 }
     },
 
-    pokemonTeam: [{
+    entityTeam: [{
         baseId: String,
         nickname: String,
         level: Number,
@@ -136,6 +135,16 @@ const NPCSchema = new mongoose.Schema({
         moveDirection: { type: String, default: '' }
     },
 
+    // Diálogos condicionais por StoryFlag
+    // Avaliados em ordem; se flagId estiver true no usuário, usa os textos abaixo como override
+    conditionalDialogues: [{
+        flagId: { type: String, default: '' },
+        dialogue: { type: String, default: '' },
+        winDialogue: { type: String, default: '' },
+        cooldownDialogue: { type: String, default: '' },
+        priority: { type: Number, default: 0 }
+    }],
+
     // Movimento automático (patrulha). Opcional e retrocompatível.
     // Tipos suportados:
     // - pingpong: vai e volta entre A e B
@@ -190,7 +199,8 @@ const NPCSchema = new mongoose.Schema({
 const MapSchema = new mongoose.Schema({
     mapId: { type: String, required: true, unique: true }, // ex: 'city', 'house1'
     name: String,
-    bgImage: String, // Base64 ou URL
+    bgImage: String, // Base64 ou URL (camada de fundo)
+    foregroundImage: { type: String, default: '' }, // Camada frontal (poste/árvore acima do player)
     battleBackground: String, // Fundo de batalha padrão deste mapa
     // Ajuste fino do recorte (quando usado com background-size: cover no battle)
     // 0-100 (%), onde 50/50 é centralizado.
@@ -233,11 +243,11 @@ const PlayerSkinSchema = new mongoose.Schema({
     updatedAt: { type: Number, default: () => Date.now() }
 });
 
-const BasePokemon = mongoose.model('BasePokemon', PokemonSchema);
+const BaseEntity = mongoose.model('BaseEntity', EntitySchema);
 const User = mongoose.model('User', UserSchema);
 const NPC = mongoose.model('NPC', NPCSchema);
 const GameMap = mongoose.model('GameMap', MapSchema);
 const ItemDefinition = mongoose.model('ItemDefinition', ItemDefinitionSchema);
 const PlayerSkin = mongoose.model('PlayerSkin', PlayerSkinSchema);
 
-module.exports = { BasePokemon, User, NPC, GameMap, ItemDefinition, PlayerSkin };
+module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin };

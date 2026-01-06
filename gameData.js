@@ -1,207 +1,241 @@
 const EntityType = { 
-    NORMAL: 'normal', FIRE: 'fire', WATER: 'water', PLANT: 'plant', 
-    ELECTRIC: 'electric', ICE: 'ice', FIGHTER: 'fighter', 
-    POISON: 'poison', GROUND: 'ground', FLYING: 'flying', 
-    PSYCHIC: 'psychic', BUG: 'bug', ROCK: 'rock', 
-    GHOST: 'ghost', DRAGON: 'dragon', DARK: 'dark', STEEL: 'steel', FAIRY: 'fairy'
+    BEAST: 'beast',      // Natural/Physical creatures (Normal/Fighter)
+    FLAME: 'flame',      // Fire elements
+    AQUA: 'aqua',        // Water/Ice elements
+    FOREST: 'forest',    // Nature/Plants/Insects
+    SKY: 'sky',          // Air/Wind/Lightning
+    EARTH: 'earth',      // Ground/Rock/Minerals
+    MYSTIC: 'mystic',    // Magic/Psychic/Fairy
+    SHADOW: 'shadow',    // Dark/Ghost/Undead
+    METAL: 'metal',      // Steel/Machine
+    VENOM: 'venom'       // Poison/Toxic
 };
 
 const MoveType = { ATTACK: 'attack', HEAL: 'heal', DEFEND: 'defend' };
 const EffectType = { DOT: 'dot' }; 
 
 const TypeChart = {
-    [EntityType.NORMAL]: { [EntityType.ROCK]: 0.5, [EntityType.GHOST]: 0, [EntityType.STEEL]: 0.5 },
-    [EntityType.FIRE]: { [EntityType.FIRE]: 0.5, [EntityType.WATER]: 0.5, [EntityType.PLANT]: 2, [EntityType.ICE]: 2, [EntityType.BUG]: 2, [EntityType.ROCK]: 0.5, [EntityType.DRAGON]: 0.5, [EntityType.STEEL]: 2 },
-    [EntityType.WATER]: { [EntityType.FIRE]: 2, [EntityType.WATER]: 0.5, [EntityType.PLANT]: 0.5, [EntityType.GROUND]: 2, [EntityType.ROCK]: 2, [EntityType.DRAGON]: 0.5 },
-    [EntityType.PLANT]: { [EntityType.FIRE]: 0.5, [EntityType.WATER]: 2, [EntityType.PLANT]: 0.5, [EntityType.POISON]: 0.5, [EntityType.GROUND]: 2, [EntityType.FLYING]: 0.5, [EntityType.BUG]: 0.5, [EntityType.ROCK]: 2, [EntityType.DRAGON]: 0.5, [EntityType.STEEL]: 0.5 },
-    [EntityType.ELECTRIC]: { [EntityType.WATER]: 2, [EntityType.PLANT]: 0.5, [EntityType.ELECTRIC]: 0.5, [EntityType.GROUND]: 0, [EntityType.FLYING]: 2, [EntityType.DRAGON]: 0.5 },
-    [EntityType.ICE]: { [EntityType.FIRE]: 0.5, [EntityType.WATER]: 0.5, [EntityType.PLANT]: 2, [EntityType.ICE]: 0.5, [EntityType.GROUND]: 2, [EntityType.FLYING]: 2, [EntityType.DRAGON]: 2, [EntityType.STEEL]: 0.5 },
-    [EntityType.FIGHTER]: { [EntityType.NORMAL]: 2, [EntityType.ICE]: 2, [EntityType.POISON]: 0.5, [EntityType.FLYING]: 0.5, [EntityType.PSYCHIC]: 0.5, [EntityType.BUG]: 0.5, [EntityType.ROCK]: 2, [EntityType.GHOST]: 0, [EntityType.DARK]: 2, [EntityType.STEEL]: 2, [EntityType.FAIRY]: 0.5 },
-    [EntityType.POISON]: { [EntityType.PLANT]: 2, [EntityType.POISON]: 0.5, [EntityType.GROUND]: 0.5, [EntityType.ROCK]: 0.5, [EntityType.GHOST]: 0.5, [EntityType.STEEL]: 0, [EntityType.FAIRY]: 2 },
-    [EntityType.GROUND]: { [EntityType.FIRE]: 2, [EntityType.ELECTRIC]: 2, [EntityType.PLANT]: 0.5, [EntityType.POISON]: 2, [EntityType.FLYING]: 0, [EntityType.BUG]: 0.5, [EntityType.ROCK]: 2, [EntityType.STEEL]: 2 },
-    [EntityType.FLYING]: { [EntityType.ELECTRIC]: 0.5, [EntityType.PLANT]: 2, [EntityType.FIGHTER]: 2, [EntityType.BUG]: 2, [EntityType.ROCK]: 0.5, [EntityType.STEEL]: 0.5 },
-    [EntityType.PSYCHIC]: { [EntityType.FIGHTER]: 2, [EntityType.POISON]: 2, [EntityType.PSYCHIC]: 0.5, [EntityType.DARK]: 0, [EntityType.STEEL]: 0.5 },
-    [EntityType.BUG]: { [EntityType.FIRE]: 0.5, [EntityType.PLANT]: 2, [EntityType.FIGHTER]: 0.5, [EntityType.POISON]: 0.5, [EntityType.FLYING]: 0.5, [EntityType.PSYCHIC]: 2, [EntityType.GHOST]: 0.5, [EntityType.DARK]: 2, [EntityType.STEEL]: 0.5, [EntityType.FAIRY]: 0.5 },
-    [EntityType.ROCK]: { [EntityType.FIRE]: 2, [EntityType.ICE]: 2, [EntityType.FIGHTER]: 0.5, [EntityType.GROUND]: 0.5, [EntityType.FLYING]: 2, [EntityType.BUG]: 2, [EntityType.STEEL]: 0.5 },
-    [EntityType.GHOST]: { [EntityType.NORMAL]: 0, [EntityType.PSYCHIC]: 2, [EntityType.GHOST]: 2, [EntityType.DARK]: 0.5 },
-    [EntityType.DRAGON]: { [EntityType.DRAGON]: 2, [EntityType.STEEL]: 0.5, [EntityType.FAIRY]: 0 },
-    [EntityType.DARK]: { [EntityType.FIGHTER]: 0.5, [EntityType.PSYCHIC]: 2, [EntityType.GHOST]: 2, [EntityType.DARK]: 0.5, [EntityType.FAIRY]: 0.5 },
-    [EntityType.STEEL]: { [EntityType.FIRE]: 0.5, [EntityType.WATER]: 0.5, [EntityType.ELECTRIC]: 0.5, [EntityType.ICE]: 2, [EntityType.ROCK]: 2, [EntityType.STEEL]: 0.5, [EntityType.FAIRY]: 2 },
-    [EntityType.FAIRY]: { [EntityType.FIRE]: 0.5, [EntityType.FIGHTER]: 2, [EntityType.POISON]: 0.5, [EntityType.DRAGON]: 2, [EntityType.DARK]: 2, [EntityType.STEEL]: 0.5 }
+    // BEAST: Strong against Earth (trampling), weak to Metal (weapons) and Mystic (magic)
+    [EntityType.BEAST]: { 
+        [EntityType.EARTH]: 2, 
+        [EntityType.METAL]: 0.5, 
+        [EntityType.MYSTIC]: 0.5,
+        [EntityType.SHADOW]: 0.5 
+    },
+    
+    // FLAME: Strong against Forest and Metal (melts), weak to Aqua and Earth (smothered)
+    [EntityType.FLAME]: { 
+        [EntityType.FOREST]: 2, 
+        [EntityType.METAL]: 2,
+        [EntityType.FLAME]: 0.5,
+        [EntityType.AQUA]: 0.5, 
+        [EntityType.EARTH]: 0.5 
+    },
+    
+    // AQUA: Strong against Flame and Earth (erosion), weak to Forest (absorbs) and Sky (evaporates)
+    [EntityType.AQUA]: { 
+        [EntityType.FLAME]: 2, 
+        [EntityType.EARTH]: 2,
+        [EntityType.AQUA]: 0.5,
+        [EntityType.FOREST]: 0.5, 
+        [EntityType.SKY]: 0.5 
+    },
+    
+    // FOREST: Strong against Aqua (absorbs) and Earth (roots), weak to Flame, Venom, and Sky
+    [EntityType.FOREST]: { 
+        [EntityType.AQUA]: 2, 
+        [EntityType.EARTH]: 2,
+        [EntityType.FOREST]: 0.5,
+        [EntityType.FLAME]: 0.5, 
+        [EntityType.VENOM]: 0.5,
+        [EntityType.SKY]: 0.5,
+        [EntityType.METAL]: 0.5 
+    },
+    
+    // SKY: Strong against Forest (wind cuts), Beast (aerial advantage), weak to Earth (grounded)
+    [EntityType.SKY]: { 
+        [EntityType.FOREST]: 2, 
+        [EntityType.BEAST]: 2,
+        [EntityType.AQUA]: 2,
+        [EntityType.SKY]: 0.5,
+        [EntityType.EARTH]: 0, 
+        [EntityType.METAL]: 0.5 
+    },
+    
+    // EARTH: Strong against Flame (smothers), Metal (ores), Sky (gravity), weak to Aqua, Forest
+    [EntityType.EARTH]: { 
+        [EntityType.FLAME]: 2, 
+        [EntityType.METAL]: 2,
+        [EntityType.SKY]: 2,
+        [EntityType.VENOM]: 2,
+        [EntityType.AQUA]: 0.5, 
+        [EntityType.FOREST]: 0.5,
+        [EntityType.SKY]: 0 
+    },
+    
+    // MYSTIC: Strong against Beast (magic vs physical), Venom (purifies), weak to Shadow and Metal
+    [EntityType.MYSTIC]: { 
+        [EntityType.BEAST]: 2, 
+        [EntityType.VENOM]: 2,
+        [EntityType.SHADOW]: 2,
+        [EntityType.MYSTIC]: 0.5,
+        [EntityType.SHADOW]: 0, 
+        [EntityType.METAL]: 0.5 
+    },
+    
+    // SHADOW: Strong against Mystic (dark magic), weak to itself and Mystic light
+    [EntityType.SHADOW]: { 
+        [EntityType.MYSTIC]: 2, 
+        [EntityType.SHADOW]: 2,
+        [EntityType.BEAST]: 0,
+        [EntityType.SHADOW]: 0.5,
+        [EntityType.MYSTIC]: 0.5 
+    },
+    
+    // METAL: Strong against Beast (weapons), Mystic (science vs magic), weak to Flame, Earth
+    [EntityType.METAL]: { 
+        [EntityType.BEAST]: 2, 
+        [EntityType.MYSTIC]: 2,
+        [EntityType.EARTH]: 2,
+        [EntityType.FLAME]: 0.5, 
+        [EntityType.EARTH]: 0.5,
+        [EntityType.METAL]: 0.5,
+        [EntityType.AQUA]: 0.5 
+    },
+    
+    // VENOM: Strong against Forest (poison plants), Beast (toxins), weak to Earth (absorbs) and Metal
+    [EntityType.VENOM]: { 
+        [EntityType.FOREST]: 2, 
+        [EntityType.BEAST]: 2,
+        [EntityType.MYSTIC]: 2,
+        [EntityType.VENOM]: 0.5,
+        [EntityType.EARTH]: 0.5, 
+        [EntityType.METAL]: 0,
+        [EntityType.SHADOW]: 0.5 
+    }
 };
 
 const MOVES_LIBRARY = {
-    // --- NORMAL (Physical / Special) ---
-    'tackle': { id: 'tackle', name: 'Tackle', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 0, icon: '💥', element: EntityType.NORMAL },
-    'scratch': { id: 'scratch', name: 'Scratch', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '💅', element: EntityType.NORMAL },
-    'pound': { id: 'pound', name: 'Pound', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 1, icon: '👊', element: EntityType.NORMAL },
-    'quick_attack': { id: 'quick_attack', name: 'Quick Attack', type: MoveType.ATTACK, category: 'physical', power: 45, cost: 2, icon: '⚡', element: EntityType.NORMAL },
-    'slash': { id: 'slash', name: 'Slash', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🔪', element: EntityType.NORMAL },
-    'swift': { id: 'swift', name: 'Swift', type: MoveType.ATTACK, category: 'special', power: 60, cost: 3, icon: '⭐', element: EntityType.NORMAL },
-    'tri_attack': { id: 'tri_attack', name: 'Tri Attack', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🔺', element: EntityType.NORMAL },
-    'hyper_beam': { id: 'hyper_beam', name: 'Hyper Beam', type: MoveType.ATTACK, category: 'special', power: 150, cost: 10, icon: '🌌', element: EntityType.NORMAL },
-    'giga_impact': { id: 'giga_impact', name: 'Giga Impact', type: MoveType.ATTACK, category: 'physical', power: 150, cost: 10, icon: '💥', element: EntityType.NORMAL },
-    'body_slam': { id: 'body_slam', name: 'Body Slam', type: MoveType.ATTACK, category: 'physical', power: 85, cost: 5, icon: '🏋️', element: EntityType.NORMAL },
+    // --- BEAST (Physical / Natural) ---
+    'strike': { id: 'strike', name: 'Strike', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 0, icon: '💥', element: EntityType.BEAST },
+    'claw_swipe': { id: 'claw_swipe', name: 'Claw Swipe', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '💅', element: EntityType.BEAST },
+    'headbutt': { id: 'headbutt', name: 'Headbutt', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 1, icon: '👊', element: EntityType.BEAST },
+    'rush': { id: 'rush', name: 'Rush', type: MoveType.ATTACK, category: 'physical', power: 45, cost: 2, icon: '⚡', element: EntityType.BEAST },
+    'rend': { id: 'rend', name: 'Rend', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🔪', element: EntityType.BEAST },
+    'star_burst': { id: 'star_burst', name: 'Star Burst', type: MoveType.ATTACK, category: 'special', power: 60, cost: 3, icon: '⭐', element: EntityType.BEAST },
+    'triple_strike': { id: 'triple_strike', name: 'Triple Strike', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🔺', element: EntityType.BEAST },
+    'primal_roar': { id: 'primal_roar', name: 'Primal Roar', type: MoveType.ATTACK, category: 'special', power: 150, cost: 10, icon: '🦁', element: EntityType.BEAST },
+    'rampage': { id: 'rampage', name: 'Rampage', type: MoveType.ATTACK, category: 'physical', power: 150, cost: 10, icon: '💥', element: EntityType.BEAST },
+    'body_crash': { id: 'body_crash', name: 'Body Crash', type: MoveType.ATTACK, category: 'physical', power: 85, cost: 5, icon: '🏋️', element: EntityType.BEAST },
 
-    // --- FIRE ---
-    'ember': { id: 'ember', name: 'Ember', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '🔥', element: EntityType.FIRE },
-    'flamethrower': { id: 'flamethrower', name: 'Flamethrower', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🌋', element: EntityType.FIRE },
-    'fire_punch': { id: 'fire_punch', name: 'Fire Punch', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '🥊', element: EntityType.FIRE },
-    'fire_spin': { id: 'fire_spin', name: 'Fire Spin', type: MoveType.ATTACK, category: 'special', power: 35, cost: 3, icon: '🌀', element: EntityType.FIRE },
-    'flare_blitz': { id: 'flare_blitz', name: 'Flare Blitz', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 9, icon: '🧨', element: EntityType.FIRE },
-    'heat_wave': { id: 'heat_wave', name: 'Heat Wave', type: MoveType.ATTACK, category: 'special', power: 95, cost: 6, icon: '♨️', element: EntityType.FIRE },
-    'fire_blast': { id: 'fire_blast', name: 'Fire Blast', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '大', element: EntityType.FIRE },
-    'flame_wheel': { id: 'flame_wheel', name: 'Flame Wheel', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🎡', element: EntityType.FIRE },
+    // --- FLAME (Fire) ---
+    'spark_shot': { id: 'spark_shot', name: 'Spark Shot', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '🔥', element: EntityType.FLAME },
+    'inferno_blast': { id: 'inferno_blast', name: 'Inferno Blast', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🌋', element: EntityType.FLAME },
+    'blazing_fist': { id: 'blazing_fist', name: 'Blazing Fist', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '🥊', element: EntityType.FLAME },
+    'flame_spiral': { id: 'flame_spiral', name: 'Flame Spiral', type: MoveType.ATTACK, category: 'special', power: 35, cost: 3, icon: '🌀', element: EntityType.FLAME },
+    'phoenix_charge': { id: 'phoenix_charge', name: 'Phoenix Charge', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 9, icon: '🧨', element: EntityType.FLAME },
+    'scorching_wave': { id: 'scorching_wave', name: 'Scorching Wave', type: MoveType.ATTACK, category: 'special', power: 95, cost: 6, icon: '♨️', element: EntityType.FLAME },
+    'magma_burst': { id: 'magma_burst', name: 'Magma Burst', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '🌋', element: EntityType.FLAME },
+    'burning_wheel': { id: 'burning_wheel', name: 'Burning Wheel', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🎡', element: EntityType.FLAME },
 
-    // --- WATER ---
-    'water_gun': { id: 'water_gun', name: 'Water Gun', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '🔫', element: EntityType.WATER },
-    'bubble': { id: 'bubble', name: 'Bubble', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🫧', element: EntityType.WATER },
-    'aqua_jet': { id: 'aqua_jet', name: 'Aqua Jet', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '🚤', element: EntityType.WATER },
-    'bubble_beam': { id: 'bubble_beam', name: 'Bubble Beam', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '🛁', element: EntityType.WATER },
-    'waterfall': { id: 'waterfall', name: 'Waterfall', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '🌊', element: EntityType.WATER },
-    'surf': { id: 'surf', name: 'Surf', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🏄', element: EntityType.WATER },
-    'aqua_tail': { id: 'aqua_tail', name: 'Aqua Tail', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '🐋', element: EntityType.WATER },
-    'hydro_pump': { id: 'hydro_pump', name: 'Hydro Pump', type: MoveType.ATTACK, category: 'special', power: 110, cost: 7, icon: '💧', element: EntityType.WATER },
+    // --- AQUA (Water/Ice) ---
+    'stream': { id: 'stream', name: 'Stream', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '🔫', element: EntityType.AQUA },
+    'bubble_pop': { id: 'bubble_pop', name: 'Bubble Pop', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🫧', element: EntityType.AQUA },
+    'tidal_rush': { id: 'tidal_rush', name: 'Tidal Rush', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '🚤', element: EntityType.AQUA },
+    'frost_beam': { id: 'frost_beam', name: 'Frost Beam', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '❄️', element: EntityType.AQUA },
+    'cascade': { id: 'cascade', name: 'Cascade', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '🌊', element: EntityType.AQUA },
+    'wave_rider': { id: 'wave_rider', name: 'Wave Rider', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🏄', element: EntityType.AQUA },
+    'whirlpool_tail': { id: 'whirlpool_tail', name: 'Whirlpool Tail', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '🐋', element: EntityType.AQUA },
+    'tidal_surge': { id: 'tidal_surge', name: 'Tidal Surge', type: MoveType.ATTACK, category: 'special', power: 110, cost: 7, icon: '💧', element: EntityType.AQUA },
+    'ice_shard': { id: 'ice_shard', name: 'Ice Shard', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '🧊', element: EntityType.AQUA },
+    'blizzard_storm': { id: 'blizzard_storm', name: 'Blizzard Storm', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '🌬️', element: EntityType.AQUA },
 
-    // --- PLANT (GRASS) ---
-    'vine_whip': { id: 'vine_whip', name: 'Vine Whip', type: MoveType.ATTACK, category: 'physical', power: 45, cost: 3, icon: '🍃', element: EntityType.PLANT },
-    'razor_leaf': { id: 'razor_leaf', name: 'Razor Leaf', type: MoveType.ATTACK, category: 'physical', power: 55, cost: 4, icon: '✂️', element: EntityType.PLANT },
-    'mega_drain': { id: 'mega_drain', name: 'Mega Drain', type: MoveType.ATTACK, category: 'special', power: 60, cost: 5, icon: '🥤', element: EntityType.PLANT },
-    'seed_bomb': { id: 'seed_bomb', name: 'Seed Bomb', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '💣', element: EntityType.PLANT },
-    'energy_ball': { id: 'energy_ball', name: 'Energy Ball', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🟢', element: EntityType.PLANT },
-    'leaf_blade': { id: 'leaf_blade', name: 'Leaf Blade', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '⚔️', element: EntityType.PLANT },
-    'solar_beam': { id: 'solar_beam', name: 'Solar Beam', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '☀️', element: EntityType.PLANT },
-    'petal_dance': { id: 'petal_dance', name: 'Petal Dance', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '🌸', element: EntityType.PLANT },
+    // --- FOREST (Nature/Plants/Insects) ---
+    'root_lash': { id: 'root_lash', name: 'Root Lash', type: MoveType.ATTACK, category: 'physical', power: 45, cost: 3, icon: '🍃', element: EntityType.FOREST },
+    'leaf_cutter': { id: 'leaf_cutter', name: 'Leaf Cutter', type: MoveType.ATTACK, category: 'physical', power: 55, cost: 4, icon: '✂️', element: EntityType.FOREST },
+    'life_drain': { id: 'life_drain', name: 'Life Drain', type: MoveType.ATTACK, category: 'special', power: 60, cost: 5, icon: '🥤', element: EntityType.FOREST },
+    'spore_bomb': { id: 'spore_bomb', name: 'Spore Bomb', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '💣', element: EntityType.FOREST },
+    'nature_pulse': { id: 'nature_pulse', name: 'Nature Pulse', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🟢', element: EntityType.FOREST },
+    'thorn_blade': { id: 'thorn_blade', name: 'Thorn Blade', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '⚔️', element: EntityType.FOREST },
+    'photon_ray': { id: 'photon_ray', name: 'Photon Ray', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '☀️', element: EntityType.FOREST },
+    'petal_storm': { id: 'petal_storm', name: 'Petal Storm', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '🌸', element: EntityType.FOREST },
+    'wing_slice': { id: 'wing_slice', name: 'Wing Slice', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '⚔️', element: EntityType.FOREST },
+    'swarm_attack': { id: 'swarm_attack', name: 'Swarm Attack', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🐝', element: EntityType.FOREST },
 
-    // --- ELECTRIC ---
-    'thunder_shock': { id: 'thunder_shock', name: 'Thunder Shock', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '⚡', element: EntityType.ELECTRIC },
-    'spark': { id: 'spark', name: 'Spark', type: MoveType.ATTACK, category: 'physical', power: 65, cost: 4, icon: '✨', element: EntityType.ELECTRIC },
-    'thunder_punch': { id: 'thunder_punch', name: 'Thunder Punch', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '🤜', element: EntityType.ELECTRIC },
-    'discharge': { id: 'discharge', name: 'Discharge', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '💡', element: EntityType.ELECTRIC },
-    'thunderbolt': { id: 'thunderbolt', name: 'Thunderbolt', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🌩️', element: EntityType.ELECTRIC },
-    'wild_charge': { id: 'wild_charge', name: 'Wild Charge', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '🐂', element: EntityType.ELECTRIC },
-    'thunder': { id: 'thunder', name: 'Thunder', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '⛈️', element: EntityType.ELECTRIC },
-    'volt_tackle': { id: 'volt_tackle', name: 'Volt Tackle', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 9, icon: '⚡️', element: EntityType.ELECTRIC },
+    // --- SKY (Air/Lightning) ---
+    'sky_bolt': { id: 'sky_bolt', name: 'Sky Bolt', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '⚡', element: EntityType.SKY },
+    'wind_gust': { id: 'wind_gust', name: 'Wind Gust', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '💨', element: EntityType.SKY },
+    'static_strike': { id: 'static_strike', name: 'Static Strike', type: MoveType.ATTACK, category: 'physical', power: 65, cost: 4, icon: '✨', element: EntityType.SKY },
+    'wing_bash': { id: 'wing_bash', name: 'Wing Bash', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🦅', element: EntityType.SKY },
+    'voltage_fist': { id: 'voltage_fist', name: 'Voltage Fist', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '🤜', element: EntityType.SKY },
+    'lightning_strike': { id: 'lightning_strike', name: 'Lightning Strike', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🌩️', element: EntityType.SKY },
+    'tempest': { id: 'tempest', name: 'Tempest', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '⛈️', element: EntityType.SKY },
+    'thunder_crash': { id: 'thunder_crash', name: 'Thunder Crash', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 9, icon: '⚡️', element: EntityType.SKY },
+    'aerial_blade': { id: 'aerial_blade', name: 'Aerial Blade', type: MoveType.ATTACK, category: 'special', power: 75, cost: 5, icon: '🌬️', element: EntityType.SKY },
+    'cyclone': { id: 'cyclone', name: 'Cyclone', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '🌪️', element: EntityType.SKY },
 
-    // --- ICE ---
-    'ice_shard': { id: 'ice_shard', name: 'Ice Shard', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '🧊', element: EntityType.ICE },
-    'powder_snow': { id: 'powder_snow', name: 'Powder Snow', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '❄️', element: EntityType.ICE },
-    'aurora_beam': { id: 'aurora_beam', name: 'Aurora Beam', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '🌈', element: EntityType.ICE },
-    'ice_punch': { id: 'ice_punch', name: 'Ice Punch', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '🥶', element: EntityType.ICE },
-    'ice_beam': { id: 'ice_beam', name: 'Ice Beam', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '❄️', element: EntityType.ICE },
-    'icicle_crash': { id: 'icicle_crash', name: 'Icicle Crash', type: MoveType.ATTACK, category: 'physical', power: 85, cost: 5, icon: '📉', element: EntityType.ICE },
-    'blizzard': { id: 'blizzard', name: 'Blizzard', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '🌬️', element: EntityType.ICE },
+    // --- EARTH (Ground/Rock) ---
+    'dirt_toss': { id: 'dirt_toss', name: 'Dirt Toss', type: MoveType.ATTACK, category: 'special', power: 20, cost: 1, icon: '💩', element: EntityType.EARTH },
+    'mud_blast': { id: 'mud_blast', name: 'Mud Blast', type: MoveType.ATTACK, category: 'special', power: 55, cost: 3, icon: '🔫', element: EntityType.EARTH },
+    'tremor': { id: 'tremor', name: 'Tremor', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🚜', element: EntityType.EARTH },
+    'boulder_throw': { id: 'boulder_throw', name: 'Boulder Throw', type: MoveType.ATTACK, category: 'physical', power: 50, cost: 3, icon: '🪨', element: EntityType.EARTH },
+    'tunnel_strike': { id: 'tunnel_strike', name: 'Tunnel Strike', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '⛏️', element: EntityType.EARTH },
+    'terra_force': { id: 'terra_force', name: 'Terra Force', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🌋', element: EntityType.EARTH },
+    'quake': { id: 'quake', name: 'Quake', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 7, icon: '📉', element: EntityType.EARTH },
+    'rock_slide': { id: 'rock_slide', name: 'Rock Slide', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '⛰️', element: EntityType.EARTH },
+    'crystal_shard': { id: 'crystal_shard', name: 'Crystal Shard', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '💎', element: EntityType.EARTH },
+    'stone_spear': { id: 'stone_spear', name: 'Stone Spear', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 7, icon: '🔪', element: EntityType.EARTH },
 
-    // --- FIGHTING ---
-    'karate_chop': { id: 'karate_chop', name: 'Karate Chop', type: MoveType.ATTACK, category: 'physical', power: 50, cost: 3, icon: '🥋', element: EntityType.FIGHTER },
-    'mach_punch': { id: 'mach_punch', name: 'Mach Punch', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '👊', element: EntityType.FIGHTER },
-    'seismic_toss': { id: 'seismic_toss', name: 'Seismic Toss', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🌏', element: EntityType.FIGHTER },
-    'brick_break': { id: 'brick_break', name: 'Brick Break', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '🧱', element: EntityType.FIGHTER },
-    'aura_sphere': { id: 'aura_sphere', name: 'Aura Sphere', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🔵', element: EntityType.FIGHTER },
-    'cross_chop': { id: 'cross_chop', name: 'Cross Chop', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 7, icon: '❌', element: EntityType.FIGHTER },
-    'focus_blast': { id: 'focus_blast', name: 'Focus Blast', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '🧘', element: EntityType.FIGHTER },
-    'close_combat': { id: 'close_combat', name: 'Close Combat', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 8, icon: '⚔️', element: EntityType.FIGHTER },
+    // --- MYSTIC (Magic/Psychic/Fairy) ---
+    'mind_shock': { id: 'mind_shock', name: 'Mind Shock', type: MoveType.ATTACK, category: 'special', power: 50, cost: 3, icon: '😵', element: EntityType.MYSTIC },
+    'mystic_ray': { id: 'mystic_ray', name: 'Mystic Ray', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '🌈', element: EntityType.MYSTIC },
+    'soul_cut': { id: 'soul_cut', name: 'Soul Cut', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🔪', element: EntityType.MYSTIC },
+    'spirit_bash': { id: 'spirit_bash', name: 'Spirit Bash', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '💆', element: EntityType.MYSTIC },
+    'telepathy': { id: 'telepathy', name: 'Telepathy', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🧠', element: EntityType.MYSTIC },
+    'oracle_vision': { id: 'oracle_vision', name: 'Oracle Vision', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '🔮', element: EntityType.MYSTIC },
+    'charm_voice': { id: 'charm_voice', name: 'Charm Voice', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🎤', element: EntityType.MYSTIC },
+    'fairy_spark': { id: 'fairy_spark', name: 'Fairy Spark', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🧚', element: EntityType.MYSTIC },
+    'radiant_burst': { id: 'radiant_burst', name: 'Radiant Burst', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '✨', element: EntityType.MYSTIC },
+    'moon_strike': { id: 'moon_strike', name: 'Moon Strike', type: MoveType.ATTACK, category: 'special', power: 95, cost: 6, icon: '🌑', element: EntityType.MYSTIC },
 
-    // --- POISON ---
-    'poison_sting': { id: 'poison_sting', name: 'Poison Sting', type: MoveType.ATTACK, category: 'physical', power: 15, cost: 1, icon: '💉', element: EntityType.POISON },
-    'acid': { id: 'acid', name: 'Acid', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🧪', element: EntityType.POISON },
-    'sludge': { id: 'sludge', name: 'Sludge', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '💩', element: EntityType.POISON },
-    'poison_jab': { id: 'poison_jab', name: 'Poison Jab', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '☠️', element: EntityType.POISON },
-    'sludge_bomb': { id: 'sludge_bomb', name: 'Sludge Bomb', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '💣', element: EntityType.POISON },
-    'gunk_shot': { id: 'gunk_shot', name: 'Gunk Shot', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 8, icon: '🗑️', element: EntityType.POISON },
+    // --- SHADOW (Dark/Ghost) ---
+    'dark_bite': { id: 'dark_bite', name: 'Dark Bite', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🦷', element: EntityType.SHADOW },
+    'ghost_touch': { id: 'ghost_touch', name: 'Ghost Touch', type: MoveType.ATTACK, category: 'physical', power: 30, cost: 2, icon: '👅', element: EntityType.SHADOW },
+    'shade_sneak': { id: 'shade_sneak', name: 'Shade Sneak', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '👤', element: EntityType.SHADOW },
+    'curse': { id: 'curse', name: 'Curse', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '🧙', element: EntityType.SHADOW },
+    'night_claw': { id: 'night_claw', name: 'Night Claw', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '💅', element: EntityType.SHADOW },
+    'void_sphere': { id: 'void_sphere', name: 'Void Sphere', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🟣', element: EntityType.SHADOW },
+    'phantom_strike': { id: 'phantom_strike', name: 'Phantom Strike', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '👻', element: EntityType.SHADOW },
+    'darkness_pulse': { id: 'darkness_pulse', name: 'Darkness Pulse', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '⚫', element: EntityType.SHADOW },
+    'howl': { id: 'howl', name: 'Howl', type: MoveType.ATTACK, category: 'special', power: 55, cost: 3, icon: '🤬', element: EntityType.SHADOW },
+    'shadow_ambush': { id: 'shadow_ambush', name: 'Shadow Ambush', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '👊', element: EntityType.SHADOW },
 
-    // --- GROUND ---
-    'mud_slap': { id: 'mud_slap', name: 'Mud Slap', type: MoveType.ATTACK, category: 'special', power: 20, cost: 1, icon: '💩', element: EntityType.GROUND },
-    'mud_shot': { id: 'mud_shot', name: 'Mud Shot', type: MoveType.ATTACK, category: 'special', power: 55, cost: 3, icon: '🔫', element: EntityType.GROUND },
-    'bulldoze': { id: 'bulldoze', name: 'Bulldoze', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🚜', element: EntityType.GROUND },
-    'dig': { id: 'dig', name: 'Dig', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '⛏️', element: EntityType.GROUND },
-    'earth_power': { id: 'earth_power', name: 'Earth Power', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🌋', element: EntityType.GROUND },
-    'earthquake': { id: 'earthquake', name: 'Earthquake', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 7, icon: '📉', element: EntityType.GROUND },
+    // --- METAL (Steel/Machine) ---
+    'rapid_punch': { id: 'rapid_punch', name: 'Rapid Punch', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '🚅', element: EntityType.METAL },
+    'steel_claw': { id: 'steel_claw', name: 'Steel Claw', type: MoveType.ATTACK, category: 'physical', power: 50, cost: 3, icon: '⚙️', element: EntityType.METAL },
+    'iron_wing': { id: 'iron_wing', name: 'Iron Wing', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🛡️', element: EntityType.METAL },
+    'steel_head': { id: 'steel_head', name: 'Steel Head', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '🤕', element: EntityType.METAL },
+    'photon_cannon': { id: 'photon_cannon', name: 'Photon Cannon', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🔦', element: EntityType.METAL },
+    'comet_strike': { id: 'comet_strike', name: 'Comet Strike', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '☄️', element: EntityType.METAL },
 
-    // --- FLYING ---
-    'peck': { id: 'peck', name: 'Peck', type: MoveType.ATTACK, category: 'physical', power: 35, cost: 1, icon: '🐦', element: EntityType.FLYING },
-    'gust': { id: 'gust', name: 'Gust', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '💨', element: EntityType.FLYING },
-    'wing_attack': { id: 'wing_attack', name: 'Wing Attack', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🦅', element: EntityType.FLYING },
-    'aerial_ace': { id: 'aerial_ace', name: 'Aerial Ace', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '✈️', element: EntityType.FLYING },
-    'air_slash': { id: 'air_slash', name: 'Air Slash', type: MoveType.ATTACK, category: 'special', power: 75, cost: 5, icon: '🌬️', element: EntityType.FLYING },
-    'fly': { id: 'fly', name: 'Fly', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '🛫', element: EntityType.FLYING },
-    'brave_bird': { id: 'brave_bird', name: 'Brave Bird', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 9, icon: '🔥', element: EntityType.FLYING },
-    'hurricane': { id: 'hurricane', name: 'Hurricane', type: MoveType.ATTACK, category: 'special', power: 110, cost: 8, icon: '🌪️', element: EntityType.FLYING },
-
-    // --- PSYCHIC ---
-    'confusion': { id: 'confusion', name: 'Confusion', type: MoveType.ATTACK, category: 'special', power: 50, cost: 3, icon: '😵', element: EntityType.PSYCHIC },
-    'psybeam': { id: 'psybeam', name: 'Psybeam', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '🌈', element: EntityType.PSYCHIC },
-    'psycho_cut': { id: 'psycho_cut', name: 'Psycho Cut', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🔪', element: EntityType.PSYCHIC },
-    'zen_headbutt': { id: 'zen_headbutt', name: 'Zen Headbutt', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '💆', element: EntityType.PSYCHIC },
-    'psychic': { id: 'psychic', name: 'Psychic', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🧠', element: EntityType.PSYCHIC },
-    'future_sight': { id: 'future_sight', name: 'Future Sight', type: MoveType.ATTACK, category: 'special', power: 120, cost: 8, icon: '🔮', element: EntityType.PSYCHIC },
-
-    // --- BUG ---
-    'fury_cutter': { id: 'fury_cutter', name: 'Fury Cutter', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '⚔️', element: EntityType.BUG },
-    'bug_bite': { id: 'bug_bite', name: 'Bug Bite', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🐛', element: EntityType.BUG },
-    'signal_beam': { id: 'signal_beam', name: 'Signal Beam', type: MoveType.ATTACK, category: 'special', power: 75, cost: 5, icon: '🚦', element: EntityType.BUG },
-    'x_scissor': { id: 'x_scissor', name: 'X-Scissor', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '✂️', element: EntityType.BUG },
-    'bug_buzz': { id: 'bug_buzz', name: 'Bug Buzz', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '🐝', element: EntityType.BUG },
-    'megahorn': { id: 'megahorn', name: 'Megahorn', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 8, icon: '🦏', element: EntityType.BUG },
-
-    // --- ROCK ---
-    'rock_throw': { id: 'rock_throw', name: 'Rock Throw', type: MoveType.ATTACK, category: 'physical', power: 50, cost: 3, icon: '🪨', element: EntityType.ROCK },
-    'rollout': { id: 'rollout', name: 'Rollout', type: MoveType.ATTACK, category: 'physical', power: 30, cost: 2, icon: '🔄', element: EntityType.ROCK },
-    'ancient_power': { id: 'ancient_power', name: 'Ancient Power', type: MoveType.ATTACK, category: 'special', power: 60, cost: 4, icon: '🏺', element: EntityType.ROCK },
-    'rock_slide': { id: 'rock_slide', name: 'Rock Slide', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 5, icon: '⛰️', element: EntityType.ROCK },
-    'power_gem': { id: 'power_gem', name: 'Power Gem', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '💎', element: EntityType.ROCK },
-    'stone_edge': { id: 'stone_edge', name: 'Stone Edge', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 7, icon: '🔪', element: EntityType.ROCK },
-
-    // --- GHOST ---
-    'lick': { id: 'lick', name: 'Lick', type: MoveType.ATTACK, category: 'physical', power: 30, cost: 2, icon: '👅', element: EntityType.GHOST },
-    'shadow_sneak': { id: 'shadow_sneak', name: 'Shadow Sneak', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '👤', element: EntityType.GHOST },
-    'hex': { id: 'hex', name: 'Hex', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '🧙', element: EntityType.GHOST },
-    'shadow_claw': { id: 'shadow_claw', name: 'Shadow Claw', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '💅', element: EntityType.GHOST },
-    'shadow_ball': { id: 'shadow_ball', name: 'Shadow Ball', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🟣', element: EntityType.GHOST },
-    'phantom_force': { id: 'phantom_force', name: 'Phantom Force', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '👻', element: EntityType.GHOST },
-
-    // --- DRAGON ---
-    'twister': { id: 'twister', name: 'Twister', type: MoveType.ATTACK, category: 'special', power: 40, cost: 3, icon: '🌪️', element: EntityType.DRAGON },
-    'dragon_breath': { id: 'dragon_breath', name: 'Dragon Breath', type: MoveType.ATTACK, category: 'special', power: 60, cost: 4, icon: '😮‍💨', element: EntityType.DRAGON },
-    'dragon_claw': { id: 'dragon_claw', name: 'Dragon Claw', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '🐉', element: EntityType.DRAGON },
-    'dragon_pulse': { id: 'dragon_pulse', name: 'Dragon Pulse', type: MoveType.ATTACK, category: 'special', power: 85, cost: 6, icon: '🐲', element: EntityType.DRAGON },
-    'outrage': { id: 'outrage', name: 'Outrage', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 9, icon: '😡', element: EntityType.DRAGON },
-    'draco_meteor': { id: 'draco_meteor', name: 'Draco Meteor', type: MoveType.ATTACK, category: 'special', power: 130, cost: 10, icon: '☄️', element: EntityType.DRAGON },
-
-    // --- DARK ---
-    'bite': { id: 'bite', name: 'Bite', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 4, icon: '🦷', element: EntityType.DARK },
-    'snarl': { id: 'snarl', name: 'Snarl', type: MoveType.ATTACK, category: 'special', power: 55, cost: 3, icon: '🤬', element: EntityType.DARK },
-    'night_slash': { id: 'night_slash', name: 'Night Slash', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🌑', element: EntityType.DARK },
-    'sucker_punch': { id: 'sucker_punch', name: 'Sucker Punch', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '👊', element: EntityType.DARK },
-    'crunch': { id: 'crunch', name: 'Crunch', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '🦴', element: EntityType.DARK },
-    'dark_pulse': { id: 'dark_pulse', name: 'Dark Pulse', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '⚫', element: EntityType.DARK },
-
-    // --- STEEL ---
-    'bullet_punch': { id: 'bullet_punch', name: 'Bullet Punch', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 2, icon: '🚅', element: EntityType.STEEL },
-    'metal_claw': { id: 'metal_claw', name: 'Metal Claw', type: MoveType.ATTACK, category: 'physical', power: 50, cost: 3, icon: '⚙️', element: EntityType.STEEL },
-    'steel_wing': { id: 'steel_wing', name: 'Steel Wing', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 4, icon: '🛡️', element: EntityType.STEEL },
-    'iron_head': { id: 'iron_head', name: 'Iron Head', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '🤕', element: EntityType.STEEL },
-    'flash_cannon': { id: 'flash_cannon', name: 'Flash Cannon', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '🔦', element: EntityType.STEEL },
-    'meteor_mash': { id: 'meteor_mash', name: 'Meteor Mash', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '☄️', element: EntityType.STEEL },
-
-    // --- FAIRY ---
-    'disarming_voice': { id: 'disarming_voice', name: 'Disarming Voice', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🎤', element: EntityType.FAIRY },
-    'fairy_wind': { id: 'fairy_wind', name: 'Fairy Wind', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🧚', element: EntityType.FAIRY },
-    'dazzling_gleam': { id: 'dazzling_gleam', name: 'Dazzling Gleam', type: MoveType.ATTACK, category: 'special', power: 80, cost: 5, icon: '✨', element: EntityType.FAIRY },
-    'play_rough': { id: 'play_rough', name: 'Play Rough', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 6, icon: '🤼', element: EntityType.FAIRY },
-    'moonblast': { id: 'moonblast', name: 'Moonblast', type: MoveType.ATTACK, category: 'special', power: 95, cost: 6, icon: '🌑', element: EntityType.FAIRY },
+    // --- VENOM (Poison/Toxic) ---
+    'toxic_sting': { id: 'toxic_sting', name: 'Toxic Sting', type: MoveType.ATTACK, category: 'physical', power: 15, cost: 1, icon: '💉', element: EntityType.VENOM },
+    'acid_spray': { id: 'acid_spray', name: 'Acid Spray', type: MoveType.ATTACK, category: 'special', power: 40, cost: 2, icon: '🧪', element: EntityType.VENOM },
+    'toxic_wave': { id: 'toxic_wave', name: 'Toxic Wave', type: MoveType.ATTACK, category: 'special', power: 65, cost: 4, icon: '💩', element: EntityType.VENOM },
+    'venom_fang': { id: 'venom_fang', name: 'Venom Fang', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 5, icon: '☠️', element: EntityType.VENOM },
+    'poison_burst': { id: 'poison_burst', name: 'Poison Burst', type: MoveType.ATTACK, category: 'special', power: 90, cost: 6, icon: '💣', element: EntityType.VENOM },
+    'toxic_shot': { id: 'toxic_shot', name: 'Toxic Shot', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 8, icon: '🗑️', element: EntityType.VENOM },
 
     // --- STATUS (HEAL & DEFEND) ---
-    // Category 'status' is important for animations (no attack dash)
-    'quick_heal': { id: 'quick_heal', name: 'Quick Heal', type: MoveType.HEAL, category: 'status', power: 50, cost: 4, icon: '💚' },
-    'mega_heal': { id: 'mega_heal', name: 'Mega Heal', type: MoveType.HEAL, category: 'status', power: 100, cost: 8, icon: '🧪' },
-    'recover': { id: 'recover', name: 'Recover', type: MoveType.HEAL, category: 'status', power: 80, cost: 6, icon: '♻️' },
-    'synthesis': { id: 'synthesis', name: 'Synthesis', type: MoveType.HEAL, category: 'status', power: 70, cost: 5, icon: '☀️' },
-    'roost': { id: 'roost', name: 'Roost', type: MoveType.HEAL, category: 'status', power: 60, cost: 4, icon: '🪶' },
-    'iron_defense': { id: 'iron_defense', name: 'Iron Defense', type: MoveType.DEFEND, category: 'status', power: 0, cost: 2, icon: '🛡️' },
-    'protect': { id: 'protect', name: 'Protect', type: MoveType.DEFEND, category: 'status', power: 0, cost: 3, icon: '✋' },
-    'harden': { id: 'harden', name: 'Harden', type: MoveType.DEFEND, category: 'status', power: 0, cost: 1, icon: '🧱' },
-    'barrier': { id: 'barrier', name: 'Barrier', type: MoveType.DEFEND, category: 'status', power: 0, cost: 3, icon: '🚧' }
+    'quick_mend': { id: 'quick_mend', name: 'Quick Mend', type: MoveType.HEAL, category: 'status', power: 50, cost: 4, icon: '💚', element: EntityType.MYSTIC },
+    'full_restore': { id: 'full_restore', name: 'Full Restore', type: MoveType.HEAL, category: 'status', power: 100, cost: 8, icon: '🧪', element: EntityType.MYSTIC },
+    'regenerate': { id: 'regenerate', name: 'Regenerate', type: MoveType.HEAL, category: 'status', power: 80, cost: 6, icon: '♻️', element: EntityType.FOREST },
+    'photosynthesis': { id: 'photosynthesis', name: 'Photosynthesis', type: MoveType.HEAL, category: 'status', power: 70, cost: 5, icon: '☀️', element: EntityType.FOREST },
+    'rest': { id: 'rest', name: 'Rest', type: MoveType.HEAL, category: 'status', power: 60, cost: 4, icon: '🪶', element: EntityType.MYSTIC },
+    'fortify': { id: 'fortify', name: 'Fortify', type: MoveType.DEFEND, category: 'status', power: 0, cost: 2, icon: '🛡️', element: EntityType.METAL },
+    'shield': { id: 'shield', name: 'Shield', type: MoveType.DEFEND, category: 'status', power: 0, cost: 3, icon: '✋', element: EntityType.METAL },
+    'harden': { id: 'harden', name: 'Harden', type: MoveType.DEFEND, category: 'status', power: 0, cost: 1, icon: '🧱', element: EntityType.EARTH },
+    'barrier': { id: 'barrier', name: 'Barrier', type: MoveType.DEFEND, category: 'status', power: 0, cost: 3, icon: '🚧', element: EntityType.METAL }
 };
 
 function getXpForNextLevel(level) {

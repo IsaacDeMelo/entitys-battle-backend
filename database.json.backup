@@ -2,7 +2,7 @@
   {
     "id": "1765890258837",
     "name": "Sharkgon",
-    "type": "aqua",
+    "type": "water",
     "hp": "150",
     "energy": "40",
     "stats": {
@@ -55,7 +55,7 @@
   {
     "id": "1765890385400",
     "name": "LilDemon",
-    "type": "flame",
+    "type": "fire",
     "hp": "70",
     "energy": "50",
     "stats": {
@@ -94,7 +94,7 @@
   {
     "id": "1765895396599",
     "name": "Bracholis",
-    "type": "forest",
+    "type": "plant",
     "hp": "200",
     "energy": "30",
     "stats": {
@@ -141,7 +141,7 @@
   {
     "id": "1765922010145",
     "name": "Thesloplife",
-    "type": "beast",
+    "type": "bug",
     "hp": "100",
     "energy": "35",
     "stats": {
@@ -192,7 +192,7 @@
   {
     "id": "1765925396640",
     "name": "Ervys",
-    "type": "forest",
+    "type": "plant",
     "hp": "60",
     "energy": "23",
     "stats": {
@@ -233,7 +233,7 @@
   {
     "id": "1765935146117",
     "name": "Little Mecha Knight",
-    "type": "metal",
+    "type": "steel",
     "hp": "135",
     "energy": "100",
     "stats": {

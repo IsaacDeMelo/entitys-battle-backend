@@ -30,6 +30,9 @@
         /* Objetos do mapa (não cria stacking context: sem z-index) */
         #objects-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
+        /* Camada frontal (poste/árvore acima do player) */
+        #foreground-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; image-rendering: pixelated; }
+
         .map-object { position: absolute; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none; }
 
         .map-object.dev-object { pointer-events: auto !important; cursor: pointer; outline: 1px dashed rgba(236, 240, 241, 0.9); background-color: rgba(255,255,255,0.04); }
@@ -191,6 +194,10 @@
         }
 
         #controlsDock * { pointer-events: auto; }
+
+        /* Some UI fica invisível enquanto desenha o mapa no modo dev */
+        body.dev-drawing-hide-ui #controlsDock { display: none !important; }
+        body.dev-drawing-hide-ui #chatBar { display: none !important; }
 
         #controlsLeft {
             position: absolute;
@@ -414,6 +421,17 @@
             flex-direction: column;
             overflow: hidden;
         }
+        #bagMoney {
+            text-align: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+            border-bottom: 3px solid #e67e22;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            color: #2c3e50;
+            text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
+        }
         #bagHeader {
             display: flex;
             align-items: center;
@@ -507,7 +525,8 @@
         #starterPickerOverlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.82);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+            backdrop-filter: blur(8px);
             z-index: 12100;
             display: none;
             align-items: center;
@@ -516,83 +535,249 @@
             pointer-events: auto;
         }
         #starterPickerWindow {
-            width: min(460px, 96vw);
-            background: rgba(15, 23, 42, 0.98);
-            border: 1px solid #334155;
-            border-radius: 14px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            width: min(900px, 96vw);
+            max-height: 90vh;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 2px solid #475569;
+            border-radius: 20px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.1);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         #starterPickerHeader {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 14px;
-            border-bottom: 1px solid #334155;
+            padding: 16px 20px;
+            border-bottom: 2px solid #334155;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15));
             color: #fff;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
-            letter-spacing: 0.5px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+            #starterPickerHeader {
+                padding: 12px 16px;
+                font-size: 11px;
+            }
         }
         #starterPickerClose {
-            background: #1e293b;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
             color: #fff;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 8px 10px;
+            border: 2px solid #991b1b;
+            border-radius: 12px;
+            padding: 10px 16px;
             cursor: pointer;
             font-family: 'Rajdhani', sans-serif;
             font-weight: 900;
+            font-size: 14px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 #7f1d1d;
+        }
+        #starterPickerClose:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #7f1d1d;
+        }
+        #starterPickerClose:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #7f1d1d;
         }
         #starterPickerBody {
-            padding: 14px;
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
         }
         #starterPickerHint {
-            color: rgba(255,255,255,0.9);
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 800;
-            margin-bottom: 12px;
+            color: #e2e8f0;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            font-size: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 12px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
         }
         #starterPickerGrid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 15px;
+        }
+        @media (max-width: 768px) {
+            #starterPickerGrid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
         }
         .starterCard {
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 14px;
-            padding: 12px 10px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 3px solid #475569;
+            border-radius: 16px;
+            padding: 16px;
             cursor: pointer;
             color: #fff;
-            text-align: center;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
-            min-height: 170px;
+            font-family: 'Roboto', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
+            gap: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
-        .starterCard:active { transform: translateY(1px); background: #0b1220; }
+        @media (max-width: 768px) {
+            .starterCard {
+                padding: 14px;
+                gap: 8px;
+            }
+        }
+        .starterCard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(59, 130, 246, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .starterCard:hover {
+            transform: translateY(-8px);
+            border-color: #3b82f6;
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+        .starterCard:hover::before {
+            opacity: 1;
+        }
+        .starterCard:active { 
+            transform: translateY(-4px); 
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+        }
+        .starterSpriteContainer {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+        }
+        @media (max-width: 768px) {
+            .starterSpriteContainer {
+                width: 100px;
+                height: 100px;
+            }
+        }
         .starterSprite {
-            width: clamp(90px, 28vw, 132px);
-            height: clamp(90px, 28vw, 132px);
+            width: 100px;
+            height: 100px;
             image-rendering: pixelated;
-            display: block;
-            margin: 0;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+            transition: transform 0.3s;
+        }
+        @media (max-width: 768px) {
+            .starterSprite {
+                width: 80px;
+                height: 80px;
+            }
+        }
+        .starterCard:hover .starterSprite {
+            transform: scale(1.1);
+            animation: float 2s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1.1); }
+            50% { transform: translateY(-10px) scale(1.1); }
         }
         .starterName {
-            font-size: 16px;
-            letter-spacing: 0.3px;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+            font-family: 'Press Start 2P', cursive;
+        }
+        @media (max-width: 768px) {
+            .starterName {
+                font-size: 14px;
+            }
+        }
+        .starterType {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            margin-top: 4px;
+        }
+        .type-beast { background: linear-gradient(135deg, #a8a878, #8a8a59); color: #fff; }
+        .type-flame { background: linear-gradient(135deg, #f08030, #c85a28); color: #fff; }
+        .type-aqua { background: linear-gradient(135deg, #6890f0, #4a73c8); color: #fff; }
+        .type-forest { background: linear-gradient(135deg, #78c850, #5ca935); color: #fff; }
+        .type-sky { background: linear-gradient(135deg, #a890f0, #8a73d8); color: #fff; }
+        .type-earth { background: linear-gradient(135deg, #e0c068, #b8984a); color: #fff; }
+        .type-mystic { background: linear-gradient(135deg, #f85888, #d0386a); color: #fff; }
+        .type-shadow { background: linear-gradient(135deg, #705898, #554478); color: #fff; }
+        .type-metal { background: linear-gradient(135deg, #b8b8d0, #9090a8); color: #fff; }
+        .type-venom { background: linear-gradient(135deg, #a040a0, #803380); color: #fff; }
+        .starterStats {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .starterStat {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .starterStatLabel {
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+        .starterStatValue {
+            color: #3b82f6;
+            font-weight: 900;
+            font-size: 14px;
+        }
+        .starterDescription {
+            width: 100%;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #cbd5e1;
+            margin-top: 8px;
+            font-style: italic;
         }
         #starterPickerFooter {
-            margin-top: 12px;
-            color: rgba(255,255,255,0.75);
+            margin-top: 16px;
+            padding: 16px;
+            text-align: center;
+            color: #94a3b8;
             font-size: 12px;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 800;
+            font-family: 'Roboto', sans-serif;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
         .vpadSpacer { background: transparent; border: none; }
@@ -604,6 +789,8 @@
         .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
         .dev-interact { background: rgba(155, 89, 182, 0.4) !important; border: 1px dashed #8e44ad; z-index: 21; pointer-events: auto !important; cursor: help; }
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
+        .dev-storyBarrier { background: rgba(230, 126, 34, 0.4) !important; border: 1px dashed #e67e22; z-index: 20; pointer-events: auto !important; cursor: pointer; }
+        .dev-storyBarrier::after { content: '🚫'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
 
         .devGroupHeader {
             width: 100%;
@@ -637,7 +824,7 @@
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
     </style>
 </head>
-<body data-user-pokeballs="<%= user.pokeballs || 0 %>" data-user-rarecandy="<%= user.rareCandy || 0 %>">
+<body data-user-bag="<%= JSON.stringify(user.bag || { captureCube: 5, levelUpCrystal: 0 }) %>" data-user-money="<%= user.money || 0 %>">
     <%- include('partials/menu') %>
 
     <style>
@@ -647,6 +834,7 @@
 
     <!-- INPUTS ESCONDIDOS PARA UPLOAD -->
     <input type="file" id="uploadMapBg" accept="image/*" style="display:none" onchange="handleFileBg(this, 'map')">
+    <input type="file" id="uploadForeground" accept="image/*" style="display:none" onchange="handleFileBg(this, 'foreground')">
     <input type="file" id="uploadBattleBg" accept="image/*" style="display:none" onchange="handleFileBg(this, 'battle')">
     <input type="file" id="uploadObjectImg" accept="image/*" style="display:none" onchange="handleObjectImageUpload(this)">
 
@@ -702,6 +890,7 @@
                         <button id="btnToolGrass" onclick="selectTool('grass')">🟩 GRAMA</button>
                         <button id="btnToolPortal" class="devBtn--blue" onclick="selectTool('portal')">🟦 PORTAL</button>
                         <button id="btnToolInteract" class="devBtn--purple" onclick="selectTool('interact')">🟪 INTERAÇÃO</button>
+                        <button id="btnToolStoryBarrier" class="devBtn--orange" onclick="selectTool('storyBarrier')">🟧 BARREIRA FLAG</button>
                         <button id="btnToolObject" class="devBtn--gray" onclick="selectTool('object')">🪑 OBJETO</button>
                     </div>
                 </div>
@@ -717,6 +906,7 @@
                 <div class="devGroupBody" id="devGroupBody-images">
                     <div class="devSection">
                         <button id="btnToolBg" class="devBtn--yellow" onclick="document.getElementById('uploadMapBg').click()">🖼️ FUNDO MAPA</button>
+                        <button id="btnToolForeground" class="devBtn--orange" onclick="document.getElementById('uploadForeground').click()">🌳 FOREGROUND</button>
                         <button id="btnToolBattleBg" class="devBtn--danger" onclick="document.getElementById('uploadBattleBg').click()">⚔️ FUNDO BATALHA</button>
                         <button id="btnToolChroma" onclick="openChromaTool()">🎨 REMOVER FUNDO</button>
                     </div>
@@ -766,6 +956,7 @@
             <div id="portal-container"></div>
             <div id="interacts-container"></div>
             <div id="objects-container"></div>
+            <div id="foreground-layer"></div>
             <div id="dev-layer"></div>
             <div id="darkness-layer"></div>
             
@@ -817,6 +1008,7 @@
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">     EQUIPE</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">     BOLSA</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">     PC</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); window.location.href='/custom-battle?userId=<%= userId %>';" style="background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%); border-color: #f59e0b;">⚔️ CUSTOM BATTLE</button>
             </div>
         </div>
     </div>
@@ -827,6 +1019,7 @@
                 <div>BOLSA</div>
                 <button id="bagClose" type="button">FECHAR</button>
             </div>
+            <div id="bagMoney">💰 <span id="bagMoneyValue">0</span> MOEDAS</div>
             <div id="bagBody">
                 <div id="bagEmpty" style="display:none;">Sua bolsa está vazia.</div>
                 <div id="bagList"></div>
@@ -841,9 +1034,9 @@
                 <button id="starterPickerClose" type="button">FECHAR</button>
             </div>
             <div id="starterPickerBody">
-                <div id="starterPickerHint">Escolha seu monstro inicial:</div>
+                <div id="starterPickerHint">🎮 Escolha sabiamente! Esta será sua primeira criatura companheira nesta jornada épica!</div>
                 <div id="starterPickerGrid"></div>
-                <div id="starterPickerFooter">Essa escolha é única.</div>
+                <div id="starterPickerFooter">💡 Dica: Cada tipo tem vantagens e desvantagens contra outros. Escolha com atenção!</div>
             </div>
         </div>
     </div>
@@ -979,6 +1172,16 @@
                         <div class="npcField" id="npcEdCooldownDialogueBox" style="grid-column: 1 / -1;">
                             <label>Diálogo em cooldown</label>
                             <textarea id="npcEdCooldownDialogue" placeholder="Estou descansando..."></textarea>
+                        </div>
+
+                        <div class="npcField" style="grid-column: 1 / -1;">
+                            <label>Diálogos condicionais (StoryFlags)</label>
+                            <div class="npcHint">Se a flag estiver ativa, sobrescreve os textos acima. Maior prioridade vence.</div>
+                            <div id="npcEdConditionalRows" class="npcInlineHelp" style="display:flex; flex-direction:column; gap:8px; padding:10px;"></div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                                <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalAdd()">+ adicionar</button>
+                                <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalClear()">limpar</button>
+                            </div>
                         </div>
                         </div>
                     </div>
@@ -1320,10 +1523,12 @@
     <!-- DADOS -->
     <script>
         let mapConfig = <%- JSON.stringify(mapData) %>;
+        if (!mapConfig.foregroundImage) mapConfig.foregroundImage = '';
         let collisionMap = mapConfig.collisions || [];
         let grassMap = mapConfig.grass || [];
         let interactsMap = mapConfig.interacts || [];
         let portalsMap = mapConfig.portals || [];
+        let storyBarriersMap = mapConfig.storyBarriers || [];
         let objectsMap = mapConfig.objects || [];
         
         if (!mapConfig.spawnPoint) mapConfig.spawnPoint = null;
@@ -1331,7 +1536,15 @@
         const gameAreaEl = document.getElementById('gameArea');
         
         function applyMapVisuals(config) {
-            gameAreaEl.style.backgroundImage = `url('${config.bgImage}')`;
+            const bg = (config && config.bgImage) ? `url('${config.bgImage}')` : '';
+            gameAreaEl.style.backgroundImage = bg;
+
+            const fgEl = document.getElementById('foreground-layer');
+            if (fgEl) {
+                const fg = (config && config.foregroundImage) ? `url('${config.foregroundImage}')` : '';
+                fgEl.style.backgroundImage = fg;
+                fgEl.style.display = fg ? 'block' : 'none';
+            }
             const w = config.width || 100;
             const h = config.height || 100;
             gameAreaEl.style.width = w + '%';
@@ -1742,6 +1955,121 @@
             npcEdShopRender();
         }
 
+        let npcEdConditionalState = [];
+        function npcEdConditionalRender() {
+            const host = document.getElementById('npcEdConditionalRows');
+            if (!host) return;
+            host.innerHTML = '';
+
+            if (!npcEdConditionalState.length) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Nenhuma condição. Use flags para variar as falas.';
+                host.appendChild(empty);
+                return;
+            }
+
+            npcEdConditionalState.forEach((row, idx) => {
+                const box = document.createElement('div');
+                box.className = 'npcInlineHelp';
+                box.style.display = 'flex';
+                box.style.flexDirection = 'column';
+                box.style.gap = '8px';
+
+                const header = document.createElement('div');
+                header.style.display = 'flex';
+                header.style.gap = '8px';
+                header.style.alignItems = 'center';
+                header.style.flexWrap = 'wrap';
+
+                const flag = document.createElement('input');
+                flag.placeholder = 'flagId (ex: venceu_ginasio1)';
+                flag.value = row.flagId || '';
+                flag.style.flex = '1';
+                flag.oninput = () => { npcEdConditionalState[idx].flagId = flag.value; };
+
+                const prio = document.createElement('input');
+                prio.type = 'number';
+                prio.step = '1';
+                prio.value = String(row.priority || 0);
+                prio.style.width = '80px';
+                prio.title = 'Prioridade (maior ganha)';
+                prio.oninput = () => { npcEdConditionalState[idx].priority = parseInt(prio.value, 10) || 0; };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'npcBtn npcBtnSmall';
+                rm.style.background = '#e74c3c';
+                rm.innerText = 'remover';
+                rm.onclick = () => { npcEdConditionalState.splice(idx, 1); npcEdConditionalRender(); };
+
+                header.appendChild(flag);
+                header.appendChild(prio);
+                header.appendChild(rm);
+
+                const dia = document.createElement('textarea');
+                dia.placeholder = 'Diálogo principal (override)';
+                dia.value = row.dialogue || '';
+                dia.oninput = () => { npcEdConditionalState[idx].dialogue = dia.value; };
+
+                const win = document.createElement('textarea');
+                win.placeholder = 'Diálogo pós-vitória (opcional)';
+                win.value = row.winDialogue || '';
+                win.oninput = () => { npcEdConditionalState[idx].winDialogue = win.value; };
+
+                const cool = document.createElement('textarea');
+                cool.placeholder = 'Diálogo em cooldown (opcional)';
+                cool.value = row.cooldownDialogue || '';
+                cool.oninput = () => { npcEdConditionalState[idx].cooldownDialogue = cool.value; };
+
+                box.appendChild(header);
+                box.appendChild(dia);
+                box.appendChild(win);
+                box.appendChild(cool);
+                host.appendChild(box);
+            });
+        }
+
+        function npcEdConditionalAdd() {
+            npcEdConditionalState.push({ flagId: '', dialogue: '', winDialogue: '', cooldownDialogue: '', priority: 0 });
+            npcEdConditionalRender();
+        }
+
+        function npcEdConditionalClear() {
+            npcEdConditionalState = [];
+            npcEdConditionalRender();
+        }
+
+        function npcEdConditionalLoad(list) {
+            if (Array.isArray(list)) {
+                npcEdConditionalState = list
+                    .filter(x => x && (x.flagId || x.dialogue || x.winDialogue || x.cooldownDialogue))
+                    .map(x => ({
+                        flagId: String(x.flagId || '').trim(),
+                        dialogue: String(x.dialogue || ''),
+                        winDialogue: String(x.winDialogue || ''),
+                        cooldownDialogue: String(x.cooldownDialogue || ''),
+                        priority: Number.isFinite(x.priority) ? x.priority : (parseInt(x.priority, 10) || 0)
+                    }));
+            } else {
+                npcEdConditionalState = [];
+            }
+            npcEdConditionalRender();
+        }
+
+        function npcEdConditionalToJson() {
+            return JSON.stringify((npcEdConditionalState || [])
+                .filter(x => x && String(x.flagId || '').trim())
+                .map(x => ({
+                    flagId: String(x.flagId || '').trim(),
+                    dialogue: String(x.dialogue || ''),
+                    winDialogue: String(x.winDialogue || ''),
+                    cooldownDialogue: String(x.cooldownDialogue || ''),
+                    priority: Number.isFinite(x.priority) ? x.priority : (parseInt(x.priority, 10) || 0)
+                }))
+            );
+        }
+
         window.isMoving = false;
         window.isTeleporting = false;
         window.isInteracting = false;
@@ -1778,7 +2106,7 @@
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
-        window.USER_INVENTORY = <%- JSON.stringify(user.inventory || {}) %>;
+        window.USER_BAG = <%- JSON.stringify(user.bag || { captureCube: 5, levelUpCrystal: 0 }) %>;
         window.USER_KEY_ITEMS = <%- JSON.stringify(user.keyItems || []) %>;
         window.STORY_FLAGS = <%- JSON.stringify(user.storyFlags || {}) %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
@@ -2103,6 +2431,8 @@
             document.getElementById('npcEdDialogue').value = 'Olá!';
             document.getElementById('npcEdWinDialogue').value = 'Você já me venceu! Bom trabalho.';
             document.getElementById('npcEdCooldownDialogue').value = 'Estou descansando...';
+            npcEdConditionalState = [];
+            npcEdConditionalRender();
 
             document.getElementById('npcEdBattleBgFile').value = '';
             document.getElementById('npcEdTeamJson').value = '[]';
@@ -2456,6 +2786,7 @@
             document.getElementById('npcEdWinDialogue').value = npc.winDialogue || '';
             document.getElementById('npcEdCooldownDialogue').value = npc.cooldownDialogue || '';
             document.getElementById('npcEdBattleBgFile').value = '';
+            npcEdConditionalLoad(Array.isArray(npc.conditionalDialogues) ? npc.conditionalDialogues : []);
 
             document.getElementById('npcEdTeamJson').value = JSON.stringify(npc.team || [], null, 2);
             npcEdTeamLoadFromJson(document.getElementById('npcEdTeamJson').value);
@@ -2555,6 +2886,7 @@
             fd.append('dialogue', document.getElementById('npcEdDialogue').value || '');
             fd.append('winDialogue', document.getElementById('npcEdWinDialogue').value || '');
             fd.append('cooldownDialogue', document.getElementById('npcEdCooldownDialogue').value || '');
+            fd.append('conditionalDialoguesJson', npcEdConditionalToJson());
             fd.append('teamJson', npcEdTeamToJson());
 
             fd.append('rewardType', document.getElementById('npcEdRewardType').value || 'none');
@@ -2973,7 +3305,7 @@
                         body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
                     });
                     const data = await res.json().catch(() => ({}));
-                    if (data.inventory) window.USER_INVENTORY = data.inventory;
+                    if (data.bag) window.USER_BAG = data.bag;
                     if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
                     if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
                     const text = (data && data.text) ? data.text : '...';
@@ -3229,24 +3561,61 @@
                     const baseId = o && o.id ? String(o.id) : '';
                     const name = o && o.name ? String(o.name) : baseId;
                     const sprite = o && o.sprite ? String(o.sprite) : '';
+                    const type = o && o.type ? String(o.type).toLowerCase() : 'beast';
+                    const baseStats = o && o.baseStats ? o.baseStats : {};
 
                     const card = document.createElement('button');
                     card.type = 'button';
                     card.className = 'starterCard';
                     card.setAttribute('data-starter-id', baseId);
 
+                    // Sprite Container
+                    const spriteContainer = document.createElement('div');
+                    spriteContainer.className = 'starterSpriteContainer';
+                    
                     const img = document.createElement('img');
                     img.className = 'starterSprite';
                     img.alt = name;
                     if (sprite) img.src = sprite;
                     else img.style.display = 'none';
+                    
+                    spriteContainer.appendChild(img);
 
+                    // Name
                     const nm = document.createElement('div');
                     nm.className = 'starterName';
                     nm.textContent = name;
 
-                    card.appendChild(img);
+                    // Type Badge
+                    const typeEl = document.createElement('div');
+                    typeEl.className = `starterType type-${type}`;
+                    typeEl.textContent = type;
+
+                    // Stats Grid
+                    const statsContainer = document.createElement('div');
+                    statsContainer.className = 'starterStats';
+                    
+                    const stats = [
+                        { label: 'HP', value: baseStats.hp || 0, icon: '❤️' },
+                        { label: 'ATK', value: baseStats.attack || 0, icon: '⚔️' },
+                        { label: 'DEF', value: baseStats.defense || 0, icon: '🛡️' },
+                        { label: 'SPD', value: baseStats.speed || 0, icon: '⚡' }
+                    ];
+                    
+                    stats.forEach(stat => {
+                        const statDiv = document.createElement('div');
+                        statDiv.className = 'starterStat';
+                        statDiv.innerHTML = `
+                            <span class="starterStatLabel">${stat.icon} ${stat.label}</span>
+                            <span class="starterStatValue">${stat.value}</span>
+                        `;
+                        statsContainer.appendChild(statDiv);
+                    });
+
+                    card.appendChild(spriteContainer);
                     card.appendChild(nm);
+                    card.appendChild(typeEl);
+                    card.appendChild(statsContainer);
 
                     card.onclick = async () => {
                         card.disabled = true;
@@ -3386,7 +3755,7 @@
                         await showRPGDialog(npcName, npcSkin, (data && data.error) ? data.error : 'Erro na compra.');
                         continue;
                     }
-                    if (data.inventory) window.USER_INVENTORY = data.inventory;
+                    if (data.bag) window.USER_BAG = data.bag;
                     if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
                     if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
                     await showRPGDialog(npcName, npcSkin, `Compra realizada: ${qty}x ${itemId}!`);
@@ -3421,6 +3790,10 @@
                         mapConfig.bgImage = base64;
                         applyMapVisuals(mapConfig);
                         showToast("Fundo do mapa atualizado (salve para confirmar)!");
+                    } else if(type === 'foreground') {
+                        mapConfig.foregroundImage = base64;
+                        applyMapVisuals(mapConfig);
+                        showToast("Foreground atualizado (salve para confirmar)!");
                     } else if(type === 'battle') {
                         mapConfig.battleBackground = base64;
                         showToast("Fundo de batalha atualizado (salve para confirmar)!");
@@ -3455,13 +3828,19 @@
             for (let i = 1; i <= steps; i++) {
                 const t = i / steps; const px = currX + (targetX - currX) * t; const py = currY + (targetY - currY) * t;
                 const hitWall = getActiveCollisionMap().some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                const hitStoryBarrier = (Array.isArray(storyBarriersMap) ? storyBarriersMap : []).some(barrier => {
+                    if (!barrier || !barrier.requiredFlag) return false;
+                    const flagValue = window.STORY_FLAGS && window.STORY_FLAGS[barrier.requiredFlag];
+                    if (flagValue) return false; // Flag ativada, barreira não bloqueia
+                    return px >= barrier.x && px <= (barrier.x + barrier.w) && py >= barrier.y && py <= (barrier.y + barrier.h);
+                });
                 const hitNpc = (currentNpcsCache || []).some(n => {
                     if (!n || !n.blocksMovement) return false;
                     const nx = typeof n.x === 'number' ? n.x : 0;
                     const ny = typeof n.y === 'number' ? n.y : 0;
                     return Math.abs(px - nx) <= 2.2 && Math.abs(py - ny) <= 2.2;
                 });
-                const hit = hitWall || hitNpc;
+                const hit = hitWall || hitNpc || hitStoryBarrier;
                 if (hit) return { x: currX + (targetX - currX) * ((i - 1) / steps), y: currY + (targetY - currY) * ((i - 1) / steps) };
             }
             return { x: targetX, y: targetY };
@@ -3498,13 +3877,13 @@
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
                 performTransition(async () => {
-                    const inv = window.USER_INVENTORY || {};
+                    const bag = window.USER_BAG || {};
                     const keys = window.USER_KEY_ITEMS || [];
 
                     const getInvCount = (id) => {
                         if (!id) return 0;
                         if (Array.isArray(keys) && keys.includes(id)) return 1;
-                        const raw = inv[id];
+                        const raw = bag[id];
                         const n = parseInt(raw, 10);
                         return Number.isFinite(n) ? n : 0;
                     };
@@ -3532,7 +3911,7 @@
                             });
                             const data = await res.json().catch(() => ({}));
                             if (data && data.success) {
-                                if (data.inventory) window.USER_INVENTORY = data.inventory;
+                                if (data.bag) window.USER_BAG = data.bag;
                                 if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
                                 if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
                             } else {
@@ -3796,36 +4175,38 @@
             const overlay = document.getElementById('bagOverlay');
             const listEl = document.getElementById('bagList');
             const emptyEl = document.getElementById('bagEmpty');
+            const moneyEl = document.getElementById('bagMoneyValue');
             if (!overlay || !listEl || !emptyEl) return;
 
-            const inv = window.USER_INVENTORY || {};
+            const bag = window.USER_BAG || { captureCube: 5, levelUpCrystal: 0 };
             const keys = window.USER_KEY_ITEMS || [];
+
+            // Atualizar dinheiro
+            const userMoneyStr = document.body.getAttribute('data-user-money');
+            const userMoney = parseInt(userMoneyStr, 10) || 0;
+            if (moneyEl) moneyEl.textContent = userMoney;
 
             // Item catalog
             const ITEM_DEFS = {
-                pokeball: { name: 'CatchCube', icon: '/items/catchcube.svg' },
-                rareCandy: { name: 'Rare Candy', icon: '/items/rarecandy.svg' }
+                captureCube: { name: 'Capture Cube', icon: '/uploads/catchcube.gif' },
+                levelUpCrystal: { name: 'Level Up Crystal', icon: '/items/crystal.svg' }
             };
 
             const items = [];
 
-            // Campos especiais do usuário (pokeballs e rareCandy são campos próprios, não no inventory)
-            const userDataStr = document.body.getAttribute('data-user-pokeballs');
-            const userRareCandyStr = document.body.getAttribute('data-user-rarecandy');
-            const pokeballs = parseInt(userDataStr, 10) || 0;
-            const rareCandy = parseInt(userRareCandyStr, 10) || 0;
-
-            if (pokeballs > 0) {
-                items.push({ id: 'pokeball', name: 'CatchCube', icon: '/items/catchcube.svg', qty: pokeballs });
-            }
-            if (rareCandy > 0) {
-                items.push({ id: 'rareCandy', name: 'Rare Candy', icon: '/items/rarecandy.svg', qty: rareCandy });
-            }
-
-            // Itens consumíveis do inventory
-            for (const [id, qty] of Object.entries(inv)) {
+            // Itens da mochila (bag)
+            for (const [id, qty] of Object.entries(bag)) {
                 const n = parseInt(qty, 10);
-                if (Number.isFinite(n) && n > 0 && id !== 'pokeball' && id !== 'rareCandy') {
+                if (Number.isFinite(n) && n > 0) {
+                    const itemDef = ITEM_DEFS[id] || { name: String(id), icon: '/items/default.svg' };
+                    items.push({ id, name: itemDef.name, icon: itemDef.icon, qty: n });
+                }
+            }
+
+            // Itens consumíveis antigos (inventory legado)
+            for (const [id, qty] of Object.entries({})) {
+                const n = parseInt(qty, 10);
+                if (Number.isFinite(n) && n > 0 && id !== 'captureCube' && id !== 'rareCandy') {
                     const def = ITEM_DEFS[id] || { name: id, icon: '' };
                     items.push({ id, name: def.name, icon: def.icon, qty: n });
                 }
@@ -4277,6 +4658,16 @@
             document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO";
             syncDevPanelButton();
             renderMapObjects();
+            syncPlayUiVisibility();
+        }
+
+        function isDrawingTool(tool) {
+            return ['collision', 'grass', 'portal', 'interact', 'storyBarrier', 'object', 'spawn', 'delete'].includes(tool);
+        }
+
+        function syncPlayUiVisibility() {
+            const hide = devMode && isDrawingTool(currentTool);
+            document.body.classList.toggle('dev-drawing-hide-ui', hide);
         }
 
         function openLabTool(path) {
@@ -4290,6 +4681,7 @@
             document.querySelectorAll('#devTools button[id^="btnTool"]').forEach(b => b.classList.remove('active'));
             const target = document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1));
             if (target) target.classList.add('active');
+            syncPlayUiVisibility();
         }
 
         function toggleDevGroup(groupId) {
@@ -4413,6 +4805,7 @@
             mapConfig.grass = grassMap;
             mapConfig.interacts = interactsMap;
             mapConfig.portals = portalsMap;
+            mapConfig.storyBarriers = storyBarriersMap;
             mapConfig.objects = objectsMap;
 
             fetch('/api/map/save', {
@@ -4430,6 +4823,7 @@
             else if(currentTool === 'grass') grassMap.pop();
             else if(currentTool === 'portal') portalsMap.pop();
             else if(currentTool === 'interact') interactsMap.pop();
+            else if(currentTool === 'storyBarrier') storyBarriersMap.pop();
             else if(currentTool === 'object') objectsMap.pop();
             renderMapObjects();
         }
@@ -4614,6 +5008,44 @@
                 document.getElementById('portal-container').appendChild(d);
             });
 
+            // Story Barriers (barreiras que precisam de StoryFlag)
+            storyBarriersMap.forEach((r, i) => {
+                const d = document.createElement('div');
+                d.className = 'collision-box';
+                d.style.left = r.x + '%';
+                d.style.top = r.y + '%';
+                d.style.width = r.w + '%';
+                d.style.height = r.h + '%';
+
+                if (devMode && isAdmin) {
+                    d.classList.add('dev-storyBarrier');
+                    d.onclick = (ev) => {
+                        ev.stopPropagation();
+
+                        if (currentTool === 'storyBarrier') {
+                            const flagName = prompt('Nome da StoryFlag necessária para passar:', r.requiredFlag || '');
+                            if (flagName === null) return;
+                            if (flagName.trim()) {
+                                r.requiredFlag = flagName.trim();
+                            } else {
+                                alert('Nome da flag não pode ser vazio!');
+                            }
+                            renderMapObjects();
+                            return;
+                        }
+
+                        if (currentTool === 'delete') {
+                            if (confirm('Apagar barreira?')) { storyBarriersMap.splice(i, 1); renderMapObjects(); }
+                        }
+                    };
+
+                    const flagName = r.requiredFlag || '(sem flag)';
+                    d.title = `Barreira FLAG: ${flagName}`;
+                }
+
+                document.getElementById('collision-container').appendChild(d);
+            });
+
             // Objetos (decorativos)
             objectsMap.forEach((o, i) => {
                 const d = document.createElement('div');
@@ -4672,6 +5104,7 @@
             else if(currentTool === 'grass') tempBox.classList.add('dev-grass'); 
             else if(currentTool === 'portal') tempBox.classList.add('dev-portal');
             else if(currentTool === 'interact') tempBox.classList.add('dev-interact');
+            else if(currentTool === 'storyBarrier') tempBox.classList.add('dev-storyBarrier');
             else if(currentTool === 'object') tempBox.classList.add('dev-object');
             tempBox.style.left = startPoint.x+'%'; tempBox.style.top = startPoint.y+'%'; 
             document.getElementById('dev-layer').appendChild(tempBox); 
@@ -4697,6 +5130,15 @@
                             newRect.unlockNpcId = String(unlockNpcId).trim();
                         }
                         collisionMap.push(newRect);
+                    }
+                    else if(currentTool === 'storyBarrier') {
+                        const flagName = prompt('Nome da StoryFlag necessária para passar:', '');
+                        if (flagName && String(flagName).trim()) {
+                            newRect.requiredFlag = String(flagName).trim();
+                            storyBarriersMap.push(newRect);
+                        } else {
+                            alert('Nome da flag não pode ser vazio!');
+                        }
                     }
                     else if(currentTool === 'grass') grassMap.push(newRect);
                     else if(currentTool === 'interact') {
