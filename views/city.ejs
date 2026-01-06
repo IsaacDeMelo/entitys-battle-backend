@@ -4676,8 +4676,10 @@
         }
 
         function openLabTool(path) {
-            const target = path || '/lab';
-            window.open(target, '_blank', 'noopener');
+            const base = path || '/lab';
+            const uid = encodeURIComponent(window.CURRENT_USER_ID || '');
+            const url = uid ? `${base}${base.includes('?') ? '&' : '?'}userId=${uid}` : base;
+            window.open(url, '_blank', 'noopener');
         }
         function selectTool(tool) {
             currentTool = tool;
