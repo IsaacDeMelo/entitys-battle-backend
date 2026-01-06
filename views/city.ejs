@@ -2239,6 +2239,11 @@
                     const minDur = typeof window.__virtualPadTickS === 'number' ? window.__virtualPadTickS : 0;
                     if (minDur > 0) duration = Math.max(duration, minDur);
                 }
+                // Mantém remotos suaves: usa o tick do servidor como duração mínima
+                if (data.id !== window.myId) {
+                    const minTick = typeof window.__virtualPadTickS === 'number' ? window.__virtualPadTickS : 0.14;
+                    duration = Math.max(duration, minTick);
+                }
                 let easing = 'linear';
                 // Suaviza o início apenas quando o movimento foi disparado por clique/toque (1 vez)
                 if (data.id === window.myId && window.__useEaseForNextMove) {
