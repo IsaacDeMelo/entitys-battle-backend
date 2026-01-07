@@ -279,11 +279,17 @@ function ensureUserInventories(user) {
 // Seleciona diálogo do NPC baseado em StoryFlags
 // Sistema de diálogos: retorna null quando não deve falar (para diferenciar de string vazia intencional)
 function resolveNpcDialogue(npc, user, key) {
-    if (!npc || !user) return null;
+    if (!npc || !user) {
+        console.log(`[resolveNpcDialogue] NPC ou User null`);
+        return null;
+    }
     
     try {
         const conditionals = Array.isArray(npc.conditionalDialogues) ? npc.conditionalDialogues : [];
         const hasConditionals = conditionals.length > 0;
+        
+        console.log(`[resolveNpcDialogue] NPC: ${npc.name}, Key: ${key}`);
+        console.log(`[resolveNpcDialogue] Has conditionals: ${hasConditionals}, Count: ${conditionals.length}`);
         
         // Se não há condicionais configuradas, usa a fala padrão do NPC
         if (!hasConditionals) {
@@ -294,9 +300,21 @@ function resolveNpcDialogue(npc, user, key) {
         
         // Há condicionais: verificar se alguma flag está ativa
         const flags = user.storyFlags || {};
+        console.log(`[resolveNpcDialogue] User flags:`, JSON.stringify(flags));
+        
+        // Debug cada condicional
+        conditionals.forEach((c, i) => {
+            if (c && c.flagId) {
+                const isActive = readStoryFlag(flags, c.flagId);
+                console.log(`[resolveNpcDialogue] Conditional ${i}: flagId="${c.flagId}", active=${isActive}, dialogue="${(c.dialogue || '').substring(0, 30)}"`);
+            }
+        });
+        
         const activeConditionals = conditionals
             .filter(c => c && c.flagId && readStoryFlag(flags, c.flagId))
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+        
+        console.log(`[resolveNpcDialogue] Active conditionals count: ${activeConditionals.length}`);
         
         // Se alguma flag está ativa, usa o texto dela
         if (activeConditionals.length > 0) {
@@ -305,9 +323,12 @@ function resolveNpcDialogue(npc, user, key) {
                 console.log(`[resolveNpcDialogue] Flag "${matched.flagId}" ativa! Retorna: "${matched[key].substring(0, 50)}"`);
                 return matched[key];
             }
+            console.log(`[resolveNpcDialogue] Flag ativa mas sem texto para key "${key}"`);
         }
         
         // Há condicionais MAS nenhuma flag ativa: retorna null (não deve falar)
+        console.log(`[resolveNpcDialogue] Tem condicionais mas nenhuma flag ativa. NPC não deve falar.`);
+        return null;
         console.log(`[resolveNpcDialogue] Tem condicionais mas nenhuma flag ativa. NPC não deve falar.`);
         return null;
         
@@ -1294,10 +1315,18 @@ app.post('/api/npc/dialogue', async (req, res) => {
         const npc = await NPC.findById(npcId);
         if (!user || !npc) return res.status(404).json({ error: 'NPC ou usuário não encontrado' });
         
+        console.log(`[/api/npc/dialogue] NPC: ${npc.name}, User: ${user.username}`);
+        console.log(`[/api/npc/dialogue] User storyFlags:`, JSON.stringify(user.storyFlags));
+        console.log(`[/api/npc/dialogue] NPC conditionalDialogues:`, JSON.stringify(npc.conditionalDialogues));
+        
         const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
         const finalText = dialogueText !== null ? dialogueText : '...';
+        
+        console.log(`[/api/npc/dialogue] Resolved text: "${finalText}"`);
+        
         res.json({ text: finalText });
     } catch (e) {
+        console.error(`[/api/npc/dialogue] ERROR:`, e);
         res.status(400).json({ error: e.message });
     }
 });
