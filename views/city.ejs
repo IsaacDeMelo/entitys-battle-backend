@@ -41,7 +41,7 @@
         #darkness-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: black; opacity: 0; pointer-events: none; z-index: 2000; transition: opacity 0.5s; }
 
         /* Entidades */
-        .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
+        .player { position: absolute; width: 48px; height: 48px; background-size: 400% 400%; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.6s steps(4) infinite; animation-delay: -0.15s; }
