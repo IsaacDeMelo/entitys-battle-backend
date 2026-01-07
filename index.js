@@ -1859,6 +1859,7 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             patrolPathJson,
 
             interactEnabled,
+            interactRange,
             interactRequiresItemId,
             interactRequiresItemQty,
             interactConsumesRequiredItem,
@@ -1901,6 +1902,9 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
 
         const interact = {
             enabled: interactEnabled === 'on' || interactEnabled === true || interactEnabled === 'true',
+
+            // 0 = usa o padrão do client
+            range: Math.max(0, parseFloat(interactRange) || 0),
 
             serviceType: (interactServiceType || '').trim(),
             healDialogue: interactHealDialogue || '',
