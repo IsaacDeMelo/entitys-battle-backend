@@ -489,7 +489,7 @@ function moveToAndTalkToNPC(npc) {
     }
 }
 
-function interactWithNPC(npc) {
+async function interactWithNPC(npc) {
     const myId = window.CURRENT_USER_ID;
     const defeatedList = window.DEFEATED_NPCS || [];
 
