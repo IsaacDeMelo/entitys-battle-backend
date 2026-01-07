@@ -301,19 +301,22 @@
                     </div>
                     
                     <h4>💬 DIÁLOGOS</h4>
+                    <div style="margin-bottom:15px; padding:10px; background:#162032; border-radius:6px; border-left: 4px solid #f39c12;">
+                        <small style="color:#f39c12;"><strong>💡 Dica:</strong> Deixe vazio se usar APENAS diálogos por flags</small>
+                    </div>
                     <div class="form-grid">
                         <div class="full-width">
-                            <label>Fala Inicial (Antes da Luta)</label>
-                            <input type="text" name="dialogue" id="npcDialogue" placeholder="Ei você! Vamos batalhar!" required autocomplete="off">
+                            <label>Fala Inicial (Antes da Luta) - opcional</label>
+                            <input type="text" name="dialogue" id="npcDialogue" placeholder="Ei você! Vamos batalhar! (deixe vazio para usar APENAS as falas por flag)" autocomplete="off">
                         </div>
                     </div>
                     <div class="form-grid">
                         <div class="half-width">
-                            <label>Fala de Vitória (Jogador venceu)</label>
+                            <label>Fala de Vitória (Jogador venceu) - opcional</label>
                             <input type="text" name="winDialogue" id="npcWinDialogue" placeholder="Você é forte..." autocomplete="off">
                         </div>
                         <div>
-                            <label>Fala em Cooldown (Já derrotado)</label>
+                            <label>Fala em Cooldown (Já derrotado) - opcional</label>
                             <input type="text" name="cooldownDialogue" id="npcCdDialogue" placeholder="Volte mais tarde." autocomplete="off">
                         </div>
                     </div>
@@ -328,9 +331,13 @@
                             <div class="full-width" style="grid-column: span 3; color:#9aa7bd; font-size:0.9rem;">
                                 Monte falas alternativas quando o jogador tiver (ou não) um flag específico. Você pode ordenar pela prioridade (maior = avaliado primeiro).
                             </div>
+                            <div class="full-width" style="grid-column: span 3; padding:10px; background:#162032; border-radius:6px; border-left: 4px solid #f39c12;">
+                                <small style="color:#f39c12;"><strong>💡 Dica:</strong> Se você usa APENAS diálogos por flags, deixe os campos de diálogo acima vazios para evitar duplicatas!</small>
+                            </div>
                             <div class="full-width" style="grid-column: span 3; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                                 <button type="button" class="mini-btn" onclick="npcCondAddRow()">+ adicionar condição</button>
                                 <button type="button" class="mini-btn" onclick="npcCondClear()">limpar</button>
+                                <button type="button" class="mini-btn" style="background: #9b59b6;" onclick="npcCondClearNonConditional()">🧹 limpar diálogos fixos</button>
                                 <div style="font-size:0.85rem; color:#9aa7bd;">(gera JSON automaticamente)</div>
                             </div>
                             <div id="npcCondRows" class="row-list" style="grid-column: span 3;"></div>
@@ -1022,21 +1029,28 @@
                 const flag = document.createElement('input');
                 flag.placeholder = 'flagId (ex: flag_story_1)';
                 flag.value = row.flagId || '';
+                flag.style.flex = '1';
                 flag.oninput = () => { npcCondRowsState[idx].flagId = flag.value; npcCondSyncJson(); };
 
-                const dialogue = document.createElement('input');
-                dialogue.placeholder = 'fala padrão';
+                const dialogue = document.createElement('textarea');
+                dialogue.placeholder = 'fala principal (deixe vazio para usar APENAS as falas por flag)';
                 dialogue.value = row.dialogue || '';
+                dialogue.style.minHeight = '50px';
+                dialogue.style.flex = '2';
                 dialogue.oninput = () => { npcCondRowsState[idx].dialogue = dialogue.value; npcCondSyncJson(); };
 
-                const win = document.createElement('input');
-                win.placeholder = 'fala pós-vitória';
+                const win = document.createElement('textarea');
+                win.placeholder = 'fala pós-vitória (opcional)';
                 win.value = row.winDialogue || '';
+                win.style.minHeight = '50px';
+                win.style.flex = '2';
                 win.oninput = () => { npcCondRowsState[idx].winDialogue = win.value; npcCondSyncJson(); };
 
-                const cd = document.createElement('input');
-                cd.placeholder = 'fala em cooldown';
+                const cd = document.createElement('textarea');
+                cd.placeholder = 'fala em cooldown (opcional)';
                 cd.value = row.cooldownDialogue || '';
+                cd.style.minHeight = '50px';
+                cd.style.flex = '2';
                 cd.oninput = () => { npcCondRowsState[idx].cooldownDialogue = cd.value; npcCondSyncJson(); };
 
                 const priority = document.createElement('input');
@@ -1114,6 +1128,16 @@
             npcCondRowsState = [];
             npcCondRender();
             npcCondSyncJson();
+        }
+
+        function npcCondClearNonConditional() {
+            // Limpa os diálogos padrão quando você quer usar APENAS flags
+            document.getElementById('npcDialogue').value = '';
+            document.getElementById('npcWinDialogue').value = '';
+            document.getElementById('npcCdDialogue').value = '';
+            if (typeof showToast === 'function') {
+                showToast('Diálogos padrão limpos! Use APENAS os diálogos por flag.', { bg: '#3498db' });
+            }
         }
 
         document.addEventListener('input', (e) => {
