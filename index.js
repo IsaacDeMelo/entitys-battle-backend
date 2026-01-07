@@ -269,32 +269,44 @@ function ensureUserInventories(user) {
 }
 
 // Seleciona diálogo do NPC baseado em StoryFlags
+// Sistema de diálogos: retorna null quando não deve falar (para diferenciar de string vazia intencional)
 function resolveNpcDialogue(npc, user, key) {
+    if (!npc || !user) return null;
+    
     try {
-        const list = Array.isArray(npc && npc.conditionalDialogues) ? npc.conditionalDialogues : [];
-        // Se há condicionais, a intenção é respeitar APENAS as falas por flag
-        const hasConditionals = list && list.length > 0;
-        const flags = (user && user.storyFlags) ? user.storyFlags : {};
-        // Ordena por priority desc, depois ordem natural
-        const sorted = list
-            .filter(d => d && d.flagId && readStoryFlag(flags, d.flagId))
+        const conditionals = Array.isArray(npc.conditionalDialogues) ? npc.conditionalDialogues : [];
+        const hasConditionals = conditionals.length > 0;
+        
+        // Se não há condicionais configuradas, usa a fala padrão do NPC
+        if (!hasConditionals) {
+            const defaultText = npc[key] || '';
+            console.log(`[resolveNpcDialogue] Sem condicionais. Retorna padrão: "${defaultText.substring(0, 50)}"`);
+            return defaultText;
+        }
+        
+        // Há condicionais: verificar se alguma flag está ativa
+        const flags = user.storyFlags || {};
+        const activeConditionals = conditionals
+            .filter(c => c && c.flagId && readStoryFlag(flags, c.flagId))
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-        const hit = sorted.find(d => d && d[key]);
-        if (hit && hit[key]) {
-            console.log(`[resolveNpcDialogue] ${key}: Flag "${hit.flagId}" ativa! Retornando condicional...`);
-            return hit[key];
+        
+        // Se alguma flag está ativa, usa o texto dela
+        if (activeConditionals.length > 0) {
+            const matched = activeConditionals.find(c => c[key]);
+            if (matched && matched[key]) {
+                console.log(`[resolveNpcDialogue] Flag "${matched.flagId}" ativa! Retorna: "${matched[key].substring(0, 50)}"`);
+                return matched[key];
+            }
         }
-        // Se há condicionais mas nenhuma flag ativa, retorna vazio (respeita a intenção do criador)
-        if (hasConditionals) {
-            console.log(`[resolveNpcDialogue] ${key}: Tem condicionais mas nenhuma flag ativa. Retornando vazio.`);
-            return '';
-        }
+        
+        // Há condicionais MAS nenhuma flag ativa: retorna null (não deve falar)
+        console.log(`[resolveNpcDialogue] Tem condicionais mas nenhuma flag ativa. NPC não deve falar.`);
+        return null;
+        
     } catch (e) {
-        console.error(`[resolveNpcDialogue] Erro:`, e);
+        console.error(`[resolveNpcDialogue] ERRO:`, e);
+        return null;
     }
-    // Sem condicionais, usa fala padrão
-    console.log(`[resolveNpcDialogue] ${key}: Sem condicionais. Usando padrão.`);
-    return (npc && npc[key]) ? npc[key] : '';
 }
 
 function userHasAnyEntity(user) {
@@ -1276,8 +1288,10 @@ app.post('/api/npc/interact', async (req, res) => {
         ensureUserInventories(user);
         const interact = npc.interact || {};
         if (!interact.enabled) {
-            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue') || npc.dialogue || '...';
-            return res.json({ success: false, noInteraction: true, text: dialogueText });
+            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+            // Se retornou null, significa que tem condicionais mas nenhuma flag ativa
+            const finalText = dialogueText !== null ? dialogueText : '...';
+            return res.json({ success: false, noInteraction: true, text: finalText });
         }
 
         // Se o cliente enviou posição do player, faz o NPC olhar para ele e pausa a patrulha por alguns segundos.
@@ -1317,8 +1331,9 @@ app.post('/api/npc/interact', async (req, res) => {
             // (Isso cobre casos onde a flag não persistiu por ser um Object "mixed".)
             let already = readStoryFlag(user.storyFlags, STARTER_FLAG_ID) || userHasAnyEntity(user);
             if (already) {
-                const text = resolveNpcDialogue(npc, user, 'winDialogue') || interact.alreadyDoneDialogue || 'Você já escolheu o seu monstro inicial.';
-                return res.json({ success: true, alreadyDone: true, text, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+                const dialogueText = resolveNpcDialogue(npc, user, 'winDialogue');
+                const finalText = dialogueText !== null ? dialogueText : (interact.alreadyDoneDialogue || 'Você já escolheu o seu monstro inicial.');
+                return res.json({ success: true, alreadyDone: true, text: finalText, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
             }
 
             const optionsRes = await getStarterOptionsForNpc(npc);
@@ -1330,10 +1345,11 @@ app.post('/api/npc/interact', async (req, res) => {
                 return res.json({ success: false, error: 'Não há 3 monstros iniciais configurados.' });
             }
 
-            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.successDialogue || 'Escolha o seu monstro inicial.';
+            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+            const finalText = dialogueText !== null ? dialogueText : (interact.successDialogue || 'Escolha o seu monstro inicial.');
             return res.json({
                 success: true,
-                text,
+                text: finalText,
                 action: { type: 'starter', options, flagId: STARTER_FLAG_ID, npcId: String(npc._id) },
                 bag: user.bag,
                 keyItems: user.keyItems,
@@ -1347,8 +1363,9 @@ app.post('/api/npc/interact', async (req, res) => {
         const alreadyDone = shouldUseFlag ? !!user.storyFlags[flagId] : false;
 
         if (alreadyDone && interact.givesUnique) {
-            const text = resolveNpcDialogue(npc, user, 'winDialogue') || interact.alreadyDoneDialogue || 'Já fiz isso por você.';
-            return res.json({ success: true, alreadyDone: true, text, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+            const dialogueText = resolveNpcDialogue(npc, user, 'winDialogue');
+            const finalText = dialogueText !== null ? dialogueText : (interact.alreadyDoneDialogue || 'Já fiz isso por você.');
+            return res.json({ success: true, alreadyDone: true, text: finalText, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
         }
 
         const requiresId = normalizeItemId(interact.requiresItemId);
@@ -1416,10 +1433,11 @@ app.post('/api/npc/interact', async (req, res) => {
                 }
             }
             await user.save();
-            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.healDialogue || `Seus monstros foram curados! (${count})`;
+            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+            const finalText = dialogueText !== null ? dialogueText : (interact.healDialogue || `Seus monstros foram curados! (${count})`);
             return res.json({
                 success: true,
-                text,
+                text: finalText,
                 action: { type: 'heal', healed: count },
                 npcMoved,
                 bag: user.bag,
@@ -1437,10 +1455,11 @@ app.post('/api/npc/interact', async (req, res) => {
                 }))
                 .filter(x => x.itemId && x.price > 0);
 
-            const text = resolveNpcDialogue(npc, user, 'dialogue') || 'O que você quer comprar?';
+            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+            const finalText = dialogueText !== null ? dialogueText : 'O que você quer comprar?';
             return res.json({
                 success: true,
-                text,
+                text: finalText,
                 action: { type: 'shop', items: cleaned },
                 npcMoved,
                 bag: user.bag,
@@ -1449,7 +1468,8 @@ app.post('/api/npc/interact', async (req, res) => {
             });
         }
 
-        const successText = resolveNpcDialogue(npc, user, 'dialogue') || giveMsg || 'Feito.';
+        const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+        const successText = dialogueText !== null ? dialogueText : (giveMsg || 'Feito.');
         return res.json({
             success: true,
             text: successText,
