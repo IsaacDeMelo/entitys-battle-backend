@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:encounter": "node scripts/test_encounter.js",
     "migrate:levels": "node scripts/migrate_levels.js",
-    "chroma:key": "node scripts/chroma_key_png.js"
+    "chroma:key": "node scripts/chroma_key_png.js",
+    "inspect:movepools": "node scripts/inspect_move_pools.js",
+    "migrate:movepools-by-type": "node scripts/migrate_movepools_by_type.js",
+    "migrate:movepools-any": "node scripts/migrate_movepools_any.js"
   },
   "author": "",
   "license": "ISC",

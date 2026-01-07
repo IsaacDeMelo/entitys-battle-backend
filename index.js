@@ -420,12 +420,39 @@ function calculateStats(base, level) {
     }; 
 }
 
+function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4) {
+    const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
+    const pool = Array.isArray(movePool) ? movePool : [];
+
+    // Keep it deterministic:
+    // 1) filter by learn level
+    // 2) sort by level asc, then moveId asc
+    // 3) pick the last N (most advanced)
+    const available = pool
+        .filter(m => m && m.moveId && (Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1)) <= lvl)
+        .map(m => ({
+            moveId: String(m.moveId).trim(),
+            level: Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1)
+        }))
+        .filter(m => m.moveId && MOVES_LIBRARY[m.moveId])
+        .sort((a, b) => (a.level - b.level) || a.moveId.localeCompare(b.moveId));
+
+    const unique = [];
+    const seen = new Set();
+    for (const m of available) {
+        if (seen.has(m.moveId)) continue;
+        seen.add(m.moveId);
+        unique.push(m.moveId);
+    }
+
+    const picked = unique.length > 0 ? unique.slice(-Math.max(1, maxMoves)) : [];
+    return picked.length > 0 ? picked : ['strike'];
+}
+
 async function createBattleInstance(baseId, level) { 
     const base = await BaseEntity.findOne({ id: baseId }).lean(); if(!base) return null; 
     const stats = calculateStats(base.baseStats, level); 
-    let moves = base.movePool ? base.movePool.filter(m => m.level <= level).map(m => m.moveId) : []; 
-    if(moves.length === 0) moves = ['strike']; 
-    if(moves.length > 4) moves = moves.sort(() => 0.5 - Math.random()).slice(0, 4); 
+    let moves = pickDeterministicMovesFromPool(base.movePool, level, 4);
     return { 
         instanceId: 'wild_' + Date.now(), 
         baseId: base.id, name: base.name, type: base.type, level: level, 
@@ -2723,8 +2750,7 @@ app.post('/battle/npc', async (req, res) => {
         const base = await BaseEntity.findOne({ id: member.baseId });
         if (base) {
             const stats = calculateStats(base.baseStats, member.level);
-            let moves = base.movePool ? base.movePool.filter(m => m.level <= member.level).map(m => m.moveId) : ['strike'];
-            if(moves.length > 4) moves = moves.sort(() => 0.5 - Math.random()).slice(0, 4);
+            let moves = pickDeterministicMovesFromPool(base.movePool, member.level, 4);
             npcTeamInstances.push({
                 instanceId: 'npc_mon_' + Date.now() + Math.random(), baseId: base.id, name: base.name, type: base.type, level: member.level, 
                 maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
@@ -2815,22 +2841,45 @@ app.post('/api/custom-battle/start', async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.json({ error: 'Usuário não encontrado' });
         
+        function normalizeMovePool(raw) {
+            const arr = Array.isArray(raw) ? raw : [];
+            return arr
+                .map(m => {
+                    if (!m) return null;
+                    if (typeof m === 'string') return { moveId: m, level: 1 };
+                    const moveIdRaw = (m.moveId != null) ? m.moveId : (m.id != null ? m.id : (m.move != null ? m.move : ''));
+                    const moveId = (moveIdRaw != null) ? String(moveIdRaw).trim() : '';
+                    const level = Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1);
+                    if (!moveId) return null;
+                    return { moveId, level: Math.max(1, level) };
+                })
+                .filter(Boolean);
+        }
+
+        function pickMovesFromPool(pool, level) {
+            const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
+            const available = normalizeMovePool(pool)
+                .filter(m => m.level <= lvl)
+                .sort((a, b) => a.level - b.level)
+                .map(m => m.moveId)
+                .filter(mid => !!(mid && MOVES_LIBRARY[mid]));
+
+            const unique = Array.from(new Set(available));
+            const picked = unique.length > 0 ? unique.slice(-4) : [];
+            return picked.length > 0 ? picked : ['strike'];
+        }
+
         // Create player team instances
         const p1Team = [];
         for (const monsterData of playerTeam) {
-            const stats = calculateStats(monsterData.baseStats, monsterData.level);
-            let moves = [];
-            
-            if (monsterData.movePool && monsterData.movePool.length > 0) {
-                const availableMoves = monsterData.movePool
-                    .filter(m => m.level <= monsterData.level)
-                    .map(m => m.moveId);
-                moves = availableMoves.length > 0 
-                    ? availableMoves.slice(-4) // Last 4 moves
-                    : ['strike'];
-            } else {
-                moves = ['strike'];
-            }
+            const base = monsterData && monsterData.baseId
+                ? await BaseEntity.findOne({ id: String(monsterData.baseId) }).lean()
+                : null;
+
+            const baseStats = (base && base.baseStats) ? base.baseStats : (monsterData && monsterData.baseStats);
+            const stats = calculateStats(baseStats || { hp: 0, energy: 0, attack: 0, defense: 0, speed: 0 }, monsterData.level);
+            const pool = (base && base.movePool) ? base.movePool : (monsterData && monsterData.movePool);
+            const moves = pickMovesFromPool(pool, monsterData.level);
             
             const instance = {
                 instanceId: 'p1_custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -2843,7 +2892,7 @@ app.post('/api/custom-battle/start', async (req, res) => {
                 energy: stats.energy,
                 maxEnergy: stats.energy,
                 stats: stats,
-                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
+                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
                 sprite: monsterData.sprite,
                 playerName: playerName,
                 skin: playerSkin,
@@ -2855,19 +2904,14 @@ app.post('/api/custom-battle/start', async (req, res) => {
         // Create enemy team instances
         const p2Team = [];
         for (const monsterData of enemyTeam) {
-            const stats = calculateStats(monsterData.baseStats, monsterData.level);
-            let moves = [];
-            
-            if (monsterData.movePool && monsterData.movePool.length > 0) {
-                const availableMoves = monsterData.movePool
-                    .filter(m => m.level <= monsterData.level)
-                    .map(m => m.moveId);
-                moves = availableMoves.length > 0 
-                    ? availableMoves.slice(-4)
-                    : ['strike'];
-            } else {
-                moves = ['strike'];
-            }
+            const base = monsterData && monsterData.baseId
+                ? await BaseEntity.findOne({ id: String(monsterData.baseId) }).lean()
+                : null;
+
+            const baseStats = (base && base.baseStats) ? base.baseStats : (monsterData && monsterData.baseStats);
+            const stats = calculateStats(baseStats || { hp: 0, energy: 0, attack: 0, defense: 0, speed: 0 }, monsterData.level);
+            const pool = (base && base.movePool) ? base.movePool : (monsterData && monsterData.movePool);
+            const moves = pickMovesFromPool(pool, monsterData.level);
             
             const instance = {
                 instanceId: 'p2_custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -2880,7 +2924,7 @@ app.post('/api/custom-battle/start', async (req, res) => {
                 energy: stats.energy,
                 maxEnergy: stats.energy,
                 stats: stats,
-                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
+                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
                 sprite: monsterData.sprite,
                 playerName: playerName, // Same skin as player
                 skin: playerSkin, // Same skin as player
@@ -2914,7 +2958,7 @@ app.post('/api/custom-battle/start', async (req, res) => {
 });
 
 app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/city' }); });
-app.post('/battle', async (req, res) => { const { fighterId, playerName, playerSkin, userId } = req.body; const user = await User.findById(userId); if(!user) return res.redirect('/'); const userPokeData = user.entityTeam.id(fighterId); if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/city?userId=' + userId); const b1Base = await BaseEntity.findOne({ id: userPokeData.baseId }); const p1 = userEntityToEntity(userPokeData, b1Base); p1.playerName = playerName; p1.skin = playerSkin; const allBases = await BaseEntity.find(); if(allBases.length === 0) return res.redirect('/city?userId=' + userId); const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; const cpuLevel = Math.max(1, p1.level); const s2 = calculateStats(randomBase.baseStats, cpuLevel); let cpuMoves = randomBase.movePool ? randomBase.movePool.filter(m => m.level <= cpuLevel).map(m => m.moveId) : []; if(cpuMoves.length === 0) cpuMoves = ['strike']; if(cpuMoves.length > 4) cpuMoves = cpuMoves.sort(() => 0.5 - Math.random()).slice(0, 4); const p2 = { instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null }; const battleId = 'local_' + Date.now(); activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' }; res.redirect('/battle/' + battleId); });
+app.post('/battle', async (req, res) => { const { fighterId, playerName, playerSkin, userId } = req.body; const user = await User.findById(userId); if(!user) return res.redirect('/'); const userPokeData = user.entityTeam.id(fighterId); if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/city?userId=' + userId); const b1Base = await BaseEntity.findOne({ id: userPokeData.baseId }); const p1 = userEntityToEntity(userPokeData, b1Base); p1.playerName = playerName; p1.skin = playerSkin; const allBases = await BaseEntity.find(); if(allBases.length === 0) return res.redirect('/city?userId=' + userId); const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; const cpuLevel = Math.max(1, p1.level); const s2 = calculateStats(randomBase.baseStats, cpuLevel); let cpuMoves = pickDeterministicMovesFromPool(randomBase.movePool, cpuLevel, 4); const p2 = { instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null }; const battleId = 'local_' + Date.now(); activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' }; res.redirect('/battle/' + battleId); });
 
 app.get('/battle/:id', async (req, res) => { 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
