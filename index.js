@@ -2657,6 +2657,12 @@ app.post('/battle/npc', async (req, res) => {
     const npc = await NPC.findById(npcId);
     if (!user || !npc) return res.json({ error: "NPC não encontrado." });
 
+    const svcType = npc?.interact?.serviceType ? String(npc.interact.serviceType).trim() : '';
+    const npcType = npc?.npcType ? String(npc.npcType).trim() : '';
+    const isServiceNpc = (svcType === 'heal' || svcType === 'shop' || svcType === 'starter')
+        || (npcType === 'heal' || npcType === 'shop' || npcType === 'starter');
+    if (isServiceNpc) return res.json({ error: 'Este NPC não pode batalhar.' });
+
     // Enforce: treinador uma vez (cooldownMinutes<=0) ou repetível com cooldown.
     try {
         const record = Array.isArray(user.defeatedNPCs)

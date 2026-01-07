@@ -3410,9 +3410,15 @@
             // Faremos isso dentro de uma função async e aplicaremos após a verificação.
             const svcForInteract = (npc && npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
             const typeForInteract = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
+            const isHealNpcForInteract = (svcForInteract === 'heal') || (typeForInteract === 'heal');
+            const isShopNpcForInteract = (svcForInteract === 'shop') || (typeForInteract === 'shop');
             const isStarterNpcForInteract = (svcForInteract === 'starter') || (typeForInteract === 'starter');
+            const isServiceNpcForPreview = isHealNpcForInteract || isShopNpcForInteract || isStarterNpcForInteract;
             const hasInteract = isStarterNpcForInteract || !!(npc.interact && npc.interact.enabled);
-            const canBattle = npc.team && npc.team.length > 0;
+            const canBattleRaw = npc.team && npc.team.length > 0;
+            const isNonBattleNpc = (svcForInteract === 'heal' || svcForInteract === 'shop' || svcForInteract === 'starter')
+                || (typeForInteract === 'heal' || typeForInteract === 'shop' || typeForInteract === 'starter');
+            const canBattle = !!(canBattleRaw && !isNonBattleNpc);
             
             // Função que resolve o diálogo correto (com condicionais)
             async function resolveDialogueText(key = 'dialogue') {
@@ -3425,8 +3431,9 @@
                         const px = myEl ? parseFloat(myEl.style.left) : null;
                         const py = myEl ? parseFloat(myEl.style.top) : null;
                         
-                        // Se tem interação, usa /api/npc/interact
-                        if (hasInteract) {
+                        // IMPORTANTE (serviços): não dispare /api/npc/interact apenas para "montar menu",
+                        // pois isso pode executar/alterar estado (cura/loja/starter). Para serviços, fazemos preview via /api/npc/dialogue.
+                        if (hasInteract && !isServiceNpcForPreview) {
                             const res = await fetch('/api/npc/interact', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -3434,9 +3441,8 @@
                             });
                             const data = await res.json().catch(() => ({}));
                             if (data && data.text) return data.text;
-                        }
-                        // Se só tem condicionais (sem interação), usa /api/npc/dialogue
-                        else if (hasConditionals) {
+                        } else {
+                            // Condicionais (ou preview para serviços como heal/shop/starter)
                             const res = await fetch('/api/npc/dialogue', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -3653,8 +3659,32 @@
             const hasConditionals = npc.conditionalDialogues && npc.conditionalDialogues.length > 0;
             const canTalkWithConditionals = hasConditionals && !hasInteract;
 
-            // Simplificação: se não há escolha real, não abre o menu "FALAR/SAIR".
+            // Simplificação: se não há escolha real, normalmente não abre menu.
+            // EXCEÇÃO (serviços): mostra botão específico para o jogador confirmar.
             if ((hasTalkOption || canTalkWithConditionals) && !hasBattleOption) {
+                if ((isHealNpcForInteract || isShopNpcForInteract || isStarterNpcForInteract) && hasTalkOption && !canTalkWithConditionals) {
+                    const primaryBtn = isHealNpcForInteract
+                        ? { text: 'CURAR', value: 'heal', class: 'confirm' }
+                        : (isShopNpcForInteract
+                            ? { text: 'LOJA', value: 'shop', class: 'confirm' }
+                            : { text: 'ESCOLHER', value: 'starter', class: 'confirm' });
+                    resolveDialogueText('dialogue').then((dialogueText) => {
+                        setDialogImageStyle('pixel');
+                        showRPGDialog(cleanName, npc.skin, dialogueText, [
+                            primaryBtn,
+                            { text: 'SAIR', value: 'exit', class: 'cancel' }
+                        ]).then(async (choice) => {
+                            window.isInteracting = false;
+                            if (choice === 'heal' || choice === 'shop' || choice === 'starter') {
+                                await runNpcTalk();
+                                return;
+                            }
+                            await disengageNow();
+                        });
+                    });
+                    return;
+                }
+
                 window.isInteracting = false;
                 // Se só tem condicionais, mostra o diálogo diretamente
                 if (canTalkWithConditionals && !hasTalkOption) {
@@ -3704,7 +3734,12 @@
             // Resolve o diálogo antes de mostrar o menu
             resolveDialogueText('dialogue').then(dialogueText => {
                 let buttons = [];
-                if (hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
+                if (hasTalkOption) {
+                    if (isHealNpcForInteract) buttons.push({ text: 'CURAR', value: 'heal', class: 'confirm' });
+                    else if (isShopNpcForInteract) buttons.push({ text: 'LOJA', value: 'shop', class: 'confirm' });
+                    else if (isStarterNpcForInteract) buttons.push({ text: 'ESCOLHER', value: 'starter', class: 'confirm' });
+                    else buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
+                }
                 if (canTalkWithConditionals && !hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
                 if (hasBattleOption) buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
                 buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
@@ -3715,6 +3750,11 @@
                     }
                 }, { keepOpenForValues: ['talk'] }).then(async (choice) => {
                     window.isInteracting = false;
+
+                    if (choice === 'heal' || choice === 'shop' || choice === 'starter') {
+                        await runNpcTalk();
+                        return;
+                    }
 
                     if (choice === 'talk') {
                         await runNpcTalk();
