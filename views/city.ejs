@@ -44,7 +44,7 @@
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% auto; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
-        .player.walking { animation: walk-anim 0.6s steps(4) infinite; animation-delay: 0s; }
+        .player.walking { animation: walk-anim 0.6s steps(4) infinite; animation-delay: -0.15s; }
         @keyframes walk-anim { 
             0% { background-position-x: 0; } 
             25% { background-position-x: -100%; }
@@ -2370,7 +2370,6 @@
                 el.style.transition = `top ${duration}s ${easing}, left ${duration}s ${easing}`; 
                 void el.offsetWidth; el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
                 if (duration > 0) { 
-                    // Começa a animação imediatamente (mesmo em passos pequenos)
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
                     el.walkTimeout = setTimeout(() => { 
