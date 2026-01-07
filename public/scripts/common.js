@@ -653,11 +653,36 @@ function interactWithNPC(npc) {
     // NPC sem time: pode ser apenas diálogo OU interação de história
     if (!canBattle) {
         if (!hasInteract) {
-            showRPGDialog(npc.name, npc.skin, npc.dialogue || '...');
+            // Resolver diálogo com backend (para suportar condicionais por flag)
+            try {
+                const dialogRes = await fetch('/api/npc/dialogue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: myId, npcId: npc._id })
+                });
+                const dialogData = await dialogRes.json();
+                showRPGDialog(npc.name, npc.skin, dialogData.text || '...');
+            } catch (e) {
+                showRPGDialog(npc.name, npc.skin, npc.dialogue || '...');
+            }
             return;
         }
 
-        showRPGDialog(npc.name, npc.skin, npc.dialogue || '...', [
+        // Resolver diálogo com backend
+        let dialogueText = '...';
+        try {
+            const dialogRes = await fetch('/api/npc/dialogue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: myId, npcId: npc._id })
+            });
+            const dialogData = await dialogRes.json();
+            dialogueText = dialogData.text || '...';
+        } catch (e) {
+            dialogueText = npc.dialogue || '...';
+        }
+        
+        showRPGDialog(npc.name, npc.skin, dialogueText, [
             { text: 'FALAR', value: 'talk', class: 'confirm' },
             { text: 'SAIR', value: 'exit', class: 'cancel' }
         ]).then(async (choice) => {
@@ -744,7 +769,21 @@ function interactWithNPC(npc) {
     buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
     buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
 
-    showRPGDialog(npc.name, npc.skin, npc.dialogue || 'Vamos batalhar!', buttons).then(async (choice) => {
+    // Resolver diálogo com backend
+    let dialogueText = 'Vamos batalhar!';
+    try {
+        const dialogRes = await fetch('/api/npc/dialogue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: myId, npcId: npc._id })
+        });
+        const dialogData = await dialogRes.json();
+        dialogueText = dialogData.text || 'Vamos batalhar!';
+    } catch (e) {
+        dialogueText = npc.dialogue || 'Vamos batalhar!';
+    }
+
+    showRPGDialog(npc.name, npc.skin, dialogueText, buttons).then(async (choice) => {
         if(choice === 'talk') {
             try {
                 await engageNpc();

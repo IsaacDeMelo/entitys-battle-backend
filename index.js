@@ -1278,6 +1278,33 @@ app.post('/api/npc/delete', async (req, res) => {
 });
 
 // --- API NPC (INTERAÇÃO DE HISTÓRIA/ITENS) ---
+// Endpoint para resolver diálogo de NPC (incluindo condicionais)
+app.post('/api/npc/dialogue', async (req, res) => {
+    try {
+        const { userId, npcId } = req.body;
+        const user = await User.findById(userId);
+        const npc = await NPC.findById(npcId);
+        if (!user || !npc) return res.status(404).json({ error: 'NPC ou usuário não encontrado' });
+        
+        const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+        const finalText = dialogueText !== null ? dialogueText : '...';
+        res.json({ text: finalText });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// DEBUG: endpoint para inspecionar NPC
+app.get('/api/npc/debug/:id', async (req, res) => {
+    try {
+        const npc = await NPC.findById(req.params.id).lean();
+        if (!npc) return res.status(404).json({ error: 'NPC não encontrado' });
+        res.json(npc);
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
 app.post('/api/npc/interact', async (req, res) => {
     try {
         const { userId, npcId, playerX, playerY } = req.body;
