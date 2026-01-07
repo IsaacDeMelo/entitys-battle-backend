@@ -272,6 +272,8 @@ function ensureUserInventories(user) {
 function resolveNpcDialogue(npc, user, key) {
     try {
         const list = Array.isArray(npc && npc.conditionalDialogues) ? npc.conditionalDialogues : [];
+        // Se há condicionais, a intenção é respeitar APENAS as falas por flag
+        const hasConditionals = list && list.length > 0;
         const flags = (user && user.storyFlags) ? user.storyFlags : {};
         // Ordena por priority desc, depois ordem natural
         const sorted = list
@@ -279,13 +281,19 @@ function resolveNpcDialogue(npc, user, key) {
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
         const hit = sorted.find(d => d && d[key]);
         if (hit && hit[key]) {
-            console.log(`[resolveNpcDialogue] ${key}: Flag "${hit.flagId}" ativa! Retornando: "${hit[key].substring(0, 50)}..."`);
+            console.log(`[resolveNpcDialogue] ${key}: Flag "${hit.flagId}" ativa! Retornando condicional...`);
             return hit[key];
+        }
+        // Se há condicionais mas nenhuma flag ativa, retorna vazio (respeita a intenção do criador)
+        if (hasConditionals) {
+            console.log(`[resolveNpcDialogue] ${key}: Tem condicionais mas nenhuma flag ativa. Retornando vazio.`);
+            return '';
         }
     } catch (e) {
         console.error(`[resolveNpcDialogue] Erro:`, e);
     }
-    console.log(`[resolveNpcDialogue] ${key}: Nenhuma flag ativa. Usando padrão: "${((npc && npc[key]) || '').substring(0, 50)}..."`);
+    // Sem condicionais, usa fala padrão
+    console.log(`[resolveNpcDialogue] ${key}: Sem condicionais. Usando padrão.`);
     return (npc && npc[key]) ? npc[key] : '';
 }
 

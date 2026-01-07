@@ -2016,17 +2016,17 @@
                 header.appendChild(rm);
 
                 const dia = document.createElement('textarea');
-                dia.placeholder = 'Diálogo principal (override)';
+                dia.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pós-vitória/cooldown)';
                 dia.value = row.dialogue || '';
                 dia.oninput = () => { npcEdConditionalState[idx].dialogue = dia.value; };
 
                 const win = document.createElement('textarea');
-                win.placeholder = 'Diálogo pós-vitória (opcional)';
+                win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
                 win.value = row.winDialogue || '';
                 win.oninput = () => { npcEdConditionalState[idx].winDialogue = win.value; };
 
                 const cool = document.createElement('textarea');
-                cool.placeholder = 'Diálogo em cooldown (opcional)';
+                cool.placeholder = '⏳ Fala em cooldown (quando tem a flag MAS já falou recentemente)';
                 cool.value = row.cooldownDialogue || '';
                 cool.oninput = () => { npcEdConditionalState[idx].cooldownDialogue = cool.value; };
 
