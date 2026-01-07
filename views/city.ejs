@@ -3617,6 +3617,75 @@
                 await disengageNow();
             }
 
+            async function runNpcServiceAction(kind) {
+                try {
+                    const myEl = document.getElementById(`p-${window.myId}`);
+                    const px = myEl ? parseFloat(myEl.style.left) : null;
+                    const py = myEl ? parseFloat(myEl.style.top) : null;
+                    const res = await fetch('/api/npc/interact', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (data.bag) window.USER_BAG = data.bag;
+                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
+                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+
+                    if (kind === 'shop') {
+                        const items = (data && data.action && data.action.type === 'shop') ? (data.action.items || []) : [];
+                        await openNpcShop(cleanName, npc.skin, npc._id, items);
+                    }
+
+                    if (kind === 'starter') {
+                        // Botão ESCOLHER já é confirmação; abrir picker direto.
+                        let options = (data && data.action && data.action.type === 'starter')
+                            ? (Array.isArray(data.action.options) ? data.action.options.slice(0, 3) : [])
+                            : [];
+
+                        if (options.length < 3) {
+                            try {
+                                const optRes = await fetch(`/api/starter/options?userId=${encodeURIComponent(window.CURRENT_USER_ID)}&npcId=${encodeURIComponent(String(npc._id || ''))}`);
+                                const optData = await optRes.json().catch(() => ({}));
+                                if (optData && optData.error) {
+                                    await showRPGDialog(cleanName, npc.skin, optData.error);
+                                    await disengageNow();
+                                    return;
+                                }
+                                if (optData && optData.chosen) {
+                                    const msg = (npc.interact && npc.interact.alreadyDoneDialogue)
+                                        ? npc.interact.alreadyDoneDialogue
+                                        : 'Você já escolheu o seu monstro inicial.';
+                                    await showRPGDialog(cleanName, npc.skin, msg);
+                                    await disengageNow();
+                                    return;
+                                }
+                                options = Array.isArray(optData && optData.options) ? optData.options.slice(0, 3) : [];
+                            } catch (_) {}
+                        }
+
+                        if (options.length < 3) {
+                            await showRPGDialog(cleanName, npc.skin, 'Erro: opções de starter insuficientes.');
+                            await disengageNow();
+                            return;
+                        }
+
+                        if (typeof window.__openStarterPicker === 'function') {
+                            window.__openStarterPicker({
+                                npcName: cleanName,
+                                npcSkin: npc.skin,
+                                npcId: npc._id,
+                                hintText: 'Escolha seu monstro inicial:',
+                                options
+                            });
+                        }
+                    }
+                } catch (e) {
+                    if (typeof showToast === 'function') showToast('Erro ao interagir.', { bg: '#e74c3c' });
+                }
+                await disengageNow();
+            }
+
             function runNpcBattle() {
                 performTransition(() => {
                     let mapParam = currentMapId === 'city' ? 'city' : `city?map=${currentMapId}`;
@@ -3676,7 +3745,7 @@
                         ]).then(async (choice) => {
                             window.isInteracting = false;
                             if (choice === 'heal' || choice === 'shop' || choice === 'starter') {
-                                await runNpcTalk();
+                                await runNpcServiceAction(choice);
                                 return;
                             }
                             await disengageNow();
@@ -3752,7 +3821,7 @@
                     window.isInteracting = false;
 
                     if (choice === 'heal' || choice === 'shop' || choice === 'starter') {
-                        await runNpcTalk();
+                        await runNpcServiceAction(choice);
                         return;
                     }
 
