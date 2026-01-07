@@ -149,6 +149,10 @@
 
         .npcSectionTitle { font-size: 12px; font-weight: 900; color: #e2e8f0; letter-spacing: 0.4px; margin: 2px 0 6px; }
         .npcInlineHelp { background: rgba(255,255,255,0.03); border: 1px solid #334155; border-radius: 10px; padding: 10px; }
+        /* Estilos para inputs/textareas dentro de .npcInlineHelp */
+        .npcInlineHelp input, .npcInlineHelp textarea { background: #0b1220; color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 9px 10px; font-family: 'Roboto', sans-serif; font-size: 0.95rem; width: 100%; box-sizing: border-box; margin-bottom: 5px; }
+        .npcInlineHelp textarea { min-height: 60px; resize: vertical; }
+        .npcInlineHelp input:focus, .npcInlineHelp textarea:focus { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.16); }
 
         /* Seções do formulário de NPC */
         .npcBlock { border: 1px solid #334155; border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.02); margin-bottom: 10px; }
@@ -2037,11 +2041,13 @@
         function npcEdConditionalAdd() {
             npcEdConditionalState.push({ flagId: '', dialogue: '', winDialogue: '', cooldownDialogue: '', priority: 0 });
             npcEdConditionalRender();
+            npcEdConditionalToJson();
         }
 
         function npcEdConditionalClear() {
             npcEdConditionalState = [];
             npcEdConditionalRender();
+            npcEdConditionalToJson();
         }
 
         function npcEdConditionalClearNonConditional() {
@@ -2050,6 +2056,7 @@
             document.getElementById('npcEdWinDialogue').value = '';
             document.getElementById('npcEdCooldownDialogue').value = '';
             document.getElementById('npcEdInteractSuccess').value = '';
+            npcEdConditionalToJson();
             if (typeof showToast === 'function') {
                 showToast('Diálogos padrão limpos! Use APENAS os diálogos por flag.', { bg: '#3498db' });
             }
