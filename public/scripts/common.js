@@ -650,9 +650,16 @@ async function interactWithNPC(npc) {
     const hasInteract = isStarterNpc(npc) || !!(npc.interact && npc.interact.enabled);
     const canBattle = npc.team && npc.team.length > 0;
 
+    console.log(`[CLIENT] Interagindo com NPC: ${npc.name}`);
+    console.log(`[CLIENT] hasInteract: ${hasInteract}, canBattle: ${canBattle}`);
+    console.log(`[CLIENT] npc.team:`, npc.team);
+    console.log(`[CLIENT] npc.interact:`, npc.interact);
+
     // NPC sem time: pode ser apenas diálogo OU interação de história
     if (!canBattle) {
+        console.log(`[CLIENT] NPC sem time de batalha`);
         if (!hasInteract) {
+            console.log(`[CLIENT] NPC sem interact, chamando /api/npc/dialogue...`);
             // Resolver diálogo com backend (para suportar condicionais por flag)
             try {
                 const dialogRes = await fetch('/api/npc/dialogue', {
@@ -661,13 +668,16 @@ async function interactWithNPC(npc) {
                     body: JSON.stringify({ userId: myId, npcId: npc._id })
                 });
                 const dialogData = await dialogRes.json();
+                console.log(`[CLIENT] Resposta do servidor:`, dialogData);
                 showRPGDialog(npc.name, npc.skin, dialogData.text || '...');
             } catch (e) {
+                console.error(`[CLIENT] Erro ao buscar diálogo:`, e);
                 showRPGDialog(npc.name, npc.skin, '...');
             }
             return;
         }
 
+        console.log(`[CLIENT] NPC com interact, chamando /api/npc/dialogue...`);
         // Resolver diálogo com backend
         let dialogueText = '...';
         try {
@@ -677,6 +687,7 @@ async function interactWithNPC(npc) {
                 body: JSON.stringify({ userId: myId, npcId: npc._id })
             });
             const dialogData = await dialogRes.json();
+            console.log(`[CLIENT] Resposta do servidor:`, dialogData);
             dialogueText = dialogData.text || '...';
         } catch (e) {
             dialogueText = '...';
