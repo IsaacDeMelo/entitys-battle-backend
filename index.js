@@ -18,7 +18,15 @@ const GLOBAL_GRASS_CHANCE = 0.35;
 const STARTER_FLAG_ID = 'starter_chosen';
 
 function readStoryFlag(storyFlags, key) {
-    if (!storyFlags || typeof storyFlags !== 'object') return false;
+    if (!storyFlags) return false;
+
+    // Suporta formato array: ['flag_a', 'flag_b']
+    if (Array.isArray(storyFlags)) {
+        return storyFlags.some(f => String(f || '').trim() === String(key || '').trim());
+    }
+
+    if (typeof storyFlags !== 'object') return false;
+
     const v = storyFlags[key];
     if (v === true) return true;
     if (v === false || v == null) return false;
