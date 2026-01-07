@@ -318,7 +318,7 @@
                         </div>
                     </div>
 
-                    <h4 style="margin-top:20px;">🎒 EQUIPE POKEMON</h4>
+                    <h4 style="margin-top:20px;">🎒 EQUIPE DE ENTIDADES</h4>
                     <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                         <button type="button" class="mini-btn" onclick="npcTeamAddRow()">+ adicionar monstro</button>
                         <button type="button" class="mini-btn" onclick="npcTeamClear()">limpar</button>
@@ -334,7 +334,7 @@
 
                     <select id="npcTeamPokemonOptionsTemplate" class="hidden">
                         <option value="">-- escolha um monstro --</option>
-                        <% pokemons.forEach(p => { %>
+                        <% (entities || []).forEach(p => { %>
                             <option value="<%= p.id %>"><%= p.name %> (<%= p.id %>)</option>
                         <% }) %>
                     </select>
