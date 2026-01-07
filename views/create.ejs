@@ -1038,21 +1038,21 @@
                 const dialogue = document.createElement('textarea');
                 dialogue.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pré-vitória/cooldown)';
                 dialogue.value = row.dialogue || '';
-                dialogue.style.minHeight = '70px';
+                dialogue.style.minHeight = '150px';
                 dialogue.style.flex = '2';
                 dialogue.oninput = () => { npcCondRowsState[idx].dialogue = dialogue.value; npcCondSyncJson(); };
 
                 const win = document.createElement('textarea');
                 win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
                 win.value = row.winDialogue || '';
-                win.style.minHeight = '70px';
+                win.style.minHeight = '150px';
                 win.style.flex = '2';
                 win.oninput = () => { npcCondRowsState[idx].winDialogue = win.value; npcCondSyncJson(); };
 
                 const cd = document.createElement('textarea');
                 cd.placeholder = '⏳ Fala em cooldown (quando tem a flag MAS já falou recentemente)';
                 cd.value = row.cooldownDialogue || '';
-                cd.style.minHeight = '70px';
+                cd.style.minHeight = '150px';
                 cd.style.flex = '2';
                 cd.oninput = () => { npcCondRowsState[idx].cooldownDialogue = cd.value; npcCondSyncJson(); };
 

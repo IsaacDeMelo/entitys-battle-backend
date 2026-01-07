@@ -1276,7 +1276,8 @@ app.post('/api/npc/interact', async (req, res) => {
         ensureUserInventories(user);
         const interact = npc.interact || {};
         if (!interact.enabled) {
-            return res.json({ success: false, noInteraction: true, text: resolveNpcDialogue(npc, user, 'dialogue') || '...' });
+            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue') || npc.dialogue || '...';
+            return res.json({ success: false, noInteraction: true, text: dialogueText });
         }
 
         // Se o cliente enviou posição do player, faz o NPC olhar para ele e pausa a patrulha por alguns segundos.
@@ -1316,7 +1317,7 @@ app.post('/api/npc/interact', async (req, res) => {
             // (Isso cobre casos onde a flag não persistiu por ser um Object "mixed".)
             let already = readStoryFlag(user.storyFlags, STARTER_FLAG_ID) || userHasAnyEntity(user);
             if (already) {
-                const text = interact.alreadyDoneDialogue || resolveNpcDialogue(npc, user, 'winDialogue') || 'Você já escolheu o seu monstro inicial.';
+                const text = resolveNpcDialogue(npc, user, 'winDialogue') || interact.alreadyDoneDialogue || 'Você já escolheu o seu monstro inicial.';
                 return res.json({ success: true, alreadyDone: true, text, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
             }
 
@@ -1346,7 +1347,7 @@ app.post('/api/npc/interact', async (req, res) => {
         const alreadyDone = shouldUseFlag ? !!user.storyFlags[flagId] : false;
 
         if (alreadyDone && interact.givesUnique) {
-            const text = interact.alreadyDoneDialogue || resolveNpcDialogue(npc, user, 'winDialogue') || 'Já fiz isso por você.';
+            const text = resolveNpcDialogue(npc, user, 'winDialogue') || interact.alreadyDoneDialogue || 'Já fiz isso por você.';
             return res.json({ success: true, alreadyDone: true, text, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
         }
 
@@ -1415,7 +1416,7 @@ app.post('/api/npc/interact', async (req, res) => {
                 }
             }
             await user.save();
-            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.healDialogue || interact.successDialogue || `Seus monstros foram curados! (${count})`;
+            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.healDialogue || `Seus monstros foram curados! (${count})`;
             return res.json({
                 success: true,
                 text,
@@ -1436,7 +1437,7 @@ app.post('/api/npc/interact', async (req, res) => {
                 }))
                 .filter(x => x.itemId && x.price > 0);
 
-            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.successDialogue || 'O que você quer comprar?';
+            const text = resolveNpcDialogue(npc, user, 'dialogue') || 'O que você quer comprar?';
             return res.json({
                 success: true,
                 text,
@@ -1448,7 +1449,7 @@ app.post('/api/npc/interact', async (req, res) => {
             });
         }
 
-        const successText = resolveNpcDialogue(npc, user, 'dialogue') || interact.successDialogue || giveMsg || 'Feito.';
+        const successText = resolveNpcDialogue(npc, user, 'dialogue') || giveMsg || 'Feito.';
         return res.json({
             success: true,
             text: successText,
