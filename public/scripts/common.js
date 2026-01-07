@@ -1,4 +1,5 @@
 // --- SISTEMA DE DIÁLOGO RPG & NPC CONTROLLER (COM CARROSSEL & TYPEWRITER SUAVE) ---
+console.log('[COMMON.JS] Arquivo carregado! Versão:', new Date().toISOString());
 
 // =============================================================================
 // 1. ESTILOS CSS (UI)
