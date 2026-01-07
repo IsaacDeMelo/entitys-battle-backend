@@ -278,8 +278,14 @@ function resolveNpcDialogue(npc, user, key) {
             .filter(d => d && d.flagId && readStoryFlag(flags, d.flagId))
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
         const hit = sorted.find(d => d && d[key]);
-        if (hit && hit[key]) return hit[key];
-    } catch (_) {}
+        if (hit && hit[key]) {
+            console.log(`[resolveNpcDialogue] ${key}: Flag "${hit.flagId}" ativa! Retornando: "${hit[key].substring(0, 50)}..."`);
+            return hit[key];
+        }
+    } catch (e) {
+        console.error(`[resolveNpcDialogue] Erro:`, e);
+    }
+    console.log(`[resolveNpcDialogue] ${key}: Nenhuma flag ativa. Usando padrão: "${((npc && npc[key]) || '').substring(0, 50)}..."`);
     return (npc && npc[key]) ? npc[key] : '';
 }
 

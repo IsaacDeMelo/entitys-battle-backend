@@ -1157,7 +1157,7 @@
                     <div class="npcBlock" id="npcEdBlockDialogues">
                         <div class="npcBlockHeader">
                             <div class="npcBlockTitle">Diálogos</div>
-                            <div class="npcBlockDesc">Falando normal, após vitória e durante cooldown.</div>
+                            <div class="npcBlockDesc">Falando normal, após vitória e durante cooldown. (Deixe vazio se usar APENAS flags)</div>
                         </div>
 
                         <div class="npcFieldGrid">
@@ -1177,10 +1177,14 @@
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Diálogos condicionais (StoryFlags)</label>
                             <div class="npcHint">Se a flag estiver ativa, sobrescreve os textos acima. Maior prioridade vence.</div>
+                            <div class="npcHint" style="color: #f39c12; border-left: 4px solid #f39c12;">
+                                💡 <strong>Dica:</strong> Se você usa APENAS diálogos por flags, deixe os campos de diálogo acima vazios para evitar duplicatas!
+                            </div>
                             <div id="npcEdConditionalRows" class="npcInlineHelp" style="display:flex; flex-direction:column; gap:8px; padding:10px;"></div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                                 <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalAdd()">+ adicionar</button>
                                 <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalClear()">limpar</button>
+                                <button type="button" class="npcBtn npcBtnSmall" style="background: #9b59b6;" onclick="npcEdConditionalClearNonConditional()">🧹 limpar diálogos fixos</button>
                             </div>
                         </div>
                         </div>
@@ -1328,8 +1332,8 @@
                         </div>
 
                         <div class="npcField" style="grid-column: 1 / -1;">
-                            <label>Fala de sucesso</label>
-                            <textarea id="npcEdInteractSuccess" placeholder="Perfeito! Aqui está..."></textarea>
+                            <label>Fala de sucesso (opcional, sobrescrita por flags)</label>
+                            <textarea id="npcEdInteractSuccess" placeholder="Perfeito! Aqui está... (deixe vazio para usar APENAS as falas por flag)"></textarea>
                         </div>
 
                         <div class="npcField" style="grid-column: 1 / -1;">
@@ -2038,6 +2042,17 @@
         function npcEdConditionalClear() {
             npcEdConditionalState = [];
             npcEdConditionalRender();
+        }
+
+        function npcEdConditionalClearNonConditional() {
+            // Limpa os diálogos padrão quando você quer usar APENAS flags
+            document.getElementById('npcEdDialogue').value = '';
+            document.getElementById('npcEdWinDialogue').value = '';
+            document.getElementById('npcEdCooldownDialogue').value = '';
+            document.getElementById('npcEdInteractSuccess').value = '';
+            if (typeof showToast === 'function') {
+                showToast('Diálogos padrão limpos! Use APENAS os diálogos por flag.', { bg: '#3498db' });
+            }
         }
 
         function npcEdConditionalLoad(list) {
