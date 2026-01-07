@@ -1167,35 +1167,36 @@
 
                     <div class="npcBlock" id="npcEdBlockDialogues">
                         <div class="npcBlockHeader">
-                            <div class="npcBlockTitle">Diálogos</div>
-                            <div class="npcBlockDesc">Falando normal, após vitória e durante cooldown. (Deixe vazio se usar APENAS flags)</div>
+                            <div class="npcBlockTitle">Diálogos Padrão</div>
+                            <div class="npcBlockDesc">Usados quando NENHUMA flag condicional está ativa</div>
+                        </div>
+                        <div class="npcHint" style="color: #3498db; border-left: 4px solid #3498db; margin: 10px 0;">
+                            ℹ️ <strong>Como funciona:</strong> Estes textos são usados quando <strong>nenhuma flag condicional está ativa</strong>. Configure flags condicionais abaixo para textos alternativos!
                         </div>
 
                         <div class="npcFieldGrid">
                         <div class="npcField" style="grid-column: 1 / -1;">
-                            <label>Diálogo</label>
-                            <textarea id="npcEdDialogue" placeholder="Olá!"></textarea>
+                            <label>Diálogo (quando nenhuma flag está ativa)</label>
+                            <textarea id="npcEdDialogue" placeholder="Olá! Este é o meu diálogo padrão."></textarea>
                         </div>
                         <div class="npcField" id="npcEdWinDialogueBox" style="grid-column: 1 / -1;">
-                            <label>Diálogo pós-vitória</label>
+                            <label>Diálogo pós-vitória (quando nenhuma flag está ativa)</label>
                             <textarea id="npcEdWinDialogue" placeholder="Você já me venceu!"></textarea>
                         </div>
                         <div class="npcField" id="npcEdCooldownDialogueBox" style="grid-column: 1 / -1;">
-                            <label>Diálogo em cooldown</label>
+                            <label>Diálogo em cooldown (quando nenhuma flag está ativa)</label>
                             <textarea id="npcEdCooldownDialogue" placeholder="Estou descansando..."></textarea>
                         </div>
 
                         <div class="npcField" style="grid-column: 1 / -1;">
-                            <label>Diálogos condicionais (StoryFlags)</label>
-                            <div class="npcHint">Se a flag estiver ativa, sobrescreve os textos acima. Maior prioridade vence.</div>
-                            <div class="npcHint" style="color: #f39c12; border-left: 4px solid #f39c12;">
-                                💡 <strong>Dica:</strong> Se você usa APENAS diálogos por flags, deixe os campos de diálogo acima vazios para evitar duplicatas!
+                            <label>Diálogos Condicionais (Por StoryFlags)</label>
+                            <div class="npcHint" style="color: #2ecc71; border-left: 4px solid #2ecc71;">
+                                ✅ <strong>Como usar:</strong> Quando uma flag estiver ativa no jogador, o NPC usa o texto da condicional. Sem flag ativa = usa o texto padrão acima. Maior prioridade vence se múltiplas flags estão ativas.
                             </div>
                             <div id="npcEdConditionalRows" class="npcInlineHelp" style="display:flex; flex-direction:column; gap:8px; padding:10px;"></div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                                <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalAdd()">+ adicionar</button>
-                                <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalClear()">limpar</button>
-                                <button type="button" class="npcBtn npcBtnSmall" style="background: #9b59b6;" onclick="npcEdConditionalClearNonConditional()">🧹 limpar diálogos fixos</button>
+                                <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalAdd()">+ adicionar condição</button>
+                                <button type="button" class="npcBtn npcBtnSmall" onclick="npcEdConditionalClear()">limpar todas condições</button>
                             </div>
                         </div>
                         </div>
@@ -3326,19 +3327,35 @@
             
             // Função que resolve o diálogo correto (com condicionais)
             async function resolveDialogueText(key = 'dialogue') {
-                // Se tem interação, consulta o backend para aplicar condicionais
-                if (hasInteract) {
+                // SEMPRE consulta o backend se há diálogos condicionais OU se tem interação
+                const hasConditionals = npc.conditionalDialogues && npc.conditionalDialogues.length > 0;
+                
+                if (hasInteract || hasConditionals) {
                     try {
                         const myEl = document.getElementById(`p-${window.myId}`);
                         const px = myEl ? parseFloat(myEl.style.left) : null;
                         const py = myEl ? parseFloat(myEl.style.top) : null;
-                        const res = await fetch('/api/npc/interact', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
-                        });
-                        const data = await res.json().catch(() => ({}));
-                        if (data && data.text) return data.text;
+                        
+                        // Se tem interação, usa /api/npc/interact
+                        if (hasInteract) {
+                            const res = await fetch('/api/npc/interact', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (data && data.text) return data.text;
+                        }
+                        // Se só tem condicionais (sem interação), usa /api/npc/dialogue
+                        else if (hasConditionals) {
+                            const res = await fetch('/api/npc/dialogue', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id })
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (data && data.text) return data.text;
+                        }
                     } catch (_) {}
                 }
                 // Fallback: lógica antiga baseada em cooldown
@@ -3542,14 +3559,31 @@
 
             const hasTalkOption = !!canTalk;
             const hasBattleOption = !!(canBattle && showBattleOptions);
+            
+            // Se tem condicionais mas não tem interação, ainda pode "falar"
+            const hasConditionals = npc.conditionalDialogues && npc.conditionalDialogues.length > 0;
+            const canTalkWithConditionals = hasConditionals && !hasInteract;
 
             // Simplificação: se não há escolha real, não abre o menu "FALAR/SAIR".
-            if (hasTalkOption && !hasBattleOption) {
+            if ((hasTalkOption || canTalkWithConditionals) && !hasBattleOption) {
                 window.isInteracting = false;
-                runNpcTalk();
+                // Se só tem condicionais, mostra o diálogo diretamente
+                if (canTalkWithConditionals && !hasTalkOption) {
+                    resolveDialogueText('dialogue').then(dialogueText => {
+                        setDialogImageStyle('pixel');
+                        showRPGDialog(cleanName, npc.skin, dialogueText, [
+                            { text: 'FECHAR', value: 'exit', class: 'cancel' }
+                        ]).then(() => {
+                            window.isInteracting = false;
+                            disengageNow();
+                        });
+                    });
+                } else {
+                    runNpcTalk();
+                }
                 return;
             }
-            if (!hasTalkOption && hasBattleOption) {
+            if (!hasTalkOption && !canTalkWithConditionals && hasBattleOption) {
                 // NPC com batalha (ex.: treinador) sem opção de fala/serviço: mostra um texto antes da batalha.
                 // Resolve o diálogo condicionado antes de exibir
                 resolveDialogueText('dialogue').then(dialogueText => {
@@ -3568,7 +3602,7 @@
                 });
                 return;
             }
-            if (!hasTalkOption && !hasBattleOption) {
+            if (!hasTalkOption && !canTalkWithConditionals && !hasBattleOption) {
                 // Resolve o diálogo condicionado antes de exibir
                 resolveDialogueText('winDialogue').then(dialogueText => {
                     setDialogImageStyle('pixel');
@@ -3582,6 +3616,7 @@
             resolveDialogueText('dialogue').then(dialogueText => {
                 let buttons = [];
                 if (hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
+                if (canTalkWithConditionals && !hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
                 if (hasBattleOption) buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
                 buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
                 setDialogImageStyle('pixel');

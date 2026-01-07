@@ -309,24 +309,24 @@
                         </div>
                     </div>
                     
-                    <h4>💬 DIÁLOGOS</h4>
-                    <div style="margin-bottom:15px; padding:10px; background:#162032; border-radius:6px; border-left: 4px solid #f39c12;">
-                        <small style="color:#f39c12;"><strong>💡 Dica:</strong> Deixe vazio se usar APENAS diálogos por flags</small>
+                    <h4>💬 DIÁLOGOS PADRÃO</h4>
+                    <div style="margin-bottom:15px; padding:10px; background:#162032; border-radius:6px; border-left: 4px solid #3498db;">
+                        <small style="color:#3498db;"><strong>ℹ️ Como funciona:</strong> Estes textos são usados quando <strong>nenhuma flag condicional está ativa</strong>. Se você configurar diálogos condicionais abaixo, o NPC falará coisas diferentes dependendo das flags do jogador!</small>
                     </div>
                     <div class="form-grid">
                         <div class="full-width">
-                            <label>Fala Inicial (Antes da Luta) - opcional</label>
-                            <input type="text" name="dialogue" id="npcDialogue" placeholder="Ei você! Vamos batalhar! (deixe vazio para usar APENAS as falas por flag)" autocomplete="off">
+                            <label>Fala Inicial (Quando nenhuma flag está ativa)</label>
+                            <textarea name="dialogue" id="npcDialogue" placeholder="Olá! Este é o meu diálogo padrão." autocomplete="off" rows="2"></textarea>
                         </div>
                     </div>
                     <div class="form-grid">
                         <div class="half-width">
-                            <label>Fala de Vitória (Jogador venceu) - opcional</label>
-                            <input type="text" name="winDialogue" id="npcWinDialogue" placeholder="Você é forte..." autocomplete="off">
+                            <label>Fala de Vitória (Quando jogador vence e nenhuma flag está ativa)</label>
+                            <textarea name="winDialogue" id="npcWinDialogue" placeholder="Você me venceu..." autocomplete="off" rows="2"></textarea>
                         </div>
                         <div>
-                            <label>Fala em Cooldown (Já derrotado) - opcional</label>
-                            <input type="text" name="cooldownDialogue" id="npcCdDialogue" placeholder="Volte mais tarde." autocomplete="off">
+                            <label>Fala em Cooldown (Quando já derrotado e nenhuma flag está ativa)</label>
+                            <textarea name="cooldownDialogue" id="npcCdDialogue" placeholder="Volte mais tarde." autocomplete="off" rows="2"></textarea>
                         </div>
                     </div>
 
@@ -337,19 +337,34 @@
 
                     <div id="conditionalFields" class="toggle-block" style="display:none;">
                         <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
-                            <div class="full-width" style="grid-column: span 3; color:#9aa7bd; font-size:0.9rem;">
-                                Monte falas alternativas quando o jogador tiver (ou não) um flag específico. Você pode ordenar pela prioridade (maior = avaliado primeiro).
-                            </div>
-                            <div class="full-width" style="grid-column: span 3; padding:10px; background:#162032; border-radius:6px; border-left: 4px solid #f39c12;">
-                                <small style="color:#f39c12;"><strong>💡 Dica:</strong> Se você usa APENAS diálogos por flags, deixe os campos de diálogo acima vazios para evitar duplicatas!</small>
+                            <div class="full-width" style="grid-column: span 3; padding:12px; background:#1a2942; border-radius:8px; border-left: 4px solid #2ecc71;">
+                                <strong style="color:#2ecc71;">✅ Como usar:</strong>
+                                <ul style="margin:8px 0 0 0; padding-left:20px; color:#9aa7bd; font-size:0.9rem; line-height:1.6;">
+                                    <li><strong>Com flag ativa:</strong> O NPC usa o texto da condicional</li>
+                                    <li><strong>Sem flag ativa:</strong> O NPC usa o texto padrão acima</li>
+                                    <li><strong>Prioridade:</strong> Se múltiplas flags estão ativas, a de maior número é usada</li>
+                                </ul>
                             </div>
                             <div class="full-width" style="grid-column: span 3; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                                 <button type="button" class="mini-btn" onclick="npcCondAddRow()">+ adicionar condição</button>
-                                <button type="button" class="mini-btn" onclick="npcCondClear()">limpar</button>
-                                <button type="button" class="mini-btn" style="background: #9b59b6;" onclick="npcCondClearNonConditional()">🧹 limpar diálogos fixos</button>
+                                <button type="button" class="mini-btn" onclick="npcCondClear()">limpar todas condições</button>
                                 <div style="font-size:0.85rem; color:#9aa7bd;">(gera JSON automaticamente)</div>
                             </div>
                             <div id="npcCondRows" class="row-list" style="grid-column: span 3;"></div>
+                            <details class="advanced" style="grid-column: span 3; border-color: #2ecc71;">
+                                <summary style="color: #2ecc71;">📖 Ver Exemplo Prático</summary>
+                                <div style="padding: 12px; background: #0a1628; border-radius: 6px; color: #9aa7bd; font-size: 0.9rem; line-height: 1.6;">
+                                    <strong style="color: #2ecc71;">Exemplo: Guarda de Cidade</strong><br><br>
+                                    <strong>Diálogo Padrão (acima):</strong> "Alto lá! Você precisa de uma licença para passar."<br><br>
+                                    <strong>Condicional 1:</strong><br>
+                                    • flagId: <code style="background:#000; padding:2px 6px; border-radius:3px;">license_obtained</code><br>
+                                    • dialogue: "Bem-vindo! Pode passar."<br>
+                                    • priority: 10<br><br>
+                                    <strong style="color:#f39c12;">Resultado:</strong><br>
+                                    → Jogador <strong>sem</strong> a flag = "Alto lá! Você precisa de uma licença..."<br>
+                                    → Jogador <strong>com</strong> a flag = "Bem-vindo! Pode passar."
+                                </div>
+                            </details>
                             <details class="advanced" style="grid-column: span 3;">
                                 <summary>Avançado (JSON)</summary>
                                 <textarea name="conditionalDialoguesJson" id="npcConditionalDialoguesJson" class="code-area" style="height:110px;" placeholder='[{"flagId":"flag_boss_defeated","dialogue":"Você já me derrotou!","winDialogue":"Ok, entendi.","cooldownDialogue":"Volte amanhã","priority":10}]'></textarea>

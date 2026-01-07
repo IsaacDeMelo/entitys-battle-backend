@@ -326,11 +326,10 @@ function resolveNpcDialogue(npc, user, key) {
             console.log(`[resolveNpcDialogue] Flag ativa mas sem texto para key "${key}"`);
         }
         
-        // Há condicionais MAS nenhuma flag ativa: retorna null (não deve falar)
-        console.log(`[resolveNpcDialogue] Tem condicionais mas nenhuma flag ativa. NPC não deve falar.`);
-        return null;
-        console.log(`[resolveNpcDialogue] Tem condicionais mas nenhuma flag ativa. NPC não deve falar.`);
-        return null;
+        // Há condicionais MAS nenhuma flag ativa: usa o diálogo padrão do NPC como fallback
+        const defaultText = npc[key] || '';
+        console.log(`[resolveNpcDialogue] Nenhuma flag ativa. Usa diálogo padrão: "${defaultText.substring(0, 50)}"`);
+        return defaultText;
         
     } catch (e) {
         console.error(`[resolveNpcDialogue] ERRO:`, e);
