@@ -318,6 +318,29 @@
                         </div>
                     </div>
 
+                    <h4 style="margin-top:20px;">💬 DIÁLOGOS CONDICIONAIS (POR FLAG)</h4>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                        <input type="checkbox" id="npcCondToggle" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Habilitar diálogos condicionais</span>
+                    </label>
+
+                    <div id="conditionalFields" class="toggle-block" style="display:none;">
+                        <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="full-width" style="grid-column: span 3; color:#9aa7bd; font-size:0.9rem;">
+                                Monte falas alternativas quando o jogador tiver (ou não) um flag específico. Você pode ordenar pela prioridade (maior = avaliado primeiro).
+                            </div>
+                            <div class="full-width" style="grid-column: span 3; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <button type="button" class="mini-btn" onclick="npcCondAddRow()">+ adicionar condição</button>
+                                <button type="button" class="mini-btn" onclick="npcCondClear()">limpar</button>
+                                <div style="font-size:0.85rem; color:#9aa7bd;">(gera JSON automaticamente)</div>
+                            </div>
+                            <div id="npcCondRows" class="row-list" style="grid-column: span 3;"></div>
+                            <details class="advanced" style="grid-column: span 3;">
+                                <summary>Avançado (JSON)</summary>
+                                <textarea name="conditionalDialoguesJson" id="npcConditionalDialoguesJson" class="code-area" style="height:110px;" placeholder='[{"flagId":"flag_boss_defeated","dialogue":"Você já me derrotou!","winDialogue":"Ok, entendi.","cooldownDialogue":"Volte amanhã","priority":10}]'></textarea>
+                            </details>
+                        </div>
+                    </div>
+
                     <h4 style="margin-top:20px;">🎒 EQUIPE DE ENTIDADES</h4>
                     <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                         <button type="button" class="mini-btn" onclick="npcTeamAddRow()">+ adicionar monstro</button>
@@ -342,7 +365,7 @@
                     <h4 style="margin-top:20px;">🎁 ITEM DE RECOMPENSA (Opcional)</h4>
                     <div class="form-grid">
                         <div><label>Cooldown (Minutos)</label><input type="number" name="cooldownMinutes" id="npcCooldown" value="0" title="0 = Único, >0 = Repetível"></div>
-                        <div><label>ID do Item/Pokemon</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: pokeball, rareCandy" autocomplete="off"></div>
+                        <div><label>ID do Item/Entidade</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: captureCube, levelUpCrystal" autocomplete="off"></div>
                         <div><label>Quantidade</label><input type="number" name="rewardQty" id="npcRewQty" value="1"></div>
                         <input type="hidden" name="rewardType" id="npcRewType" value="item">
                     </div>
@@ -363,6 +386,8 @@
                     <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
                         <input type="checkbox" name="interactEnabled" id="npcInteractEnabled" style="width:auto;"> <span style="font-weight:bold; color:var(--warning);">Habilitar interação (além/sem batalha)</span>
                     </label>
+
+                    <div id="interactFields" class="toggle-block" style="display:none;">
 
                     <div class="form-grid">
                         <div class="full-width">
@@ -485,10 +510,14 @@
                         </div>
                     </div>
 
+                        </div>
+
                     <h4 style="margin-top:20px;">🚶 MOVIMENTO (Patrulha)</h4>
                     <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
                         <input type="checkbox" name="patrolEnabled" id="npcPatrolEnabled" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">NPC anda automaticamente?</span>
                     </label>
+
+                    <div id="patrolFields" class="toggle-block" style="display:none;">
 
                     <div class="form-grid">
                         <div>
@@ -542,6 +571,8 @@
                         <div class="npc-hint" style="display:flex; align-items:center; color:#aaa; font-size:12px;">
                             Dica: pingpong ignora círculo e vice-versa.
                         </div>
+                    </div>
+
                     </div>
 
                     <div class="btn-row">
@@ -964,10 +995,162 @@
             }
         });
 
+        // ======== EDITOR VISUAL: DIÁLOGOS CONDICIONAIS ========
+        let npcCondRowsState = [];
+
+        function npcCondRender() {
+            const container = document.getElementById('npcCondRows');
+            if (!container) return;
+            container.innerHTML = '';
+
+            npcCondRowsState.forEach((row, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'row-item';
+
+                const flag = document.createElement('input');
+                flag.placeholder = 'flagId (ex: flag_story_1)';
+                flag.value = row.flagId || '';
+                flag.oninput = () => { npcCondRowsState[idx].flagId = flag.value; npcCondSyncJson(); };
+
+                const dialogue = document.createElement('input');
+                dialogue.placeholder = 'fala padrão';
+                dialogue.value = row.dialogue || '';
+                dialogue.oninput = () => { npcCondRowsState[idx].dialogue = dialogue.value; npcCondSyncJson(); };
+
+                const win = document.createElement('input');
+                win.placeholder = 'fala pós-vitória';
+                win.value = row.winDialogue || '';
+                win.oninput = () => { npcCondRowsState[idx].winDialogue = win.value; npcCondSyncJson(); };
+
+                const cd = document.createElement('input');
+                cd.placeholder = 'fala em cooldown';
+                cd.value = row.cooldownDialogue || '';
+                cd.oninput = () => { npcCondRowsState[idx].cooldownDialogue = cd.value; npcCondSyncJson(); };
+
+                const priority = document.createElement('input');
+                priority.type = 'number';
+                priority.step = '1';
+                priority.placeholder = 'prioridade';
+                priority.style.width = '90px';
+                priority.value = String(row.priority || 0);
+                priority.oninput = () => { npcCondRowsState[idx].priority = parseInt(priority.value, 10) || 0; npcCondSyncJson(); };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'row-remove';
+                rm.innerText = 'X';
+                rm.onclick = () => { npcCondRowsState.splice(idx, 1); npcCondRender(); npcCondSyncJson(); };
+
+                wrap.appendChild(flag);
+                wrap.appendChild(dialogue);
+                wrap.appendChild(win);
+                wrap.appendChild(cd);
+                wrap.appendChild(priority);
+                wrap.appendChild(rm);
+                container.appendChild(wrap);
+            });
+
+            if (npcCondRowsState.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#9aa7bd';
+                empty.style.fontSize = '0.9rem';
+                empty.innerText = 'Sem condições configuradas.';
+                container.appendChild(empty);
+            }
+        }
+
+        function npcCondSyncJson() {
+            const out = (npcCondRowsState || [])
+                .filter(x => x && String(x.flagId || '').trim())
+                .map(x => ({
+                    flagId: String(x.flagId || '').trim(),
+                    dialogue: String(x.dialogue || ''),
+                    winDialogue: String(x.winDialogue || ''),
+                    cooldownDialogue: String(x.cooldownDialogue || ''),
+                    priority: parseInt(x.priority, 10) || 0
+                }));
+            const target = document.getElementById('npcConditionalDialoguesJson');
+            if (target) target.value = JSON.stringify(out);
+        }
+
+        function npcCondLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                npcCondRowsState = Array.isArray(arr)
+                    ? arr.map(x => ({
+                        flagId: String((x && x.flagId) || '').trim(),
+                        dialogue: String((x && x.dialogue) || ''),
+                        winDialogue: String((x && x.winDialogue) || ''),
+                        cooldownDialogue: String((x && x.cooldownDialogue) || ''),
+                        priority: parseInt(x && x.priority, 10) || 0
+                    })).filter(x => x.flagId)
+                    : [];
+            } catch (_) {
+                npcCondRowsState = [];
+            }
+            npcCondRender();
+            npcCondSyncJson();
+        }
+
+        function npcCondAddRow() {
+            npcCondRowsState.push({ flagId: '', dialogue: '', winDialogue: '', cooldownDialogue: '', priority: 0 });
+            npcCondRender();
+            npcCondSyncJson();
+        }
+
+        function npcCondClear() {
+            npcCondRowsState = [];
+            npcCondRender();
+            npcCondSyncJson();
+        }
+
+        document.addEventListener('input', (e) => {
+            if (e && e.target && e.target.id === 'npcConditionalDialoguesJson') {
+                npcCondLoadFromJson(e.target.value);
+            }
+        });
+
+        // ======== TOGGLES (mostrar/ocultar seções opcionais) ========
+        function setupToggle(chkId, sectionId, opts = {}) {
+            const chk = document.getElementById(chkId);
+            const section = document.getElementById(sectionId);
+            if (!chk || !section) return;
+            const onDisable = typeof opts.onDisable === 'function' ? opts.onDisable : null;
+            const apply = () => {
+                const on = !!chk.checked;
+                section.style.display = on ? 'block' : 'none';
+                if (!on && onDisable) onDisable();
+            };
+            chk.addEventListener('change', apply);
+            apply();
+        }
+
         // Inicializa editores (novo NPC)
         setTimeout(() => {
             npcTeamLoadFromJson(document.getElementById('npcTeam')?.value || '[]');
             npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson')?.value || '[]');
+            npcCondLoadFromJson(document.getElementById('npcConditionalDialoguesJson')?.value || '[]');
+
+            // Define estado inicial dos toggles com base nos campos carregados
+            const interactChk = document.getElementById('npcInteractEnabled');
+            if (interactChk && interactChk.checked) { /* keep */ }
+            setupToggle('npcInteractEnabled', 'interactFields');
+
+            const patrolChk = document.getElementById('npcPatrolEnabled');
+            setupToggle('npcPatrolEnabled', 'patrolFields');
+
+            const condChk = document.getElementById('npcCondToggle');
+            const condText = document.getElementById('npcConditionalDialoguesJson')?.value || '';
+            if (condChk) {
+                if (condText && condText.trim() && condText.trim() !== '[]') condChk.checked = true;
+                setupToggle('npcCondToggle', 'conditionalFields', {
+                    onDisable: () => {
+                        npcCondRowsState = [];
+                        npcCondRender();
+                        npcCondSyncJson();
+                    }
+                });
+            }
         }, 0);
     </script>
 </body>
