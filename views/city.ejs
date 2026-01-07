@@ -4003,45 +4003,164 @@
                 return;
             }
 
-            // Tenta parar "em frente" ao NPC, mas respeitando paredes/colisões.
-            const stopDist = Math.max(1, Math.min(8, interactRange - 1));
-            const ratio = stopDist / dist;
-            let desiredX = npcX - (dx * ratio);
-            let desiredY = npcY - (dy * ratio);
-            desiredX = Math.max(0, Math.min(100, desiredX));
-            desiredY = Math.max(0, Math.min(100, desiredY));
 
-            const safeDest = getSafeTarget(currX, currY, desiredX, desiredY);
-            const moveDist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
-            if (moveDist < 0.1) {
-                // Se não consegue andar, mas já está dentro do alcance configurado, fala mesmo assim.
-                if (dist <= interactRange) {
-                    interactWithNPC(npc);
-                } else {
-                    if (typeof showToast === 'function') showToast('Caminho bloqueado.', { bg: '#e74c3c' });
+            // Pathfinding simples em grade (1%): evita o "caminho bloqueado" quando há rota ao redor.
+            // Objetivo: chegar em qualquer ponto alcançável dentro de interactRange.
+            function isPointBlocked(px, py) {
+                const hitWall = getActiveCollisionMap().some(rect => px >= rect.x && px <= (rect.x + rect.w) && py >= rect.y && py <= (rect.y + rect.h));
+                if (hitWall) return true;
+                const hitStoryBarrier = (Array.isArray(storyBarriersMap) ? storyBarriersMap : []).some(barrier => {
+                    if (!barrier || !barrier.requiredFlag) return false;
+                    const flagValue = window.STORY_FLAGS && window.STORY_FLAGS[barrier.requiredFlag];
+                    if (flagValue) return false;
+                    return px >= barrier.x && px <= (barrier.x + barrier.w) && py >= barrier.y && py <= (barrier.y + barrier.h);
+                });
+                if (hitStoryBarrier) return true;
+                const hitNpc = (currentNpcsCache || []).some(n => {
+                    if (!n || !n.blocksMovement) return false;
+                    const nx = typeof n.x === 'number' ? n.x : 0;
+                    const ny = typeof n.y === 'number' ? n.y : 0;
+                    return Math.abs(px - nx) <= 2.2 && Math.abs(py - ny) <= 2.2;
+                });
+                return hitNpc;
+            }
+
+            function clampGrid(v) {
+                const n = Math.round(parseFloat(v));
+                if (!Number.isFinite(n)) return 0;
+                return Math.max(0, Math.min(100, n));
+            }
+
+            const startGX = clampGrid(currX);
+            const startGY = clampGrid(currY);
+            const npcGX = clampGrid(npcX);
+            const npcGY = clampGrid(npcY);
+            const goalRadius = Math.max(1, Math.min(40, Math.floor(interactRange))); // limite defensivo
+
+            // Gera conjunto de células-alvo (dentro do alcance) - limite para não explodir.
+            const goalSet = new Set();
+            for (let ox = -goalRadius; ox <= goalRadius; ox++) {
+                for (let oy = -goalRadius; oy <= goalRadius; oy++) {
+                    const gx = npcGX + ox;
+                    const gy = npcGY + oy;
+                    if (gx < 0 || gx > 100 || gy < 0 || gy > 100) continue;
+                    const d = Math.hypot(gx - npcGX, gy - npcGY);
+                    if (d > interactRange) continue;
+                    if (isPointBlocked(gx, gy)) continue;
+                    goalSet.add(`${gx},${gy}`);
                 }
+            }
+
+            // BFS (grade 101x101)
+            const startKey = `${startGX},${startGY}`;
+            const q = [{ x: startGX, y: startGY }];
+            const visited = new Set([startKey]);
+            const parent = new Map();
+
+            let foundKey = null;
+            if (goalSet.has(startKey)) foundKey = startKey;
+
+            const dirs = [
+                { dx: 1, dy: 0 },
+                { dx: -1, dy: 0 },
+                { dx: 0, dy: 1 },
+                { dx: 0, dy: -1 }
+            ];
+
+            while (!foundKey && q.length) {
+                const cur = q.shift();
+                for (const d of dirs) {
+                    const nx = cur.x + d.dx;
+                    const ny = cur.y + d.dy;
+                    if (nx < 0 || nx > 100 || ny < 0 || ny > 100) continue;
+                    const k = `${nx},${ny}`;
+                    if (visited.has(k)) continue;
+                    if (isPointBlocked(nx, ny)) continue;
+                    visited.add(k);
+                    parent.set(k, `${cur.x},${cur.y}`);
+                    if (goalSet.has(k)) { foundKey = k; break; }
+                    q.push({ x: nx, y: ny });
+                }
+            }
+
+            if (!foundKey) {
+                // Se não achou rota, ainda permite falar se já estiver dentro do alcance.
+                if (dist <= interactRange) interactWithNPC(npc);
+                else if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
                 return;
             }
 
-            window.isMoving = true;
-            emitMovePlayer(safeDest.x, safeDest.y);
-            const travelS = calcMoveDurationS(currX, currY, safeDest.x, safeDest.y);
-            const travelTime = Math.max(120, travelS * 1000);
+            // Reconstrói caminho (do goal até o start)
+            const path = [];
+            let walkKey = foundKey;
+            while (walkKey && walkKey !== startKey) {
+                const parts = walkKey.split(',');
+                path.push({ x: parseInt(parts[0], 10), y: parseInt(parts[1], 10) });
+                walkKey = parent.get(walkKey);
+            }
+            path.reverse();
 
-            setTimeout(() => {
-                window.isMoving = false;
-
-                const me = document.getElementById(`p-${window.myId}`);
-                const px = me ? parseFloat(me.style.left) : currX;
-                const py = me ? parseFloat(me.style.top) : currY;
-                const remain = Math.hypot(npcX - px, npcY - py);
-
-                if (remain <= interactRange) {
-                    interactWithNPC(npc);
-                } else {
-                    if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
+            // Compacta em segmentos retos visíveis (usa getSafeTarget para validar).
+            const segments = [];
+            let segFromX = currX;
+            let segFromY = currY;
+            let i = 0;
+            while (i < path.length) {
+                let best = { x: path[i].x, y: path[i].y };
+                for (let j = i; j < path.length; j++) {
+                    const cand = { x: path[j].x, y: path[j].y };
+                    const safe = getSafeTarget(segFromX, segFromY, cand.x, cand.y);
+                    const ok = (Math.hypot(safe.x - cand.x, safe.y - cand.y) < 0.01);
+                    if (ok) best = cand;
+                    else break;
                 }
-            }, travelTime + 60);
+                segments.push(best);
+                segFromX = best.x;
+                segFromY = best.y;
+                // avança até best
+                while (i < path.length && !(path[i].x === best.x && path[i].y === best.y)) i++;
+                i++;
+                if (segments.length > 80) break; // limite defensivo
+            }
+
+            let segIndex = 0;
+            window.isMoving = true;
+
+            const step = () => {
+                if (window.isInteracting || window.isTeleporting) { window.isMoving = false; return; }
+                if (segIndex >= segments.length) {
+                    window.isMoving = false;
+                    const me = document.getElementById(`p-${window.myId}`);
+                    const px = me ? parseFloat(me.style.left) : currX;
+                    const py = me ? parseFloat(me.style.top) : currY;
+                    const remain = Math.hypot(npcX - px, npcY - py);
+                    if (remain <= interactRange) interactWithNPC(npc);
+                    else if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
+                    return;
+                }
+
+                const dest = segments[segIndex++];
+                emitMovePlayer(dest.x, dest.y);
+                const travelS = calcMoveDurationS(segFromX, segFromY, dest.x, dest.y);
+                const travelTime = Math.max(120, travelS * 1000);
+                segFromX = dest.x;
+                segFromY = dest.y;
+
+                setTimeout(() => {
+                    const me = document.getElementById(`p-${window.myId}`);
+                    const px = me ? parseFloat(me.style.left) : segFromX;
+                    const py = me ? parseFloat(me.style.top) : segFromY;
+                    const remain = Math.hypot(npcX - px, npcY - py);
+                    if (remain <= interactRange) {
+                        window.isMoving = false;
+                        interactWithNPC(npc);
+                        return;
+                    }
+                    step();
+                }, travelTime + 60);
+            };
+
+            step();
         };
 
         async function openNpcShop(npcName, npcSkin, npcId, items) {
