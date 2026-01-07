@@ -433,6 +433,16 @@
                     </div>
 
                     <div class="form-grid">
+                        <div>
+                            <label>Alcance de interação (0 = padrão)</label>
+                            <input type="number" name="interactRange" id="npcInteractRange" value="0" min="0" step="0.5">
+                        </div>
+                        <div class="full-width">
+                            <div class="hint" style="margin-top:24px; color:#9aa7bd; font-size:0.85rem;">Use para falar com NPC atrás de balcão/barreira (ex: 12 a 18). Se 0, usa o padrão do jogo.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
                         <div class="full-width">
                             <label>Texto de cura (se serviço = Curar time)</label>
                             <input type="text" name="interactHealDialogue" id="npcInteractHealDialogue" placeholder="Posso curar seus monstros!" autocomplete="off">
@@ -707,6 +717,7 @@
             document.getElementById('npcInteractServiceType').value = '';
             document.getElementById('npcInteractHealDialogue').value = '';
             document.getElementById('npcInteractShopItemsJson').value = '';
+            document.getElementById('npcInteractRange').value = 0;
             document.getElementById('npcInteractReqId').value = '';
             document.getElementById('npcInteractReqQty').value = 1;
             document.getElementById('npcInteractConsume').checked = false;
@@ -802,6 +813,7 @@
                 document.getElementById('npcInteractServiceType').value = n.interact.serviceType || '';
                 document.getElementById('npcInteractHealDialogue').value = n.interact.healDialogue || '';
                 document.getElementById('npcInteractShopItemsJson').value = n.interact.shopItems ? JSON.stringify(n.interact.shopItems) : '';
+                document.getElementById('npcInteractRange').value = (n.interact && n.interact.range) ? n.interact.range : 0;
                 npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
                 document.getElementById('npcInteractReqId').value = n.interact.requiresItemId || '';
                 document.getElementById('npcInteractReqQty').value = n.interact.requiresItemQty || 1;

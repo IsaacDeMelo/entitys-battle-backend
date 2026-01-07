@@ -93,6 +93,10 @@ const NPCSchema = new mongoose.Schema({
     interact: {
         enabled: { type: Boolean, default: false },
 
+        // Alcance máximo de interação (em unidades do mapa: o mesmo "dist" usado no client, em % do mapa).
+        // 0 = usa o padrão do client (retrocompatível)
+        range: { type: Number, default: 0 },
+
         // Tipo de serviço (opcional):
         // - '' (padrão): interação de história/itens (quest)
         // - 'heal': cura o time do jogador

@@ -44,13 +44,13 @@
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% 400%; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
-        .player.walking { animation: walk-anim 0.6s steps(4) infinite; animation-delay: -0.15s; }
+        .player.walking { animation: walk-anim 0.48s step-end infinite; }
         @keyframes walk-anim { 
-            0% { background-position-x: 0; } 
-            25% { background-position-x: -25%; }
-            50% { background-position-x: -50%; }
-            75% { background-position-x: -75%; }
-            100% { background-position-x: -100%; }
+            0% { background-position-x: 33.33%; }
+            25% { background-position-x: 66.66%; }
+            50% { background-position-x: 100%; }
+            75% { background-position-x: 66.66%; }
+            100% { background-position-x: 33.33%; }
         }
         .player[data-dir="down"] { background-position-y: 0%; } .player[data-dir="left"] { background-position-y: 33.33%; } .player[data-dir="right"] { background-position-y: 66.66%; } .player[data-dir="up"] { background-position-y: 100%; }
         
@@ -1379,6 +1379,11 @@
                                 <option value="true">sim</option>
                             </select>
                         </div>
+                        <div class="npcField">
+                            <label>Alcance de interação (0 = padrão)</label>
+                            <input id="npcEdInteractRange" type="number" min="0" step="0.5" placeholder="0 = padrão (ex: balcão/grade)" />
+                            <div class="npcHint" style="margin-top:6px;">Aumente para conseguir falar com NPC atrás de balcão/barreira (mesma unidade do mapa usada pelo jogo).</div>
+                        </div>
                         <div class="npcField" id="npcEdInteractConsumeBox">
                             <label>Consumir item requerido?</label>
                             <select id="npcEdInteractConsume">
@@ -2568,6 +2573,7 @@
             document.getElementById('npcEdRewardUnique').value = 'false';
 
             document.getElementById('npcEdInteractEnabled').value = 'false';
+            document.getElementById('npcEdInteractRange').value = 0;
             document.getElementById('npcEdInteractConsume').value = 'false';
             document.getElementById('npcEdInteractReqId').value = '';
             document.getElementById('npcEdInteractReqQty').value = 1;
@@ -2919,6 +2925,7 @@
             document.getElementById('npcEdRewardUnique').value = (npc.reward && npc.reward.unique) ? 'true' : 'false';
 
             document.getElementById('npcEdInteractEnabled').value = (npc.interact && npc.interact.enabled) ? 'true' : 'false';
+            document.getElementById('npcEdInteractRange').value = (npc.interact && Number.isFinite(parseFloat(npc.interact.range))) ? (parseFloat(npc.interact.range) || 0) : 0;
             document.getElementById('npcEdInteractConsume').value = (npc.interact && npc.interact.consumesRequiredItem) ? 'true' : 'false';
             document.getElementById('npcEdInteractReqId').value = (npc.interact && npc.interact.requiresItemId) ? npc.interact.requiresItemId : '';
             document.getElementById('npcEdInteractReqQty').value = (npc.interact && npc.interact.requiresItemQty) ? npc.interact.requiresItemQty : 1;
@@ -3018,6 +3025,7 @@
             fd.append('rewardUnique', document.getElementById('npcEdRewardUnique').value === 'true' ? 'true' : 'false');
 
             fd.append('interactEnabled', document.getElementById('npcEdInteractEnabled').value === 'true' ? 'true' : 'false');
+            fd.append('interactRange', document.getElementById('npcEdInteractRange').value || '0');
             fd.append('interactConsumesRequiredItem', document.getElementById('npcEdInteractConsume').value === 'true' ? 'true' : 'false');
             fd.append('interactRequiresItemId', document.getElementById('npcEdInteractReqId').value || '');
             fd.append('interactRequiresItemQty', document.getElementById('npcEdInteractReqQty').value || '1');
@@ -3848,6 +3856,12 @@
             if (window.isMoving || window.isInteracting || window.isTeleporting) return;
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
 
+            function getNpcInteractRange(n) {
+                const raw = n && n.interact ? n.interact.range : 0;
+                const v = parseFloat(raw);
+                return (Number.isFinite(v) && v > 0) ? v : 9;
+            }
+
             // Assim que "aborda" (clica), pausa a patrulha e vira pro jogador.
             try {
                 if (npc && npc._id) {
@@ -3872,14 +3886,17 @@
             const dy = npcY - currY;
             const dist = Math.hypot(dx, dy);
 
+            const interactRange = getNpcInteractRange(npc);
+
             // Se já está perto, inicia o menu direto.
-            if (dist <= 9) {
+            if (dist <= interactRange) {
                 interactWithNPC(npc);
                 return;
             }
 
             // Tenta parar "em frente" ao NPC, mas respeitando paredes/colisões.
-            const ratio = 8 / dist;
+            const stopDist = Math.max(1, Math.min(8, interactRange - 1));
+            const ratio = stopDist / dist;
             let desiredX = npcX - (dx * ratio);
             let desiredY = npcY - (dy * ratio);
             desiredX = Math.max(0, Math.min(100, desiredX));
@@ -3888,7 +3905,12 @@
             const safeDest = getSafeTarget(currX, currY, desiredX, desiredY);
             const moveDist = Math.hypot(safeDest.x - currX, safeDest.y - currY);
             if (moveDist < 0.1) {
-                if (typeof showToast === 'function') showToast('Caminho bloqueado.', { bg: '#e74c3c' });
+                // Se não consegue andar, mas já está dentro do alcance configurado, fala mesmo assim.
+                if (dist <= interactRange) {
+                    interactWithNPC(npc);
+                } else {
+                    if (typeof showToast === 'function') showToast('Caminho bloqueado.', { bg: '#e74c3c' });
+                }
                 return;
             }
 
@@ -3905,7 +3927,7 @@
                 const py = me ? parseFloat(me.style.top) : currY;
                 const remain = Math.hypot(npcX - px, npcY - py);
 
-                if (remain <= 9) {
+                if (remain <= interactRange) {
                     interactWithNPC(npc);
                 } else {
                     if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
@@ -4684,6 +4706,12 @@
                 return { npc: best, dist: bestDist };
             }
 
+            function getNpcInteractRange(n) {
+                const raw = n && n.interact ? n.interact.range : 0;
+                const v = parseFloat(raw);
+                return (Number.isFinite(v) && v > 0) ? v : 9;
+            }
+
             function virtualInteract() {
                 if (window.isTeleporting || window.isInteracting) return;
                 const myPlayer = document.getElementById(`p-${window.myId}`);
@@ -4698,7 +4726,8 @@
                 }
 
                 // Se estiver perto, interage direto; se não, anda até ele (sem atravessar parede)
-                if (dist <= 9) {
+                const interactRange = getNpcInteractRange(npc);
+                if (dist <= interactRange) {
                     try { interactWithNPC(npc); } catch (_) {}
                 } else {
                     try { moveToAndTalkToNPC(npc); } catch (_) {}
