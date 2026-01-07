@@ -705,6 +705,8 @@
 
             npcTeamLoadFromJson(document.getElementById('npcTeam').value);
             npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
+            const condField = document.getElementById('npcConditionalDialoguesJson');
+            if (condField) { condField.value = ''; npcCondLoadFromJson('[]'); }
         }
 
         function clearSkinForm() {
@@ -798,6 +800,16 @@
                 document.getElementById('npcPatrolCy').value = (n.patrol.circle && n.patrol.circle.cy !== undefined) ? n.patrol.circle.cy : 50;
                 document.getElementById('npcPatrolRadius').value = (n.patrol.circle && n.patrol.circle.radius !== undefined) ? n.patrol.circle.radius : 6;
                 document.getElementById('npcPatrolClockwise').checked = !!(n.patrol.circle && n.patrol.circle.clockwise);
+            }
+
+            // Diálogos condicionais (garante inicialização segura)
+            const condField = document.getElementById('npcConditionalDialoguesJson');
+            if (condField) {
+                const condList = Array.isArray(n && n.conditionalDialogues) ? n.conditionalDialogues : [];
+                condField.value = condList.length ? JSON.stringify(condList) : '';
+                npcCondLoadFromJson(condField.value || '[]');
+                const condChk = document.getElementById('npcCondToggle');
+                if (condChk) condChk.checked = condList.length > 0;
             }
         }
         

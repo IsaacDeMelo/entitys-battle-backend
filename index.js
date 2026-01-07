@@ -275,7 +275,7 @@ function resolveNpcDialogue(npc, user, key) {
         const flags = (user && user.storyFlags) ? user.storyFlags : {};
         // Ordena por priority desc, depois ordem natural
         const sorted = list
-            .filter(d => d && d.flagId && flags[d.flagId])
+            .filter(d => d && d.flagId && readStoryFlag(flags, d.flagId))
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
         const hit = sorted.find(d => d && d[key]);
         if (hit && hit[key]) return hit[key];
@@ -1103,11 +1103,12 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
             moveDirection: interactMoveDirection || ''
         };
 
-        const conditionalDialogues = (() => {
-            if (!conditionalDialoguesJson) return [];
+        const conditionalDialoguesParsed = (() => {
+            const prevList = Array.isArray(previous && previous.conditionalDialogues) ? previous.conditionalDialogues : [];
+            if (!conditionalDialoguesJson || !String(conditionalDialoguesJson).trim()) return prevList;
             try {
                 const arr = JSON.parse(conditionalDialoguesJson);
-                if (!Array.isArray(arr)) return [];
+                if (!Array.isArray(arr)) return prevList;
                 return arr
                     .map(x => ({
                         flagId: String((x && x.flagId) || '').trim(),
@@ -1118,7 +1119,7 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
                     }))
                     .filter(x => x.flagId);
             } catch (_) {
-                return [];
+                return prevList;
             }
         })();
 
@@ -1200,7 +1201,7 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
             reward,
             blocksMovement: blocksMovement === 'on' || blocksMovement === true || blocksMovement === 'true',
             interact,
-            conditionalDialogues,
+            conditionalDialogues: conditionalDialoguesParsed,
             patrol: nextPatrol,
             battleBackground: finalBattleBg
         };
@@ -1314,7 +1315,7 @@ app.post('/api/npc/interact', async (req, res) => {
                 return res.json({ success: false, error: 'Não há 3 monstros iniciais configurados.' });
             }
 
-            const text = interact.successDialogue || resolveNpcDialogue(npc, user, 'dialogue') || 'Escolha o seu monstro inicial.';
+            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.successDialogue || 'Escolha o seu monstro inicial.';
             return res.json({
                 success: true,
                 text,
@@ -1400,7 +1401,7 @@ app.post('/api/npc/interact', async (req, res) => {
                 }
             }
             await user.save();
-            const text = interact.healDialogue || interact.successDialogue || `Seus monstros foram curados! (${count})`;
+            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.healDialogue || interact.successDialogue || `Seus monstros foram curados! (${count})`;
             return res.json({
                 success: true,
                 text,
@@ -1421,7 +1422,7 @@ app.post('/api/npc/interact', async (req, res) => {
                 }))
                 .filter(x => x.itemId && x.price > 0);
 
-            const text = interact.successDialogue || resolveNpcDialogue(npc, user, 'dialogue') || 'O que você quer comprar?';
+            const text = resolveNpcDialogue(npc, user, 'dialogue') || interact.successDialogue || 'O que você quer comprar?';
             return res.json({
                 success: true,
                 text,
@@ -1433,7 +1434,7 @@ app.post('/api/npc/interact', async (req, res) => {
             });
         }
 
-        const successText = interact.successDialogue || giveMsg || resolveNpcDialogue(npc, user, 'dialogue') || 'Feito.';
+        const successText = resolveNpcDialogue(npc, user, 'dialogue') || interact.successDialogue || giveMsg || 'Feito.';
         return res.json({
             success: true,
             text: successText,
@@ -1833,7 +1834,49 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             moveDirection: interactMoveDirection || ''
         };
 
+        // Compat: processa diálogos condicionais enviados pelo formulário do Lab
+        const conditionalDialogues = (() => {
+            if (!conditionalDialoguesJson) return [];
+            try {
+                const arr = JSON.parse(conditionalDialoguesJson);
+                if (!Array.isArray(arr)) return [];
+                return arr
+                    .map(x => ({
+                        flagId: String((x && x.flagId) || '').trim(),
+                        dialogue: (x && x.dialogue) ? String(x.dialogue) : '',
+                        winDialogue: (x && x.winDialogue) ? String(x.winDialogue) : '',
+                        cooldownDialogue: (x && x.cooldownDialogue) ? String(x.cooldownDialogue) : '',
+                        priority: Number.isFinite(x && x.priority) ? x.priority : (parseInt(x && x.priority, 10) || 0)
+                    }))
+                    .filter(x => x.flagId);
+            } catch (_) {
+                return [];
+            }
+        })();
+
         const prevNpc = npcId ? await NPC.findById(npcId).lean() : null;
+
+        // Processa diálogos condicionais com fallback ao valor anterior
+        const conditionalDialoguesParsed = (() => {
+            const prevList = Array.isArray(prevNpc && prevNpc.conditionalDialogues) ? prevNpc.conditionalDialogues : [];
+            if (!conditionalDialoguesJson || !String(conditionalDialoguesJson).trim()) return prevList;
+            try {
+                const arr = JSON.parse(conditionalDialoguesJson);
+                if (!Array.isArray(arr)) return prevList;
+                return arr
+                    .map(x => ({
+                        flagId: String((x && x.flagId) || '').trim(),
+                        dialogue: (x && x.dialogue) ? String(x.dialogue) : '',
+                        winDialogue: (x && x.winDialogue) ? String(x.winDialogue) : '',
+                        cooldownDialogue: (x && x.cooldownDialogue) ? String(x.cooldownDialogue) : '',
+                        priority: Number.isFinite(x && x.priority) ? x.priority : (parseInt(x && x.priority, 10) || 0)
+                    }))
+                    .filter(x => x.flagId);
+            } catch (_) {
+                return prevList;
+            }
+        })();
+
         const patrolIsEnabled = patrolEnabled === 'on' || patrolEnabled === true || patrolEnabled === 'true';
 
         const parsedPath = (() => {
@@ -1911,7 +1954,7 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             reward,
             blocksMovement: blocksMovement === 'on' || blocksMovement === true || blocksMovement === 'true',
             interact,
-            conditionalDialogues,
+            conditionalDialogues: conditionalDialoguesParsed,
             patrol,
             battleBackground: finalBattleBg
         }; 

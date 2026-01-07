@@ -3282,22 +3282,60 @@
             const cleanName = npc.name.replace(/\(kid\)/i, '').trim();
             const defeatedList = window.DEFEATED_NPCS || [];
             const record = defeatedList.find(r => (r === npc._id) || (r.npcId === npc._id));
-            let dialogueText = npc.dialogue || 'Olá!'; let showBattleOptions = false;
-            if (!record) { showBattleOptions = true; } 
-            else {
-                const defeatedAt = record.defeatedAt || 0; const cooldownMins = npc.cooldownMinutes || 0;
-                if (cooldownMins <= 0) { dialogueText = npc.winDialogue || "Você já me venceu! Bom trabalho."; showBattleOptions = false; } 
-                else {
-                    const diffMinutes = (Date.now() - defeatedAt) / 60000;
-                    if (diffMinutes < cooldownMins) { dialogueText = (npc.cooldownDialogue || "Estou descansando...") + ` (${Math.ceil(cooldownMins - diffMinutes)}m)`; showBattleOptions = false; } 
-                    else { dialogueText = npc.dialogue || "Vamos batalhar novamente!"; showBattleOptions = true; }
-                }
-            }
+            
+            // Para diálogos condicionais funcionarem, precisamos consultar o backend.
+            // Faremos isso dentro de uma função async e aplicaremos após a verificação.
             const svcForInteract = (npc && npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
             const typeForInteract = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
             const isStarterNpcForInteract = (svcForInteract === 'starter') || (typeForInteract === 'starter');
             const hasInteract = isStarterNpcForInteract || !!(npc.interact && npc.interact.enabled);
             const canBattle = npc.team && npc.team.length > 0;
+            
+            // Função que resolve o diálogo correto (com condicionais)
+            async function resolveDialogueText(key = 'dialogue') {
+                // Se tem interação, consulta o backend para aplicar condicionais
+                if (hasInteract) {
+                    try {
+                        const myEl = document.getElementById(`p-${window.myId}`);
+                        const px = myEl ? parseFloat(myEl.style.left) : null;
+                        const py = myEl ? parseFloat(myEl.style.top) : null;
+                        const res = await fetch('/api/npc/interact', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (data && data.text) return data.text;
+                    } catch (_) {}
+                }
+                // Fallback: lógica antiga baseada em cooldown
+                let dialogueText = npc.dialogue || 'Olá!';
+                if (!record) return dialogueText;
+                const defeatedAt = record.defeatedAt || 0; 
+                const cooldownMins = npc.cooldownMinutes || 0;
+                if (cooldownMins <= 0) { 
+                    return npc.winDialogue || "Você já me venceu! Bom trabalho."; 
+                } else {
+                    const diffMinutes = (Date.now() - defeatedAt) / 60000;
+                    if (diffMinutes < cooldownMins) { 
+                        return (npc.cooldownDialogue || "Estou descansando...") + ` (${Math.ceil(cooldownMins - diffMinutes)}m)`; 
+                    } else { 
+                        return npc.dialogue || "Vamos batalhar novamente!"; 
+                    }
+                }
+            }
+            
+            let showBattleOptions = false;
+            if (!record) { showBattleOptions = true; } 
+            else {
+                const defeatedAt = record.defeatedAt || 0; const cooldownMins = npc.cooldownMinutes || 0;
+                if (cooldownMins <= 0) { showBattleOptions = false; } 
+                else {
+                    const diffMinutes = (Date.now() - defeatedAt) / 60000;
+                    if (diffMinutes < cooldownMins) { showBattleOptions = false; } 
+                    else { showBattleOptions = true; }
+                }
+            }
 
             async function runNpcTalk() {
                 try {
@@ -3453,21 +3491,9 @@
                 });
             }
 
-            // Se já escolheu o starter, não mostra a fala "de escolher" no menu inicial.
-            try {
-                const svc = (npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
-                const type = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
-                const rawChosen = (window.STORY_FLAGS && window.STORY_FLAGS['starter_chosen']);
-                const chosen = (rawChosen === true || rawChosen === 1 || rawChosen === '1' || String(rawChosen).trim().toLowerCase() === 'true');
-                if (hasInteract && (svc === 'starter' || type === 'starter') && chosen) {
-                    dialogueText = (npc.interact && npc.interact.alreadyDoneDialogue)
-                        ? npc.interact.alreadyDoneDialogue
-                        : 'Você já escolheu o seu monstro inicial.';
-                }
-            } catch (_) {}
-
             // Evita diálogo duplicado: se o starter já foi escolhido, não precisa de "FALAR".
             let canTalk = hasInteract;
+            let dialogueTextForMenu = npc.dialogue || 'Olá!'; // Texto placeholder para o menu inicial
             try {
                 const svc = (npc.interact && npc.interact.serviceType) ? String(npc.interact.serviceType).trim() : '';
                 const type = (npc && npc.npcType) ? String(npc.npcType).trim() : '';
@@ -3475,6 +3501,9 @@
                 const chosen = (rawChosen === true || rawChosen === 1 || rawChosen === '1' || String(rawChosen).trim().toLowerCase() === 'true');
                 if (hasInteract && (svc === 'starter' || type === 'starter') && chosen) {
                     canTalk = false;
+                    dialogueTextForMenu = (npc.interact && npc.interact.alreadyDoneDialogue)
+                        ? npc.interact.alreadyDoneDialogue
+                        : 'Você já escolheu o seu monstro inicial.';
                 }
             } catch (_) {}
 
@@ -3489,50 +3518,59 @@
             }
             if (!hasTalkOption && hasBattleOption) {
                 // NPC com batalha (ex.: treinador) sem opção de fala/serviço: mostra um texto antes da batalha.
-                setDialogImageStyle('pixel');
-                showRPGDialog(cleanName, npc.skin, dialogueText, [
-                    { text: 'BATALHAR', value: 'battle', class: 'confirm' },
-                    { text: 'SAIR', value: 'exit', class: 'cancel' }
-                ]).then((choice) => {
-                    endInteraction();
-                    if (choice === 'battle') {
-                        runNpcBattle();
-                    } else {
+                // Resolve o diálogo condicionado antes de exibir
+                resolveDialogueText('dialogue').then(dialogueText => {
+                    setDialogImageStyle('pixel');
+                    showRPGDialog(cleanName, npc.skin, dialogueText, [
+                        { text: 'BATALHAR', value: 'battle', class: 'confirm' },
+                        { text: 'SAIR', value: 'exit', class: 'cancel' }
+                    ]).then((choice) => {
+                        endInteraction();
+                        if (choice === 'battle') {
+                            runNpcBattle();
+                        } else {
                         disengageNow();
                     }
+                });
                 });
                 return;
             }
             if (!hasTalkOption && !hasBattleOption) {
-                setDialogImageStyle('pixel');
-                showRPGDialog(cleanName, npc.skin, dialogueText, [], () => { endInteraction(); disengageNow(); });
+                // Resolve o diálogo condicionado antes de exibir
+                resolveDialogueText('winDialogue').then(dialogueText => {
+                    setDialogImageStyle('pixel');
+                    showRPGDialog(cleanName, npc.skin, dialogueText, [], () => { endInteraction(); disengageNow(); });
+                });
                 return;
             }
 
             // Caso com escolha real (ex.: treinador com talk + battle): mantém menu.
-            let buttons = [];
-            if (hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
-            if (hasBattleOption) buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
-            buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
-            setDialogImageStyle('pixel');
-            showRPGDialog(cleanName, npc.skin, dialogueText, buttons, (result) => {
-                if (result === 'exit' || result === true || result === undefined || result === null) {
-                    disengageNow();
-                }
-            }, { keepOpenForValues: ['talk'] }).then(async (choice) => {
-                window.isInteracting = false;
+            // Resolve o diálogo antes de mostrar o menu
+            resolveDialogueText('dialogue').then(dialogueText => {
+                let buttons = [];
+                if (hasTalkOption) buttons.push({ text: 'FALAR', value: 'talk', class: 'confirm' });
+                if (hasBattleOption) buttons.push({ text: 'BATALHAR', value: 'battle', class: 'confirm' });
+                buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
+                setDialogImageStyle('pixel');
+                showRPGDialog(cleanName, npc.skin, dialogueText, buttons, (result) => {
+                    if (result === 'exit' || result === true || result === undefined || result === null) {
+                        disengageNow();
+                    }
+                }, { keepOpenForValues: ['talk'] }).then(async (choice) => {
+                    window.isInteracting = false;
 
-                if (choice === 'talk') {
-                    await runNpcTalk();
-                    return;
-                }
+                    if (choice === 'talk') {
+                        await runNpcTalk();
+                        return;
+                    }
 
-                if (choice === 'battle') {
-                    runNpcBattle();
-                    return;
-                }
+                    if (choice === 'battle') {
+                        runNpcBattle();
+                        return;
+                    }
 
-                await disengageNow();
+                    await disengageNow();
+                });
             });
         };
 
