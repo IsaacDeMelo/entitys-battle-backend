@@ -62,6 +62,9 @@
         .row-list { display:flex; flex-direction:column; gap:8px; }
         .row-item { display:grid; grid-template-columns: 1fr 90px 46px; gap:10px; align-items:center; }
         .row-item.shop { grid-template-columns: 1fr 110px 46px; }
+        .row-item input, .row-item textarea { background: #0b1220; color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 9px 10px; font-family: 'Roboto', sans-serif; font-size: 0.95rem; width: 100%; box-sizing: border-box; }
+        .row-item textarea { min-height: 50px; resize: vertical; }
+        .row-item input:focus, .row-item textarea:focus { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.16); outline: none; }
         .row-remove { background: var(--danger); border: none; color: #fff; border-radius: 8px; height: 40px; }
         details.advanced { border: 1px solid #334155; border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.15); }
         details.advanced summary { cursor: pointer; font-weight: 800; color: #94a3b8; }
