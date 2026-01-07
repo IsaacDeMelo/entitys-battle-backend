@@ -1032,28 +1032,32 @@
                 const flag = document.createElement('input');
                 flag.placeholder = 'flagId (ex: flag_story_1)';
                 flag.value = row.flagId || '';
-                flag.style.flex = '1';
+                flag.style.width = '220px';
+                flag.style.flex = 'none';
                 flag.oninput = () => { npcCondRowsState[idx].flagId = flag.value; npcCondSyncJson(); };
 
                 const dialogue = document.createElement('textarea');
                 dialogue.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pré-vitória/cooldown)';
                 dialogue.value = row.dialogue || '';
                 dialogue.style.minHeight = '150px';
-                dialogue.style.flex = '2';
+                dialogue.style.width = '100%';
+                dialogue.style.flex = '1';
                 dialogue.oninput = () => { npcCondRowsState[idx].dialogue = dialogue.value; npcCondSyncJson(); };
 
                 const win = document.createElement('textarea');
                 win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
                 win.value = row.winDialogue || '';
                 win.style.minHeight = '150px';
-                win.style.flex = '2';
+                win.style.width = '100%';
+                win.style.flex = '1';
                 win.oninput = () => { npcCondRowsState[idx].winDialogue = win.value; npcCondSyncJson(); };
 
                 const cd = document.createElement('textarea');
                 cd.placeholder = '⏳ Fala em cooldown (quando tem a flag MAS já falou recentemente)';
                 cd.value = row.cooldownDialogue || '';
                 cd.style.minHeight = '150px';
-                cd.style.flex = '2';
+                cd.style.width = '100%';
+                cd.style.flex = '1';
                 cd.oninput = () => { npcCondRowsState[idx].cooldownDialogue = cd.value; npcCondSyncJson(); };
 
                 const priority = document.createElement('input');

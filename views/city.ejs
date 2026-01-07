@@ -1993,7 +1993,8 @@
                 const flag = document.createElement('input');
                 flag.placeholder = 'flagId (ex: venceu_ginasio1)';
                 flag.value = row.flagId || '';
-                flag.style.flex = '1';
+                flag.style.width = '220px';
+                flag.style.flex = 'none';
                 flag.oninput = () => { npcEdConditionalState[idx].flagId = flag.value; };
 
                 const prio = document.createElement('input');
@@ -2017,19 +2018,22 @@
 
                 const dia = document.createElement('textarea');
                 dia.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pós-vitória/cooldown)';
-                dia.style.minHeight = '150px';
+                    dia.style.minHeight = '150px';
+                    dia.style.width = '100%';
                 dia.value = row.dialogue || '';
                 dia.oninput = () => { npcEdConditionalState[idx].dialogue = dia.value; };
 
                 const win = document.createElement('textarea');
                 win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
-                win.style.minHeight = '150px';
+                    win.style.minHeight = '150px';
+                    win.style.width = '100%';
                 win.value = row.winDialogue || '';
                 win.oninput = () => { npcEdConditionalState[idx].winDialogue = win.value; };
 
                 const cool = document.createElement('textarea');
                 cool.placeholder = '⏳ Fala em cooldown (quando tem a flag MAS já falou recentemente)';
-                cool.style.minHeight = '150px';
+                    cool.style.minHeight = '150px';
+                    cool.style.width = '100%';
                 cool.value = row.cooldownDialogue || '';
                 cool.oninput = () => { npcEdConditionalState[idx].cooldownDialogue = cool.value; };
 
