@@ -154,6 +154,13 @@
         .npcInlineHelp textarea { min-height: 60px; resize: vertical; }
         .npcInlineHelp input:focus, .npcInlineHelp textarea:focus { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.16); }
 
+        /* Novo layout condicional */
+        .cond-card { background: rgba(255,255,255,0.04); border: 1px solid #2c374b; border-radius: 12px; padding: 12px; display: grid; grid-template-columns: 220px 1fr; grid-auto-rows: auto; gap: 10px 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+        .cond-card .full { grid-column: span 2; }
+        .cond-card .flag-prio { display: flex; gap: 10px; align-items: center; }
+        .cond-card .flag-prio input[type="number"] { width: 80px; }
+        .cond-card .actions { display: flex; justify-content: flex-end; gap: 10px; }
+
         /* Seções do formulário de NPC */
         .npcBlock { border: 1px solid #334155; border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.02); margin-bottom: 10px; }
         .npcBlockHeader { display:flex; gap: 10px; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
@@ -1979,16 +1986,10 @@
 
             npcEdConditionalState.forEach((row, idx) => {
                 const box = document.createElement('div');
-                box.className = 'npcInlineHelp';
-                box.style.display = 'flex';
-                box.style.flexDirection = 'column';
-                box.style.gap = '8px';
+                box.className = 'cond-card';
 
                 const header = document.createElement('div');
-                header.style.display = 'flex';
-                header.style.gap = '8px';
-                header.style.alignItems = 'center';
-                header.style.flexWrap = 'wrap';
+                header.className = 'flag-prio full';
 
                 const flag = document.createElement('input');
                 flag.placeholder = 'flagId (ex: venceu_ginasio1)';
@@ -2017,23 +2018,26 @@
                 header.appendChild(rm);
 
                 const dia = document.createElement('textarea');
+                dia.className = 'full';
                 dia.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pós-vitória/cooldown)';
-                    dia.style.minHeight = '150px';
-                    dia.style.width = '100%';
+                dia.style.minHeight = '150px';
+                dia.style.width = '100%';
                 dia.value = row.dialogue || '';
                 dia.oninput = () => { npcEdConditionalState[idx].dialogue = dia.value; };
 
                 const win = document.createElement('textarea');
+                win.className = 'full';
                 win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
-                    win.style.minHeight = '150px';
-                    win.style.width = '100%';
+                win.style.minHeight = '150px';
+                win.style.width = '100%';
                 win.value = row.winDialogue || '';
                 win.oninput = () => { npcEdConditionalState[idx].winDialogue = win.value; };
 
                 const cool = document.createElement('textarea');
+                cool.className = 'full';
                 cool.placeholder = '⏳ Fala em cooldown (quando tem a flag MAS já falou recentemente)';
-                    cool.style.minHeight = '150px';
-                    cool.style.width = '100%';
+                cool.style.minHeight = '150px';
+                cool.style.width = '100%';
                 cool.value = row.cooldownDialogue || '';
                 cool.oninput = () => { npcEdConditionalState[idx].cooldownDialogue = cool.value; };
 

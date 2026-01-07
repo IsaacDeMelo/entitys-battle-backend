@@ -663,7 +663,7 @@ async function interactWithNPC(npc) {
                 const dialogData = await dialogRes.json();
                 showRPGDialog(npc.name, npc.skin, dialogData.text || '...');
             } catch (e) {
-                showRPGDialog(npc.name, npc.skin, npc.dialogue || '...');
+                showRPGDialog(npc.name, npc.skin, '...');
             }
             return;
         }
@@ -679,7 +679,7 @@ async function interactWithNPC(npc) {
             const dialogData = await dialogRes.json();
             dialogueText = dialogData.text || '...';
         } catch (e) {
-            dialogueText = npc.dialogue || '...';
+            dialogueText = '...';
         }
         
         showRPGDialog(npc.name, npc.skin, dialogueText, [

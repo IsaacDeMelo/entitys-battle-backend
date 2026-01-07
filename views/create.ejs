@@ -66,6 +66,12 @@
         .row-item textarea { min-height: 50px; resize: vertical; }
         .row-item input:focus, .row-item textarea:focus { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.16); outline: none; }
         .row-remove { background: var(--danger); border: none; color: #fff; border-radius: 8px; height: 40px; }
+        /* Novo layout condicional */
+        .cond-card { background: rgba(255,255,255,0.04); border: 1px solid #2c374b; border-radius: 12px; padding: 12px; display: grid; grid-template-columns: 220px 1fr; grid-auto-rows: auto; gap: 10px 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+        .cond-card .full { grid-column: span 2; }
+        .cond-card .flag-prio { display: flex; gap: 10px; align-items: center; }
+        .cond-card .flag-prio input[type="number"] { width: 90px; }
+        .cond-card .actions { display: flex; justify-content: flex-end; gap: 10px; }
         details.advanced { border: 1px solid #334155; border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.15); }
         details.advanced summary { cursor: pointer; font-weight: 800; color: #94a3b8; }
     </style>
@@ -1027,7 +1033,10 @@
 
             npcCondRowsState.forEach((row, idx) => {
                 const wrap = document.createElement('div');
-                wrap.className = 'row-item';
+                wrap.className = 'cond-card';
+
+                const flagRow = document.createElement('div');
+                flagRow.className = 'flag-prio full';
 
                 const flag = document.createElement('input');
                 flag.placeholder = 'flagId (ex: flag_story_1)';
@@ -1037,14 +1046,15 @@
                 flag.oninput = () => { npcCondRowsState[idx].flagId = flag.value; npcCondSyncJson(); };
 
                 const dialogue = document.createElement('textarea');
+                dialogue.className = 'full';
                 dialogue.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pré-vitória/cooldown)';
                 dialogue.value = row.dialogue || '';
                 dialogue.style.minHeight = '150px';
                 dialogue.style.width = '100%';
-                dialogue.style.flex = '1';
                 dialogue.oninput = () => { npcCondRowsState[idx].dialogue = dialogue.value; npcCondSyncJson(); };
 
                 const win = document.createElement('textarea');
+                win.className = 'full';
                 win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
                 win.value = row.winDialogue || '';
                 win.style.minHeight = '150px';
@@ -1053,6 +1063,7 @@
                 win.oninput = () => { npcCondRowsState[idx].winDialogue = win.value; npcCondSyncJson(); };
 
                 const cd = document.createElement('textarea');
+                cd.className = 'full';
                 cd.placeholder = '⏳ Fala em cooldown (quando tem a flag MAS já falou recentemente)';
                 cd.value = row.cooldownDialogue || '';
                 cd.style.minHeight = '150px';
@@ -1074,12 +1085,14 @@
                 rm.innerText = 'X';
                 rm.onclick = () => { npcCondRowsState.splice(idx, 1); npcCondRender(); npcCondSyncJson(); };
 
-                wrap.appendChild(flag);
+                flagRow.appendChild(flag);
+                flagRow.appendChild(priority);
+                flagRow.appendChild(rm);
+
+                wrap.appendChild(flagRow);
                 wrap.appendChild(dialogue);
                 wrap.appendChild(win);
                 wrap.appendChild(cd);
-                wrap.appendChild(priority);
-                wrap.appendChild(rm);
                 container.appendChild(wrap);
             });
 
