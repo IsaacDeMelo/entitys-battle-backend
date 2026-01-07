@@ -490,8 +490,14 @@ function moveToAndTalkToNPC(npc) {
 }
 
 async function interactWithNPC(npc) {
+    console.log(`[CLIENT] ========== interactWithNPC CHAMADO ==========`);
+    console.log(`[CLIENT] NPC completo:`, npc);
+    
     const myId = window.CURRENT_USER_ID;
     const defeatedList = window.DEFEATED_NPCS || [];
+    
+    console.log(`[CLIENT] myId: ${myId}`);
+    console.log(`[CLIENT] defeatedList:`, defeatedList);
 
     function isStarterNpc(n) {
         try {
