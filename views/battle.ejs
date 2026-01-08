@@ -759,106 +759,109 @@
             } 
         }
 
-        function playCaptureAnimation(targetId, isSuccessful, shakes = 0) {
+        function playCaptureAnimation(targetId, resultPromise) {
             return new Promise(async (resolve) => {
+                let ball = null;
                 try {
                     const side = getSide(targetId); const targetSprite = document.getElementById(`sprite-${side}`); const trainerEl = document.getElementById('trainer-p1');
-                    if(!targetSprite || !trainerEl) { resolve(); return; }
+                    if(!targetSprite || !trainerEl) { 
+                        // Se elementos não existem, só espera o request e retorna.
+                        try { return resolve(await resultPromise); } catch(e){ return resolve(null); }
+                    }
+
+                    // 1. SETUP E ANIMAÇÃO DE ARREMESSO IMEDIATA
                     const tRect = trainerEl.getBoundingClientRect(); const startX = tRect.left + (tRect.width * 0.8), startY = tRect.top + (tRect.height * 0.4);
                     const mRect = targetSprite.getBoundingClientRect(); const targetX = mRect.left + (mRect.width / 2) - 10, targetY = mRect.top + (mRect.height / 2) - 10;
                     animateThrow(trainerEl); await wait(150);
-                    const ball = document.createElement('div'); ball.className = 'catchball'; ball.style.left = startX + 'px'; ball.style.top = startY + 'px'; document.body.appendChild(ball);
+                    
+                    ball = document.createElement('div'); ball.className = 'catchball'; ball.style.left = startX + 'px'; ball.style.top = startY + 'px'; document.body.appendChild(ball);
                     const deltaX = targetX - startX, deltaY = targetY - startY;
                     
+                    // Bola viaja até o monstro
                     await ball.animate([
                         { transform: `translate(0, 0) rotate(0deg) scale(0.6)` }, 
                         { transform: `translate(${deltaX * 0.6}px, ${deltaY - 150}px) rotate(360deg) scale(0.7)`, offset: 0.6 }, 
                         { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` }
                     ], { duration: 600, easing: 'cubic-bezier(0.2, 0.6, 0.4, 1)', fill: 'forwards' }).finished;
 
-                    if (!isSuccessful) {
-                        // --- ANIMAÇÃO DE SHAKES ---
-                        // Shake o cubo antes de escapar
-                        const flash = document.getElementById('flashOverlay'); 
-                        if(flash) flash.classList.add('active'); 
-                        setTimeout(() => flash && flash.classList.remove('active'), 150);
-                        targetSprite.classList.add('absorbed-state'); 
-                        await wait(200);
-                        
-                        const groundY = mRect.bottom - 50; 
-                        const dropDistY = groundY - targetY; 
-                        await ball.animate([
-                            { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` },
-                            { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` }
-                        ], { duration: 250, easing: 'cubic-bezier(0.8, 0, 1, 0.5)', fill: 'forwards' }).finished;
-                        
-                        // Animar cada shake
-                        for(let i = 0; i < Math.min(shakes, 3); i++) {
-                            await ball.animate([
-                                { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` },
-                                { transform: `translate(${deltaX - 15}px, ${deltaY + dropDistY}px) rotate(700deg) scale(0.65)` },
-                                { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` },
-                                { transform: `translate(${deltaX + 15}px, ${deltaY + dropDistY}px) rotate(740deg) scale(0.65)` },
-                                { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` }
-                            ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' }).finished;
-                            await wait(150);
-                        }
-                        
-                        // Escapou - cubo abre
+                    // 2. AGUARDAR RESPOSTA DO SERVIDOR 
+                    let data;
+                    try { data = await resultPromise; } catch(e) { if(ball) ball.remove(); resolve(null); return; }
+
+                    if (!data || !data.threw) {
+                        // Não gastou a bola ou erro (status msg)
                         const bounceAnim = ball.animate([
-                            { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)`, opacity: 1 }, 
-                            { transform: `translate(${deltaX - 80}px, ${deltaY - 100}px) rotate(600deg) scale(0.6)`, opacity: 0 }
+                            { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)`, opacity: 1 }, 
+                            { transform: `translate(${deltaX - 40}px, ${deltaY + 40}px) rotate(600deg) scale(0.6)`, opacity: 0 }
+                        ], { duration: 300, easing: 'ease-out', fill: 'forwards' });
+                        await bounceAnim.finished;
+                        if(ball) ball.remove();
+                        resolve(data);
+                        return;
+                    }
+                    
+                    const isSuccessful = data.captured;
+                    const numShakes = (typeof data.shakes === 'number') ? data.shakes : (isSuccessful ? 3 : 0);
+
+                    // 3. EFEITO DE ABSORÇÃO
+                    const flash = document.getElementById('flashOverlay'); 
+                    if(flash) flash.classList.add('active'); 
+                    setTimeout(() => flash && flash.classList.remove('active'), 150);
+                    targetSprite.classList.add('absorbed-state'); 
+                    await wait(200);
+
+                    // 4. BOLA CAI NO CHÃO
+                    const groundY = mRect.bottom - 50; 
+                    const dropDistY = groundY - targetY; 
+                    const finalTX = deltaX;
+                    const finalTY = deltaY + dropDistY;
+
+                    await ball.animate([
+                        { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` }, 
+                        { transform: `translate(${finalTX}px, ${finalTY}px) rotate(720deg) scale(0.6)` }
+                    ], { duration: 350, easing: 'ease-in', fill: 'forwards' }).finished;
+                    
+                    // 5. SHAKES (Baseado nos dados reais)
+                    const doShake = async () => {
+                         await ball.animate([
+                            { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }, 
+                            { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(-25deg)`, offset: 0.25 }, 
+                            { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(25deg)`, offset: 0.75 }, 
+                            { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }
+                        ], { duration: 400 }).finished;
+                        await wait(500);
+                    };
+
+                    const shakesToAnim = Math.min(numShakes, 3);
+                    for(let i=0; i<shakesToAnim; i++) { await doShake(); }
+
+                    if (isSuccessful) {
+                        ball.classList.add('captured-lock');
+                        const ballVisualX = startX + finalTX;
+                        const ballVisualY = startY + finalTY;
+                        for(let i=0; i<3; i++) { 
+                            const s = document.createElement('div'); s.className = 'capture-star'; s.innerText = '★'; 
+                            s.style.left = (ballVisualX + 10 + (i*15 - 15)) + 'px'; s.style.top = (ballVisualY - 20) + 'px'; 
+                            document.body.appendChild(s); 
+                            setTimeout(() => s.remove(), 700); 
+                            await wait(100); 
+                        }
+                        await wait(800); 
+                    } else {
+                        // Falha
+                        const bounceAnim = ball.animate([
+                            { transform: `translate(${finalTX}px, ${finalTY}px) rotate(720deg) scale(0.6)`, opacity: 1 }, 
+                            { transform: `translate(${finalTX - 80}px, ${finalTY - 100}px) rotate(600deg) scale(0.6)`, opacity: 0 }
                         ], { duration: 450, easing: 'ease-out', fill: 'forwards' });
                         targetSprite.style.filter = "brightness(2) sepia(1) hue-rotate(-50deg) saturate(5)"; 
                         setTimeout(() => targetSprite.style.filter = "", 150);
                         await bounceAnim.finished; 
                         targetSprite.classList.remove('absorbed-state');
-                        ball.remove(); 
-                        resolve(); 
-                        return;
+                        if(ball) ball.remove(); 
                     }
+                    resolve(data);
 
-                    const flash = document.getElementById('flashOverlay'); if(flash) flash.classList.add('active'); setTimeout(() => flash && flash.classList.remove('active'), 150);
-                    targetSprite.classList.add('absorbed-state'); await wait(200);
-                    const groundY = mRect.bottom - 50; const dropDistY = groundY - targetY; 
-                    
-                    await ball.animate([
-                        { transform: `translate(${deltaX}px, ${deltaY}px) rotate(720deg) scale(0.6)` }, 
-                        { transform: `translate(${deltaX}px, ${deltaY + dropDistY}px) rotate(720deg) scale(0.6)` }
-                    ], { duration: 350, easing: 'ease-in', fill: 'forwards' }).finished;
-                    
-                    const finalTX = deltaX;
-                    const finalTY = deltaY + dropDistY;
-
-                    const sf = [
-                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }, 
-                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(-25deg)`, offset: 0.25 }, 
-                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(25deg)`, offset: 0.75 }, 
-                        { transform: `translate(${finalTX}px, ${finalTY}px) scale(0.6) rotate(0deg)` }
-                    ];
-                    
-                    await ball.animate(sf, { duration: 400 }).finished; await wait(500); 
-                    await ball.animate(sf, { duration: 400 }).finished; await wait(500); 
-                    await ball.animate(sf, { duration: 400 }).finished; await wait(500); 
-                    
-                    ball.classList.add('captured-lock');
-                    
-                    const ballVisualX = startX + finalTX;
-                    const ballVisualY = startY + finalTY;
-
-                    for(let i=0; i<3; i++) { 
-                        const s = document.createElement('div'); 
-                        s.className = 'capture-star'; 
-                        s.innerText = '★'; 
-                        s.style.left = (ballVisualX + 10 + (i*15 - 15)) + 'px'; 
-                        s.style.top = (ballVisualY - 20) + 'px'; 
-                        document.body.appendChild(s); 
-                        setTimeout(() => s.remove(), 700); 
-                        await wait(100); 
-                    }
-                    await wait(800); resolve();
-
-                } catch (e) { console.error(e); resolve(); }
+                } catch (e) { console.error(e); if(ball) ball.remove(); resolve(null); }
             });
         }
 
@@ -1200,11 +1203,16 @@
         async function useCatchballFromBag() {
             if (battleMode !== 'wild') { showToast('Apenas em batalhas selvagens.'); return; }
             if(!confirm('Usar uma Catchball agora?')) return; 
-            try { 
-                const res = await fetch('/api/turn', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ battleId, action: 'catch' }) }); 
-                const data = await res.json(); 
+            try {
+                closeBattleBag(); 
                 
-                if (data && data.threw) await playCaptureAnimation(p2RawId, data.captured);
+                // Inicia request e animação em paralelo para evitar delay percepido
+                const reqPromise = fetch('/api/turn', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ battleId, action: 'catch' }) }).then(r => r.json());
+                
+                // Passa a promise para a animação lidar com a sincronia
+                const data = await playCaptureAnimation(p2RawId, reqPromise);
+                
+                if(!data) { showToast('Erro na conexão.'); return; }
 
                 if(data.events) await playEvents(data.events); 
                 
@@ -1214,8 +1222,7 @@
                     setTimeout(()=>{ window.location.href = returnUrl; }, 1000); 
                     return; 
                 } 
-                closeBattleBag(); 
-            } catch(e) { showToast('Erro.'); }
+            } catch(e) { console.error(e); showToast('Erro.'); }
         }
     </script>
 </body>

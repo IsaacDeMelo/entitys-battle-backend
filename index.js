@@ -2675,8 +2675,10 @@ app.post('/battle/wild', async (req, res) => {
 
 app.post('/battle/npc', async (req, res) => {
     const { userId, npcId, currentMap, currentX, currentY } = req.body; 
-    const user = await User.findById(userId); 
-    const npc = await NPC.findById(npcId);
+    const [user, npc] = await Promise.all([
+        User.findById(userId).lean(),
+        NPC.findById(npcId).lean()
+    ]);
     if (!user || !npc) return res.json({ error: "NPC não encontrado." });
 
     const svcType = npc?.interact?.serviceType ? String(npc.interact.serviceType).trim() : '';
@@ -2712,7 +2714,7 @@ app.post('/battle/npc', async (req, res) => {
     const userPokeData = user.entityTeam.find(p => p.currentHp > 0) || user.entityTeam[0];
     if (!userPokeData || userPokeData.currentHp <= 0) return res.json({ error: "Seus Monstros estão desmaiados!" });
     
-    const userBase = await BaseEntity.findOne({ id: userPokeData.baseId });
+    const userBase = await BaseEntity.findOne({ id: userPokeData.baseId }).lean();
     const p1Entity = userEntityToEntity(userPokeData, userBase); 
     p1Entity.playerName = user.username; 
     p1Entity.skin = user.skin;
@@ -2737,19 +2739,27 @@ app.post('/battle/npc', async (req, res) => {
     const npcTeamInstances = [];
     if (!npc.team || npc.team.length === 0) return res.json({ error: "Este NPC não tem Monstros!" });
 
-    for (let member of npc.team) {
-        const base = await BaseEntity.findOne({ id: member.baseId });
-        if (base) {
-            const stats = calculateStats(base.baseStats, member.level);
-            let moves = pickDeterministicMovesFromPool(base.movePool, member.level, 4);
-            npcTeamInstances.push({
-                instanceId: 'npc_mon_' + Date.now() + Math.random(), baseId: base.id, name: base.name, type: base.type, level: member.level, 
-                maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
-                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
-                sprite: base.sprite, playerName: npc.name, skin: npc.skin, isCustomSkin: npc.isCustomSkin, isWild: false, status: null
-            });
-        }
+    const npcBaseIds = [...new Set(npc.team.map(m => String(m && m.baseId ? m.baseId : '')).filter(Boolean))];
+    const npcBases = npcBaseIds.length > 0
+        ? await BaseEntity.find({ id: { $in: npcBaseIds } }).lean()
+        : [];
+    const npcBaseById = new Map((npcBases || []).map(b => [String(b.id), b]));
+
+    for (const member of npc.team) {
+        const base = npcBaseById.get(String(member.baseId));
+        if (!base) continue;
+
+        const stats = calculateStats(base.baseStats, member.level);
+        const moves = pickDeterministicMovesFromPool(base.movePool, member.level, 4);
+        npcTeamInstances.push({
+            instanceId: 'npc_mon_' + Date.now() + Math.random(), baseId: base.id, name: base.name, type: base.type, level: member.level, 
+            maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
+            moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id), 
+            sprite: base.sprite, playerName: npc.name, skin: npc.skin, isCustomSkin: npc.isCustomSkin, isWild: false, status: null
+        });
     }
+
+    if (npcTeamInstances.length === 0) return res.json({ error: "Este NPC não tem Monstros válidos!" });
 
     const battleId = `npc_${Date.now()}`; 
     
@@ -2949,7 +2959,49 @@ app.post('/api/custom-battle/start', async (req, res) => {
 });
 
 app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/city' }); });
-app.post('/battle', async (req, res) => { const { fighterId, playerName, playerSkin, userId } = req.body; const user = await User.findById(userId); if(!user) return res.redirect('/'); const userPokeData = user.entityTeam.id(fighterId); if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/city?userId=' + userId); const b1Base = await BaseEntity.findOne({ id: userPokeData.baseId }); const p1 = userEntityToEntity(userPokeData, b1Base); p1.playerName = playerName; p1.skin = playerSkin; const allBases = await BaseEntity.find(); if(allBases.length === 0) return res.redirect('/city?userId=' + userId); const randomBase = allBases[Math.floor(Math.random() * allBases.length)]; const cpuLevel = Math.max(1, p1.level); const s2 = calculateStats(randomBase.baseStats, cpuLevel); let cpuMoves = pickDeterministicMovesFromPool(randomBase.movePool, cpuLevel, 4); const p2 = { instanceId: 'p2_cpu_' + Date.now(), baseId: randomBase.id, name: randomBase.name, type: randomBase.type, level: cpuLevel, hp: s2.hp, maxHp: s2.hp, energy: s2.energy, maxEnergy: s2.energy, stats: s2, moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})), sprite: randomBase.sprite, playerName: 'CPU', skin: 'char2', status: null }; const battleId = 'local_' + Date.now(); activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' }; res.redirect('/battle/' + battleId); });
+app.post('/battle', async (req, res) => {
+    const { fighterId, playerName, playerSkin, userId } = req.body;
+    const user = await User.findById(userId);
+    if(!user) return res.redirect('/');
+    const userPokeData = user.entityTeam.id(fighterId);
+    if(!userPokeData || userPokeData.currentHp <= 0) return res.redirect('/city?userId=' + userId);
+
+    const b1Base = await BaseEntity.findOne({ id: userPokeData.baseId }).lean();
+    const p1 = userEntityToEntity(userPokeData, b1Base);
+    p1.playerName = playerName;
+    p1.skin = playerSkin;
+
+    // Evita carregar todas as entidades só para sortear 1.
+    const sampled = await BaseEntity.aggregate([{ $sample: { size: 1 } }]);
+    const randomBase = sampled && sampled[0] ? sampled[0] : null;
+    if(!randomBase) return res.redirect('/city?userId=' + userId);
+
+    const cpuLevel = Math.max(1, p1.level);
+    const s2 = calculateStats(randomBase.baseStats, cpuLevel);
+    const cpuMoves = pickDeterministicMovesFromPool(randomBase.movePool, cpuLevel, 4);
+
+    const p2 = {
+        instanceId: 'p2_cpu_' + Date.now(),
+        baseId: randomBase.id,
+        name: randomBase.name,
+        type: randomBase.type,
+        level: cpuLevel,
+        hp: s2.hp,
+        maxHp: s2.hp,
+        energy: s2.energy,
+        maxEnergy: s2.energy,
+        stats: s2,
+        moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})),
+        sprite: randomBase.sprite,
+        playerName: 'CPU',
+        skin: 'char2',
+        status: null
+    };
+
+    const battleId = 'local_' + Date.now();
+    activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' };
+    res.redirect('/battle/' + battleId);
+});
 
 app.get('/battle/:id', async (req, res) => { 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
@@ -2968,12 +3020,16 @@ app.get('/battle/:id', async (req, res) => {
         const user = await User.findById(battle.userId); 
         if (user) { 
             canEditBg = !!user.isAdmin;
-            for (let p of user.entityTeam) { 
-                if (p._id.toString() !== battle.p1.instanceId && p.currentHp > 0) { 
-                    const b = await BaseEntity.findOne({ id: p.baseId }); 
-                    if(b) switchable.push(userEntityToEntity(p, b)); 
-                } 
-            } 
+
+            const candidates = user.entityTeam.filter(p => (p && p._id && p._id.toString() !== battle.p1.instanceId && p.currentHp > 0));
+            const baseIds = [...new Set(candidates.map(p => String(p.baseId || '')).filter(Boolean))];
+            const bases = baseIds.length > 0 ? await BaseEntity.find({ id: { $in: baseIds } }).lean() : [];
+            const baseById = new Map((bases || []).map(b => [String(b.id), b]));
+
+            for (const p of candidates) {
+                const b = baseById.get(String(p.baseId));
+                if (b) switchable.push(userEntityToEntity(p, b));
+            }
         } 
     } 
     
