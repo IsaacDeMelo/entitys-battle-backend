@@ -123,6 +123,14 @@
                 <% }) %>
             </div>
 
+            <div id="list-item" class="list-container">
+                <div class="sidebar-header">ITENS (<span id="itemCount">0</span>)</div>
+                <div style="padding:10px;">
+                    <button class="btn-new" onclick="clearItemForm(); switchMode('item');"><span>+</span> NOVO ITEM</button>
+                </div>
+                <div id="itemList"></div>
+            </div>
+
             <div id="list-skin" class="list-container">
                 <div class="sidebar-header">SKINS (<%= (skins || []).length %>)</div>
                 <div style="padding:10px;">
@@ -145,6 +153,7 @@
             <div class="tabs">
                 <button id="btn-tab-poke" class="tab-btn active" onclick="switchMode('poke')">ENTIDADE</button>
                 <button id="btn-tab-npc" class="tab-btn" onclick="switchMode('npc')">NPC</button>
+                <button id="btn-tab-item" class="tab-btn" onclick="switchMode('item')">ITENS</button>
                 <button id="btn-tab-skin" class="tab-btn" onclick="switchMode('skin')">SKINS</button>
             </div>
 
@@ -624,6 +633,49 @@
                 <form id="deleteNpcForm" action="/lab/delete-npc" method="POST" style="display:none;"><input type="hidden" name="id" id="deleteNpcId"></form>
             </div>
 
+            <!-- ================= FORM ITENS ================= -->
+            <div id="tab-item" class="tab-content hidden">
+                <form id="itemForm" onsubmit="return saveItem(event);">
+                    <div class="form-grid">
+                        <div>
+                            <label>ID (único)</label>
+                            <input type="text" id="itemId" required autocomplete="off" placeholder="ex: captureCube">
+                        </div>
+                        <div class="half-width">
+                            <label>Nome</label>
+                            <input type="text" id="itemName" required autocomplete="off" placeholder="Capture Cube">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label>Tipo</label>
+                            <select id="itemType">
+                                <option value="consumable">Consumível</option>
+                                <option value="key">Item-chave</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Preço (moedas)</label>
+                            <input type="number" id="itemPrice" min="0" step="1" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Ícone PNG 32x32</label>
+                            <input type="file" id="itemIconFile" accept="image/png" onchange="onItemIconSelected(this)">
+                            <div id="itemIconPreview" style="margin-top:10px; height:72px; border:1px dashed #444; border-radius:6px; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.2); color:#666; overflow:hidden;">Sem ícone</div>
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button type="submit" class="btn-save">💾 SALVAR ITEM</button>
+                        <button type="button" class="btn-delete" onclick="deleteCatalogItem()">🗑️ EXCLUIR</button>
+                    </div>
+                </form>
+            </div>
+
             <!-- ================= FORM SKINS ================= -->
             <div id="tab-skin" class="tab-content hidden">
                 <form id="skinForm" action="/lab/skins/create" method="POST" enctype="multipart/form-data">
@@ -656,6 +708,11 @@
     </div>
     
     <script>
+        const LAB_USER_ID = '<%= user._id %>';
+        let itemCatalog = [];
+        let itemCurrentId = '';
+        let itemIconBlob = null;
+
         function switchMode(mode) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
             document.getElementById('btn-tab-' + mode).classList.add('active');
@@ -672,6 +729,229 @@
                 reader.onload = function(e) { container.innerHTML = `<img src="${e.target.result}" style="height:100%;">`; }
                 reader.readAsDataURL(input.files[0]);
             } else { container.innerHTML = "Sem imagem"; }
+        }
+
+        function renderItemList() {
+            const list = document.getElementById('itemList');
+            const counter = document.getElementById('itemCount');
+            if (!list || !counter) return;
+            list.innerHTML = '';
+            const sorted = [...(itemCatalog || [])].sort((a, b) => a.name.localeCompare(b.name));
+            counter.textContent = sorted.length;
+
+            const datalist = document.getElementById('itemIdSuggestions');
+            if (datalist) {
+                datalist.innerHTML = sorted.map(it => `<option value="${it.id}"></option>`).join('');
+            }
+
+            if (!sorted.length) {
+                const empty = document.createElement('div');
+                empty.style.color = '#9aa7bd';
+                empty.style.fontSize = '0.9rem';
+                empty.style.padding = '10px';
+                empty.textContent = 'Nenhum item cadastrado.';
+                list.appendChild(empty);
+                return;
+            }
+
+            sorted.forEach(it => {
+                const row = document.createElement('div');
+                row.className = 'list-item';
+                row.onclick = () => loadItem(it);
+
+                if (it.hasIcon) {
+                    const img = document.createElement('img');
+                    img.src = `/api/items/icon/${encodeURIComponent(it.id)}.png?ts=${it.updatedAt || Date.now()}`;
+                    img.alt = it.id;
+                    row.appendChild(img);
+                } else {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'npc-thumb';
+                    fallback.style.background = '#111';
+                    fallback.style.color = '#aaa';
+                    fallback.style.display = 'flex';
+                    fallback.style.alignItems = 'center';
+                    fallback.style.justifyContent = 'center';
+                    fallback.textContent = (it.name || it.id || '?').slice(0, 2).toUpperCase();
+                    row.appendChild(fallback);
+                }
+
+                const info = document.createElement('div');
+                info.className = 'item-info';
+
+                const name = document.createElement('div');
+                name.className = 'item-name';
+                name.textContent = it.name;
+                info.appendChild(name);
+
+                const sub = document.createElement('div');
+                sub.className = 'item-sub';
+                const typeLabel = it.type === 'key' ? 'Item-chave' : 'Consumível';
+                sub.textContent = `${typeLabel} • $${it.price || 0}`;
+                info.appendChild(sub);
+
+                row.appendChild(info);
+                list.appendChild(row);
+            });
+        }
+
+        async function refreshItemList() {
+            try {
+                const res = await fetch('/api/items/catalog');
+                const json = await res.json();
+                if (json && json.success && Array.isArray(json.items)) {
+                    itemCatalog = json.items;
+                    renderItemList();
+                }
+            } catch (_) {
+                // silencioso
+            }
+        }
+
+        function clearItemForm() {
+            switchMode('item');
+            const form = document.getElementById('itemForm');
+            if (form) form.reset();
+            itemCurrentId = '';
+            itemIconBlob = null;
+            const idInput = document.getElementById('itemId');
+            if (idInput) idInput.disabled = false;
+            const file = document.getElementById('itemIconFile');
+            if (file) file.value = '';
+            const prev = document.getElementById('itemIconPreview');
+            if (prev) prev.innerHTML = 'Sem ícone';
+        }
+
+        function onItemIconSelected(input) {
+            itemIconBlob = (input && input.files && input.files[0]) ? input.files[0] : null;
+            previewImage(input, 'itemIconPreview');
+        }
+
+        function loadItem(it) {
+            if (!it) return;
+            switchMode('item');
+            itemCurrentId = it.id;
+            itemIconBlob = null;
+            const form = document.getElementById('itemForm');
+            if (form) form.reset();
+            const idInput = document.getElementById('itemId');
+            if (idInput) { idInput.value = it.id; idInput.disabled = true; }
+            const name = document.getElementById('itemName');
+            if (name) name.value = it.name || '';
+            const type = document.getElementById('itemType');
+            if (type) type.value = it.type === 'key' ? 'key' : 'consumable';
+            const price = document.getElementById('itemPrice');
+            if (price) price.value = Number.isFinite(it.price) ? it.price : 0;
+            const file = document.getElementById('itemIconFile');
+            if (file) file.value = '';
+            const prev = document.getElementById('itemIconPreview');
+            if (prev) {
+                if (it.hasIcon) {
+                    prev.innerHTML = `<img src="/api/items/icon/${encodeURIComponent(it.id)}.png?ts=${it.updatedAt || Date.now()}" style="height:100%; object-fit:contain;">`;
+                } else {
+                    prev.innerHTML = 'Sem ícone';
+                }
+            }
+        }
+
+        async function uploadItemIcon(itemId) {
+            if (!itemIconBlob || !itemId) return true;
+            const asDataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(itemIconBlob);
+            });
+            if (!asDataUrl || typeof asDataUrl !== 'string' || !asDataUrl.startsWith('data:image/png')) {
+                alert('Ícone precisa ser PNG.');
+                return false;
+            }
+            const pngBase64 = asDataUrl.split(',')[1];
+            // Checagem rápida de tamanho via Image
+            const ok = await new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => {
+                    resolve(img.width === 32 && img.height === 32);
+                };
+                img.onerror = () => resolve(false);
+                img.src = asDataUrl;
+            });
+            if (!ok) {
+                alert('Use um PNG 32x32.');
+                return false;
+            }
+
+            const res = await fetch('/api/items/icon/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: LAB_USER_ID, itemId, pngBase64 })
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || !json.success) {
+                alert(json && json.error ? json.error : 'Falha ao salvar ícone.');
+                return false;
+            }
+            return true;
+        }
+
+        async function saveItem(ev) {
+            if (ev) ev.preventDefault();
+            const idInput = document.getElementById('itemId');
+            const nameInput = document.getElementById('itemName');
+            const typeInput = document.getElementById('itemType');
+            const priceInput = document.getElementById('itemPrice');
+            const id = (idInput?.value || '').trim();
+            const name = (nameInput?.value || '').trim();
+            const type = typeInput?.value === 'key' ? 'key' : 'consumable';
+            const price = Math.max(0, parseInt(priceInput?.value, 10) || 0);
+            if (!id || !name) {
+                alert('Preencha ID e Nome.');
+                return false;
+            }
+
+            const res = await fetch('/api/items/upsert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: LAB_USER_ID, item: { id, name, type, price } })
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || !json.success) {
+                alert(json && json.error ? json.error : 'Erro ao salvar item.');
+                return false;
+            }
+
+            if (itemIconBlob) {
+                const ok = await uploadItemIcon(id);
+                if (!ok) return false;
+                itemIconBlob = null;
+                const file = document.getElementById('itemIconFile');
+                if (file) file.value = '';
+            }
+
+            await refreshItemList();
+            const saved = itemCatalog.find(x => x.id === id);
+            if (saved) loadItem(saved);
+            else clearItemForm();
+            return false;
+        }
+
+        async function deleteCatalogItem() {
+            const idInput = document.getElementById('itemId');
+            const id = (idInput?.value || '').trim();
+            if (!id) return alert('Selecione um item para excluir.');
+            if (!confirm('Tem certeza que deseja excluir este item?')) return;
+            const res = await fetch('/api/items/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: LAB_USER_ID, itemId: id })
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || !json.success) {
+                alert(json && json.error ? json.error : 'Erro ao excluir item.');
+                return;
+            }
+            clearItemForm();
+            await refreshItemList();
         }
 
         function clearPokeForm() { 
@@ -1235,6 +1515,8 @@
                 });
             }
         }, 0);
+
+        refreshItemList();
     </script>
 </body>
 </html>

@@ -415,6 +415,20 @@
             font-size: 0.5rem;
         }
 
+        /* Variação do botão do menu (sem setinha) — usado em ações (bag/shop) */
+        .cityActionBtn {
+            text-align: center;
+        }
+        .cityActionBtn::before {
+            content: '';
+        }
+        .bagUseBtn {
+            padding: 10px 12px;
+            font-size: 0.55rem;
+            width: auto;
+            box-shadow: 0 3px 0 #1a2940, inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
         /* BAG OVERLAY */
         #bagOverlay {
             position: fixed;
@@ -1602,6 +1616,7 @@
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
                                 <button type="button" class="npcBtn" onclick="npcPathAddByClick()">📍 adicionar ponto clicando</button>
                                 <button type="button" class="npcBtn" onclick="npcPathAddFromInputs()">+ adicionar ponto</button>
+                                <button type="button" class="npcBtn" onclick="npcPathAddFromPortalExit()">🚪 ponto na saída de portal</button>
                                 <button type="button" class="npcBtn" onclick="npcPathAddFromNpcPos()">+ do NPC</button>
                                 <button type="button" class="npcBtn" onclick="npcPathClear()">limpar</button>
                                 <label class="npcHint" style="display:flex; align-items:center; gap:6px;">
@@ -1637,6 +1652,81 @@
         if (!mapConfig.spawnPoint) mapConfig.spawnPoint = null;
 
         const gameAreaEl = document.getElementById('gameArea');
+
+        // --- Cache leve de mapas/imagens para acelerar troca de portal ---
+        const MAP_CACHE_KEY = 'city_map_cache_v1';
+        function loadMapCache() {
+            try { return JSON.parse(sessionStorage.getItem(MAP_CACHE_KEY) || '{}'); } catch (_) { return {}; }
+        }
+        function saveMapCache(obj) {
+            try { sessionStorage.setItem(MAP_CACHE_KEY, JSON.stringify(obj)); } catch (_) {}
+        }
+
+        function setMapCache(mapId, data) {
+            if (!mapId || !data) return;
+            const cache = loadMapCache();
+            cache[mapId] = { ts: Date.now(), data };
+            // Limita a poucas entradas para não crescer demais
+            const keys = Object.keys(cache);
+            if (keys.length > 5) {
+                const sorted = keys.sort((a, b) => (cache[a].ts || 0) - (cache[b].ts || 0));
+                const toRemove = sorted.slice(0, Math.max(0, keys.length - 5));
+                toRemove.forEach(k => delete cache[k]);
+            }
+            saveMapCache(cache);
+        }
+
+        function getMapCache(mapId, maxAgeMs = 60000) {
+            if (!mapId) return null;
+            const cache = loadMapCache();
+            const entry = cache[mapId];
+            if (!entry) return null;
+            if (!entry.ts || (Date.now() - entry.ts) > maxAgeMs) return null;
+            return entry.data;
+        }
+
+        function preloadImage(url) {
+            return new Promise((resolve) => {
+                if (!url) return resolve();
+                const img = new Image();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+                img.src = url;
+            });
+        }
+
+        async function fetchMapData(mapId) {
+            const cached = getMapCache(mapId);
+            if (cached) return cached;
+            try {
+                const res = await fetch(`/api/map/${encodeURIComponent(mapId)}`);
+                if (!res.ok) throw new Error('map fetch failed');
+                const data = await res.json();
+                setMapCache(mapId, data);
+                return data;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        async function preloadMapAssets(mapId) {
+            if (!mapId) return;
+            const data = await fetchMapData(mapId);
+            if (!data) return;
+            const bg = data.bgImage || '';
+            const fg = data.foregroundImage || '';
+            const tasks = [];
+            const looksLikeUrl = (s) => typeof s === 'string' && (s.startsWith('http') || s.startsWith('/uploads/') || s.startsWith('data:'));
+            if (looksLikeUrl(bg)) tasks.push(preloadImage(bg));
+            if (looksLikeUrl(fg)) tasks.push(preloadImage(fg));
+            if (tasks.length) {
+                const PRELOAD_TIMEOUT_MS = 1200;
+                await Promise.race([
+                    Promise.all(tasks),
+                    new Promise(res => setTimeout(res, PRELOAD_TIMEOUT_MS))
+                ]);
+            }
+        }
         
         function applyMapVisuals(config) {
             const bg = (config && config.bgImage) ? `url('${config.bgImage}')` : '';
@@ -2394,6 +2484,12 @@
         socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
 
+        const setNpcIdleFrame = (el) => {
+            if (!el) return;
+            // Snap to the first column so idle shows the neutral pose
+            el.style.backgroundPositionX = '0%';
+        };
+
         socket.on('npcs_list', (npcs) => {
             const list = Array.isArray(npcs) ? npcs : [];
             currentNpcsCache = list;
@@ -2449,8 +2545,17 @@
                 const targetY = (typeof npc.y === 'number') ? npc.y : parseFloat(npc.y) || 50;
                 const currentLeft = parseFloat(div.style.left);
                 const currentTop = parseFloat(div.style.top);
+                const nowTs = Date.now();
+                const isPaused = npc._pauseUntil && nowTs < npc._pauseUntil;
 
-                if (isNew || !Number.isFinite(currentLeft) || !Number.isFinite(currentTop)) {
+                if (isPaused) {
+                    div.style.transition = 'none';
+                    div.style.left = targetX + '%';
+                    div.style.top = targetY + '%';
+                    div.classList.remove('walking');
+                    setNpcIdleFrame(div);
+                    if (div.walkTimeout) { clearTimeout(div.walkTimeout); div.walkTimeout = null; }
+                } else if (isNew || !Number.isFinite(currentLeft) || !Number.isFinite(currentTop)) {
                     div.style.transition = 'none';
                     div.style.left = targetX + '%';
                     div.style.top = targetY + '%';
@@ -2463,6 +2568,7 @@
                         div.style.left = targetX + '%';
                         div.style.top = targetY + '%';
                         div.classList.remove('walking');
+                        setNpcIdleFrame(div);
                     } else {
                         // O servidor emite posições de patrol a cada ~350ms. Se usarmos duration por MOVEMENT_SPEED,
                         // a transição fica curtíssima (ex: 30-50ms) e o resto do tempo “para”, dando sensação travada.
@@ -2474,7 +2580,10 @@
                         if (duration > 0.01) {
                             div.classList.add('walking');
                             if (div.walkTimeout) clearTimeout(div.walkTimeout);
-                            div.walkTimeout = setTimeout(() => div.classList.remove('walking'), (duration * 1000) + 50);
+                            div.walkTimeout = setTimeout(() => {
+                                div.classList.remove('walking');
+                                setNpcIdleFrame(div);
+                            }, (duration * 1000) + 50);
                         }
                     }
                 }
@@ -2977,7 +3086,13 @@
             npcEdPathState = {
                 loop: !!(path && path.loop),
                 points: Array.isArray(path && path.points)
-                    ? path.points.map(p => ({ x: clamp01_100(p && p.x), y: clamp01_100(p && p.y) }))
+                    ? path.points.map(p => ({
+                        x: clamp01_100(p && p.x),
+                        y: clamp01_100(p && p.y),
+                        waitMs: Math.max(0, parseInt(p && p.waitMs, 10) || 0),
+                        map: p && p.map ? String(p.map) : (npc.map || currentMapId),
+                        viaPortalId: p && p.viaPortalId ? String(p.viaPortalId) : ''
+                    }))
                     : []
             };
             const pxEl = document.getElementById('npcEdPatrolPathX');
@@ -3144,14 +3259,14 @@
         function npcPathAddFromInputs() {
             const x = clamp01_100(document.getElementById('npcEdPatrolPathX').value);
             const y = clamp01_100(document.getElementById('npcEdPatrolPathY').value);
-            npcEdPathState.points.push({ x, y });
+            npcEdPathState.points.push({ x, y, waitMs: 0, map: currentMapId, viaPortalId: '' });
             npcPathRender();
         }
 
         function npcPathAddFromNpcPos() {
             const x = clamp01_100(document.getElementById('npcEdX').value);
             const y = clamp01_100(document.getElementById('npcEdY').value);
-            npcEdPathState.points.push({ x, y });
+            npcEdPathState.points.push({ x, y, waitMs: 0, map: currentMapId, viaPortalId: '' });
             npcPathRender();
         }
 
@@ -3220,9 +3335,36 @@
 
         function npcPathAddByClick() {
             npcBeginClickCapture('CLIQUE PARA ADICIONAR PONTO DA ROTA', (x, y) => {
-                npcEdPathState.points.push({ x: clamp01_100(x), y: clamp01_100(y) });
+                npcEdPathState.points.push({ x: clamp01_100(x), y: clamp01_100(y), waitMs: 0, map: currentMapId, viaPortalId: '' });
                 npcPathRender();
             });
+        }
+
+        function npcPathAddFromPortalExit() {
+            const portals = Array.isArray(portalsMap) ? portalsMap : [];
+            if (!portals.length) {
+                alert('Nenhum portal disponível neste mapa.');
+                return;
+            }
+            const labelFor = (p, idx) => {
+                const dest = p.targetMap || p.toMap || p.destMap || p.mapTarget || p.mapId || p.to || '';
+                return `${idx + 1}) ${(p.name || p.id || 'portal')} -> ${dest || 'destino'}`;
+            };
+            const choice = prompt('Escolha o portal (número):\n' + portals.map(labelFor).join('\n'));
+            const idx = parseInt(choice, 10) - 1;
+            if (!Number.isFinite(idx) || idx < 0 || idx >= portals.length) return;
+            const p = portals[idx];
+            const destMap = p.targetMap || p.toMap || p.destMap || p.mapTarget || p.mapId || p.to || currentMapId;
+            const destX = clamp01_100(p.targetX ?? p.toX ?? p.x ?? p.cx ?? 50);
+            const destY = clamp01_100(p.targetY ?? p.toY ?? p.y ?? p.cy ?? 50);
+            npcEdPathState.points.push({
+                x: destX,
+                y: destY,
+                waitMs: 0,
+                map: destMap || currentMapId,
+                viaPortalId: p.id || p.name || ''
+            });
+            npcPathRender();
         }
 
         function npcInteractMovePickByClick() {
@@ -3262,6 +3404,15 @@
                 label.style.minWidth = '60px';
                 label.innerText = `#${idx + 1}`;
 
+                const mapIn = document.createElement('input');
+                mapIn.type = 'text';
+                mapIn.value = p.map || currentMapId;
+                mapIn.style.width = '120px';
+                mapIn.placeholder = 'map id';
+                mapIn.onchange = () => {
+                    npcEdPathState.points[idx].map = mapIn.value.trim();
+                };
+
                 const xIn = document.createElement('input');
                 xIn.type = 'number';
                 xIn.step = '0.5';
@@ -3282,6 +3433,17 @@
                     npcPathRender();
                 };
 
+                const waitIn = document.createElement('input');
+                waitIn.type = 'number';
+                waitIn.step = '50';
+                waitIn.min = '0';
+                waitIn.value = p.waitMs || 0;
+                waitIn.style.width = '90px';
+                waitIn.onchange = () => {
+                    const v = Math.max(0, parseInt(waitIn.value, 10) || 0);
+                    npcEdPathState.points[idx].waitMs = v;
+                };
+
                 const rm = document.createElement('button');
                 rm.type = 'button';
                 rm.className = 'npcBtn';
@@ -3292,10 +3454,14 @@
                 };
 
                 line.appendChild(label);
+                line.appendChild(document.createTextNode('map'));
+                line.appendChild(mapIn);
                 line.appendChild(document.createTextNode('x'));
                 line.appendChild(xIn);
                 line.appendChild(document.createTextNode('y'));
                 line.appendChild(yIn);
+                line.appendChild(document.createTextNode('wait ms'));
+                line.appendChild(waitIn);
                 line.appendChild(rm);
                 rows.appendChild(line);
             });
@@ -3609,7 +3775,14 @@
                     await showRPGDialog(cleanName, npc.skin, text, [], () => disengageNow());
 
                     if (data && data.action && data.action.type === 'shop') {
-                        await openNpcShop(cleanName, npc.skin, npc._id, data.action.items || []);
+                        if (typeof window.openNpcShop === 'function') {
+                            await window.openNpcShop(data.action.items || [], {
+                                npcId: npc._id,
+                                npcName: cleanName,
+                                npcSkin: npc.skin,
+                                userId: window.CURRENT_USER_ID
+                            });
+                        }
                     }
                 } catch (e) {
                     if (typeof showToast === 'function') showToast('Erro ao interagir.', { bg: '#e74c3c' });
@@ -3634,7 +3807,14 @@
 
                     if (kind === 'shop') {
                         const items = (data && data.action && data.action.type === 'shop') ? (data.action.items || []) : [];
-                        await openNpcShop(cleanName, npc.skin, npc._id, items);
+                        if (typeof window.openNpcShop === 'function') {
+                            await window.openNpcShop(items, {
+                                npcId: npc._id,
+                                npcName: cleanName,
+                                npcSkin: npc.skin,
+                                userId: window.CURRENT_USER_ID
+                            });
+                        }
                     }
 
                     if (kind === 'starter') {
@@ -4163,49 +4343,7 @@
             step();
         };
 
-        async function openNpcShop(npcName, npcSkin, npcId, items) {
-            const list = Array.isArray(items) ? items : [];
-            if (list.length === 0) {
-                await showRPGDialog(npcName, npcSkin, 'Desculpe, estou sem itens agora.');
-                return;
-            }
-
-            while (true) {
-                const buttons = list.slice(0, 5).map(it => ({
-                    text: `${it.itemId} - $${it.price}`,
-                    value: `buy:${it.itemId}`,
-                    class: 'confirm'
-                }));
-                buttons.push({ text: 'SAIR', value: 'exit', class: 'cancel' });
-
-                const choice = await showRPGDialog(npcName, npcSkin, 'Escolha um item:', buttons);
-                if (!choice || choice === 'exit') return;
-                if (!String(choice).startsWith('buy:')) continue;
-
-                const itemId = String(choice).slice(4);
-                const qtyRaw = prompt('Quantidade para comprar?', '1');
-                const qty = Math.max(1, parseInt(qtyRaw, 10) || 1);
-
-                try {
-                    const res = await fetch('/api/npc/shop/buy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId, itemId, qty })
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!data || !data.success) {
-                        await showRPGDialog(npcName, npcSkin, (data && data.error) ? data.error : 'Erro na compra.');
-                        continue;
-                    }
-                    if (data.bag) window.USER_BAG = data.bag;
-                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
-                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
-                    await showRPGDialog(npcName, npcSkin, `Compra realizada: ${qty}x ${itemId}!`);
-                } catch (e) {
-                    await showRPGDialog(npcName, npcSkin, 'Erro ao conectar ao servidor.');
-                }
-            }
-        }
+        // Removido: shop inline legacy; usa versão de /public/scripts/common.js
 
         async function handleObjectInteraction(obj) {
             window.isInteracting = true; window.isMoving = false;
@@ -4370,6 +4508,8 @@
                     if (portal.targetX !== undefined && portal.targetY !== undefined && !isNaN(portal.targetX)) {
                         extra = `&x=${portal.targetX}&y=${portal.targetY}`;
                     }
+                    // Precarrega assets do mapa alvo para reduzir flicker.
+                    try { await preloadMapAssets(portal.targetMap); } catch (_) {}
                     const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
                     setPortalCooldown(1300);
                     window.__transitionNavigating = true;
@@ -4612,8 +4752,252 @@
             });
         })();
 
+        // SHOP MODAL (global) — usado quando /api/npc/interact retorna action.type === 'shop'
+        (function ensureGlobalNpcShop() {
+            if (typeof window.openNpcShop === 'function') return;
+
+            let __SHOP_CATALOG_CACHE = null;
+
+            function ensureShopStyles() {
+                if (document.getElementById('npc-shop-styles')) return;
+                const css = `
+                .npc-shop-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:12150;display:flex;align-items:center;justify-content:center;padding:18px;pointer-events:auto;}
+                .npc-shop-panel{width:min(760px,95vw);max-height:85vh;background:linear-gradient(135deg,#2d4a6e 0%,#1a2940 100%);border:4px solid #f0f0f0;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;}
+                .npc-shop-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:linear-gradient(180deg,#4169a8 0%,#2d5080 100%);border-bottom:3px solid #1a2940;color:#ffffff;font-family:'Press Start 2P', monospace;font-size:0.7rem;letter-spacing:1px;text-shadow:2px 2px 0 rgba(0,0,0,0.7);}
+                .npc-shop-close{background:#2d3748;color:#f7fafc;border:2px solid #4a5568;border-radius:4px;padding:6px 10px;cursor:pointer;font-family:'Press Start 2P', monospace;font-size:0.55rem;box-shadow:0 2px 0 #1a202c;}
+                .npc-shop-close:active{transform:translateY(2px);box-shadow:none;}
+                .npc-shop-grid{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;overflow:auto;}
+                .npc-shop-card{background:linear-gradient(180deg,#f8f8f8 0%,#d8d8d8 100%);border:3px solid #fff;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 3px 0 #1a2940, inset 0 1px 0 rgba(255,255,255,0.8);}
+                .npc-shop-card .icon{width:56px;height:56px;background:#fff;border:2px solid #2d5080;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;image-rendering:pixelated;box-shadow:inset 0 2px 4px rgba(0,0,0,0.1);}
+                .npc-shop-card .icon img{width:100%;height:100%;object-fit:contain;}
+                .npc-shop-card .title{color:#2a2a2a;font-family:'Press Start 2P', monospace;font-size:0.6rem;line-height:1.25;min-height:32px;}
+                .npc-shop-card .meta{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:'Rajdhani', sans-serif;font-weight:900;color:#2a2a2a;}
+                .npc-shop-card .meta .pill{font-size:0.72rem;background:rgba(45,80,128,0.12);border:1px solid rgba(45,80,128,0.35);padding:2px 8px;border-radius:999px;}
+                .npc-shop-card .meta .price{font-size:0.9rem;}
+                .npc-shop-buyBtn{width:100%;text-align:center;}
+                .npc-shop-buyBtn::before{content:'';}
+                .npc-shop-empty{padding:22px 16px;text-align:center;color:#a0aec0;font-family:'Press Start 2P', monospace;font-size:0.6rem;line-height:1.6;}
+                `;
+                const tag = document.createElement('style');
+                tag.id = 'npc-shop-styles';
+                tag.textContent = css;
+                document.head.appendChild(tag);
+            }
+
+            async function getItemCatalog() {
+                if (__SHOP_CATALOG_CACHE) return __SHOP_CATALOG_CACHE;
+                try {
+                    const res = await fetch('/api/items/catalog');
+                    const json = await res.json().catch(() => ({}));
+                    __SHOP_CATALOG_CACHE = (json && json.success && Array.isArray(json.items)) ? json.items : [];
+                    return __SHOP_CATALOG_CACHE;
+                } catch (_) {
+                    __SHOP_CATALOG_CACHE = [];
+                    return __SHOP_CATALOG_CACHE;
+                }
+            }
+
+            window.openNpcShop = async function(items, ctx) {
+                const context = ctx || {};
+                const userId = context.userId || window.CURRENT_USER_ID;
+                const npcId = context.npcId;
+                const npcName = context.npcName || 'Loja';
+
+                const list = Array.isArray(items) ? items : [];
+                const catalog = await getItemCatalog();
+                ensureShopStyles();
+
+                const data = list.map(raw => {
+                    const itemId = String(raw && (raw.itemId || raw.id) || '').trim();
+                    const def = catalog.find(c => String(c.id) === itemId);
+                    const price = Math.max(0, parseInt(raw && raw.price, 10) || 0);
+                    return {
+                        id: itemId,
+                        name: (raw && raw.name) || (def && def.name) || itemId || 'Item',
+                        type: (def && def.type === 'key') ? 'key' : 'consumable',
+                        price,
+                        icon: (def && def.hasIcon) ? `/api/items/icon/${encodeURIComponent(itemId)}.png?ts=${def.updatedAt || Date.now()}` : null
+                    };
+                }).filter(x => x.id);
+
+                const overlay = document.createElement('div');
+                overlay.className = 'npc-shop-overlay';
+                overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+                const panel = document.createElement('div');
+                panel.className = 'npc-shop-panel';
+                overlay.appendChild(panel);
+
+                const header = document.createElement('div');
+                header.className = 'npc-shop-header';
+                const title = document.createElement('h3');
+                title.textContent = `Loja de ${npcName}`;
+                const close = document.createElement('button');
+                close.className = 'npc-shop-close';
+                close.textContent = 'Fechar';
+                close.onclick = () => overlay.remove();
+                header.appendChild(title);
+                header.appendChild(close);
+                panel.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'npc-shop-grid';
+                panel.appendChild(grid);
+
+                if (!data.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'npc-shop-empty';
+                    empty.textContent = 'Sem itens à venda agora.';
+                    grid.appendChild(empty);
+                }
+
+                const buyItem = async (itemId, btn) => {
+                    if (!itemId) return;
+                    if (!userId || !npcId) {
+                        if (typeof showToast === 'function') showToast('Erro: contexto da loja inválido.', { bg: '#e74c3c' });
+                        return;
+                    }
+                    if (btn) btn.disabled = true;
+                    try {
+                        const res = await fetch('/api/npc/shop/buy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId, npcId, itemId })
+                        });
+                        const resp = await res.json().catch(() => ({}));
+                        if (!res.ok || resp.error) {
+                            if (typeof showToast === 'function') showToast(resp.error || 'Não foi possível comprar.', { bg: '#e74c3c' });
+                            if (btn) btn.disabled = false;
+                            return;
+                        }
+
+                        // Atualiza estados globais (bag, keyItems, money)
+                        if (resp && typeof resp.money === 'number') {
+                            document.body.setAttribute('data-user-money', String(resp.money));
+                        }
+                        if (resp && resp.bag && typeof resp.bag === 'object') window.USER_BAG = resp.bag;
+                        if (resp && Array.isArray(resp.keyItems)) window.USER_KEY_ITEMS = resp.keyItems;
+                        if (resp && resp.storyFlags && typeof resp.storyFlags === 'object') window.STORY_FLAGS = resp.storyFlags;
+
+                        if (typeof showToast === 'function') showToast('Item comprado!', { bg: '#2ecc71', color: '#052e16' });
+                    } catch (_) {
+                        if (typeof showToast === 'function') showToast('Erro ao comprar.', { bg: '#e74c3c' });
+                        if (btn) btn.disabled = false;
+                    }
+                };
+
+                data.forEach(it => {
+                    const card = document.createElement('div');
+                    card.className = 'npc-shop-card';
+
+                    const iconBox = document.createElement('div');
+                    iconBox.className = 'icon';
+                    if (it.icon) {
+                        const img = document.createElement('img');
+                        img.src = it.icon;
+                        img.alt = it.name;
+                        iconBox.appendChild(img);
+                    } else {
+                        const fallback = document.createElement('span');
+                        fallback.style.color = '#8da2c0';
+                        fallback.style.fontWeight = '800';
+                        fallback.textContent = (it.name || it.id).slice(0, 2).toUpperCase();
+                        iconBox.appendChild(fallback);
+                    }
+                    card.appendChild(iconBox);
+
+                    const titleEl = document.createElement('div');
+                    titleEl.className = 'title';
+                    titleEl.textContent = it.name;
+                    card.appendChild(titleEl);
+
+                    const meta = document.createElement('div');
+                    meta.className = 'meta';
+                    const pill = document.createElement('span');
+                    pill.className = 'pill';
+                    pill.textContent = it.type === 'key' ? 'Item-chave' : 'Consumível';
+                    const price = document.createElement('span');
+                    price.className = 'price';
+                    price.textContent = `$${it.price}`;
+                    meta.appendChild(pill);
+                    meta.appendChild(price);
+                    card.appendChild(meta);
+
+                    const btn = document.createElement('button');
+                    btn.className = 'startMenuBtn cityActionBtn npc-shop-buyBtn';
+                    btn.textContent = `COMPRAR $${it.price}`;
+                    btn.disabled = it.price <= 0;
+                    btn.onclick = () => buyItem(it.id, btn);
+                    card.appendChild(btn);
+
+                    grid.appendChild(card);
+                });
+
+                document.body.appendChild(overlay);
+            };
+        })();
+
         // BAG
-        window.openBag = function() {
+        let ITEM_CATALOG_BAG = null;
+
+        async function __useLevelUpCrystalFromCityBag() {
+            try {
+                const bagOverlay = document.getElementById('bagOverlay');
+                const userId = window.CURRENT_USER_ID;
+                const bag = window.USER_BAG || {};
+                if (!bag.levelUpCrystal || (parseInt(bag.levelUpCrystal, 10) || 0) <= 0) {
+                    if (typeof showToast === 'function') showToast('Você não tem Crystal.', { bg: '#e74c3c' });
+                    return;
+                }
+
+                // Esconde a mochila enquanto escolhe o monstro
+                try { if (typeof window.__closeBag === 'function') window.__closeBag(); else if (bagOverlay) bagOverlay.style.display = 'none'; } catch (_) {}
+
+                const r = await fetch(`/api/me?userId=${encodeURIComponent(userId)}`);
+                const d = await r.json().catch(() => ({}));
+                const team = Array.isArray(d && d.team) ? d.team : [];
+                if (!team.length) {
+                    if (typeof showToast === 'function') showToast('Sem monstros no time.', { bg: '#e74c3c' });
+                    try { await window.openBag(); } catch (_) {}
+                    return;
+                }
+
+                const buttons = team.slice(0, 6).map(p => ({
+                    text: `${p.name} (Lv.${p.level})`,
+                    value: String(p.instanceId),
+                    class: 'confirm'
+                }));
+                buttons.push({ text: 'CANCELAR', value: 'cancel', class: 'cancel' });
+
+                const choice = await showRPGDialog('MOCHILA', null, 'Escolha um monstro para usar o Crystal:', buttons);
+                if (!choice || choice === 'cancel') {
+                    try { await window.openBag(); } catch (_) {}
+                    return;
+                }
+
+                const res = await fetch('/api/use-item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, itemId: 'levelUpCrystal', pokemonId: String(choice), qty: 1 })
+                });
+                const js = await res.json().catch(() => ({}));
+                if (!js || js.error) {
+                    if (typeof showToast === 'function') showToast(js.error || 'Erro ao usar item.', { bg: '#e74c3c' });
+                    try { await window.openBag(); } catch (_) {}
+                    return;
+                }
+                if (!window.USER_BAG) window.USER_BAG = {};
+                window.USER_BAG.levelUpCrystal = (typeof js.levelUpCrystal === 'number') ? js.levelUpCrystal : window.USER_BAG.levelUpCrystal;
+                if (typeof showToast === 'function') showToast('Crystal usado!', { bg: '#2ecc71', color: '#052e16' });
+                // reabre para atualizar contagem
+                await window.openBag();
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('Erro ao usar Crystal.', { bg: '#e74c3c' });
+                try { await window.openBag(); } catch (_) {}
+            }
+        }
+
+        window.openBag = async function() {
             const overlay = document.getElementById('bagOverlay');
             const listEl = document.getElementById('bagList');
             const emptyEl = document.getElementById('bagEmpty');
@@ -4628,10 +5012,18 @@
             const userMoney = parseInt(userMoneyStr, 10) || 0;
             if (moneyEl) moneyEl.textContent = userMoney;
 
-            // Item catalog
-            const ITEM_DEFS = {
-                captureCube: { name: 'Capture Cube', icon: '/uploads/catchcube.gif' },
-                levelUpCrystal: { name: 'Level Up Crystal', icon: '/items/crystal.svg' }
+            if (!ITEM_CATALOG_BAG) {
+                try {
+                    const res = await fetch('/api/items/catalog');
+                    const js = await res.json();
+                    if (js && js.success && Array.isArray(js.items)) ITEM_CATALOG_BAG = js.items;
+                    else ITEM_CATALOG_BAG = [];
+                } catch (_) { ITEM_CATALOG_BAG = []; }
+            }
+
+            const getMeta = (id) => {
+                if (!ITEM_CATALOG_BAG) return null;
+                return ITEM_CATALOG_BAG.find(it => String(it.id) === String(id)) || null;
             };
 
             const items = [];
@@ -4640,8 +5032,12 @@
             for (const [id, qty] of Object.entries(bag)) {
                 const n = parseInt(qty, 10);
                 if (Number.isFinite(n) && n > 0) {
-                    const itemDef = ITEM_DEFS[id] || { name: String(id), icon: '/items/default.svg' };
-                    items.push({ id, name: itemDef.name, icon: itemDef.icon, qty: n });
+                    const meta = getMeta(id);
+                    const name = (meta && meta.name) ? meta.name : String(id);
+                    const icon = (meta && meta.hasIcon)
+                        ? `/api/items/icon/${encodeURIComponent(id)}.png`
+                        : '/uploads/placeholder.png';
+                    items.push({ id, name, icon, qty: n });
                 }
             }
 
@@ -4697,6 +5093,21 @@
 
                     div.appendChild(iconDiv);
                     div.appendChild(infoDiv);
+
+                    // Ações por item
+                    if (it.id === 'levelUpCrystal' && (parseInt(it.qty, 10) || 0) > 0) {
+                        const actions = document.createElement('div');
+                        actions.style.marginLeft = 'auto';
+                        const btn = document.createElement('button');
+                        btn.textContent = 'USAR';
+                        btn.className = 'startMenuBtn cityActionBtn bagUseBtn';
+                        btn.onclick = async (e) => {
+                            e.stopPropagation();
+                            await __useLevelUpCrystalFromCityBag();
+                        };
+                        actions.appendChild(btn);
+                        div.appendChild(actions);
+                    }
 
                     listEl.appendChild(div);
                 });

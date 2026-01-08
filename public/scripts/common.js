@@ -497,6 +497,7 @@ async function interactWithNPC(npc) {
         
         const myId = window.CURRENT_USER_ID;
         const defeatedList = window.DEFEATED_NPCS || [];
+        updateNpcShopCtx({ npcId: npc._id, npcName: npc.name, npcSkin: npc.skin, userId: myId });
         
         console.log(`[CLIENT] myId: ${myId}`);
         console.log(`[CLIENT] defeatedList:`, defeatedList);
@@ -593,67 +594,191 @@ async function interactWithNPC(npc) {
         }
     }
 
-    async function openNpcShop(items) {
+    let ITEM_CATALOG_CACHE = null;
+    let NPC_SHOP_CTX = { npcId: null, npcName: '', npcSkin: '', userId: null };
+
+    function updateNpcShopCtx(ctx = {}) {
+        NPC_SHOP_CTX = { ...NPC_SHOP_CTX, ...(ctx || {}) };
+        window.NPC_SHOP_CTX = NPC_SHOP_CTX;
+    }
+
+    function ensureShopStyles() {
+        if (document.getElementById('npc-shop-styles')) return;
+        const css = `
+        .npc-shop-overlay{position:fixed;inset:0;background:rgba(8,11,22,0.75);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:9999;}
+        .npc-shop-panel{background:#0b1220;border:1px solid #1f2a3d;box-shadow:0 20px 60px rgba(0,0,0,0.45);border-radius:14px;max-width:960px;width:92vw;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;color:#e6ecff;font-family:'Rajdhani',sans-serif;}
+        .npc-shop-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #1f2a3d;background:linear-gradient(90deg,#0f172a 0%,#10213a 100%);}
+        .npc-shop-header h3{margin:0;font-size:1.1rem;letter-spacing:0.5px;color:#f1c40f;}
+        .npc-shop-close{background:none;border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:8px;}
+        .npc-shop-close:hover{background:#1f2a3d;color:#fff;}
+        .npc-shop-grid{padding:18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;overflow:auto;}
+        .npc-shop-card{background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));border:1px solid #1f2a3d;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 10px 26px rgba(0,0,0,0.35);}
+        .npc-shop-card .icon{width:64px;height:64px;border:1px solid #24334a;border-radius:10px;background:#0f172a;display:flex;align-items:center;justify-content:center;overflow:hidden;align-self:flex-start;}
+        .npc-shop-card .icon img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}
+        .npc-shop-card .title{font-weight:700;font-size:1rem;color:#e6ecff;}
+        .npc-shop-card .meta{font-size:0.85rem;color:#9fb3d1;display:flex;gap:8px;align-items:center;}
+        .npc-shop-card .meta .pill{padding:2px 8px;border-radius:999px;border:1px solid #24334a;background:#131d30;font-weight:700;font-size:0.75rem;color:#8dd2ff;}
+        .npc-shop-card .meta .price{color:#f1c40f;font-weight:800;}
+        .npc-shop-card button{margin-top:auto;background:#2ecc71;border:none;color:#052e16;font-weight:800;border-radius:10px;padding:10px;cursor:pointer;transition:0.15s;font-size:0.95rem;}
+        .npc-shop-card button:hover{filter:brightness(1.05);} 
+        .npc-shop-card button:disabled{background:#1f2a3d;color:#6b7280;cursor:not-allowed;}
+        .npc-shop-empty{padding:24px;text-align:center;color:#94a3b8;}
+        `;
+        const tag = document.createElement('style');
+        tag.id = 'npc-shop-styles';
+        tag.textContent = css;
+        document.head.appendChild(tag);
+    }
+
+    async function getItemCatalogClient() {
+        if (ITEM_CATALOG_CACHE) return ITEM_CATALOG_CACHE;
+        try {
+            const res = await fetch('/api/items/catalog');
+            const json = await res.json();
+            if (json && json.success && Array.isArray(json.items)) {
+                ITEM_CATALOG_CACHE = json.items;
+                return ITEM_CATALOG_CACHE;
+            }
+        } catch (_) {}
+        ITEM_CATALOG_CACHE = [];
+        return ITEM_CATALOG_CACHE;
+    }
+
+    async function openNpcShop(items, ctx = {}) {
+        // Permite ser chamado via window.openNpcShop
+        window.openNpcShop = openNpcShop;
+
+        const context = { ...NPC_SHOP_CTX, ...(ctx || {}) };
+        if (!context.userId && window.CURRENT_USER_ID) context.userId = window.CURRENT_USER_ID;
+
         const list = Array.isArray(items) ? items : [];
-        if (list.length === 0) {
-            await showRPGDialog(npc.name, npc.skin, 'Sem itens à venda agora.');
-            return;
+        const catalog = await getItemCatalogClient();
+        ensureShopStyles();
+
+        const data = list.map(raw => {
+            const itemId = String(raw && (raw.itemId || raw.id) || '').trim();
+            const def = catalog.find(c => c.id === itemId);
+            const price = Math.max(0, parseInt(raw && raw.price, 10) || 0);
+            return {
+                id: itemId,
+                name: (raw && raw.name) || (def && def.name) || itemId || 'Item',
+                type: def && def.type === 'key' ? 'key' : 'consumable',
+                price,
+                icon: (def && def.hasIcon) ? `/api/items/icon/${encodeURIComponent(itemId)}.png?ts=${def.updatedAt || Date.now()}` : null
+            };
+        }).filter(x => x.id);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'npc-shop-overlay';
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+        const panel = document.createElement('div');
+        panel.className = 'npc-shop-panel';
+        overlay.appendChild(panel);
+
+        const header = document.createElement('div');
+        header.className = 'npc-shop-header';
+        const title = document.createElement('h3');
+        title.textContent = context.npcName ? `Loja de ${context.npcName}` : 'Loja';
+        const close = document.createElement('button');
+        close.className = 'npc-shop-close';
+        close.textContent = 'Fechar';
+        close.onclick = () => overlay.remove();
+        header.appendChild(title);
+        header.appendChild(close);
+        panel.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'npc-shop-grid';
+        panel.appendChild(grid);
+
+        if (!data.length) {
+            const empty = document.createElement('div');
+            empty.className = 'npc-shop-empty';
+            empty.textContent = 'Sem itens à venda agora.';
+            grid.appendChild(empty);
         }
 
-        const shown = list.slice(0, 4);
-        const moreCount = Math.max(0, list.length - shown.length);
-        const lines = shown.map(i => {
-            const nm = i && i.name ? String(i.name) : String(i && (i.itemId || i.id) ? (i.itemId || i.id) : 'Item');
-            const price = (i && Number.isFinite(i.price)) ? i.price : (parseFloat(i && i.price) || 0);
-            const desc = i && i.description ? String(i.description) : '';
-            return `- ${nm} ($${price})${desc ? `: ${desc}` : ''}`;
+        const buyItem = async (itemId, btn) => {
+            if (!itemId) return;
+            if (btn) btn.disabled = true;
+            try {
+                const res = await fetch('/api/npc/shop/buy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: context.userId, npcId: context.npcId, itemId })
+                });
+                const resp = await res.json().catch(() => ({}));
+                if (!res.ok || resp.error) {
+                    showToast(resp.error || 'Não foi possível comprar.');
+                    if (btn) btn.disabled = false;
+                    return;
+                }
+
+                // Atualiza client-side com o retorno da API (bag, keyItems, money)
+                if (resp && typeof resp.money === 'number') window.USER_MONEY = resp.money;
+                if (resp && resp.bag && typeof resp.bag === 'object') window.USER_INVENTORY = resp.bag;
+                if (resp && Array.isArray(resp.keyItems)) window.USER_KEY_ITEMS = resp.keyItems;
+                if (resp && resp.storyFlags && typeof resp.storyFlags === 'object') window.STORY_FLAGS = resp.storyFlags;
+
+                showToast('Item comprado!');
+            } catch (_) {
+                showToast('Erro ao comprar.');
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        data.forEach(it => {
+            const card = document.createElement('div');
+            card.className = 'npc-shop-card';
+
+            const iconBox = document.createElement('div');
+            iconBox.className = 'icon';
+            if (it.icon) {
+                const img = document.createElement('img');
+                img.src = it.icon;
+                img.alt = it.name;
+                iconBox.appendChild(img);
+            } else {
+                const fallback = document.createElement('span');
+                fallback.style.color = '#8da2c0';
+                fallback.style.fontWeight = '800';
+                fallback.textContent = (it.name || it.id).slice(0, 2).toUpperCase();
+                iconBox.appendChild(fallback);
+            }
+            card.appendChild(iconBox);
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'title';
+            titleEl.textContent = it.name;
+            card.appendChild(titleEl);
+
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            const pill = document.createElement('span');
+            pill.className = 'pill';
+            pill.textContent = it.type === 'key' ? 'Item-chave' : 'Consumível';
+            const price = document.createElement('span');
+            price.className = 'price';
+            price.textContent = `$${it.price}`;
+            meta.appendChild(pill);
+            meta.appendChild(price);
+            card.appendChild(meta);
+
+            const btn = document.createElement('button');
+            btn.textContent = `Comprar por $${it.price}`;
+            btn.disabled = it.price <= 0;
+            btn.onclick = () => buyItem(it.id, btn);
+            card.appendChild(btn);
+
+            grid.appendChild(card);
         });
 
-        const shopText = `O que você quer comprar?\n\n${lines.join('\n')}${moreCount ? `\n\n(+${moreCount} itens...)` : ''}`;
-
-        const choice = await showRPGDialog(npc.name, npc.skin, shopText, [
-            ...shown.map(i => ({
-                text: `COMPRAR ${i.name || i.itemId || i.id}`,
-                value: String(i.itemId || i.id || i.name || ''),
-                class: 'confirm'
-            })),
-            { text: 'SAIR', value: 'exit', class: 'cancel' }
-        ]);
-
-        if (choice === 'exit') return;
-        const selected = shown.find(i => String(i.itemId || i.id || i.name || '') === String(choice));
-        if (!selected) return;
-
-        const selectedItemId = String(selected.itemId || selected.id || '').trim();
-        if (!selectedItemId) {
-            showToast('Item inválido.');
-            return;
-        }
-
-        try {
-            const res = await fetch('/api/npc/shop/buy', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: myId, npcId: npc._id, itemId: selectedItemId })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || data.error) {
-                showToast(data.error || 'Não foi possível comprar.');
-                return;
-            }
-
-            if (data && data.user) {
-                updateUserGlobals(data.user);
-                if (typeof window.USER_MONEY === 'number' && typeof data.user.money === 'number') {
-                    window.USER_MONEY = data.user.money;
-                }
-            }
-
-            showToast('Item comprado!');
-        } catch (e) {
-            showToast('Erro ao comprar.');
-        }
+        document.body.appendChild(overlay);
     }
+
+    // Expõe o shop para outros scripts (ex.: city.ejs)
+    window.openNpcShop = openNpcShop;
 
     const hasInteract = isStarterNpc(npc) || !!(npc.interact && npc.interact.enabled);
     const canBattle = npc.team && npc.team.length > 0;

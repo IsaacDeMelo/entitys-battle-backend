@@ -103,8 +103,8 @@ mongoose.connect(MONGO_URI)
 async function ensureDefaultItemCatalog() {
     try {
         const defaults = [
-            { id: 'captureCube', name: 'Capture Cube', type: 'consumable' },
-            { id: 'levelUpCrystal', name: 'Level Crystal', type: 'consumable' }
+            { id: 'captureCube', name: 'Capture Cube', type: 'consumable', price: 0 },
+            { id: 'levelUpCrystal', name: 'Level Crystal', type: 'consumable', price: 0 }
         ];
         for (const it of defaults) {
             const existing = await ItemDefinition.findOne({ id: it.id });
@@ -113,6 +113,7 @@ async function ensureDefaultItemCatalog() {
                     id: it.id,
                     name: it.name,
                     type: it.type,
+                    price: Number.isFinite(it.price) ? it.price : 0,
                     iconPngBase64: '',
                     updatedAt: Date.now()
                 });
@@ -219,6 +220,7 @@ async function refreshItemCatalogCache() {
             id: String(x.id || '').trim(),
             name: String(x.name || x.id || '').trim(),
             type: (String(x.type || 'consumable').trim() === 'key') ? 'key' : 'consumable',
+            price: Number.isFinite(x.price) ? x.price : (parseInt(x.price, 10) || 0),
             hasIcon: !!(x.iconPngBase64 && String(x.iconPngBase64).trim()),
             updatedAt: x.updatedAt || 0
         })).filter(x => x.id) : [];
@@ -368,12 +370,16 @@ function addItemToUser(user, itemId, qty = 1, opts = {}) {
         if (unique && user.keyItems.includes(id)) {
             return { ok: false, reason: 'already_has_key_item' };
         }
-        if (!user.keyItems.includes(id)) user.keyItems.push(id);
+        if (!user.keyItems.includes(id)) {
+            user.keyItems.push(id);
+            if (typeof user.markModified === 'function') user.markModified('keyItems');
+        }
         return { ok: true, added: 1, storage: 'keyItems' };
     }
 
     const prev = getItemCount(user, id);
     user.bag[id] = prev + amount;
+    if (typeof user.markModified === 'function') user.markModified('bag');
     return { ok: true, added: amount, storage: 'bag' };
 }
 
@@ -386,6 +392,7 @@ function removeItemFromUser(user, itemId, qty = 1) {
     // Remoção de item-chave (único)
     if (user.keyItems.includes(id)) {
         user.keyItems = user.keyItems.filter(k => k !== id);
+        if (typeof user.markModified === 'function') user.markModified('keyItems');
         return { ok: true, removed: 1, storage: 'keyItems' };
     }
 
@@ -395,6 +402,7 @@ function removeItemFromUser(user, itemId, qty = 1) {
     const next = prev - amount;
     if (next <= 0) delete user.bag[id];
     else user.bag[id] = next;
+    if (typeof user.markModified === 'function') user.markModified('bag');
     return { ok: true, removed: amount, storage: 'bag' };
 }
 
@@ -1210,7 +1218,10 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
                         points: prev.points
                             .map(p => ({
                                 x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
-                                y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                                y: Math.max(0, Math.min(100, parseFloat(p && p.y))),
+                                waitMs: Math.max(0, parseInt(p && p.waitMs, 10) || 0),
+                                map: p && p.map ? String(p.map) : (map || (previous && previous.map) || ''),
+                                viaPortalId: p && p.viaPortalId ? String(p.viaPortalId) : ''
                             }))
                             .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
                     };
@@ -1225,7 +1236,10 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
                 const points = pts
                     .map(p => ({
                         x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
-                        y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                        y: Math.max(0, Math.min(100, parseFloat(p && p.y))),
+                        waitMs: Math.max(0, parseInt(p && p.waitMs, 10) || 0),
+                        map: p && p.map ? String(p.map) : (map || (previous && previous.map) || ''),
+                        viaPortalId: p && p.viaPortalId ? String(p.viaPortalId) : ''
                     }))
                     .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
                 return { loop, points };
@@ -1394,12 +1408,23 @@ app.post('/api/npc/interact', async (req, res) => {
                 const idx = list.findIndex(n => n && String(n._id) === String(npc._id));
                 if (idx >= 0) {
                     const n = list[idx];
+                    const now = Date.now();
                     const nx = typeof n.x === 'number' ? n.x : parseFloat(n.x) || 0;
                     const ny = typeof n.y === 'number' ? n.y : parseFloat(n.y) || 0;
                     const dx = px - nx;
                     const dy = py - ny;
                     const dir = computeDirectionFromDelta(dx, dy);
-                    list[idx] = { ...n, direction: dir, _faceDirection: dir, _pauseUntil: Date.now() + 8000 };
+                    const pausedAccum = Number.isFinite(n._pauseAccumMs) ? n._pauseAccumMs : 0;
+                    const updatedNpc = {
+                        ...n,
+                        direction: dir,
+                        _faceDirection: dir,
+                        _pauseUntil: now + 8000,
+                        _pausedAt: now,
+                        _pauseAccumMs: pausedAccum
+                    };
+                    list[idx] = updatedNpc;
+                    npcCacheByMap[mapId] = list;
                     io.to(mapId).emit('npcs_list', list);
                 }
             }
@@ -1688,12 +1713,23 @@ app.post('/api/npc/engage', async (req, res) => {
         const idx = list.findIndex(n => n && String(n._id) === String(npcId));
         if (idx >= 0 && Number.isFinite(px) && Number.isFinite(py)) {
             const n = list[idx];
+            const now = Date.now();
             const nx = typeof n.x === 'number' ? n.x : parseFloat(n.x) || 0;
             const ny = typeof n.y === 'number' ? n.y : parseFloat(n.y) || 0;
             const dx = px - nx;
             const dy = py - ny;
             const dir = computeDirectionFromDelta(dx, dy);
-            list[idx] = { ...n, direction: dir, _faceDirection: dir, _pauseUntil: Date.now() + pauseFor };
+            const pausedAccum = Number.isFinite(n._pauseAccumMs) ? n._pauseAccumMs : 0;
+            const updatedNpc = {
+                ...n,
+                direction: dir,
+                _faceDirection: dir,
+                _pauseUntil: now + pauseFor,
+                _pausedAt: now,
+                _pauseAccumMs: pausedAccum
+            };
+            list[idx] = updatedNpc;
+            npcCacheByMap[mapId] = list;
             io.to(mapId).emit('npcs_list', list);
         }
 
@@ -1722,10 +1758,21 @@ app.post('/api/npc/disengage', async (req, res) => {
         const idx = list.findIndex(n => n && String(n._id) === String(npcId));
         if (idx >= 0) {
             const n = list[idx];
-            // Zera o estado efêmero de pausa/face (não persiste no DB)
-            const cleared = { ...n, _pauseUntil: 0 };
+            const now = Date.now();
+            const pausedAt = Number.isFinite(n._pausedAt) ? n._pausedAt : null;
+            const pausedAccum = Number.isFinite(n._pauseAccumMs) ? n._pauseAccumMs : 0;
+            const delta = pausedAt ? Math.max(0, now - pausedAt) : 0;
+
+            // Zera estado efêmero e acumula o tempo parado para compensar no cálculo da rota.
+            const cleared = { 
+                ...n, 
+                _pauseUntil: 0,
+                _pausedAt: 0,
+                _pauseAccumMs: pausedAccum + delta
+            };
             delete cleared._faceDirection;
             list[idx] = cleared;
+            npcCacheByMap[mapId] = list;
             io.to(mapId).emit('npcs_list', list);
         }
 
@@ -2012,7 +2059,10 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
                         points: prev.points
                             .map(p => ({
                                 x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
-                                y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                                y: Math.max(0, Math.min(100, parseFloat(p && p.y))),
+                                waitMs: Math.max(0, parseInt(p && p.waitMs, 10) || 0),
+                                map: p && p.map ? String(p.map) : (map || (prevNpc && prevNpc.map) || ''),
+                                viaPortalId: p && p.viaPortalId ? String(p.viaPortalId) : ''
                             }))
                             .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
                     };
@@ -2027,7 +2077,10 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
                 const points = pts
                     .map(p => ({
                         x: Math.max(0, Math.min(100, parseFloat(p && p.x))),
-                        y: Math.max(0, Math.min(100, parseFloat(p && p.y)))
+                        y: Math.max(0, Math.min(100, parseFloat(p && p.y))),
+                        waitMs: Math.max(0, parseInt(p && p.waitMs, 10) || 0),
+                        map: p && p.map ? String(p.map) : (map || (prevNpc && prevNpc.map) || ''),
+                        viaPortalId: p && p.viaPortalId ? String(p.viaPortalId) : ''
                     }))
                     .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
                 return { loop, points };
@@ -2096,19 +2149,23 @@ function computeDirectionFromDelta(dx, dy) {
 }
 
 function computeNpcPatrolPosition(npc, nowMs) {
+    // Pausa: mantém posição e direção, não avança tempo de rota
     if (npc && npc._pauseUntil && nowMs < npc._pauseUntil) {
         return {
             x: (typeof npc.x === 'number') ? npc.x : parseFloat(npc.x) || 0,
             y: (typeof npc.y === 'number') ? npc.y : parseFloat(npc.y) || 0,
-            direction: npc._faceDirection || npc.direction || 'down'
+            direction: npc._faceDirection || npc.direction || 'down',
+            map: npc.map
         };
     }
+
     const p = npc && npc.patrol;
     if (!p || !p.enabled) return null;
     const mode = (p.mode || '').trim();
-    const speed = Math.max(0.1, parseFloat(p.speed) || 6); // %/s
+    const speed = Math.max(0.1, parseFloat(p.speed) || 6); // units/s
     const phase = parseInt(p.phaseOffsetMs, 10) || 0;
-    const tNow = nowMs + phase;
+    const pausedAccum = Number.isFinite(npc && npc._pauseAccumMs) ? npc._pauseAccumMs : 0;
+    const tNow = (nowMs - pausedAccum) + phase;
 
     if (mode === 'pingpong') {
         const ax = (p.pingPong && Number.isFinite(p.pingPong.ax)) ? p.pingPong.ax : 0;
@@ -2154,75 +2211,79 @@ function computeNpcPatrolPosition(npc, nowMs) {
     }
 
     if (mode === 'path') {
-        const ptsRaw = (p.path && Array.isArray(p.path.points)) ? p.path.points : [];
-        const pts = ptsRaw
-            .map(q => ({
-                x: Number.isFinite(q && q.x) ? q.x : parseFloat(q && q.x) || 0,
-                y: Number.isFinite(q && q.y) ? q.y : parseFloat(q && q.y) || 0
-            }))
-            .filter(q => Number.isFinite(q.x) && Number.isFinite(q.y));
-
+        const pts = Array.isArray(p.path && p.path.points) ? p.path.points : [];
         if (pts.length < 2) return null;
 
-        const segs = [];
-        let total = 0;
-        for (let i = 0; i < pts.length - 1; i++) {
-            const a = pts[i];
-            const b = pts[i + 1];
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const len = Math.hypot(dx, dy);
-            if (len > 0.0001) {
-                segs.push({ a, b, dx, dy, len });
-                total += len;
-            }
-        }
-        // Fecha o loop (último -> primeiro)
+        const defaultMap = npc && npc.map ? String(npc.map) : '';
+        const normPt = (pt) => ({
+            x: Number.isFinite(pt && pt.x) ? pt.x : parseFloat(pt && pt.x) || 0,
+            y: Number.isFinite(pt && pt.y) ? pt.y : parseFloat(pt && pt.y) || 0,
+            waitMs: Math.max(0, parseInt(pt && pt.waitMs, 10) || 0),
+            map: pt && pt.map ? String(pt.map) : defaultMap,
+            viaPortalId: pt && pt.viaPortalId ? String(pt.viaPortalId) : ''
+        });
+        const points = pts.map(normPt);
+
         const loop = !!(p.path && p.path.loop);
-        if (loop) {
-            const a = pts[pts.length - 1];
-            const b = pts[0];
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const len = Math.hypot(dx, dy);
-            if (len > 0.0001) {
-                segs.push({ a, b, dx, dy, len });
-                total += len;
+        const phases = []; // [{durMs, type:'move'|'wait'|'teleport', map, ...}]
+
+        const addPhase = (from, to) => {
+            const sameMap = String(from.map || '') === String(to.map || '');
+            const needsTeleport = !sameMap || !!to.viaPortalId;
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const dir = computeDirectionFromDelta(dx || 1, dy || 0);
+
+            if (needsTeleport) {
+                phases.push({ type: 'teleport', durMs: 0, from, to, map: to.map, dir });
+            } else {
+                const len = Math.hypot(dx, dy);
+                if (len > 0.0001) {
+                    const durMs = (len / speed) * 1000;
+                    phases.push({ type: 'move', durMs, from, to, dx, dy, map: from.map, dir: computeDirectionFromDelta(dx, dy) });
+                }
             }
+
+            if (to.waitMs > 0) {
+                phases.push({ type: 'wait', durMs: to.waitMs, at: to, map: to.map, dir });
+            }
+        };
+
+        for (let i = 0; i < points.length - 1; i++) addPhase(points[i], points[i + 1]);
+        if (loop) addPhase(points[points.length - 1], points[0]);
+
+        // Se não houver fases (pontos iguais), aborta
+        const totalMs = phases.reduce((s, ph) => s + (ph.durMs || 0), 0);
+        if (!Number.isFinite(totalMs) || totalMs <= 0) return null;
+
+        const posInPeriod = ((tNow % totalMs) + totalMs) % totalMs;
+        let accMs = 0;
+        let lastDir = points.length >= 2 ? computeDirectionFromDelta(points[1].x - points[0].x, points[1].y - points[0].y) : 'down';
+        let lastMap = points[0].map || defaultMap;
+
+        for (const ph of phases) {
+            const nextAcc = accMs + (ph.durMs || 0);
+            if (posInPeriod <= nextAcc + 1e-6) {
+                if (ph.type === 'wait') {
+                    return { x: ph.at.x, y: ph.at.y, direction: ph.dir || lastDir, map: ph.map || lastMap };
+                }
+                if (ph.type === 'teleport') {
+                    return { x: ph.to.x, y: ph.to.y, direction: ph.dir || lastDir, map: ph.map || ph.to.map || lastMap };
+                }
+                // move phase
+                const tRel = (posInPeriod - accMs) / (ph.durMs || 1);
+                const x = ph.from.x + ph.dx * tRel;
+                const y = ph.from.y + ph.dy * tRel;
+                return { x, y, direction: ph.dir || lastDir, map: ph.map || lastMap };
+            }
+            accMs = nextAcc;
+            if (ph.dir) lastDir = ph.dir;
+            if (ph.map) lastMap = ph.map;
         }
 
-        if (!Number.isFinite(total) || total < 0.0001 || segs.length === 0) return null;
-
-        const distPerMs = speed / 1000;
-        const traveled = (tNow * distPerMs);
-
-        // loop=true => percurso circular
-        // loop=false => vai-e-volta pela rota (pingpong)
-        const period = loop ? total : (total * 2);
-        const posInPeriod = ((traveled % period) + period) % period;
-        const goingForward = loop ? true : (posInPeriod <= total);
-        const distAlong = loop ? posInPeriod : (goingForward ? posInPeriod : (period - posInPeriod));
-
-        let acc = 0;
-        for (const s of segs) {
-            if (acc + s.len >= distAlong) {
-                const u = (distAlong - acc) / s.len;
-                const x = s.a.x + s.dx * u;
-                const y = s.a.y + s.dy * u;
-                const dir = goingForward
-                    ? computeDirectionFromDelta(s.dx, s.dy)
-                    : computeDirectionFromDelta(-s.dx, -s.dy);
-                return { x, y, direction: dir };
-            }
-            acc += s.len;
-        }
-
-        // fallback: fim do trajeto
-        const last = segs[segs.length - 1];
-        const dir = goingForward
-            ? computeDirectionFromDelta(last.dx, last.dy)
-            : computeDirectionFromDelta(-last.dx, -last.dy);
-        return { x: last.b.x, y: last.b.y, direction: dir };
+        // fallback: final ponto
+        const lastPt = points[points.length - 1];
+        return { x: lastPt.x, y: lastPt.y, direction: lastDir, map: lastPt.map || defaultMap };
     }
 
     return null;
@@ -2247,16 +2308,41 @@ setInterval(async () => {
             }
 
             let hasPatrol = false;
+            const movers = [];
             const updated = list.map(n => {
                 const pos = computeNpcPatrolPosition(n, now);
                 if (!pos) return n;
                 hasPatrol = true;
+                const nextMap = pos.map || n.map;
+                if (nextMap && nextMap !== n.map) {
+                    // marca para mover de mapa
+                    movers.push({ from: mapId, to: nextMap, npc: { ...n, x: pos.x, y: pos.y, direction: pos.direction, map: nextMap } });
+                    return null; // será removido deste mapa
+                }
                 return { ...n, x: pos.x, y: pos.y, direction: pos.direction };
-            });
+            }).filter(Boolean);
+
+            if (movers.length) {
+                // remove movidos deste mapa
+                npcCacheByMap[mapId] = updated;
+                // adiciona nos caches de destino
+                for (const m of movers) {
+                    if (!npcCacheByMap[m.to]) npcCacheByMap[m.to] = [];
+                    npcCacheByMap[m.to].push(m.npc);
+                }
+            } else {
+                npcCacheByMap[mapId] = updated;
+            }
 
             if (hasPatrol) {
-                io.to(mapId).emit('npcs_list', updated);
+                io.to(mapId).emit('npcs_list', npcCacheByMap[mapId]);
             }
+        }
+
+        // Emite updates também para mapas de destino de movers que já estavam ativos
+        const moverTargets = Object.keys(npcCacheByMap).filter(mid => activeMaps.includes(mid));
+        for (const mid of moverTargets) {
+            io.to(mid).emit('npcs_list', npcCacheByMap[mid]);
         }
     } catch (e) {
         console.error('NPC patrol tick error', e);
@@ -2391,13 +2477,20 @@ app.post('/api/items/upsert', async (req, res) => {
 
         const name = String((item && item.name) || id).trim();
         const type = (String((item && item.type) || 'consumable').trim() === 'key') ? 'key' : 'consumable';
+        const price = (() => {
+            const raw = item && item.price;
+            if (Number.isFinite(raw)) return Math.max(0, raw);
+            const n = parseInt(raw, 10);
+            return Number.isFinite(n) ? Math.max(0, n) : 0;
+        })();
 
         const existing = await ItemDefinition.findOne({ id });
         if (!existing) {
-            await ItemDefinition.create({ id, name, type, iconPngBase64: '', updatedAt: Date.now() });
+            await ItemDefinition.create({ id, name, type, price, iconPngBase64: '', updatedAt: Date.now() });
         } else {
             existing.name = name;
             existing.type = type;
+            existing.price = price;
             existing.updatedAt = Date.now();
             await existing.save();
         }

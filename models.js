@@ -177,7 +177,9 @@ const NPCSchema = new mongoose.Schema({
             loop: { type: Boolean, default: true },
             points: [{
                 x: { type: Number, default: 0 },
-                y: { type: Number, default: 0 }
+                y: { type: Number, default: 0 },
+                // Tempo parado neste ponto (ms). 0 = sem espera.
+                waitMs: { type: Number, default: 0 }
             }]
         },
 
@@ -235,6 +237,7 @@ const ItemDefinitionSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     name: { type: String, default: '' },
     type: { type: String, default: 'consumable' },
+    price: { type: Number, default: 0 },
     iconPngBase64: { type: String, default: '' },
     updatedAt: { type: Number, default: () => Date.now() }
 });
