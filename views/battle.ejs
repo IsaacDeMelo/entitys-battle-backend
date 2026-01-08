@@ -722,19 +722,6 @@
                         await wait(300);
                     }
                     
-                    // COMBO - Feedback visual
-                    if(evt.isCombo) {
-                        const t = document.createElement('div'); 
-                        t.className = 'floating-text combo-text'; 
-                        t.innerText = "🔥 COMBO! 🔥"; 
-                        t.style.marginTop = evt.isCritical ? "60px" : "30px";
-                        t.style.color = "#ff8800";
-                        t.style.fontSize = "20px";
-                        t.style.fontWeight = "bold";
-                        document.getElementById(`fighter-${targetSide}`).appendChild(t); 
-                        setTimeout(() => t.remove(), 1300); 
-                    }
-                    
                     if(evt.isEffective) { const t = document.createElement('div'); t.className = 'floating-text super-text'; t.innerText = "SUPER!"; t.style.marginTop = "30px"; document.getElementById(`fighter-${targetSide}`).appendChild(t); setTimeout(() => t.remove(), 1200); } 
                     await wait(500); damageTxt.remove();
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 

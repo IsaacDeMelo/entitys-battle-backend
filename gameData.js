@@ -250,7 +250,10 @@ function getTypeEffectiveness(atkType, defType) {
     if (!TypeChart[atk]) return 1;
     
     const val = TypeChart[atk][def];
-    return val === undefined ? 1 : val;
+    if (val === undefined) return 1;
+    // Nerf: super efetivo era 2x e estava muito alto
+    if (val === 2) return 1.5;
+    return val;
 }
 
 module.exports = { EntityType, MoveType, EffectType, TypeChart, getTypeEffectiveness, MOVES_LIBRARY, getXpForNextLevel };

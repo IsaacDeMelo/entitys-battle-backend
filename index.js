@@ -549,11 +549,7 @@ function processAction(attacker, defender, move, logArray) {
         const critChance = 0.0625 + (attacker.stats.speed / 2000); // Base 6.25% + speed bonus
         const isCritical = Math.random() < critChance;
         
-        // 3. COMBO SYSTEM: Ataques consecutivos do mesmo elemento ganham bônus
-        if (!attacker.lastMoveElement) attacker.lastMoveElement = null;
-        const isCombo = (attacker.lastMoveElement === move.element && attacker.lastMoveElement !== null);
-        attacker.lastMoveElement = move.element;
-        const comboMultiplier = isCombo ? 1.2 : 1.0; // 20% de bônus em combo
+        // 3. (REMOVIDO) COMBO SYSTEM: estava desbalanceado
         
         // 4. DEFESA REDUZ DANO
         const defenseMultiplier = defender.defending ? 0.5 : 1.0;
@@ -566,7 +562,7 @@ function processAction(attacker, defender, move, logArray) {
         const def = defender.stats.defense;
         const random = (Math.floor(Math.random() * 16) + 85) / 100;
         
-        let damage = Math.floor((((level * 0.2 + 1.5) * move.power * (atk / def)) / 65 + 2) * multiplier * random * comboMultiplier);
+        let damage = Math.floor((((level * 0.2 + 1.5) * move.power * (atk / def)) / 65 + 2) * multiplier * random);
         
         // Aplicar crítico
         if (isCritical) {
@@ -591,8 +587,7 @@ function processAction(attacker, defender, move, logArray) {
             isEffective: multiplier > 1, 
             isNotEffective: multiplier < 1 && multiplier > 0, 
             isBlocked: multiplier === 0,
-            isCritical: isCritical,
-            isCombo: isCombo
+            isCritical: isCritical
         }); 
         
         // 5. EFEITOS ESPECIAIS: Chance de aplicar status baseado no elemento
@@ -632,10 +627,6 @@ function processAction(attacker, defender, move, logArray) {
             }
         }
         
-        // Combo visual feedback
-        if (isCombo) {
-            logArray.push({ type: 'MSG', text: `🔥 COMBO! +20% de dano!` });
-        }
     }
 }
 
