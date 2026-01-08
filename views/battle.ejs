@@ -175,6 +175,27 @@
     .move-btn small { font-size: 0.7rem; color: #f1c40f; font-weight: bold; }
     .move-btn:active { transform: scale(0.96); border-color: #f1c40f; background: #1a252f; }
     .move-btn:disabled { opacity: 0.5; pointer-events: none; filter: grayscale(1); }
+
+    /* Ícone pequeno do tipo do ataque (substitui emojis dos golpes) */
+    .move-title { display: inline-flex; align-items: center; gap: 8px; }
+    .move-type-icon {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.45);
+        box-shadow: 0 0 0 2px rgba(0,0,0,0.35) inset;
+        flex: none;
+    }
+    .move-type-beast { background: #d4a574; }
+    .move-type-flame { background: #e67e22; }
+    .move-type-aqua { background: #3498db; }
+    .move-type-forest { background: #2ecc71; }
+    .move-type-sky { background: #74b9ff; }
+    .move-type-earth { background: #d35400; }
+    .move-type-mystic { background: #e056fd; }
+    .move-type-shadow { background: #2d3436; }
+    .move-type-metal { background: #bdc3c7; }
+    .move-type-venom { background: #8e44ad; }
     .rest-btn { grid-column: span 2; background: linear-gradient(180deg, #27ae60, #1e8449); border-color: #2ecc71; }
     #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.5s; }
     #overlay h1 { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; text-shadow: 0 4px 0 #c27c0e; margin-bottom: 40px; font-size: 1.8rem; }
@@ -354,7 +375,7 @@
                     <div id="moves-container" style="display:contents;">
                         <% p1.moves.forEach(move => { %>
                             <button class="move-btn" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
-                                <strong><%= move.icon %> <%= move.name %></strong>
+                                <strong class="move-title"><span class="move-type-icon move-type-<%= (move.element || 'beast') %>" title="<%= (move.element || 'beast').toUpperCase() %>"></span><span><%= move.name %></span></strong>
                                 <small><%= move.cost %> EN</small>
                             </button>
                         <% }) %>
@@ -407,6 +428,15 @@
         let canAct = true; 
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+
+        function renderMoveBtnInner(move) {
+            const element = (move && move.element) ? String(move.element) : 'beast';
+            const name = (move && move.name) ? String(move.name) : '';
+            const cost = (move && move.cost != null) ? String(move.cost) : '0';
+            const safeEl = element.replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'beast';
+            const title = safeEl.toUpperCase();
+            return `<strong class="move-title"><span class="move-type-icon move-type-${safeEl}" title="${title}"></span><span>${name}</span></strong><small>${cost} EN</small>`;
+        }
 
         let p1Data = { name: "<%= p1.playerName %>", skin: "<%= p1.skin %>", sprite: resolveImg("<%= p1.sprite %>"), mon: "<%= p1.name %>" };
         let p2Data = { name: "<%= p2.playerName %>", skin: "<%= p2.skin %>", sprite: resolveImg("<%= p2.sprite %>"), mon: "<%= p2.name %>", isCustom: <%= p2.isCustomSkin ? 'true' : 'false' %> };
@@ -895,7 +925,7 @@
                         data.p1State.moves.forEach(move => { 
                             const btn = document.createElement('button'); btn.className = 'move-btn'; 
                             btn.onclick = () => sendAction('move', move.id); 
-                            btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                            btn.innerHTML = renderMoveBtnInner(move);
                             mc.appendChild(btn); 
                         });
                         if (data.events) await playEvents(data.events); 
@@ -973,7 +1003,7 @@
                     data.p1State.moves.forEach(move => { 
                         const btn = document.createElement('button'); btn.className = 'move-btn'; 
                         btn.onclick = () => sendAction('move', move.id); 
-                        btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                        btn.innerHTML = renderMoveBtnInner(move);
                         mc.appendChild(btn); 
                     });
                     if (data.events) await playEvents(data.events); 
@@ -1091,7 +1121,7 @@
                     newState.moves.forEach(move => { 
                         const btn = document.createElement('button'); btn.className = 'move-btn'; 
                         btn.onclick = () => sendAction('move', move.id); 
-                        btn.innerHTML = `<strong>${move.icon} ${move.name}</strong><small>${move.cost} EN</small>`; 
+                        btn.innerHTML = renderMoveBtnInner(move);
                         mc.appendChild(btn); 
                     });
                     if (data.events) await playEvents(data.events); 
