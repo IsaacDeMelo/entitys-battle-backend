@@ -3188,7 +3188,7 @@ app.post('/api/turn', async (req, res) => {
                 } 
             } 
             delete activeBattles[battleId]; 
-            return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwPokeball }); 
+            return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwCaptureCube }); 
         }
         
         if (p2.hp <= 0) {
@@ -3284,7 +3284,7 @@ app.post('/api/turn', async (req, res) => {
                 } catch (e) { console.error(e); } 
             }
             delete activeBattles[battleId]; 
-            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwPokeball });
+            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube });
         }
         const user = await User.findById(battle.userId);
         const p1PokeData = user ? user.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;
