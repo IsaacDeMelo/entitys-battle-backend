@@ -824,7 +824,8 @@
     <script>
         history.pushState(null, null, location.href); window.onpopstate = function () { history.go(1); }; window.onpageshow = function(event) { if (event.persisted) { window.location.reload(); } };
         
-        const socket = io();
+        // Usar socket global persistente do common.js
+        const socket = window.gameSocket || io();
         const battleMode = "<%= battleMode %>";
         const battleId = "<%= battleId %>";
         const initialData = <%- battleData %>;

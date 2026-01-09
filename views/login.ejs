@@ -2,10 +2,463 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Goofymon - Aventura</title>
-    <!-- Viewport crucial para mobile: evita zoom indesejado e ajusta a escala -->
+    <title>MMO-RPG - Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #fbbf24;
+            --bg-dark: #0a0a0f;
+            --panel-bg: rgba(17, 17, 25, 0.95);
+            --border-glow: rgba(99, 102, 241, 0.3);
+        }
+
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0;
+            padding: 0;
+        }
+
+        body { 
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+            color: #e2e8f0; 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Efeito de grid animado no fundo */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            animation: gridScroll 20s linear infinite;
+        }
+
+        @keyframes gridScroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 50px 50px; }
+        }
+
+        /* Container Principal */
+        .login-container { 
+            background: var(--panel-bg);
+            padding: 40px 30px;
+            border: 1px solid var(--border-glow);
+            width: 100%;
+            max-width: 420px;
+            border-radius: 20px;
+            box-shadow: 
+                0 0 60px rgba(99, 102, 241, 0.15),
+                0 20px 40px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        /* Brilho superior */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                var(--primary), 
+                var(--accent), 
+                var(--primary), 
+                transparent
+            );
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Logo/Título */
+        .logo {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #818cf8, #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            filter: drop-shadow(0 0 20px rgba(129, 140, 248, 0.4));
+        }
+
+        .logo p {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Tabs */
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 5px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 
+                0 4px 15px rgba(99, 102, 241, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary);
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 0 3px var(--border-glow);
+        }
+
+        input::placeholder {
+            color: #475569;
+        }
+
+        /* Skin Preview */
+        .skin-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #1e293b;
+        }
+
+        .sprite-preview-box {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 10px;
+            border: 2px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 
+                0 0 20px rgba(99, 102, 241, 0.2),
+                inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .character-sprite {
+            width: 48px;
+            height: 48px;
+            background-size: 400% auto;
+            image-rendering: pixelated;
+            background-position-y: 0%;
+            animation: walk-anim 0.8s steps(4) infinite;
+            transform: scale(1.2);
+        }
+
+        @keyframes walk-anim {
+            from { background-position-x: 0; }
+            to { background-position-x: -400%; }
+        }
+
+        /* Buttons */
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 
+                0 4px 15px rgba(99, 102, 241, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .btn-primary:hover::before {
+            transform: translateX(100%);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Error Message */
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 12px 16px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Info Text */
+        .info-text {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin: 12px 0;
+            padding: 12px;
+            background: rgba(100, 116, 139, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(100, 116, 139, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+
+            .logo h1 {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .login-container {
+                padding: 20px;
+                margin: 10px 0;
+            }
+
+            .logo {
+                margin-bottom: 20px;
+            }
+
+            .logo h1 {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="logo">
+            <h1>MMO-RPG</h1>
+            <p>Sua aventura começa aqui</p>
+        </div>
+
+        <div class="tab-container">
+            <div id="tabLogin" class="tab active" onclick="switchTab('login')">Login</div>
+            <div id="tabRegister" class="tab" onclick="switchTab('register')">Registrar</div>
+        </div>
+
+        <!-- FORMULÁRIO DE LOGIN -->
+        <form id="formLogin" action="/login" method="POST">
+            <div class="form-group">
+                <label class="form-label">Usuário</label>
+                <input type="text" name="username" placeholder="Digite seu usuário" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Senha</label>
+                <input type="password" name="password" placeholder="Digite sua senha" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-primary">Entrar no Jogo</button>
+        </form>
+
+        <!-- FORMULÁRIO DE REGISTRO -->
+        <form id="formRegister" action="/register" method="POST" style="display:none;">
+            <div class="form-group">
+                <label class="form-label">Usuário</label>
+                <input type="text" name="username" placeholder="Escolha seu nome de treinador" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Senha</label>
+                <input type="password" name="password" placeholder="Crie uma senha segura" required autocomplete="new-password">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Aparência</label>
+                <div class="skin-section">
+                    <div class="sprite-preview-box">
+                        <div id="charPreview" class="character-sprite"></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <select id="skinSelect" name="skin" onchange="updateSkinPreview(this.value)">
+                            <% if (skins && skins.length > 0) { %>
+                                <% skins.forEach(s => { %>
+                                    <option value="<%= s._id %>"><%= s.name %></option>
+                                <% }) %>
+                            <% } else { %>
+                                <option value="" disabled selected>Nenhuma skin disponível</option>
+                            <% } %>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-text">
+                💡 Você receberá seu monstro inicial de um NPC especial dentro do jogo
+            </div>
+
+            <button type="submit" class="btn-primary btn-secondary">Criar Conta</button>
+        </form>
+
+        <% if(typeof error !== 'undefined' && error) { %>
+            <div class="error-msg">⚠️ <%= error %></div>
+        <% } %>
+    </div>
+
+    <script>
+        function switchTab(mode) {
+            document.getElementById('formLogin').style.display = mode === 'login' ? 'block' : 'none';
+            document.getElementById('formRegister').style.display = mode === 'register' ? 'block' : 'none';
+            
+            document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+            document.getElementById('tabRegister').classList.toggle('active', mode === 'register');
+        }
+
+        function updateSkinPreview(skinName) {
+            const previewEl = document.getElementById('charPreview');
+            const s = String(skinName || '').trim();
+            if (!s) {
+                previewEl.style.backgroundImage = 'none';
+                return;
+            }
+            previewEl.style.backgroundImage = `url('/skins/${encodeURIComponent(s)}.png')`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('skinSelect');
+            if (select && select.value) {
+                updateSkinPreview(select.value);
+            }
+
+            const registerForm = document.getElementById('formRegister');
+            const registerBtn = registerForm ? registerForm.querySelector('button') : null;
+            if (registerBtn) {
+                const hasOption = select && select.value;
+                registerBtn.disabled = !hasOption;
+                registerBtn.style.opacity = hasOption ? '1' : '0.5';
+                registerBtn.style.cursor = hasOption ? 'pointer' : 'not-allowed';
+            }
+        });
+    </script>
+</body>
+</html>
     
     <style>
         :root {

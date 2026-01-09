@@ -2,6 +2,316 @@
 console.log('[COMMON.JS] Arquivo carregado! Versão:', new Date().toISOString());
 
 // =============================================================================
+// 0. SOCKET GLOBAL PERSISTENTE
+// =============================================================================
+window.gameSocket = (() => {
+    // Socket único para toda a sessão do jogo
+    if (!window.__globalSocket) {
+        console.log('[SOCKET] Criando conexão global persistente...');
+        window.__globalSocket = io({
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 5,
+            transports: ['websocket', 'polling']
+        });
+        
+        window.__globalSocket.on('connect', () => {
+            console.log('[SOCKET] Conectado! ID:', window.__globalSocket.id);
+        });
+        
+        window.__globalSocket.on('disconnect', (reason) => {
+            console.log('[SOCKET] Desconectado:', reason);
+        });
+        
+        window.__globalSocket.on('reconnect', (attemptNumber) => {
+            console.log('[SOCKET] Reconectado após', attemptNumber, 'tentativas');
+        });
+    }
+    return window.__globalSocket;
+})();
+
+// Alias para compatibilidade com código existente
+if (typeof socket === 'undefined') {
+    window.socket = window.gameSocket;
+}
+
+// =============================================================================
+// 0.5 SISTEMA DE PRELOAD E CACHE
+// =============================================================================
+window.GameCache = (() => {
+    const CACHE_VERSION = 'v1.0';
+    const CACHE_DURATION = 1000 * 60 * 30; // 30 minutos
+    
+    const cache = {
+        images: new Map(),
+        preloadQueue: [],
+        isPreloading: false
+    };
+
+    // Verifica se cache é válido
+    function isCacheValid(timestamp) {
+        return timestamp && (Date.now() - timestamp < CACHE_DURATION);
+    }
+
+    // Preload de imagem com cache
+    function preloadImage(url) {
+        return new Promise((resolve, reject) => {
+            // Já está em cache?
+            if (cache.images.has(url)) {
+                resolve(cache.images.get(url));
+                return;
+            }
+
+            const img = new Image();
+            img.onload = () => {
+                cache.images.set(url, img);
+                console.log('[CACHE] Imagem carregada:', url);
+                resolve(img);
+            };
+            img.onerror = () => {
+                console.warn('[CACHE] Erro ao carregar:', url);
+                reject(new Error(`Failed to load ${url}`));
+            };
+            img.src = url;
+        });
+    }
+
+    // Preload em lote
+    async function preloadBatch(urls, onProgress) {
+        if (cache.isPreloading) return;
+        cache.isPreloading = true;
+
+        const total = urls.length;
+        let loaded = 0;
+
+        for (const url of urls) {
+            try {
+                await preloadImage(url);
+                loaded++;
+                if (onProgress) onProgress(loaded, total);
+            } catch (e) {
+                console.warn('[CACHE] Falha ao precarregar:', url);
+                loaded++;
+                if (onProgress) onProgress(loaded, total);
+            }
+        }
+
+        cache.isPreloading = false;
+        console.log('[CACHE] Preload completo:', loaded, '/', total);
+    }
+
+    // Salvar dados em sessionStorage
+    function saveToSession(key, data) {
+        try {
+            sessionStorage.setItem(key, JSON.stringify({
+                data,
+                timestamp: Date.now(),
+                version: CACHE_VERSION
+            }));
+        } catch (e) {
+            console.warn('[CACHE] Erro ao salvar no sessionStorage:', e);
+        }
+    }
+
+    // Carregar de sessionStorage
+    function loadFromSession(key) {
+        try {
+            const item = sessionStorage.getItem(key);
+            if (!item) return null;
+
+            const parsed = JSON.parse(item);
+            if (parsed.version !== CACHE_VERSION || !isCacheValid(parsed.timestamp)) {
+                sessionStorage.removeItem(key);
+                return null;
+            }
+
+            return parsed.data;
+        } catch (e) {
+            console.warn('[CACHE] Erro ao ler sessionStorage:', e);
+            return null;
+        }
+    }
+
+    // Limpar cache antigo
+    function clearOldCache() {
+        try {
+            const keys = Object.keys(sessionStorage);
+            for (const key of keys) {
+                if (key.startsWith('game_')) {
+                    const item = JSON.parse(sessionStorage.getItem(key));
+                    if (!isCacheValid(item.timestamp)) {
+                        sessionStorage.removeItem(key);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[CACHE] Erro ao limpar cache:', e);
+        }
+    }
+
+    // Assets críticos para preload
+    function getCriticalAssets() {
+        return [
+            '/uploads/char1.png',
+            '/uploads/char2.png',
+            '/uploads/catchcube.gif',
+            '/uploads/battle_bg.png'
+        ];
+    }
+
+    // Inicializar cache
+    clearOldCache();
+
+    return {
+        preloadImage,
+        preloadBatch,
+        saveToSession,
+        loadFromSession,
+        getCriticalAssets,
+        getImage: (url) => cache.images.get(url)
+    };
+})();
+
+// =============================================================================
+// 0.6 TELA DE CARREGAMENTO GLOBAL
+// =============================================================================
+window.GlobalLoader = (() => {
+    let loaderElement = null;
+    let progressBar = null;
+    let progressText = null;
+
+    function create() {
+        if (loaderElement) return;
+
+        loaderElement = document.createElement('div');
+        loaderElement.id = 'globalGameLoader';
+        loaderElement.innerHTML = `
+            <style>
+                #globalGameLoader {
+                    position: fixed;
+                    inset: 0;
+                    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+                    z-index: 99999;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    transition: opacity 0.5s ease-out;
+                }
+                #globalGameLoader.fade-out {
+                    opacity: 0;
+                    pointer-events: none;
+                }
+                .loader-logo {
+                    font-family: 'Orbitron', 'Press Start 2P', cursive;
+                    font-size: 2.5rem;
+                    font-weight: 900;
+                    background: linear-gradient(135deg, #818cf8, #fbbf24);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    margin-bottom: 40px;
+                    letter-spacing: 3px;
+                    animation: pulse 2s ease-in-out infinite;
+                }
+                .loader-spinner {
+                    width: 60px;
+                    height: 60px;
+                    border: 4px solid rgba(99, 102, 241, 0.1);
+                    border-top: 4px solid #6366f1;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin-bottom: 30px;
+                }
+                .loader-progress {
+                    width: 280px;
+                    height: 6px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 3px;
+                    overflow: hidden;
+                    margin-bottom: 15px;
+                }
+                .loader-progress-bar {
+                    height: 100%;
+                    background: linear-gradient(90deg, #6366f1, #818cf8);
+                    width: 0%;
+                    transition: width 0.3s ease-out;
+                    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+                }
+                .loader-text {
+                    color: #94a3b8;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 0.85rem;
+                    letter-spacing: 1px;
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.8; transform: scale(1.05); }
+                }
+            </style>
+            <div class="loader-logo">MMO-RPG</div>
+            <div class="loader-spinner"></div>
+            <div class="loader-progress">
+                <div class="loader-progress-bar" id="loaderProgressBar"></div>
+            </div>
+            <div class="loader-text" id="loaderProgressText">Carregando recursos...</div>
+        `;
+
+        document.body.appendChild(loaderElement);
+        progressBar = document.getElementById('loaderProgressBar');
+        progressText = document.getElementById('loaderProgressText');
+    }
+
+    function show() {
+        if (!loaderElement) create();
+        loaderElement.classList.remove('fade-out');
+        loaderElement.style.display = 'flex';
+    }
+
+    function hide() {
+        if (!loaderElement) return;
+        loaderElement.classList.add('fade-out');
+        setTimeout(() => {
+            if (loaderElement) {
+                loaderElement.style.display = 'none';
+            }
+        }, 500);
+    }
+
+    function updateProgress(current, total) {
+        if (!progressBar || !progressText) return;
+        const percent = Math.round((current / total) * 100);
+        progressBar.style.width = percent + '%';
+        progressText.textContent = `Carregando... ${current}/${total}`;
+    }
+
+    return { create, show, hide, updateProgress };
+})();
+
+// Inicializar preload ao carregar a primeira página
+if (!sessionStorage.getItem('game_assets_preloaded')) {
+    window.addEventListener('DOMContentLoaded', async () => {
+        console.log('[PRELOAD] Iniciando carregamento de assets críticos...');
+        GlobalLoader.show();
+        
+        const assets = GameCache.getCriticalAssets();
+        await GameCache.preloadBatch(assets, (loaded, total) => {
+            GlobalLoader.updateProgress(loaded, total);
+        });
+        
+        sessionStorage.setItem('game_assets_preloaded', 'true');
+        
+        setTimeout(() => {
+            GlobalLoader.hide();
+        }, 300);
+    });
+}
+
+// =============================================================================
 // 1. ESTILOS CSS (UI)
 // =============================================================================
 const rpgStyles = `

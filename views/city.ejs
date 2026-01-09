@@ -2312,7 +2312,8 @@
         let currentNpcsCache = [];
         let npcEditorSelectedId = null;
 
-        const socket = io();
+        // Usar socket global persistente do common.js
+        const socket = window.gameSocket || io();
         const myName = "<%= playerName %>";
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
