@@ -141,9 +141,11 @@
     .trainer.frame-1 { background-position-x: -100%; }
     .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); }
     @keyframes particleFly { 0% { transform: translate(0,0) scale(0.2); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(2); opacity: 0; } }
-    .impact-effect { position: absolute; width: 100px; height: 100px; z-index: 2000; pointer-events: none; border-radius: 50%; opacity: 0; }
-    .impact-pop { animation: impactPop 0.4s forwards; }
-    @keyframes impactPop { 0% { transform: scale(0.2); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+    .impact-effect { position: absolute; width: 120px; height: 120px; z-index: 2000; pointer-events: none; border-radius: 50%; opacity: 0; mix-blend-mode: screen; }
+    .impact-effect::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,0.6); animation: impact-ring 0.5s ease-out forwards; }
+    .impact-pop { animation: impactPop 0.45s forwards; }
+    @keyframes impactPop { 0% { transform: scale(0.3); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.85; } 100% { transform: scale(1.45); opacity: 0; } }
+    @keyframes impact-ring { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(1.8); opacity: 0; } }
     
     /* Efeitos visuais dos 10 tipos originais */
     .effect-beast { background: radial-gradient(circle, #d4a574, #8b6f47); box-shadow: 0 0 20px #d4a574; }
@@ -170,9 +172,9 @@
     .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
     .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 14px; color: #ecf0f1; height: 180px; background: #111; line-height: 1.5; }
     .log-entry { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
-    .move-btn { background: linear-gradient(180deg, #2c3e50, #1a252f); border: 2px solid #34495e; color: white; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; padding: 12px; position: relative; overflow: hidden; }
-    .move-btn strong { font-size: 0.9rem; margin-bottom: 2px; text-transform: uppercase; }
-    .move-btn small { font-size: 0.7rem; color: #f1c40f; font-weight: bold; }
+    .move-btn { background: linear-gradient(180deg, #2c3e50, #1a252f); border: 2px solid #34495e; color: white; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; padding: 8px 10px; position: relative; overflow: hidden; height: 90px; min-height: 90px; }
+    .move-btn strong { font-size: 0.75rem; margin-bottom: 4px; text-transform: uppercase; line-height: 1.2; text-align: center; word-wrap: break-word; }
+    .move-btn small { font-size: 0.65rem; color: #f1c40f; font-weight: bold; }
     .move-btn:active { transform: scale(0.96); border-color: #f1c40f; background: #1a252f; }
     .move-btn:disabled { opacity: 0.5; pointer-events: none; filter: grayscale(1); }
 
@@ -1011,20 +1013,26 @@
         }
 
         function createImpact(targetSide, cssClass, customX = null, customY = null) {
-            const toEl = document.getElementById(`sprite-${targetSide}`);
+            const spriteEl = document.getElementById(`sprite-${targetSide}`);
             const fighterDiv = document.getElementById(`fighter-${targetSide}`);
-            if(!toEl && !fighterDiv) return;
+            if(!spriteEl && !fighterDiv) return;
 
             const impact = document.createElement('div'); impact.className = `impact-effect impact-pop ${cssClass}`;
-            
-            if (customX !== null && customY !== null && fighterDiv) {
-                impact.style.left = (customX - 40) + 'px'; impact.style.top = (customY - 40) + 'px'; fighterDiv.appendChild(impact);
+            const parent = document.body;
+
+            if (customX !== null && customY !== null) {
+                impact.style.left = (customX - 60) + 'px';
+                impact.style.top = (customY - 60) + 'px';
+                parent.appendChild(impact);
             } else {
-                const r = toEl.getBoundingClientRect();
-                impact.style.left = (r.left + r.width/2 - 40) + 'px'; impact.style.top = (r.top + r.height/2 - 40) + 'px';
-                document.body.appendChild(impact);
+                const ref = (fighterDiv || spriteEl).getBoundingClientRect();
+                const centerX = ref.left + ref.width / 2;
+                const centerY = ref.top + ref.height / 2 + 12; // levemente mais baixo
+                impact.style.left = (centerX - 60) + 'px';
+                impact.style.top = (centerY - 60) + 'px';
+                parent.appendChild(impact);
             }
-            setTimeout(() => impact.remove(), 400);
+            setTimeout(() => impact.remove(), 500);
         }
 
         function playMoveAnimation(attackerSide, defenderSide, type, category, moveType) {
@@ -1130,6 +1138,13 @@
                         hitMarker.innerText += ' ⚡';
                     } else if (evt.isNotEffective) {
                         hitMarker.classList.add('not-effective');
+                    }
+                    
+                    const fighter = document.getElementById(`fighter-${targetSide}`);
+                    if (fighter) {
+                        const fRect = fighter.getBoundingClientRect();
+                        hitMarker.style.left = (fRect.left + fRect.width / 2 - 35) + 'px';
+                        hitMarker.style.top = (fRect.top + fRect.height / 2 + 28) + 'px';
                     }
                     
                     document.body.appendChild(hitMarker);

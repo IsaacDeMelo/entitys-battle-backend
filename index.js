@@ -435,14 +435,40 @@ function calculateStats(base, level) {
     }; 
 }
 
-function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4) {
-    const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
-    const pool = Array.isArray(movePool) ? movePool : [];
+function buildAutoMovePoolForType(entityType) {
+    const type = (entityType || '').toLowerCase();
+    const levelSlots = [1, 5, 10, 15, 20, 25, 35, 45, 55];
 
-    // Keep it deterministic:
-    // 1) filter by learn level
-    // 2) sort by level asc, then moveId asc
-    // 3) pick the last N (most advanced)
+    const entries = Object.entries(MOVES_LIBRARY)
+        .filter(([_, mv]) => (mv.element || '').toLowerCase() === type);
+
+    if (!entries.length) return [{ moveId: 'strike', level: 1 }];
+
+    const attacks = entries
+        .filter(([_, mv]) => mv.type === MoveType.ATTACK)
+        .sort((a, b) => (a[1].power || 0) - (b[1].power || 0));
+
+    const statuses = entries
+        .filter(([_, mv]) => mv.type !== MoveType.ATTACK)
+        .sort((a, b) => (a[1].cost || 0) - (b[1].cost || 0));
+
+    const ordered = [...attacks, ...statuses];
+
+    return ordered.map(([id], idx) => ({
+        moveId: id,
+        level: levelSlots[Math.min(idx, levelSlots.length - 1)]
+    }));
+}
+
+function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4, entityType = null) {
+    const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
+    let pool = Array.isArray(movePool) ? movePool : [];
+
+    // Fallback automático baseado no tipo (estilo Pokémon)
+    if ((!pool || pool.length === 0) && entityType) {
+        pool = buildAutoMovePoolForType(entityType);
+    }
+
     const available = pool
         .filter(m => m && m.moveId && (Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1)) <= lvl)
         .map(m => ({
@@ -467,7 +493,7 @@ function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4) {
 async function createBattleInstance(baseId, level) { 
     const base = await BaseEntity.findOne({ id: baseId }).lean(); if(!base) return null; 
     const stats = calculateStats(base.baseStats, level); 
-    let moves = pickDeterministicMovesFromPool(base.movePool, level, 4);
+    let moves = pickDeterministicMovesFromPool(base.movePool, level, 4, base.type);
     return { 
         instanceId: 'wild_' + Date.now(), 
         baseId: base.id, name: base.name, type: base.type, level: level, 
@@ -2871,7 +2897,7 @@ app.post('/battle/npc', async (req, res) => {
         if (!base) continue;
 
         const stats = calculateStats(base.baseStats, member.level);
-        const moves = pickDeterministicMovesFromPool(base.movePool, member.level, 4);
+        const moves = pickDeterministicMovesFromPool(base.movePool, member.level, 4, base.type);
         npcTeamInstances.push({
             instanceId: 'npc_mon_' + Date.now() + Math.random(), baseId: base.id, name: base.name, type: base.type, level: member.level, 
             maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
@@ -3099,7 +3125,7 @@ app.post('/battle', async (req, res) => {
 
     const cpuLevel = Math.max(1, p1.level);
     const s2 = calculateStats(randomBase.baseStats, cpuLevel);
-    const cpuMoves = pickDeterministicMovesFromPool(randomBase.movePool, cpuLevel, 4);
+    const cpuMoves = pickDeterministicMovesFromPool(randomBase.movePool, cpuLevel, 4, randomBase.type);
 
     const p2 = {
         instanceId: 'p2_cpu_' + Date.now(),
