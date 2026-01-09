@@ -14,6 +14,13 @@ const { MONGO_URI } = require('./config');
 const SKIN_COUNT = 12; 
 const GLOBAL_GRASS_CHANCE = 0.35;
 
+// === NOVO SISTEMA DE ENERGIA (TIPO ELIXIR/MANA) ===
+const ENERGY_CONFIG = {
+    maxEnergy: 10,           // Máximo de energia por combatente
+    energyPerTurn: 3,        // Energia recebida no início de cada turno
+    restBonus: 4,            // Bônus extra ao usar REST
+};
+
 // --- STARTER (criatura inicial obtida via NPC no jogo) ---
 const STARTER_FLAG_ID = 'starter_chosen';
 
@@ -464,10 +471,10 @@ async function createBattleInstance(baseId, level) {
     return { 
         instanceId: 'wild_' + Date.now(), 
         baseId: base.id, name: base.name, type: base.type, level: level, 
-        maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
+        maxHp: stats.hp, hp: stats.hp, maxEnergy: ENERGY_CONFIG.maxEnergy, energy: ENERGY_CONFIG.maxEnergy, stats: stats, 
         moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
         sprite: base.sprite, catchRate: base.catchRate || 0.5, xpYield: Math.max(5, Math.floor(level * 25)), 
-        isWild: true, status: null 
+        isWild: true, status: null, combo: 0, defending: false
     }; 
 }
 
@@ -503,15 +510,16 @@ function userEntityToEntity(userEntity, baseData) {
         level,
         maxHp: stats.hp,
         hp: currentHp > 0 ? currentHp : 0,
-        maxEnergy: stats.energy,
-        energy: stats.energy,
+        maxEnergy: ENERGY_CONFIG.maxEnergy,
+        energy: ENERGY_CONFIG.maxEnergy,
         stats,
         moves: movesObj,
         sprite: baseData.sprite,
         isWild: false,
         xp: Number.isFinite(userEntity.xp) ? userEntity.xp : 0,
         xpToNext: getXpForNextLevel(level),
-        status: null
+        status: null,
+        defending: false
     }; 
 }
 
@@ -528,38 +536,65 @@ function processAction(attacker, defender, move, logArray) {
     if(!move) { logArray.push({ type: 'MSG', text: `${attacker.name} hesitou!` }); return; }
     
     const cost = move.cost || 0;
-    if (attacker.energy >= cost) { attacker.energy -= cost; } 
-    else { logArray.push({ type: 'MSG', text: `${attacker.name} cansou!` }); return; }
+    
+    // VALIDAÇÃO: Checar energia ANTES de descontar
+    if (attacker.energy < cost) { 
+        logArray.push({ 
+            type: 'MSG', 
+            text: `${attacker.name} não tem energia suficiente! Precisa ${cost}, tem ${attacker.energy}.` 
+        }); 
+        return; 
+    }
+    
+    // Descontar energia
+    attacker.energy -= cost; 
     
     logArray.push({ type: 'USE_MOVE', actorId: attacker.instanceId || 'wild', moveName: move.name, moveIcon: move.icon, moveElement: move.element || 'beast', moveCategory: move.category || 'physical', moveType: move.type, cost: cost, newEnergy: attacker.energy });
     
     if(move.type === 'heal') { 
-        const oldHp = attacker.hp; const healAmount = move.power + Math.floor(attacker.maxHp * 0.1); 
+        const oldHp = attacker.hp; 
+        const healAmount = move.power + Math.floor(attacker.maxHp * 0.1); 
         attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount); 
-        logArray.push({ type: 'HEAL', actorId: attacker.instanceId || 'wild', amount: attacker.hp - oldHp, newHp: attacker.hp }); 
+        
+        // REST também restaura energia extra (novo sistema!)
+        if (move.id === 'rest') {
+            const energyBonus = ENERGY_CONFIG.restBonus;
+            attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + energyBonus);
+            logArray.push({ 
+                type: 'HEAL', 
+                actorId: attacker.instanceId || 'wild', 
+                amount: attacker.hp - oldHp, 
+                newHp: attacker.hp,
+                energyRestored: energyBonus,
+                newEnergy: attacker.energy
+            }); 
+        } else {
+            logArray.push({ type: 'HEAL', actorId: attacker.instanceId || 'wild', amount: attacker.hp - oldHp, newHp: attacker.hp }); 
+        }
+        
+        // Quebra combo (decisão tática: atacar ou curar)
+        if (attacker.combo) attacker.combo = 0;
     } 
     else if (move.type === 'defend') { 
         // Sistema de defesa: reduz dano recebido no próximo turno
         attacker.defending = true;
         logArray.push({ type: 'MSG', text: `${attacker.name} se protegeu!` }); 
+        // Quebra combo (decisão tática: atacar ou defender)
+        if (attacker.combo) attacker.combo = 0;
     } 
     else { 
-        // --- SISTEMA DE COMBATE CRIATIVO ---
+        // --- SISTEMA DE COMBATE APRIMORADO ---
         
         // 1. EVASÃO: Chance de esquivar baseada em velocidade
         const evasionChance = Math.min(0.15, defender.stats.speed / 1000); // Máx 15%
         if (Math.random() < evasionChance) {
             logArray.push({ type: 'MSG', text: `${defender.name} esquivou!` });
+            // Quebra o combo do atacante
+            if (attacker.combo) attacker.combo = 0;
             return;
         }
         
-        // 2. CRITICAL HIT: Chance de acerto crítico (2x dano)
-        const critChance = 0.0625 + (attacker.stats.speed / 2000); // Base 6.25% + speed bonus
-        const isCritical = Math.random() < critChance;
-        
-        // 3. (REMOVIDO) COMBO SYSTEM: estava desbalanceado
-        
-        // 4. DEFESA REDUZ DANO
+        // 2. DEFESA REDUZ DANO
         const defenseMultiplier = defender.defending ? 0.5 : 1.0;
         defender.defending = false; // Remove estado de defesa após ser atacado
         
@@ -571,12 +606,6 @@ function processAction(attacker, defender, move, logArray) {
         const random = (Math.floor(Math.random() * 16) + 85) / 100;
         
         let damage = Math.floor((((level * 0.2 + 1.5) * move.power * (atk / def)) / 65 + 2) * multiplier * random);
-        
-        // Aplicar crítico
-        if (isCritical) {
-            damage = Math.floor(damage * 2);
-            logArray.push({ type: 'MSG', text: `💥 ACERTO CRÍTICO! 💥` });
-        }
         
         // Aplicar defesa
         damage = Math.floor(damage * defenseMultiplier);
@@ -594,8 +623,7 @@ function processAction(attacker, defender, move, logArray) {
             newHp: defender.hp, 
             isEffective: multiplier > 1, 
             isNotEffective: multiplier < 1 && multiplier > 0, 
-            isBlocked: multiplier === 0,
-            isCritical: isCritical
+            isBlocked: multiplier === 0
         }); 
         
         // 5. EFEITOS ESPECIAIS: Chance de aplicar status baseado no elemento
@@ -3051,7 +3079,7 @@ app.post('/api/custom-battle/start', async (req, res) => {
     }
 });
 
-app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/city' }); });
+app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/city', energyConfig: ENERGY_CONFIG }); });
 app.post('/battle', async (req, res) => {
     const { fighterId, playerName, playerSkin, userId } = req.body;
     const user = await User.findById(userId);
@@ -3158,7 +3186,8 @@ app.get('/battle/:id', async (req, res) => {
         isSpectator: false, myRoleId: battle.p1.instanceId, realUserId: battle.userId, playerName: battle.p1.playerName, playerSkin: battle.p1.skin, 
         bgImage: bg, bgPosX, bgPosY, bgZoom, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable, returnUrl,
         battleMapId: battle.mapId || null,
-        canEditBg
+        canEditBg,
+        energyConfig: ENERGY_CONFIG
     }); 
 });
 
@@ -3662,6 +3691,18 @@ io.on('connection', (socket) => {
             const events = []; 
             const p1 = battle.p1; 
             const p2 = battle.p2; 
+            
+            // === REGENERAÇÃO DE ENERGIA NO INÍCIO DO TURNO ===
+            p1.energy = Math.min(p1.maxEnergy, p1.energy + ENERGY_CONFIG.energyPerTurn);
+            p2.energy = Math.min(p2.maxEnergy, p2.energy + ENERGY_CONFIG.energyPerTurn);
+            
+            // Notificar frontend da energia restaurada
+            events.push({ 
+                type: 'ENERGY_RESTORED', 
+                p1Energy: p1.energy, 
+                p2Energy: p2.energy, 
+                restored: ENERGY_CONFIG.energyPerTurn 
+            });
             
             const executeAction = async (act, opp, isP1Action) => {
                 const actionData = act.nextAction;

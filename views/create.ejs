@@ -6,7 +6,13 @@
     <title>Laboratório - Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #0f172a; --panel: #1e293b; --accent: #3498db; --text: #e2e8f0; --danger: #e74c3c; --success: #2ecc71; --warning: #f1c40f; }
+        :root { 
+            --bg: #0f172a; --panel: #1e293b; --accent: #3498db; --text: #e2e8f0; 
+            --danger: #e74c3c; --success: #2ecc71; --warning: #f1c40f;
+            --beast: #a8a878; --flame: #f08030; --aqua: #6890f0; --forest: #78c850;
+            --sky: #a890f0; --earth: #e0c068; --mystic: #f85888; --shadow: #705898;
+            --metal: #b8b8d0; --venom: #a040a0;
+        }
         * { box-sizing: border-box; }
         body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; padding: 20px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
@@ -14,10 +20,12 @@
         .back-btn { text-decoration: none; color: #94a3b8; font-weight: bold; border: 1px solid #333; padding: 8px 15px; border-radius: 8px; transition: 0.2s; background: rgba(0,0,0,0.3); }
         .back-btn:hover { background: #333; color: #fff; border-color: #555; }
         .main-layout { display: flex; gap: 20px; height: 100%; overflow: hidden; }
-        .sidebar { width: 320px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
+        .sidebar { width: 340px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
         .sidebar-header { padding: 15px; background: rgba(255,255,255,0.05); font-weight: bold; text-align: center; border-bottom: 1px solid #333; letter-spacing: 1px; }
         .list-container { flex: 1; overflow-y: auto; padding: 10px; display: none; }
-        .list-container.active { display: block; }
+        .list-container.active { display: flex; flex-direction: column; }
+        .search-box { margin: 10px; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; font-family: inherit; font-size: 0.9rem; }
+        .search-box:focus { border-color: var(--accent); outline: none; }
         .list-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s; border-radius: 6px; margin-bottom: 4px; }
         .list-item:hover { background: rgba(52, 152, 219, 0.1); border-left: 3px solid var(--accent); }
         .list-item img, .npc-thumb { width: 40px; height: 40px; border-radius: 50%; background-color: rgba(0,0,0,0.3); image-rendering: pixelated; object-fit: contain; flex-shrink: 0; border: 1px solid #444; }
@@ -38,11 +46,32 @@
         input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 0.9rem; transition: 0.2s; }
         input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; background: #162032; }
         input[disabled] { background: #1e293b; color: #555; border-color: #222; }
-        .moves-wrapper { background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 8px; max-height: 220px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-        .move-option { display: flex; align-items: center; gap: 8px; padding: 6px; background: rgba(255,255,255,0.03); border-radius: 4px; font-size: 0.8rem; cursor: pointer; user-select: none; border: 1px solid transparent; }
-        .move-option:hover { background: rgba(255,255,255,0.08); border-color: #444; }
+        .moves-wrapper { background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 8px; max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+        .move-filter { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+        .move-filter input { flex: 1; min-width: 200px; }
+        .filter-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: 2px solid transparent; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-badge:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .filter-badge.active { border-color: #fff; box-shadow: 0 0 10px currentColor; }
+        .filter-badge.all { background: #64748b; color: #fff; }
+        .filter-badge.beast { background: var(--beast); color: #2d2d2d; }
+        .filter-badge.flame { background: var(--flame); color: #fff; }
+        .filter-badge.aqua { background: var(--aqua); color: #fff; }
+        .filter-badge.forest { background: var(--forest); color: #2d2d2d; }
+        .filter-badge.sky { background: var(--sky); color: #fff; }
+        .filter-badge.earth { background: var(--earth); color: #2d2d2d; }
+        .filter-badge.mystic { background: var(--mystic); color: #fff; }
+        .filter-badge.shadow { background: var(--shadow); color: #fff; }
+        .filter-badge.metal { background: var(--metal); color: #2d2d2d; }
+        .filter-badge.venom { background: var(--venom); color: #fff; }
+        .move-option { display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 0.85rem; cursor: pointer; user-select: none; border: 1px solid transparent; position: relative; transition: 0.2s; }
+        .move-option:hover { background: rgba(255,255,255,0.08); border-color: #444; transform: translateY(-1px); }
+        .move-option.checked { background: rgba(52, 152, 219, 0.15); border-color: var(--accent); }
         .move-option input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
-        .move-lvl-input { width: 45px; padding: 2px; font-size: 0.75rem; text-align: center; border: 1px solid #555; background: #000; color: var(--accent); border-radius: 4px; }
+        .move-type-badge { position: absolute; top: 2px; right: 2px; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .move-info { display: flex; flex-direction: column; flex: 1; gap: 2px; }
+        .move-name { font-weight: bold; color: #fff; }
+        .move-details { font-size: 0.7rem; color: #94a3b8; }
+        .move-lvl-input { width: 50px; padding: 4px; font-size: 0.75rem; text-align: center; border: 1px solid #555; background: #000; color: var(--accent); border-radius: 4px; }
         .btn-row { display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; }
         button { cursor: pointer; transition: 0.2s; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
         button:active { transform: translateY(1px); }
@@ -74,6 +103,26 @@
         .cond-card .actions { display: flex; justify-content: flex-end; gap: 10px; }
         details.advanced { border: 1px solid #334155; border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.15); }
         details.advanced summary { cursor: pointer; font-weight: 800; color: #94a3b8; }
+        .accordion { border: 1px solid #334155; border-radius: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.15); }
+        .accordion-header { padding: 12px 15px; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); border-radius: 10px; transition: 0.2s; }
+        .accordion-header:hover { background: rgba(255,255,255,0.06); }
+        .accordion-header.active { background: rgba(52, 152, 219, 0.1); color: var(--accent); }
+        .accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .accordion-body.active { max-height: 3000px; padding: 15px; }
+        .stats-preview { background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(46, 204, 113, 0.1) 100%); border: 1px solid #334155; border-radius: 10px; padding: 15px; margin-top: 15px; }
+        .stats-preview h4 { margin-top: 0; color: var(--accent); }
+        .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .stat-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; text-align: center; border-left: 3px solid var(--accent); }
+        .stat-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--success); }
+        .required-field::after { content: ' *'; color: var(--danger); }
+        .tooltip { position: relative; display: inline-block; cursor: help; }
+        .tooltip .tooltiptext { visibility: hidden; width: 200px; background-color: #1e293b; color: #fff; text-align: center; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -100px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; border: 1px solid #334155; }
+        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .badge.consumable { background: #3498db; color: #fff; }
+        .badge.key { background: #f1c40f; color: #2d2d2d; }
+        .no-results { text-align: center; padding: 20px; color: #64748b; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -90,11 +139,13 @@
         <div class="sidebar">
             <div id="list-poke" class="list-container active">
                 <div class="sidebar-header">ENTIDADES (<%= entities.length %>)</div>
+                <input type="text" class="search-box" id="search-poke" placeholder="🔍 Buscar entidade..." onkeyup="filterList('poke', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearPokeForm()"><span>+</span> NOVA ENTIDADE</button>
                 </div>
+                <div id="poke-list-items">
                 <% entities.forEach(p => { %>
-                    <div class="list-item" onclick="loadEntity(<%= JSON.stringify(p) %>)">
+                    <div class="list-item" data-name="<%= p.name.toLowerCase() %>" data-type="<%= p.type %>" onclick="loadEntity(<%= JSON.stringify(p) %>)">
                         <img src="<%= (p.sprite && (p.sprite.startsWith('http') || p.sprite.startsWith('data:'))) ? p.sprite : '/uploads/' + p.sprite %>" onerror="this.style.display='none'">
                         <div class="item-info">
                             <div class="item-name"><%= p.name %></div>
@@ -102,14 +153,17 @@
                         </div>
                     </div>
                 <% }) %>
+                </div>
             </div>
             <div id="list-npc" class="list-container">
                 <div class="sidebar-header">NPCS (<%= npcs.length %>)</div>
+                <input type="text" class="search-box" id="search-npc" placeholder="🔍 Buscar NPC..." onkeyup="filterList('npc', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearNpcForm()"><span>+</span> NOVO NPC</button>
                 </div>
+                <div id="npc-list-items">
                 <% npcs.forEach(n => { %>
-                    <div class="list-item" onclick="loadNpc(<%= JSON.stringify(n) %>)">
+                    <div class="list-item" data-name="<%= n.name.toLowerCase() %>" data-map="<%= n.map %>" onclick="loadNpc(<%= JSON.stringify(n) %>)">
                         <% if(n.isCustomSkin) { %> 
                             <div class="npc-thumb" style="background-image: url('<%= n.skin %>')"></div>
                         <% } else { %> 
@@ -121,10 +175,12 @@
                         </div>
                     </div>
                 <% }) %>
+                </div>
             </div>
 
             <div id="list-item" class="list-container">
                 <div class="sidebar-header">ITENS (<span id="itemCount">0</span>)</div>
+                <input type="text" class="search-box" id="search-item" placeholder="🔍 Buscar item..." onkeyup="filterList('item', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearItemForm(); switchMode('item');"><span>+</span> NOVO ITEM</button>
                 </div>
@@ -133,11 +189,13 @@
 
             <div id="list-skin" class="list-container">
                 <div class="sidebar-header">SKINS (<%= (skins || []).length %>)</div>
+                <input type="text" class="search-box" id="search-skin" placeholder="🔍 Buscar skin..." onkeyup="filterList('skin', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearSkinForm()"><span>+</span> NOVA SKIN</button>
                 </div>
+                <div id="skin-list-items">
                 <% (skins || []).forEach(s => { %>
-                    <div class="list-item" onclick="loadSkin(<%= JSON.stringify(s) %>)">
+                    <div class="list-item" data-name="<%= s.name.toLowerCase() %>" onclick="loadSkin(<%= JSON.stringify(s) %>)">
                         <img class="skin-thumb" src="/skins/<%= s._id %>.png" onerror="this.style.display='none'">
                         <div class="item-info">
                             <div class="item-name"><%= s.name %></div>
@@ -145,6 +203,7 @@
                         </div>
                     </div>
                 <% }) %>
+                </div>
             </div>
         </div>
 
@@ -169,62 +228,131 @@
                             <input type="text" name="id" id="pokeId" disabled placeholder="Novo">
                         </div>
                         <div class="half-width">
-                            <label>Nome do Monstro</label>
-                            <input type="text" name="name" id="pokeName" required autocomplete="off">
+                            <label class="required-field">Nome do Monstro</label>
+                            <input type="text" name="name" id="pokeName" required autocomplete="off" placeholder="Ex: Flarezard">
                         </div>
                     </div>
 
                     <div class="form-grid">
                         <div>
-                            <label>Tipo Elementar</label>
+                            <label class="required-field">Tipo Elementar</label>
                             <select name="type" id="pokeType">
                                 <% Object.keys(types).forEach(t => { %> <option value="<%= t %>"><%= t.toUpperCase() %></option> <% }) %>
                             </select>
                         </div>
-                        <div><label>Chance Captura (0.1 - 1.0)</label><input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5" min="0" max="1"></div>
-                        <div><label>Raridade de Spawn (%)</label><input type="number" name="spawnChance" id="pokeSpawn" value="10"></div>
+                        <div>
+                            <label class="tooltip">Chance Captura (0.1 - 1.0)
+                                <span class="tooltiptext">Chance base de captura. Quanto maior, mais fácil capturar. Ex: 0.3 = 30%, 0.8 = 80%</span>
+                            </label>
+                            <input type="number" step="0.1" name="catchRate" id="pokeRate" value="0.5" min="0" max="1">
+                        </div>
+                        <div>
+                            <label class="tooltip">Raridade de Spawn (%)
+                                <span class="tooltiptext">Peso no spawn ponderado. Valores maiores = mais comum</span>
+                            </label>
+                            <input type="number" name="spawnChance" id="pokeSpawn" value="10">
+                        </div>
                     </div>
                     
                     <h4>📍 SPAWN & EVOLUÇÃO</h4>
                     <div class="form-grid">
                         <div>
-                            <label>Local de Spawn (ID do Mapa)</label>
-                            <input type="text" name="location" id="pokeLoc" placeholder="ex: city, house1" list="mapSuggestions">
+                            <label class="tooltip">Local de Spawn (ID do Mapa)
+                                <span class="tooltiptext">Mapa onde a criatura aparece selvagem (ex: city, forest). Deixe vazio se não spawna</span>
+                            </label>
+                            <input type="text" name="location" id="pokeLoc" placeholder="ex: city, forest" list="mapSuggestions">
                             <datalist id="mapSuggestions">
                                 <option value="city">Cidade</option>
                                 <option value="forest">Floresta</option>
                             </datalist>
                         </div>
-                        <div><label>Nível Mínimo</label><input type="number" name="minLvl" id="spawnMin" value="2"></div>
-                        <div><label>Nível Máximo</label><input type="number" name="maxLvl" id="spawnMax" value="5"></div>
+                        <div>
+                            <label class="tooltip">Nível Mínimo
+                                <span class="tooltiptext">Nível mais baixo ao spawnar selvagem</span>
+                            </label>
+                            <input type="number" name="minLvl" id="spawnMin" value="2" min="1">
+                        </div>
+                        <div>
+                            <label class="tooltip">Nível Máximo
+                                <span class="tooltiptext">Nível mais alto ao spawnar selvagem</span>
+                            </label>
+                            <input type="number" name="maxLvl" id="spawnMax" value="5" min="1">
+                        </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="full-width">
-                            <label>Evolução (ID do Alvo + Nível)</label>
+                            <label class="tooltip">Evolução (ID do Alvo + Nível)
+                                <span class="tooltiptext">Configure a evolução: ID da criatura evoluída + nível necessário. Deixe vazio se não evolui</span>
+                            </label>
                             <div style="display:flex; gap:10px;">
-                                <input type="text" name="evoTarget" id="evoTarget" placeholder="ex: charizard (ID)" autocomplete="off">
-                                <input type="number" name="evoLevel" id="evoLevel" placeholder="Lv 16" style="width:120px;">
+                                <input type="text" name="evoTarget" id="evoTarget" placeholder="ex: charizard (ID da evolução)" autocomplete="off">
+                                <input type="number" name="evoLevel" id="evoLevel" placeholder="Lv 16" style="width:120px;" min="1">
                             </div>
                         </div>
                     </div>
 
                     <h4>📊 STATUS BASE</h4>
                     <div class="form-grid" style="grid-template-columns: repeat(5, 1fr);">
-                        <div><label>HP</label><input type="number" name="hp" id="statHp" required value="40"></div>
-                        <div><label>EN (Mana)</label><input type="number" name="energy" id="statEn" required value="100"></div>
-                        <div><label>ATK</label><input type="number" name="atk" id="statAtk" required value="50"></div>
-                        <div><label>DEF</label><input type="number" name="def" id="statDef" required value="40"></div>
-                        <div><label>SPD</label><input type="number" name="spd" id="statSpd" required value="50"></div>
+                        <div><label class="required-field">HP</label><input type="number" name="hp" id="statHp" required value="40" oninput="updateStatsPreview()"></div>
+                        <div><label class="required-field">EN (Mana)</label><input type="number" name="energy" id="statEn" required value="100" oninput="updateStatsPreview()"></div>
+                        <div><label class="required-field">ATK</label><input type="number" name="atk" id="statAtk" required value="50" oninput="updateStatsPreview()"></div>
+                        <div><label class="required-field">DEF</label><input type="number" name="def" id="statDef" required value="40" oninput="updateStatsPreview()"></div>
+                        <div><label class="required-field">SPD</label><input type="number" name="spd" id="statSpd" required value="50" oninput="updateStatsPreview()"></div>
+                    </div>
+
+                    <div class="stats-preview">
+                        <h4>📈 Preview: Stats no Nível <input type="number" id="preview-level" value="50" min="1" max="100" oninput="updateStatsPreview()" style="width: 60px; display: inline; padding: 4px; text-align: center; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: var(--accent);"></h4>
+                        <div class="stats-grid" id="stats-preview-grid">
+                            <div class="stat-box">
+                                <div class="stat-label">HP</div>
+                                <div class="stat-value" id="preview-hp">-</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Energy</div>
+                                <div class="stat-value" id="preview-en">-</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Attack</div>
+                                <div class="stat-value" id="preview-atk">-</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Defense</div>
+                                <div class="stat-value" id="preview-def">-</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Speed</div>
+                                <div class="stat-value" id="preview-spd">-</div>
+                            </div>
+                        </div>
+                        <p style="margin-top: 10px; font-size: 0.85rem; color: #94a3b8; text-align: center;">💡 Esses valores são aproximados baseados na fórmula do jogo</p>
                     </div>
 
                     <h4>⚔️ MOVEPOOL (Ataques)</h4>
-                    <div class="moves-wrapper">
+                    <div class="move-filter">
+                        <input type="text" id="move-search" placeholder="🔍 Buscar ataque..." onkeyup="filterMoves()" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #fff;">
+                        <span class="filter-badge all active" onclick="filterMovesByType('all')">TODOS</span>
+                        <span class="filter-badge beast" onclick="filterMovesByType('beast')">BEAST</span>
+                        <span class="filter-badge flame" onclick="filterMovesByType('flame')">FLAME</span>
+                        <span class="filter-badge aqua" onclick="filterMovesByType('aqua')">AQUA</span>
+                        <span class="filter-badge forest" onclick="filterMovesByType('forest')">FOREST</span>
+                        <span class="filter-badge sky" onclick="filterMovesByType('sky')">SKY</span>
+                        <span class="filter-badge earth" onclick="filterMovesByType('earth')">EARTH</span>
+                        <span class="filter-badge mystic" onclick="filterMovesByType('mystic')">MYSTIC</span>
+                        <span class="filter-badge shadow" onclick="filterMovesByType('shadow')">SHADOW</span>
+                        <span class="filter-badge metal" onclick="filterMovesByType('metal')">METAL</span>
+                        <span class="filter-badge venom" onclick="filterMovesByType('venom')">VENOM</span>
+                    </div>
+                    <div class="moves-wrapper" id="moves-wrapper">
                         <% Object.keys(moves).forEach(moveKey => { const m = moves[moveKey]; %>
-                            <div class="move-option" title="Poder: <%= m.power %> | Tipo: <%= m.element %>">
-                                <input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>">
-                                <span style="flex:1"><%= m.name %></span>
-                                <input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1" title="Nível para aprender">
+                            <div class="move-option" data-move-id="<%= moveKey %>" data-element="<%= m.element %>" data-name="<%= m.name.toLowerCase() %>">
+                                <input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>" onchange="updateMoveChecked(this)">
+                                <span class="move-type-badge <%= m.element %>" style="background: var(--<%= m.element %>); color: <%= ['beast','forest','earth','metal'].includes(m.element) ? '#2d2d2d' : '#fff' %>;"><%= m.element.substring(0,3).toUpperCase() %></span>
+                                <div class="move-info">
+                                    <span class="move-name"><%= m.name %></span>
+                                    <span class="move-details">💪 <%= m.power || 0 %> | ⚡ <%= m.cost || 0 %> | <%= m.type === 'attack' ? '⚔️' : m.type === 'heal' ? '❤️' : '🛡️' %></span>
+                                </div>
+                                <input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1" title="Nível para aprender" min="1" max="100">
                             </div>
                         <% }) %>
                     </div>
@@ -257,14 +385,16 @@
                     
                     <div class="form-grid">
                         <div class="full-width">
-                            <label>Nome do NPC</label>
-                            <input type="text" name="name" id="npcName" required autocomplete="off">
+                            <label class="required-field">Nome do NPC</label>
+                            <input type="text" name="name" id="npcName" required autocomplete="off" placeholder="Ex: Professor Oak">
                         </div>
                     </div>
                     
                     <div class="form-grid">
                         <div>
-                            <label>Mapa (ID)</label>
+                            <label class="required-field tooltip">Mapa (ID)
+                                <span class="tooltiptext">ID do mapa onde o NPC aparece (ex: city, forest, house1)</span>
+                            </label>
                             <input type="text" name="map" id="npcMap" list="mapList" placeholder="ex: city, house1" required autocomplete="off">
                             <datalist id="mapList">
                                 <option value="lobby">Lobby</option>
@@ -272,8 +402,18 @@
                                 <option value="city">Cidade</option>
                             </datalist>
                         </div>
-                        <div><label>Posição X (0-100%)</label><input type="number" name="x" id="npcX" value="50"></div>
-                        <div><label>Posição Y (0-100%)</label><input type="number" name="y" id="npcY" value="50"></div>
+                        <div>
+                            <label class="required-field tooltip">Posição X (0-100%)
+                                <span class="tooltiptext">Posição horizontal no mapa (0 = esquerda, 100 = direita)</span>
+                            </label>
+                            <input type="number" name="x" id="npcX" value="50" step="0.5" min="0" max="100">
+                        </div>
+                        <div>
+                            <label class="required-field tooltip">Posição Y (0-100%)
+                                <span class="tooltiptext">Posição vertical no mapa (0 = topo, 100 = fundo)</span>
+                            </label>
+                            <input type="number" name="y" id="npcY" value="50" step="0.5" min="0" max="100">
+                        </div>
                     </div>
 
                     <div class="form-grid">
@@ -1517,6 +1657,123 @@
         }, 0);
 
         refreshItemList();
+
+        // ======== FILTROS E BUSCA ========
+        function filterList(type, query) {
+            const container = document.getElementById(`${type}-list-items`) || document.getElementById('itemList');
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.list-item');
+            const lowerQuery = query.toLowerCase();
+            let visibleCount = 0;
+            
+            items.forEach(item => {
+                const name = item.dataset.name || '';
+                const visible = name.includes(lowerQuery);
+                item.style.display = visible ? 'flex' : 'none';
+                if (visible) visibleCount++;
+            });
+            
+            // Mostra mensagem se não houver resultados
+            let noResults = container.querySelector('.no-results');
+            if (visibleCount === 0) {
+                if (!noResults) {
+                    noResults = document.createElement('div');
+                    noResults.className = 'no-results';
+                    noResults.textContent = '🔍 Nenhum resultado encontrado';
+                    container.appendChild(noResults);
+                }
+            } else if (noResults) {
+                noResults.remove();
+            }
+        }
+
+        let currentMoveFilter = 'all';
+        
+        function filterMovesByType(type) {
+            currentMoveFilter = type;
+            
+            // Atualiza badges
+            document.querySelectorAll('.filter-badge').forEach(badge => {
+                badge.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Filtra moves
+            filterMoves();
+        }
+        
+        function filterMoves() {
+            const searchQuery = (document.getElementById('move-search')?.value || '').toLowerCase();
+            const moves = document.querySelectorAll('.move-option');
+            let visibleCount = 0;
+            
+            moves.forEach(move => {
+                const name = move.dataset.name || '';
+                const element = move.dataset.element || '';
+                
+                const matchesType = currentMoveFilter === 'all' || element === currentMoveFilter;
+                const matchesSearch = !searchQuery || name.includes(searchQuery);
+                
+                const visible = matchesType && matchesSearch;
+                move.style.display = visible ? 'flex' : 'none';
+                if (visible) visibleCount++;
+            });
+            
+            // Mostra mensagem se não houver resultados
+            const wrapper = document.getElementById('moves-wrapper');
+            let noResults = wrapper.querySelector('.no-results');
+            if (visibleCount === 0) {
+                if (!noResults) {
+                    noResults = document.createElement('div');
+                    noResults.className = 'no-results';
+                    noResults.style.gridColumn = '1 / -1';
+                    noResults.textContent = '🔍 Nenhum ataque encontrado';
+                    wrapper.appendChild(noResults);
+                }
+            } else if (noResults) {
+                noResults.remove();
+            }
+        }
+        
+        function updateMoveChecked(checkbox) {
+            const moveOption = checkbox.closest('.move-option');
+            if (moveOption) {
+                if (checkbox.checked) {
+                    moveOption.classList.add('checked');
+                } else {
+                    moveOption.classList.remove('checked');
+                }
+            }
+        }
+
+        // ======== PREVIEW DE STATS ========
+        function updateStatsPreview() {
+            const level = parseInt(document.getElementById('preview-level')?.value || 50);
+            const baseHp = parseInt(document.getElementById('statHp')?.value || 40);
+            const baseEnergy = parseInt(document.getElementById('statEn')?.value || 100);
+            const baseAtk = parseInt(document.getElementById('statAtk')?.value || 50);
+            const baseDef = parseInt(document.getElementById('statDef')?.value || 40);
+            const baseSpd = parseInt(document.getElementById('statSpd')?.value || 50);
+
+            // Fórmulas baseadas no gameData.js
+            const hp = Math.floor((baseHp * 1.5 * level / 100) + level + 10);
+            const energy = Math.floor(baseEnergy + (level * 0.1));
+            const attack = Math.floor(baseAtk * (1 + level * 0.025));
+            const defense = Math.floor(baseDef * (1 + level * 0.025));
+            const speed = Math.floor(baseSpd * (1 + level * 0.025));
+
+            document.getElementById('preview-hp').textContent = hp;
+            document.getElementById('preview-en').textContent = energy;
+            document.getElementById('preview-atk').textContent = attack;
+            document.getElementById('preview-def').textContent = defense;
+            document.getElementById('preview-spd').textContent = speed;
+        }
+
+        // Inicializa preview ao carregar página
+        setTimeout(() => {
+            updateStatsPreview();
+        }, 100);
     </script>
 </body>
 </html>

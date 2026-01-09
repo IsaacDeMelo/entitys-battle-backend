@@ -240,6 +240,419 @@
     .floating-bag-button:active { transform: scale(0.9); }
     .floating-hud-money { position: fixed; right: max(20px, calc(50vw - 210px + 20px)); bottom: 165px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:12px; text-align:center; text-shadow: 2px 2px 0 #000; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
     .deploy-ball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 100; pointer-events: none; }
+    
+    /* === SISTEMA DE COMBO & HIT MARKERS === */
+    .combo-badge { 
+        position: absolute; 
+        top: 8%; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        font-family: 'Press Start 2P', cursive; 
+        font-size: 1.4rem; 
+        color: #f39c12; 
+        text-shadow: 0 0 10px #e67e22, 2px 2px 0 #000; 
+        animation: pulse-glow 0.8s infinite, bounce-in 0.3s ease-out; 
+        z-index: 200; 
+        pointer-events: none; 
+        letter-spacing: 2px; 
+    }
+    
+    .combo-badge.combo-2 { color: #3498db; text-shadow: 0 0 15px #3498db, 2px 2px 0 #000; }
+    .combo-badge.combo-3 { color: #9b59b6; text-shadow: 0 0 20px #9b59b6, 2px 2px 0 #000; font-size: 1.6rem; }
+    .combo-badge.combo-4 { color: #e74c3c; text-shadow: 0 0 25px #e74c3c, 2px 2px 0 #000; font-size: 1.8rem; }
+    .combo-badge.combo-max { color: #f1c40f; text-shadow: 0 0 30px #f1c40f, 0 0 50px #e67e22, 2px 2px 0 #000; font-size: 2rem; animation: pulse-glow 0.5s infinite, rainbow 2s infinite, bounce-in 0.3s ease-out; }
+    
+    @keyframes pulse-glow { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } }
+    @keyframes bounce-in { 0% { transform: translateX(-50%) translateY(-20px) scale(0); opacity: 0; } 60% { transform: translateX(-50%) translateY(0px) scale(1.2); } 100% { transform: translateX(-50%) translateY(0px) scale(1); opacity: 1; } }
+    @keyframes rainbow { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+    
+    .momentum-bar { 
+        position: absolute; 
+        bottom: 35px; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        width: 180px; 
+        height: 12px; 
+        background: rgba(0,0,0,0.7); 
+        border-radius: 20px; 
+        border: 2px solid rgba(255,255,255,0.3); 
+        overflow: hidden; 
+        z-index: 25; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+    }
+    
+    .momentum-fill { 
+        height: 100%; 
+        background: linear-gradient(90deg, #3498db, #f39c12, #e74c3c); 
+        transition: width 0.4s ease-out; 
+        box-shadow: 0 0 15px rgba(241, 196, 15, 0.8); 
+        animation: shimmer 1.5s infinite; 
+    }
+    
+    @keyframes shimmer { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    
+    .hit-marker { 
+        position: absolute; 
+        font-family: 'Press Start 2P', cursive; 
+        font-size: 1.8rem; 
+        font-weight: bold; 
+        z-index: 300; 
+        pointer-events: none; 
+        animation: hit-pop 1s ease-out forwards; 
+        text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; 
+    }
+    
+    .hit-marker.damage { color: #ff4757; }
+    .hit-marker.super-effective { 
+        color: #2ecc71; 
+        font-size: 2.2rem; 
+        text-shadow: 0 0 20px #2ecc71, 3px 3px 0 #000; 
+    }
+    .hit-marker.not-effective { 
+        color: #95a5a6; 
+        font-size: 1.4rem; 
+    }
+    
+    @keyframes hit-pop { 
+        0% { transform: translateY(0) scale(0.5); opacity: 0; } 
+        20% { transform: translateY(-10px) scale(1.3); opacity: 1; } 
+        100% { transform: translateY(-80px) scale(1); opacity: 0; } 
+    }
+    
+    /* Screen Shake */
+    @keyframes shake-screen { 
+        0%, 100% { transform: translate(0, 0); } 
+        10%, 30%, 50%, 70%, 90% { transform: translate(-4px, 2px); } 
+        20%, 40%, 60%, 80% { transform: translate(4px, -2px); } 
+    }
+    
+    .arena.shake { animation: shake-screen 0.4s; }
+    
+    /* Partículas Melhoradas por Tipo */
+    .particle { 
+        position: absolute; 
+        pointer-events: none; 
+        z-index: 250; 
+        border-radius: 50%; 
+    }
+    
+    .particle.flame { 
+        width: 10px; 
+        height: 10px; 
+        background: radial-gradient(circle, #f1c40f, #e74c3c); 
+        box-shadow: 0 0 15px #e67e22; 
+        animation: particle-rise 0.8s ease-out forwards; 
+    }
+    
+    .particle.aqua { 
+        width: 8px; 
+        height: 12px; 
+        background: linear-gradient(180deg, #3498db, #2980b9); 
+        box-shadow: 0 0 10px #3498db; 
+        border-radius: 50% 50% 50% 0; 
+        animation: particle-fall 0.8s ease-in forwards; 
+    }
+    
+    .particle.forest { 
+        width: 6px; 
+        height: 10px; 
+        background: linear-gradient(90deg, #2ecc71, #27ae60); 
+        box-shadow: 0 0 10px #2ecc71; 
+        border-radius: 50% 0 50% 50%; 
+        animation: particle-swirl 1s ease-out forwards; 
+    }
+    
+    .particle.sky { 
+        width: 3px; 
+        height: 20px; 
+        background: linear-gradient(180deg, #fff, #74b9ff); 
+        box-shadow: 0 0 15px #74b9ff; 
+        border-radius: 2px; 
+        animation: particle-lightning 0.3s ease-out forwards; 
+    }
+    
+    .particle.venom { 
+        width: 12px; 
+        height: 12px; 
+        background: radial-gradient(circle, #8e44ad, #9b59b6); 
+        box-shadow: 0 0 15px #8e44ad; 
+        animation: particle-bubble 1.2s ease-out forwards; 
+    }
+    
+    .particle.beast { 
+        width: 10px; 
+        height: 10px; 
+        background: radial-gradient(circle, #95a5a6, #7f8c8d); 
+        box-shadow: 0 0 10px #95a5a6; 
+        animation: particle-swirl 1s ease-out forwards; 
+    }
+    
+    .particle.earth { 
+        width: 12px; 
+        height: 8px; 
+        background: linear-gradient(90deg, #d4a574, #a67c52); 
+        box-shadow: 0 0 10px #d4a574; 
+        border-radius: 20%; 
+        animation: particle-fall 0.9s ease-in forwards; 
+    }
+    
+    .particle.metal { 
+        width: 8px; 
+        height: 8px; 
+        background: linear-gradient(135deg, #bdc3c7, #95a5a6); 
+        box-shadow: 0 0 15px #bdc3c7, inset 0 0 5px #7f8c8d; 
+        animation: particle-swirl 1s ease-out forwards; 
+    }
+    
+    .particle.mystic { 
+        width: 10px; 
+        height: 10px; 
+        background: radial-gradient(circle, #e91e63, #9c27b0); 
+        box-shadow: 0 0 20px #e91e63; 
+        animation: particle-swirl 1.1s ease-out forwards; 
+    }
+    
+    .particle.shadow { 
+        width: 14px; 
+        height: 14px; 
+        background: radial-gradient(circle, #34495e, #2c3e50); 
+        box-shadow: 0 0 20px rgba(0,0,0,0.8); 
+        animation: particle-swirl 1s ease-out forwards; 
+    }
+    
+    /* === DIFERENCIAÇÃO VISUAL PHYSICAL vs SPECIAL === */
+    /* === DIFERENCIAÇÃO SUTIL PHYSICAL vs SPECIAL === */
+    .move-btn.physical {
+        background: linear-gradient(180deg, #2c3e50, #1a252f) !important;
+        border: 2px solid #e74c3c !important;
+        border-left: 5px solid #e74c3c !important;
+        box-shadow: 0 0 0 1px rgba(231, 76, 60, 0.3) inset;
+    }
+    
+    .move-btn.physical:hover {
+        background: linear-gradient(180deg, #34495e, #2c3e50) !important;
+        box-shadow: 0 0 15px rgba(231, 76, 60, 0.4), 0 0 0 1px rgba(231, 76, 60, 0.5) inset !important;
+        border-color: #ff6b6b !important;
+    }
+    
+    .move-btn.special {
+        background: linear-gradient(180deg, #2c3e50, #1a252f) !important;
+        border: 2px solid #3498db !important;
+        border-left: 5px solid #3498db !important;
+        box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.3) inset;
+    }
+    
+    .move-btn.special:hover {
+        background: linear-gradient(180deg, #34495e, #2c3e50) !important;
+        box-shadow: 0 0 15px rgba(52, 152, 219, 0.4), 0 0 0 1px rgba(52, 152, 219, 0.5) inset !important;
+        border-color: #5dade2 !important;
+    }
+    
+    .move-btn.status {
+        background: linear-gradient(180deg, #2c3e50, #1a252f) !important;
+        border: 2px solid #9b59b6 !important;
+        border-left: 5px solid #9b59b6 !important;
+        box-shadow: 0 0 0 1px rgba(155, 89, 182, 0.3) inset;
+    }
+    
+    .move-btn.status:hover {
+        background: linear-gradient(180deg, #34495e, #2c3e50) !important;
+        box-shadow: 0 0 15px rgba(155, 89, 182, 0.4), 0 0 0 1px rgba(155, 89, 182, 0.5) inset !important;
+        border-color: #af7ac5 !important;
+    }
+    
+    /* Indicadores de tipo no botão - mais sutis */
+    .move-category-badge {
+        font-size: 0.65rem;
+        padding: 2px 5px;
+        border-radius: 3px;
+        display: inline-block;
+        margin-right: 5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+        border: 1px solid currentColor;
+    }
+    
+    .move-category-badge.physical {
+        background: rgba(231, 76, 60, 0.2);
+        color: #ff6b6b;
+        border-color: #e74c3c;
+    }
+    
+    .move-category-badge.special {
+        background: rgba(52, 152, 219, 0.2);
+        color: #5dade2;
+        border-color: #3498db;
+    }
+    
+    .move-category-badge.status {
+        background: rgba(155, 89, 182, 0.2);
+        color: #af7ac5;
+        border-color: #9b59b6;
+    }
+    
+    /* === ANIMAÇÕES DE VITÓRIA/DERROTA === */
+    .confetti {
+        position: fixed;
+        pointer-events: none;
+        z-index: 980;
+        border-radius: 2px;
+    }
+    
+    @keyframes confetti-fall {
+        0% {
+            opacity: 1;
+            transform: translateY(-20px) rotateZ(0deg);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(100vh) rotateZ(720deg);
+        }
+    }
+    
+    @keyframes winner-glow {
+        0%, 100% {
+            filter: drop-shadow(0 0 15px currentColor) brightness(1);
+        }
+        50% {
+            filter: drop-shadow(0 0 35px currentColor) brightness(1.3);
+        }
+    }
+    
+    @keyframes float-up {
+        0% {
+            opacity: 0;
+            transform: translateY(30px) scale(0.8);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    @keyframes podium-enter {
+        0% {
+            opacity: 0;
+            transform: rotateY(180deg) scale(0.5);
+        }
+        60% {
+            transform: rotateY(-10deg) scale(1.05);
+        }
+        100% {
+            opacity: 1;
+            transform: rotateY(0) scale(1);
+        }
+    }
+    
+    @keyframes loser-fade {
+        0% {
+            opacity: 0.6;
+            transform: scale(0.9);
+        }
+        100% {
+            opacity: 0.3;
+            transform: scale(0.85) translateY(10px);
+            filter: grayscale(0.7);
+        }
+    }
+    
+    #overlay.victory-show {
+        animation: victory-fade-in 0.8s ease-out forwards;
+    }
+    
+    @keyframes victory-fade-in {
+        0% {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+        }
+        100% {
+            opacity: 1;
+            backdrop-filter: blur(8px);
+        }
+    }
+    
+    #result-title.animate-in {
+        animation: float-up 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    
+    .winner-box.animate-in {
+        animation: podium-enter 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    
+    .winner-box.animate-in #win-name,
+    .winner-box.animate-in #win-mon-img {
+        animation: winner-glow 2s ease-in-out infinite;
+    }
+    
+    .loser-box.animate-in {
+        animation: loser-fade 0.8s ease-out forwards;
+    }
+    
+    .btn-restart.animate-in {
+        animation: float-up 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s backwards;
+    }
+    
+    .btn-restart:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 8px 0 #1c5980, 0 12px 25px rgba(0, 0, 0, 0.4) !important;
+    }
+    
+    .btn-restart:active {
+        transform: translateY(2px);
+        box-shadow: 0 4px 0 #1c5980 !important;
+    }
+    
+    /* === MELHOR ANIMAÇÃO DE DEPLOY === */
+    @keyframes deploy-epic {
+        0% {
+            opacity: 0;
+            transform: scale(0) rotate(-180deg);
+            filter: brightness(3) blur(10px);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.2) rotate(10deg);
+            filter: brightness(1.5) blur(2px);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+            filter: brightness(1) blur(0px);
+        }
+    }
+    
+    .sprite.deploy-epic {
+        animation: deploy-epic 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    
+    @keyframes particle-rise { 
+        0% { transform: translateY(0) scale(1); opacity: 1; } 
+        100% { transform: translateY(-100px) scale(0.2); opacity: 0; } 
+    }
+    
+    @keyframes particle-fall { 
+        0% { transform: translateY(-50px) scale(1); opacity: 1; } 
+        100% { transform: translateY(100px) scale(0.5); opacity: 0; } 
+    }
+    
+    @keyframes particle-swirl { 
+        0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; } 
+        100% { transform: translate(var(--dx, 50px), var(--dy, -80px)) rotate(720deg) scale(0); opacity: 0; } 
+    }
+    
+    @keyframes particle-lightning { 
+        0% { transform: translateY(0) scaleY(0); opacity: 1; } 
+        50% { transform: translateY(0) scaleY(1); opacity: 1; } 
+        100% { transform: translateY(80px) scaleY(0); opacity: 0; } 
+    }
+    
+    @keyframes particle-bubble { 
+        0% { transform: translateY(0) scale(0.5); opacity: 1; } 
+        50% { transform: translateY(-60px) scale(1); opacity: 0.7; } 
+        100% { transform: translateY(-120px) scale(1.5); opacity: 0; } 
+    }
 </style>
 </head>
 <body>
@@ -374,13 +787,17 @@
                     <% } %>
                     <div id="moves-container" style="display:contents;">
                         <% p1.moves.forEach(move => { %>
-                            <button class="move-btn" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
-                                <strong class="move-title"><span class="move-type-icon move-type-<%= (move.element || 'beast') %>" title="<%= (move.element || 'beast').toUpperCase() %>"></span><span><%= move.name %></span></strong>
-                                <small><%= move.cost %> EN</small>
+                            <button class="move-btn <%= move.category || 'physical' %>" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
+                                <strong class="move-title">
+                                    <span class="move-category-badge <%= move.category || 'physical' %>"><%= (move.category || 'physical').slice(0,3).toUpperCase() %></span>
+                                    <span class="move-type-icon move-type-<%= (move.element || 'beast') %>" title="<%= (move.element || 'beast').toUpperCase() %>"></span>
+                                    <span><%= move.name %></span>
+                                </strong>
+                                <small>💎 <%= move.cost %> EN</small>
                             </button>
                         <% }) %>
                     </div>
-                    <button class="move-btn rest-btn" onclick="sendAction('move', 'rest')">💤 Descansar (+5 EN)</button>
+                    <button class="move-btn rest-btn status" onclick="sendAction('move', 'rest')">💤 Descansar (+<%= energyConfig.restBonus %> EN)</button>
                 </div>
             <% } else { %>
                 <div class="battle-log" id="logBox"></div>
@@ -567,8 +984,8 @@
                 
                 ball.remove();
                 
-                createImpact(side, 'effect-beast', endX + 40, endY + 40); 
-                spriteImg.classList.add('anim-pop-out');
+                // Aplicar animação épica de deploy (sem partículas)
+                spriteImg.classList.add('deploy-epic');
             
             } catch(e) {
                 console.error("Erro na animação deploy", e);
@@ -698,32 +1115,38 @@
                     if (battleMode === 'wild' && actorSide === 'p2') { await wait(500); } 
                     else { await speak(actorIdRaw, evt.moveName); }
                     playMoveAnimation(actorSide, targetSide, evt.moveElement || 'beast', evt.moveCategory, evt.moveType);
-                    if(!isSpectator && actorSide === 'p1') updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en'); 
+                    if(!isSpectator && actorSide === 'p1') updateBar(actorIdRaw, evt.newEnergy, <%= energyConfig.maxEnergy %>, 'en'); 
                     await wait(300); 
                 } else if (evt.type === 'ATTACK_HIT') { 
                     createImpact(targetSide, `effect-${lastMoveElement.toLowerCase()}`);
-                    const damageTxt = document.createElement('div'); damageTxt.className = 'floating-text damage-text'; damageTxt.innerText = evt.isBlocked ? '🛡️' : `-${evt.damage}`;
-                    const rX = (Math.random() * 40 - 20) + '%', rY = (Math.random() * 20 - 10) + '%';
-                    damageTxt.style.transform = `translate(calc(-50% + ${rX}), calc(-50% + ${rY}))`;
-                    document.getElementById(`fighter-${targetSide}`).appendChild(damageTxt);
                     
-                    // CRÍTICO - Mostra animação especial
-                    if(evt.isCritical) { 
-                        const t = document.createElement('div'); 
-                        t.className = 'floating-text crit-text'; 
-                        t.innerText = "💥 CRÍTICO! 💥"; 
-                        t.style.marginTop = "30px";
-                        t.style.color = "#ff4444";
-                        t.style.fontSize = "24px";
-                        t.style.fontWeight = "bold";
-                        t.style.textShadow = "0 0 10px #ff0000";
-                        document.getElementById(`fighter-${targetSide}`).appendChild(t); 
-                        setTimeout(() => t.remove(), 1500); 
-                        await wait(300);
+                    // Hit Marker simples
+                    const hitMarker = document.createElement('div');
+                    hitMarker.className = 'hit-marker damage';
+                    hitMarker.innerText = `-${evt.damage}`;
+                    
+                    if (evt.isEffective) {
+                        hitMarker.classList.add('super-effective');
+                        hitMarker.innerText += ' ⚡';
+                    } else if (evt.isNotEffective) {
+                        hitMarker.classList.add('not-effective');
                     }
                     
-                    if(evt.isEffective) { const t = document.createElement('div'); t.className = 'floating-text super-text'; t.innerText = "SUPER!"; t.style.marginTop = "30px"; document.getElementById(`fighter-${targetSide}`).appendChild(t); setTimeout(() => t.remove(), 1200); } 
-                    await wait(500); damageTxt.remove();
+                    document.body.appendChild(hitMarker);
+                    setTimeout(() => hitMarker.remove(), 1500);
+                    
+                    // Screen Shake em ataques fortes
+                    if (evt.damage > 80) {
+                        screenShake();
+                        if (navigator.vibrate) {
+                            navigator.vibrate([30, 10, 30]);
+                        }
+                    }
+                    
+                    // Partículas melhoradas por tipo
+                    createParticles(targetSide, lastMoveElement.toLowerCase(), 1);
+                    
+                    await wait(500);
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp'); 
                     if (evt.newHp <= 0) { await wait(200); await returnPokemon(targetSide); } await wait(500);
@@ -741,9 +1164,24 @@
                 }
                 else if (evt.type === 'REST') {
                     await speak(actorIdRaw, 'rest');
-                    if(actorSide === 'p1' && !isSpectator) updateBar(actorIdRaw, evt.newEnergy, <%= p1.maxEnergy %>, 'en');
-                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+5 EN`; txt.style.color = "#f1c40f";
+                    if(actorSide === 'p1' && !isSpectator) updateBar(actorIdRaw, evt.newEnergy, <%= energyConfig.maxEnergy %>, 'en');
+                    const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${<%= energyConfig.restBonus %>} EN`; txt.style.color = "#f1c40f";
                     document.getElementById(`fighter-${actorSide}`).appendChild(txt); setTimeout(() => txt.remove(), 1000); await wait(500);
+                }
+                else if (evt.type === 'ENERGY_RESTORED') {
+                    // Regeneração de energia no início do turno
+                    if (!isSpectator) {
+                        updateBar(p1RawId, evt.p1Energy, <%= energyConfig.maxEnergy %>, 'en');
+                        
+                        // Efeito visual de regeneração
+                        const txt = document.createElement('div'); 
+                        txt.className = 'floating-text heal-text'; 
+                        txt.innerText = `⚡+${evt.restored} EN`; 
+                        txt.style.color = "#3498db";
+                        document.getElementById('fighter-p1').appendChild(txt); 
+                        setTimeout(() => txt.remove(), 800);
+                    }
+                    await wait(300);
                 }
                 else if (evt.type === 'SWITCH_ANIM') {
                     const side = (evt.side === 'p1') ? 'p1' : 'p2';
@@ -934,7 +1372,7 @@
                     if (data.p1State) {
                         updateBar(p1RawId, data.p1State.hp, p1MaxHp, 'hp'); 
                         if(data.p1State.energy !== undefined) {
-                            updateBar(p1RawId, data.p1State.energy, <%= p1.maxEnergy %>, 'en');
+                            updateBar(p1RawId, data.p1State.energy, <%= energyConfig.maxEnergy %>, 'en');
                         }
                         // ATUALIZAR XP BAR
                         if(data.p1State.xp !== undefined && data.p1State.xpToNext !== undefined) {
@@ -1027,6 +1465,9 @@
             const winName = document.getElementById('win-name'); const loseName = document.getElementById('lose-name'); 
             const winTrainer = document.getElementById('win-trainer-div'); const loseTrainer = document.getElementById('lose-trainer-div');
             const winMon = document.getElementById('win-mon-img'); const loseMon = document.getElementById('lose-mon-img'); 
+            const winnerBox = document.querySelector('.winner-box');
+            const loserBox = document.querySelector('.loser-box');
+            const restartBtn = document.querySelector('.btn-restart');
             
             let isP1Win = false;
             if (battleMode === 'online') { isP1Win = (String(winnerId) === String(realUserId)); } 
@@ -1046,13 +1487,65 @@
             winTrainer.style.backgroundImage = `url('${toSkinUrl(winner && winner.skin)}')`;
             loseTrainer.style.backgroundImage = `url('${toSkinUrl(loser && loser.skin)}')`;
             
-            if (isSpectator) { title.innerText = `VENCEDOR: ${winner.name}`; title.style.color = "#f1c40f"; } 
-            else { 
-                if (winnerId === 'draw') { title.innerText = "EMPATE!"; title.style.color = "#fff"; } 
-                else if (isP1Win) { title.innerText = "VITÓRIA!"; title.style.color = "#2ecc71"; } 
-                else { title.innerText = "DERROTA..."; title.style.color = "#e74c3c"; } 
-            } 
-            overlay.style.display = 'flex'; 
+            let resultColor = "#f1c40f";
+            if (isSpectator) { 
+                title.innerText = `VENCEDOR: ${winner.name}`; 
+                title.style.color = "#f1c40f"; 
+            } else { 
+                if (winnerId === 'draw') { 
+                    title.innerText = "EMPATE!"; 
+                    title.style.color = "#fff"; 
+                } else if (isP1Win) { 
+                    title.innerText = "VITÓRIA!"; 
+                    title.style.color = "#2ecc71";
+                    resultColor = "#2ecc71";
+                    // Confete apenas se ganhou
+                    createConfetti(40);
+                } else { 
+                    title.innerText = "DERROTA..."; 
+                    title.style.color = "#e74c3c"; 
+                    resultColor = "#e74c3c";
+                } 
+            }
+            
+            // Animações sequenciais
+            overlay.style.display = 'flex';
+            overlay.classList.add('victory-show');
+            
+            setTimeout(() => {
+                title.classList.add('animate-in');
+            }, 100);
+            
+            setTimeout(() => {
+                if (winnerBox) winnerBox.classList.add('animate-in');
+                if (loserBox) loserBox.classList.add('animate-in');
+            }, 400);
+            
+            setTimeout(() => {
+                if (restartBtn) restartBtn.classList.add('animate-in');
+            }, 800);
+        }
+        
+        // === FUNÇÃO DE CONFETE ===
+        function createConfetti(count) {
+            const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#e67e22', '#9b59b6', '#1abc9c', '#ff6b6b'];
+            
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.top = '-20px';
+                    confetti.style.width = (4 + Math.random() * 6) + 'px';
+                    confetti.style.height = (8 + Math.random() * 12) + 'px';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animation = `confetti-fall ${2 + Math.random() * 2}s ease-in forwards`;
+                    
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 5000);
+                }, i * 40);
+            }
         }
 
         socket.on('turn_result', async (data) => { 
@@ -1148,7 +1641,10 @@
             
             updateBar(p1RawId, <%= p1.hp %>, <%= p1.maxHp %>, 'hp'); 
             updateBar(p2RawId, <%= p2.hp %>, <%= p2.maxHp %>, 'hp'); 
-            if(!isSpectator) updateBar(p1RawId, <%= p1.energy %>, <%= p1.maxEnergy %>, 'en'); 
+            if(!isSpectator) {
+                updateBar(p1RawId, <%= p1.energy %>, <%= energyConfig.maxEnergy %>, 'en');
+                updateBar(p1RawId, <%= p1.xp || 0 %>, <%= p1.xpToNext || 100 %>, 'xp');
+            }
             
             await wait(100); 
             
@@ -1223,6 +1719,62 @@
                     return; 
                 } 
             } catch(e) { console.error(e); showToast('Erro.'); }
+        }
+        
+        // === SISTEMA DE COMBO & EFEITOS VISUAIS ===
+        function updateComboDisplay(combo, multiplier) {
+            const badge = document.getElementById('comboBadge');
+            
+            if (combo >= 2) {
+                badge.style.display = 'block';
+                const multiplierPercent = Math.round((multiplier - 1) * 100);
+                badge.innerText = `${combo}x COMBO! +${multiplierPercent}% DMG`;
+                badge.className = 'combo-badge';
+                
+                if (combo >= 5) badge.classList.add('combo-5');
+                else if (combo >= 4) badge.classList.add('combo-4');
+                else if (combo >= 3) badge.classList.add('combo-3');
+                else badge.classList.add('combo-2');
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+        
+        function screenShake() {
+            const arena = document.getElementById('arena');
+            arena.classList.add('shake');
+            setTimeout(() => arena.classList.remove('shake'), 400);
+        }
+        
+        function createParticles(targetSide, element, comboLevel) {
+            const fighter = document.getElementById(`fighter-${targetSide}`);
+            const fRect = fighter.getBoundingClientRect();
+            const centerX = fRect.left + fRect.width / 2;
+            const centerY = fRect.top + fRect.height / 2;
+            
+            // Mais partículas para combos maiores
+            const particleCount = 5 + (comboLevel * 2);
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = `particle ${element}`;
+                    
+                    const angle = (Math.PI * 2 / particleCount) * i;
+                    const distance = 30 + Math.random() * 40;
+                    const dx = Math.cos(angle) * distance;
+                    const dy = Math.sin(angle) * distance;
+                    
+                    particle.style.left = centerX + 'px';
+                    particle.style.top = centerY + 'px';
+                    particle.style.setProperty('--dx', dx + 'px');
+                    particle.style.setProperty('--dy', dy + 'px');
+                    
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 1200);
+                }, i * 30);
+            }
         }
     </script>
 </body>
