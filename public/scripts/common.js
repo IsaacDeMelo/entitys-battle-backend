@@ -292,24 +292,36 @@ window.GlobalLoader = (() => {
     return { create, show, hide, updateProgress };
 })();
 
-// Inicializar preload ao carregar a primeira página
-if (!sessionStorage.getItem('game_assets_preloaded')) {
-    window.addEventListener('DOMContentLoaded', async () => {
-        console.log('[PRELOAD] Iniciando carregamento de assets críticos...');
-        GlobalLoader.show();
-        
-        const assets = GameCache.getCriticalAssets();
-        await GameCache.preloadBatch(assets, (loaded, total) => {
-            GlobalLoader.updateProgress(loaded, total);
-        });
-        
-        sessionStorage.setItem('game_assets_preloaded', 'true');
-        
-        setTimeout(() => {
-            GlobalLoader.hide();
-        }, 300);
-    });
-}
+// Inicializar preload apenas na primeira carga da sessão
+(function() {
+    // Usa performance.navigation.type para detectar se é primeira carga
+    // Ou verifica se os assets já estão em sessionStorage
+    const isFirstLoad = !sessionStorage.getItem('game_session_initialized');
+    
+    if (isFirstLoad && (performance.navigation.type === 0 || !performance.navigation)) {
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('[PRELOAD] Primeira carga detectada! Carregando assets...');
+            GlobalLoader.show();
+            
+            const assets = GameCache.getCriticalAssets();
+            await GameCache.preloadBatch(assets, (loaded, total) => {
+                GlobalLoader.updateProgress(loaded, total);
+            });
+            
+            sessionStorage.setItem('game_session_initialized', 'true');
+            
+            setTimeout(() => {
+                GlobalLoader.hide();
+            }, 300);
+        }, { once: true });
+    } else {
+        // Sessão já inicializada, esconde loader imediatamente
+        window.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('globalGameLoader');
+            if (loader) loader.style.display = 'none';
+        }, { once: true });
+    }
+})();
 
 // =============================================================================
 // 1. ESTILOS CSS (UI)
