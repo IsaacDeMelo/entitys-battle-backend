@@ -204,9 +204,9 @@
     .podium { display: flex; align-items: flex-end; gap: 40px; margin-bottom: 40px; }
     .winner-box { display: flex; flex-direction: column; align-items: center; transform: scale(1.3); z-index: 2; position: relative; }
     .loser-box { display: flex; flex-direction: column; align-items: center; opacity: 0.6; filter: grayscale(1) contrast(1.2); transform: scale(0.9); }
-    .podium-avatar-group { position: relative; width: 160px; height: 100px; display: flex; align-items: flex-end; gap: 8px; }
-    .podium-trainer { width: 64px; height: 64px; background-size: 400% auto; background-position: 0 0; image-rendering: pixelated; z-index: 2; flex-shrink: 0; }
-    .podium-monster { width: 100px; height: 100px; object-fit: contain; image-rendering: pixelated; z-index: 1; opacity: 0.95; }
+    .podium-avatar-group { position: relative; width: 150px; height: 110px; display: flex; align-items: flex-end; justify-content: center; gap: 0; }
+    .podium-monster { width: 110px; height: 110px; object-fit: contain; image-rendering: pixelated; z-index: 1; opacity: 0.95; margin-right: -18px; }
+    .podium-trainer { width: 64px; height: 64px; background-size: 400% auto; background-position: 0 0; image-rendering: pixelated; z-index: 3; flex-shrink: 0; margin-left: -6px; }
     .crown { font-size: 2.5rem; position: absolute; top: -25px; left: 50%; transform: translateX(-50%); z-index: 3; text-shadow: 0 0 15px gold; animation: float 2s infinite ease-in-out; }
     @keyframes float { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-8px); } }
     .podium-base { height: 15px; width: 120%; border-radius: 50%; margin-top: -10px; z-index: 0; }
