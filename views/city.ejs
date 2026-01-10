@@ -4586,10 +4586,9 @@
                     setPortalCooldown(1300);
                     window.__transitionNavigating = true;
                     
-                    // Usa navegação client-side ao invés de trocar de página
-                    const targetX = portal.targetX !== undefined ? portal.targetX : 50;
-                    const targetY = portal.targetY !== undefined ? portal.targetY : 50;
-                    await navigateToMapClientSide(portal.targetMap, targetX, targetY);
+                    // Usa reload tradicional de página
+                    const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
+                    window.location.href = newUrl;
                 });
             }
         }
