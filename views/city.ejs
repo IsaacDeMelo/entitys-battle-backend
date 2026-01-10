@@ -1710,6 +1710,7 @@
         }
 
         async function preloadMapAssets(mapId) {
+            // Usa GameCache global se disponível para assets críticos
             if (!mapId) return;
             const data = await fetchMapData(mapId);
             if (!data) return;
@@ -1717,10 +1718,13 @@
             const fg = data.foregroundImage || '';
             const tasks = [];
             const looksLikeUrl = (s) => typeof s === 'string' && (s.startsWith('http') || s.startsWith('/uploads/') || s.startsWith('data:'));
-            if (looksLikeUrl(bg)) tasks.push(preloadImage(bg));
-            if (looksLikeUrl(fg)) tasks.push(preloadImage(fg));
+            
+            // Tenta precarregar apenas com timeout mínimo (200ms) para não bloquear navegação
+            if (looksLikeUrl(bg)) tasks.push(window.GameCache?.preloadImage?.(bg) || preloadImage(bg));
+            if (looksLikeUrl(fg)) tasks.push(window.GameCache?.preloadImage?.(fg) || preloadImage(fg));
+            
             if (tasks.length) {
-                const PRELOAD_TIMEOUT_MS = 1200;
+                const PRELOAD_TIMEOUT_MS = 150; // Bem curto - prioriza fluidez sobre esperar carregar
                 await Promise.race([
                     Promise.all(tasks),
                     new Promise(res => setTimeout(res, PRELOAD_TIMEOUT_MS))
@@ -4509,8 +4513,8 @@
                     if (portal.targetX !== undefined && portal.targetY !== undefined && !isNaN(portal.targetX)) {
                         extra = `&x=${portal.targetX}&y=${portal.targetY}`;
                     }
-                    // Precarrega assets do mapa alvo para reduzir flicker.
-                    try { await preloadMapAssets(portal.targetMap); } catch (_) {}
+                    // Precarrega assets do mapa alvo em background (não bloqueia a navegação)
+                    preloadMapAssets(portal.targetMap).catch(() => {});
                     const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
                     setPortalCooldown(1300);
                     window.__transitionNavigating = true;
