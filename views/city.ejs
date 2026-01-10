@@ -2495,6 +2495,74 @@
             el.style.backgroundPositionX = '0%';
         };
 
+        // ========== NAVEGAÇÃO CLIENT-SIDE DE MAPAS (SPA) ==========
+        async function navigateToMapClientSide(targetMapId, targetX, targetY) {
+            if (window.isTeleporting) return;
+            window.isTeleporting = true;
+            window.isMoving = false;
+            window.__transitionNavigating = false;
+
+            const overlay = document.getElementById('transitionOverlay');
+            if (overlay) overlay.classList.remove('hidden');
+            
+            try {
+                // Carrega dados do novo mapa
+                const newMapData = await fetchMapData(targetMapId);
+                if (!newMapData) {
+                    console.warn('[MAP NAV] Falha ao carregar dados do mapa:', targetMapId);
+                    window.isTeleporting = false;
+                    return;
+                }
+
+                // Aguarda ~150ms para o fade-out completar
+                await new Promise(r => setTimeout(r, 280));
+
+                // ===== Atualiza dados globais do mapa =====
+                currentMapId = targetMapId;
+                mapConfig = newMapData;
+                collisionMap = newMapData.collisions || [];
+                grassMap = newMapData.grass || [];
+                interactsMap = newMapData.interacts || [];
+                portalsMap = newMapData.portals || [];
+                storyBarriersMap = newMapData.storyBarriers || [];
+                objectsMap = newMapData.objects || [];
+
+                // ===== Limpa NPCs antigos da tela =====
+                document.querySelectorAll('.npc-entity').forEach(el => el.remove());
+                currentNpcsCache = [];
+
+                // ===== Atualiza visuals do mapa =====
+                applyMapVisuals(mapConfig);
+
+                // ===== Coloca player no novo mapa =====
+                const myEl = document.getElementById(`p-${window.myId}`);
+                if (myEl) {
+                    myEl.style.left = targetX + '%';
+                    myEl.style.top = targetY + '%';
+                }
+
+                // ===== Avisa servidor que entrou no novo mapa =====
+                socket.emit('enter_map', { 
+                    userId: window.CURRENT_USER_ID, 
+                    name: myName, 
+                    skin: mySkin, 
+                    map: targetMapId, 
+                    x: targetX, 
+                    y: targetY, 
+                    direction: 'down' 
+                });
+
+                // ===== Fade-in =====
+                if (overlay) overlay.classList.add('hidden');
+                setTimeout(() => { window.isTeleporting = false; }, 280);
+
+            } catch (error) {
+                console.error('[MAP NAV] Erro na navegação:', error);
+                if (overlay) overlay.classList.add('hidden');
+                window.isTeleporting = false;
+            }
+        }
+
         socket.on('npcs_list', (npcs) => {
             const list = Array.isArray(npcs) ? npcs : [];
             currentNpcsCache = list;
@@ -4513,12 +4581,15 @@
                     if (portal.targetX !== undefined && portal.targetY !== undefined && !isNaN(portal.targetX)) {
                         extra = `&x=${portal.targetX}&y=${portal.targetY}`;
                     }
-                    // Precarrega assets do mapa alvo em background (não bloqueia a navegação)
+                    // Precarrega assets do mapa alvo em background
                     preloadMapAssets(portal.targetMap).catch(() => {});
-                    const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
                     setPortalCooldown(1300);
                     window.__transitionNavigating = true;
-                    window.location.href = newUrl;
+                    
+                    // Usa navegação client-side ao invés de trocar de página
+                    const targetX = portal.targetX !== undefined ? portal.targetX : 50;
+                    const targetY = portal.targetY !== undefined ? portal.targetY : 50;
+                    await navigateToMapClientSide(portal.targetMap, targetX, targetY);
                 });
             }
         }
