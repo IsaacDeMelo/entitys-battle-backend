@@ -1195,14 +1195,19 @@
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Tipo (padronizado)</label>
                             <select id="npcEdType" onchange="npcTypeUiSync(true)">
-                                <option value="decor">decorativo (sem ações)</option>
-                                <option value="quest">quest (itens/flag)</option>
-                                <option value="trainer">treinador (batalha)</option>
-                                <option value="starter">starter (inicial)</option>
-                                <option value="heal">curar time</option>
-                                <option value="shop">loja</option>
+                                <option value="decor">🎨 Decorativo (sem ações)</option>
+                                <option value="quest">📜 Quest (itens/flag)</option>
+                                <option value="trainer">⚔️ Treinador (batalha)</option>
+                                <option value="starter">🎁 Inicial</option>
+                                <option value="heal">💚 Curandeiro</option>
+                                <option value="shop">🛒 Loja</option>
                             </select>
                             <div class="npcHint" style="margin-top:6px;">Escolha um tipo para organizar o editor e preencher defaults.</div>
+                        </div>
+                        
+                        <div id="npcTypeBadge" class="npc-type-badge" style="grid-column: 1 / -1;">
+                            <span id="npcTypeBadgeIcon" class="npc-type-badge-icon"></span>
+                            <span id="npcTypeBadgeText"></span>
                         </div>
 
                         <div class="npcField">
@@ -1260,7 +1265,21 @@
                         </div>
                         </div>
                     </div>
+                    
+                    <!-- Sistema de Abas -->
+                    <div class="npc-tabs">
+                        <button class="npc-tab active" onclick="switchNpcTab('geral')" data-tab="geral">📝 Geral</button>
+                        <button class="npc-tab" onclick="switchNpcTab('dialogos')" data-tab="dialogos" id="tabDialogos">💬 Diálogos</button>
+                        <button class="npc-tab" onclick="switchNpcTab('battle')" data-tab="battle" id="tabBattle">⚔️ Batalha</button>
+                        <button class="npc-tab" onclick="switchNpcTab('interact')" data-tab="interact" id="tabInteract">🔧 Interação</button>
+                        <button class="npc-tab" onclick="switchNpcTab('patrol')" data-tab="patrol" id="tabPatrol">🚶 Patrulha</button>
+                    </div>
+                    
+                    <div class="npc-tab-content active" data-content="geral">
+                        <!-- Conteúdo de Geral já está acima -->
+                    </div>
 
+                    <div class="npc-tab-content" data-content="dialogos">
                     <div class="npcBlock" id="npcEdBlockDialogues">
                         <div class="npcBlockHeader">
                             <div class="npcBlockTitle">Diálogos Padrão</div>
@@ -1297,7 +1316,9 @@
                         </div>
                         </div>
                     </div>
-
+                    </div>
+                    
+                    <div class="npc-tab-content" data-content="battle">
                     <div class="npcBlock" id="npcEdBlockBattle">
                         <div class="npcBlockHeader">
                             <div class="npcBlockTitle">Batalha</div>
@@ -1378,7 +1399,9 @@
                         </div>
                         </div>
                     </div>
-
+                    </div>
+                    
+                    <div class="npc-tab-content" data-content="interact">
                     <div class="npcBlock" id="npcEdBlockInteract">
                         <div class="npcBlockHeader">
                             <div class="npcBlockTitle">Interação / Serviços</div>
@@ -2690,7 +2713,7 @@
             const el = document.getElementById('npcEditorListItems');
             if (!el) return;
             el.innerHTML = '';
-            const list = (currentNpcsCache || []).slice().sort((a, b) => (a.y || 0) - (b.y || 0));
+            const list = (currentNpcsCache || []).slice();
             if (list.length === 0) {
                 const empty = document.createElement('div');
                 empty.className = 'npcHint';
@@ -2698,13 +2721,39 @@
                 el.appendChild(empty);
                 return;
             }
+            
+            // Agrupa NPCs por tipo
+            const grouped = {
+                trainer: [], quest: [], starter: [], heal: [], shop: [], decor: []
+            };
+            
             list.forEach(n => {
-                const item = document.createElement('div');
-                item.className = 'npcListItem' + (npcEditorSelectedId === n._id ? ' active' : '');
-                const name = (n.name || 'NPC').replace(/\(kid\)/i, '').trim();
-                item.innerHTML = `<div class="npcListTitle">${escapeHtml(name)}</div><div class="npcListSub">X:${n.x} Y:${n.y} dir:${n.direction || 'down'}</div>`;
-                item.onclick = () => loadNpcToEditor(n._id);
-                el.appendChild(item);
+                const type = inferNpcTypeFromNpc(n);
+                if (grouped[type]) grouped[type].push(n);
+                else grouped.decor.push(n);
+            });
+            
+            // Renderiza cada grupo
+            Object.keys(npcTypeConfig).forEach(type => {
+                if (grouped[type].length > 0) {
+                    const config = npcTypeConfig[type];
+                    const header = document.createElement('div');
+                    header.className = 'npc-group-header';
+                    header.style.backgroundColor = config.bg;
+                    header.style.borderLeftColor = config.color;
+                    header.style.color = config.color;
+                    header.innerHTML = `${config.icon} ${config.text} <span style="opacity:0.6">(${grouped[type].length})</span>`;
+                    el.appendChild(header);
+                    
+                    grouped[type].sort((a, b) => (a.y || 0) - (b.y || 0)).forEach(n => {
+                        const item = document.createElement('div');
+                        item.className = 'npc-list-item' + (npcEditorSelectedId === n._id ? ' active' : '');
+                        const name = (n.name || 'NPC').replace(/\(kid\)/i, '').trim();
+                        item.innerHTML = `<div style="font-weight:600;margin-bottom:3px;">${escapeHtml(name)}</div><div style="font-size:0.7rem;opacity:0.7;">X:${n.x} Y:${n.y}</div>`;
+                        item.onclick = () => loadNpcToEditor(n._id);
+                        el.appendChild(item);
+                    });
+                }
             });
         }
 
@@ -2919,8 +2968,47 @@
             }
         }
 
+        // Configuração de tipos de NPC com cores e ícones
+        const npcTypeConfig = {
+            decor: { icon: '🎨', text: 'DECORATIVO', color: '#95a5a6', bg: 'rgba(149, 165, 166, 0.2)' },
+            quest: { icon: '📜', text: 'QUEST GIVER', color: '#3498db', bg: 'rgba(52, 152, 219, 0.2)' },
+            trainer: { icon: '⚔️', text: 'TREINADOR', color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.2)' },
+            starter: { icon: '🎁', text: 'INICIAL', color: '#9b59b6', bg: 'rgba(155, 89, 182, 0.2)' },
+            heal: { icon: '💚', text: 'CURANDEIRO', color: '#2ecc71', bg: 'rgba(46, 204, 113, 0.2)' },
+            shop: { icon: '🛒', text: 'LOJA', color: '#f39c12', bg: 'rgba(243, 156, 18, 0.2)' }
+        };
+        
+        function updateNpcTypeBadge(type) {
+            const config = npcTypeConfig[type] || npcTypeConfig.decor;
+            const badge = document.getElementById('npcTypeBadge');
+            const icon = document.getElementById('npcTypeBadgeIcon');
+            const text = document.getElementById('npcTypeBadgeText');
+            
+            if (badge && icon && text) {
+                badge.style.display = 'block';
+                badge.style.backgroundColor = config.bg;
+                badge.style.border = `2px solid ${config.color}`;
+                badge.style.color = config.color;
+                icon.textContent = config.icon;
+                text.textContent = config.text;
+            }
+        }
+        
+        function switchNpcTab(tabName) {
+            document.querySelectorAll('.npc-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.npc-tab-content').forEach(c => c.classList.remove('active'));
+            
+            const tab = document.querySelector(`.npc-tab[data-tab="${tabName}"]`);
+            const content = document.querySelector(`.npc-tab-content[data-content="${tabName}"]`);
+            
+            if (tab) tab.classList.add('active');
+            if (content) content.classList.add('active');
+        }
+
         function npcTypeUiSync(applyPreset) {
             const type = (document.getElementById('npcEdType').value || 'decor').trim();
+            
+            updateNpcTypeBadge(type);
 
             const setDisp = (id, on) => {
                 const el = document.getElementById(id);
@@ -2933,6 +3021,11 @@
             const isStarter = type === 'starter';
             const isHeal = type === 'heal';
             const isShop = type === 'shop';
+            
+            // Controla visibilidade das abas
+            setDisp('tabDialogos', !isDecor);
+            setDisp('tabBattle', isTrainer);
+            setDisp('tabInteract', !isTrainer && !isDecor);
 
             // Seções inteiras
             setDisp('npcEdBlockBattle', isTrainer);

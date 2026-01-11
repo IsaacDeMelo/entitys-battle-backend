@@ -199,21 +199,64 @@
     .move-type-metal { background: #bdc3c7; }
     .move-type-venom { background: #8e44ad; }
     .rest-btn { grid-column: span 2; background: linear-gradient(180deg, #27ae60, #1e8449); border-color: #2ecc71; }
-    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.5s; }
-    #overlay h1 { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; text-shadow: 0 4px 0 #c27c0e; margin-bottom: 40px; font-size: 1.8rem; }
-    .podium { display: flex; align-items: flex-end; gap: 40px; margin-bottom: 40px; }
-    .winner-box { display: flex; flex-direction: column; align-items: center; transform: scale(1.3); z-index: 2; position: relative; }
-    .loser-box { display: flex; flex-direction: column; align-items: center; opacity: 0.6; filter: grayscale(1) contrast(1.2); transform: scale(0.9); }
-    .podium-avatar-group { position: relative; width: 150px; height: 110px; display: flex; align-items: flex-end; justify-content: center; gap: 0; }
-    .podium-monster { width: 110px; height: 110px; object-fit: contain; image-rendering: pixelated; z-index: 1; opacity: 0.95; margin-right: -18px; }
-    .podium-trainer { width: 64px; height: 64px; background-size: 400% auto; background-position: 0 0; image-rendering: pixelated; z-index: 3; flex-shrink: 0; margin-left: -6px; }
-    .crown { font-size: 2.5rem; position: absolute; top: -25px; left: 50%; transform: translateX(-50%); z-index: 3; text-shadow: 0 0 15px gold; animation: float 2s infinite ease-in-out; }
-    @keyframes float { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-8px); } }
-    .podium-base { height: 15px; width: 120%; border-radius: 50%; margin-top: -10px; z-index: 0; }
-    .winner-box .podium-base { background: radial-gradient(#f1c40f, transparent); box-shadow: 0 0 30px #f1c40f; }
-    .loser-box .podium-base { background: radial-gradient(#555, transparent); }
-    .name-tag { font-family: 'Press Start 2P'; font-size: 0.7rem; margin-top: 20px; color: white; text-align: center; background: #333; padding: 8px 12px; border-radius: 6px; border: 1px solid #777; width: 100%; white-space: nowrap; }
-    .btn-restart { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 18px 40px; border-radius: 40px; border: none; font-family: 'Press Start 2P'; font-size: 0.9rem; cursor: pointer; transition: 0.2s; box-shadow: 0 6px 0 #1c5980; text-transform: uppercase; }
+    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(10,10,20,0.95), rgba(30,30,50,0.98)); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.5s; backdrop-filter: blur(10px); }
+    
+    .victory-container { max-width: 500px; width: 90%; }
+    .victory-title { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; text-shadow: 0 4px 0 #c27c0e, 0 0 20px rgba(241, 196, 15, 0.5); margin-bottom: 30px; font-size: 1.8rem; animation: title-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    @keyframes title-bounce { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.1) rotate(5deg); } 100% { transform: scale(1) rotate(0); } }
+    
+    .battle-comparison { display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 35px; }
+    .fighter-result { flex: 1; max-width: 180px; position: relative; }
+    .fighter-result.winner { animation: slide-winner 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    .fighter-result.loser { animation: slide-loser 0.8s ease-out forwards; opacity: 0; }
+    
+    @keyframes slide-winner { 0% { transform: translateX(-100px) scale(0.5); opacity: 0; } 100% { transform: translateX(0) scale(1); opacity: 1; } }
+    @keyframes slide-loser { 0% { transform: translateX(100px) scale(0.5); opacity: 0; } 100% { transform: translateX(0) scale(1); opacity: 0.4; } }
+    
+    .fighter-crown { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 2.5rem; z-index: 10; animation: crown-float 2s ease-in-out infinite; filter: drop-shadow(0 0 10px gold); }
+    @keyframes crown-float { 0%, 100% { transform: translateX(-50%) translateY(0) rotate(-5deg); } 50% { transform: translateX(-50%) translateY(-10px) rotate(5deg); } }
+    
+    .fighter-avatar { position: relative; width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 20px; padding: 15px; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(255,255,255,0.1); overflow: hidden; }
+    .fighter-result.winner .fighter-avatar { border-color: #f1c40f; background: radial-gradient(circle, rgba(241,196,15,0.15), transparent); box-shadow: 0 0 30px rgba(241,196,15,0.3), inset 0 0 30px rgba(241,196,15,0.1); }
+    .fighter-result.loser .fighter-avatar { filter: grayscale(1); }
+    
+    .fighter-monster { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
+    .fighter-result.winner .fighter-monster { animation: winner-pulse 1.5s ease-in-out infinite; }
+    @keyframes winner-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); } 50% { transform: scale(1.05); filter: drop-shadow(0 10px 30px rgba(241,196,15,0.4)); } }
+    
+    .fighter-name { font-family: 'Press Start 2P'; font-size: 0.7rem; text-align: center; margin-top: 12px; color: white; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+    .fighter-result.winner .fighter-name { color: #f1c40f; border-color: #f1c40f; background: rgba(241,196,15,0.1); }
+    
+    .vs-badge { font-size: 1.5rem; font-family: 'Press Start 2P'; color: #e74c3c; text-shadow: 0 0 10px rgba(231,76,60,0.5); transform: rotate(-10deg); opacity: 0.8; }
+    
+    .rewards-section { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1); animation: rewards-fade 0.5s 0.8s backwards; }
+    @keyframes rewards-fade { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+    
+    .rewards-title { font-family: 'Press Start 2P'; font-size: 0.8rem; color: #2ecc71; text-align: center; margin-bottom: 15px; }
+    .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .reward-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; border-left: 3px solid; animation: reward-pop 0.4s backwards; }
+    .reward-item:nth-child(1) { animation-delay: 1s; border-left-color: #f1c40f; }
+    .reward-item:nth-child(2) { animation-delay: 1.15s; border-left-color: #3498db; }
+    @keyframes reward-pop { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.1) rotate(5deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+    
+    .reward-icon { font-size: 1.5rem; }
+    .reward-text { flex: 1; }
+    .reward-label { font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; }
+    .reward-value { font-family: 'Press Start 2P'; font-size: 0.75rem; color: white; margin-top: 2px; }
+    
+    .xp-bar-container { margin-top: 15px; animation: xp-fade 0.5s 1.3s backwards; }
+    .xp-bar-label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .xp-bar { height: 12px; background: rgba(0,0,0,0.5); border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
+    .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3498db, #5dade2); border-radius: 20px; transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 10px rgba(52,152,219,0.5); position: relative; overflow: hidden; }
+    .xp-bar-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: xp-shimmer 2s infinite; }
+    @keyframes xp-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    @keyframes xp-fade { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+    
+    .level-up-badge { font-family: 'Press Start 2P'; font-size: 0.65rem; background: linear-gradient(135deg, #f39c12, #e67e22); padding: 4px 10px; border-radius: 12px; color: white; animation: level-badge-pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+    @keyframes level-badge-pop { 0% { transform: scale(0) rotate(-180deg); } 60% { transform: scale(1.2) rotate(10deg); } 100% { transform: scale(1) rotate(0); } }
+    
+    .btn-restart { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 18px 40px; border-radius: 40px; border: none; font-family: 'Press Start 2P'; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 0 #1c5980, 0 8px 25px rgba(52,152,219,0.3); text-transform: uppercase; animation: btn-fade 0.5s 1.5s backwards; }
+    @keyframes btn-fade { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
     .btn-restart:active { transform: translateY(4px); box-shadow: none; }
     .spectator-banner { position: absolute; bottom: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.8); color: #f1c40f; padding: 10px; font-family: 'Press Start 2P'; font-size: 0.8rem; pointer-events: none; z-index: 50; letter-spacing: 2px; }
     .catchball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 2000; pointer-events: none; transform-origin: center center; }
@@ -745,28 +788,59 @@
         <% } %>
 
         <div id="overlay">
-            <div id="result-content">
-                <h1 id="result-title">RESULTADO</h1>
-                <div class="podium">
-                    <div class="winner-box">
-                        <div class="crown">👑</div>
-                        <div class="podium-avatar-group">
-                            <img id="win-mon-img" class="podium-monster" src="">
-                            <div id="win-trainer-div" class="podium-trainer"></div>
+            <div class="victory-container">
+                <h1 class="victory-title" id="result-title">VITÓRIA!</h1>
+                
+                <div class="battle-comparison">
+                    <div class="fighter-result winner" id="winner-box">
+                        <div class="fighter-crown">👑</div>
+                        <div class="fighter-avatar">
+                            <img id="win-mon-img" class="fighter-monster" src="">
                         </div>
-                        <div class="podium-base"></div>
-                        <div class="name-tag" id="win-name"></div>
+                        <div class="fighter-name" id="win-name"></div>
                     </div>
-                    <div class="loser-box">
-                        <div class="podium-avatar-group">
-                            <img id="lose-mon-img" class="podium-monster" src="">
-                            <div id="lose-trainer-div" class="podium-trainer"></div>
+                    
+                    <div class="vs-badge">VS</div>
+                    
+                    <div class="fighter-result loser" id="loser-box">
+                        <div class="fighter-avatar">
+                            <img id="lose-mon-img" class="fighter-monster" src="">
                         </div>
-                        <div class="podium-base"></div>
-                        <div class="name-tag" id="lose-name"></div>
+                        <div class="fighter-name" id="lose-name"></div>
                     </div>
                 </div>
-                <button type="button" class="btn-restart" onclick="window.location.href='<%= returnUrl %>'">VOLTAR AO JOGO</button>
+                
+                <div class="rewards-section">
+                    <div class="rewards-title">RECOMPENSAS</div>
+                    <div class="rewards-grid">
+                        <div class="reward-item">
+                            <div class="reward-icon">💰</div>
+                            <div class="reward-text">
+                                <div class="reward-label">Créditos</div>
+                                <div class="reward-value" id="reward-money">+0</div>
+                            </div>
+                        </div>
+                        <div class="reward-item">
+                            <div class="reward-icon">⚡</div>
+                            <div class="reward-text">
+                                <div class="reward-label">Experiência</div>
+                                <div class="reward-value" id="reward-exp">+0</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="xp-bar-container" id="xp-bar-container" style="display:none;">
+                        <div class="xp-bar-label">
+                            <span>Nível</span>
+                            <span class="level-up-badge" id="level-display">5 → 6</span>
+                        </div>
+                        <div class="xp-bar">
+                            <div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn-restart" onclick="window.location.href='<%= returnUrl %>'">CONTINUAR</button>
             </div>
         </div>
     </div>
@@ -1478,68 +1552,83 @@
             const bottomPanel = document.querySelector('.bottom-panel'); if(bottomPanel) bottomPanel.style.display = 'none'; 
             const overlay = document.getElementById('overlay'); 
             const title = document.getElementById('result-title'); 
-            const winName = document.getElementById('win-name'); const loseName = document.getElementById('lose-name'); 
-            const winTrainer = document.getElementById('win-trainer-div'); const loseTrainer = document.getElementById('lose-trainer-div');
-            const winMon = document.getElementById('win-mon-img'); const loseMon = document.getElementById('lose-mon-img'); 
-            const winnerBox = document.querySelector('.winner-box');
-            const loserBox = document.querySelector('.loser-box');
-            const restartBtn = document.querySelector('.btn-restart');
+            const winName = document.getElementById('win-name'); 
+            const loseName = document.getElementById('lose-name'); 
+            const winMon = document.getElementById('win-mon-img'); 
+            const loseMon = document.getElementById('lose-mon-img'); 
+            const rewardMoney = document.getElementById('reward-money');
+            const rewardExp = document.getElementById('reward-exp');
+            const xpContainer = document.getElementById('xp-bar-container');
+            const xpFill = document.getElementById('xp-bar-fill');
+            const levelDisplay = document.getElementById('level-display');
             
             let isP1Win = false;
             if (battleMode === 'online') { isP1Win = (String(winnerId) === String(realUserId)); } 
             else { isP1Win = (String(winnerId) === String(p1RawId)); }
 
-            const winner = isP1Win ? p1Data : p2Data; const loser = isP1Win ? p2Data : p1Data; 
-            winName.innerText = winner.name; loseName.innerText = loser.name; 
-            winMon.src = winner.sprite; loseMon.src = loser.sprite; 
+            const winner = isP1Win ? p1Data : p2Data; 
+            const loser = isP1Win ? p2Data : p1Data; 
             
-            const toSkinUrl = (s) => {
-                const v = String(s || '').trim();
-                if (!v) return '/uploads/char1.png';
-                if (v.startsWith('data:') || v.startsWith('http')) return v;
-                if (/^char\d+$/i.test(v)) return `/uploads/${v}.png`;
-                return `/skins/${encodeURIComponent(v)}.png`;
-            };
-            winTrainer.style.backgroundImage = `url('${toSkinUrl(winner && winner.skin)}')`;
-            loseTrainer.style.backgroundImage = `url('${toSkinUrl(loser && loser.skin)}')`;
+            winName.innerText = winner.mon || winner.name; 
+            loseName.innerText = loser.mon || loser.name; 
+            winMon.src = winner.sprite; 
+            loseMon.src = loser.sprite; 
             
-            let resultColor = "#f1c40f";
+            // Simula recompensas (você pode pegar do servidor)
+            const moneyReward = Math.floor(Math.random() * 200) + 100;
+            const expReward = Math.floor(Math.random() * 100) + 50;
+            
             if (isSpectator) { 
-                title.innerText = `VENCEDOR: ${winner.name}`; 
-                title.style.color = "#f1c40f"; 
+                title.innerText = `VITÓRIA DE ${winner.name}`; 
             } else { 
                 if (winnerId === 'draw') { 
                     title.innerText = "EMPATE!"; 
-                    title.style.color = "#fff"; 
                 } else if (isP1Win) { 
                     title.innerText = "VITÓRIA!"; 
-                    title.style.color = "#2ecc71";
-                    resultColor = "#2ecc71";
-                    // Confete apenas se ganhou
-                    createConfetti(40);
+                    createConfetti(50);
+                    
+                    // Anima contadores de recompensa
+                    animateCounter(rewardMoney, 0, moneyReward, 1000, '+');
+                    animateCounter(rewardExp, 0, expReward, 1200, '+');
+                    
+                    // Mostra barra de XP (exemplo)
+                    setTimeout(() => {
+                        xpContainer.style.display = 'block';
+                        levelDisplay.textContent = '5 → 6'; // Exemplo
+                        setTimeout(() => {
+                            xpFill.style.width = '85%'; // Anima barra
+                        }, 100);
+                    }, 1500);
                 } else { 
                     title.innerText = "DERROTA..."; 
-                    title.style.color = "#e74c3c"; 
-                    resultColor = "#e74c3c";
                 } 
             }
             
-            // Animações sequenciais
+            // Mostra overlay
             overlay.style.display = 'flex';
             overlay.classList.add('victory-show');
+        }
+        
+        function animateCounter(element, start, end, duration, prefix = '') {
+            const startTime = Date.now();
+            const range = end - start;
             
-            setTimeout(() => {
-                title.classList.add('animate-in');
-            }, 100);
+            const update = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                const current = Math.floor(start + range * eased);
+                
+                element.textContent = prefix + current;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            };
             
-            setTimeout(() => {
-                if (winnerBox) winnerBox.classList.add('animate-in');
-                if (loserBox) loserBox.classList.add('animate-in');
-            }, 400);
-            
-            setTimeout(() => {
-                if (restartBtn) restartBtn.classList.add('animate-in');
-            }, 800);
+            update();
         }
         
         // === FUNÇÃO DE CONFETE ===
