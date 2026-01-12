@@ -136,10 +136,14 @@
         transition: transform 0.2s; 
     }
 
+    .victory-trainer {
+        width: 80px; height: 80px; margin-bottom: 8px; top: 0; background-size: 400% auto;
+    }
+
     <% for(let i = 1; i <= 20; i++) { %> .trainer[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
     .trainer[data-skin="char1"] { background-image: url('/uploads/char1.png'); }
     .trainer.frame-1 { background-position-x: -100%; }
-    .atk-particle { position: absolute; pointer-events: none; z-index: 2000; animation: particleFly 0.5s forwards; width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.8); }
+    .atk-particle { position: absolute, pointer-events: none, z-index: 2000, animation: particleFly 0.5s forwards, width: 30px, height: 30px, border-radius: 50%, border: 2px solid rgba(255,255,255,0.8), }
     @keyframes particleFly { 0% { transform: translate(0,0) scale(0.2); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(2); opacity: 0; } }
     .impact-effect { position: absolute; width: 120px; height: 120px; z-index: 2000; pointer-events: none; border-radius: 50%; opacity: 0; mix-blend-mode: screen; }
     .impact-effect::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,0.6); animation: impact-ring 0.5s ease-out forwards; }
@@ -627,7 +631,8 @@
     }
     
     .winner-box.animate-in #win-name,
-    .winner-box.animate-in #win-mon-img {
+    .winner-box.animate-in #win-name,
+    .winner-box.animate-in #win-trainer {
         animation: winner-glow 2s ease-in-out infinite;
     }
     
@@ -795,7 +800,7 @@
                     <div class="fighter-result winner" id="winner-box">
                         <div class="fighter-crown">👑</div>
                         <div class="fighter-avatar">
-                            <img id="win-mon-img" class="fighter-monster" src="">
+                                    <div id="win-trainer" class="trainer victory-trainer" data-skin=""></div>
                         </div>
                         <div class="fighter-name" id="win-name"></div>
                     </div>
@@ -804,7 +809,7 @@
                     
                     <div class="fighter-result loser" id="loser-box">
                         <div class="fighter-avatar">
-                            <img id="lose-mon-img" class="fighter-monster" src="">
+                            <div id="lose-trainer" class="trainer victory-trainer" data-skin=""></div>
                         </div>
                         <div class="fighter-name" id="lose-name"></div>
                     </div>
@@ -1451,13 +1456,38 @@
                     setControlsState(true); 
                     return; 
                 }
+                
+                // Se servidor informou npcDefeatedId, atualiza lista local e solicita disengage
+                if (data && data.npcDefeatedId) {
+                    try {
+                        const nid = String(data.npcDefeatedId);
+                        if (typeof window !== 'undefined' && typeof window.markNpcDefeated === 'function') {
+                            try { window.markNpcDefeated(nid); } catch (_) { /* ignore */ }
+                        } else {
+                            window.DEFEATED_NPCS = Array.isArray(window.DEFEATED_NPCS) ? window.DEFEATED_NPCS : [];
+                            if (!window.DEFEATED_NPCS.includes(nid)) window.DEFEATED_NPCS.push(nid);
+                            try { fetch('/api/npc/disengage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ npcId: nid }) }).catch(()=>{}); } catch(_) {}
+                        }
+                    } catch(_) {}
+                }
 
                 if (type === 'catch' && data && data.threw) await playCaptureAnimation(p2RawId, data.captured, data.shakes || 0);
                 if (data.events) await playEvents(data.events); 
+                if (data && data.npcDefeatedId) {
+                    try {
+                        const nid = String(data.npcDefeatedId);
+                        if (typeof window !== 'undefined' && typeof window.markNpcDefeated === 'function') {
+                            try { window.markNpcDefeated(nid); } catch (_) {}
+                        } else {
+                            window.DEFEATED_NPCS = Array.isArray(window.DEFEATED_NPCS) ? window.DEFEATED_NPCS : [];
+                            if (!window.DEFEATED_NPCS.includes(nid)) window.DEFEATED_NPCS.push(nid);
+                        }
+                    } catch (e) {}
+                }
                 if (data.forceSwitch) { showSwitchModal(data.switchable); return; }
                 if(data.captured) { showToast('Capturado!'); setTimeout(() => { window.location.href = returnUrl; }, 1000); return; }
                 else if (data.fled) { showToast("Fugiu!"); window.location.href = returnUrl; } 
-                else if(data.finished) { endGame(data.winnerId); } 
+                else if(data.finished) { endGame(data.winnerId, data); } 
                 else { 
                     if (data.p1State) {
                         updateBar(p1RawId, data.p1State.hp, p1MaxHp, 'hp'); 
@@ -1516,7 +1546,8 @@
                     document.getElementById('p1-name').innerText = p1Mon; document.getElementById('p1-lv').innerText = data.p1State.level; document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
                     document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
                     deployPokemon('p1', false); 
-                    updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                    updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
+                    updateBar(p1RawId, currentEnergy, 100, 'en'); 
                     const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                     data.p1State.moves.forEach(move => { 
                         const btn = document.createElement('button'); btn.className = 'move-btn'; 
@@ -1544,7 +1575,7 @@
         }
 
         let __battleEnded = false;
-        function endGame(winnerId) { 
+        function endGame(winnerId, srvData = {}) { 
             if (__battleEnded) return;
             __battleEnded = true;
             if (battleMode === 'wild') { showToast("Batalha finalizada!"); window.location.href = returnUrl; return; }
@@ -1554,8 +1585,8 @@
             const title = document.getElementById('result-title'); 
             const winName = document.getElementById('win-name'); 
             const loseName = document.getElementById('lose-name'); 
-            const winMon = document.getElementById('win-mon-img'); 
-            const loseMon = document.getElementById('lose-mon-img'); 
+            const winMon = document.getElementById('win-trainer'); 
+            const loseMon = document.getElementById('lose-trainer'); 
             const rewardMoney = document.getElementById('reward-money');
             const rewardExp = document.getElementById('reward-exp');
             const xpContainer = document.getElementById('xp-bar-container');
@@ -1569,14 +1600,40 @@
             const winner = isP1Win ? p1Data : p2Data; 
             const loser = isP1Win ? p2Data : p1Data; 
             
-            winName.innerText = winner.mon || winner.name; 
-            loseName.innerText = loser.mon || loser.name; 
-            winMon.src = winner.sprite; 
-            loseMon.src = loser.sprite; 
+            // Mostrar treinadores na tela de vitória (usar skin do jogador/treinador)
+            function resolveSkinUrl(skin) {
+                if (!skin) return '';
+                try {
+                    const s = String(skin || '');
+                    if (s.startsWith('http') || s.startsWith('data:')) return s;
+                    if (/^char\d+$/i.test(s)) return '/uploads/' + s + '.png';
+                    return '/skins/' + s + '.png';
+                } catch (e) { return '' }
+            }
+
+            winName.innerText = winner.name || winner.mon || '';
+            loseName.innerText = loser.name || loser.mon || '';
+            // substitui as imagens dos monstros pelas imagens dos treinadores
+            const winAvatar = resolveSkinUrl(winner.skin || winner.playerSkin || '');
+            const loseAvatar = resolveSkinUrl(loser.skin || loser.playerSkin || '');
+            if (winMon) {
+                winMon.style.backgroundImage = `url('${winAvatar || resolveImg(winner.sprite)}')`;
+                winMon.style.backgroundPositionX = '0%';
+                // Forçar treinador olhando para frente/baixo na tela de vitória
+                winMon.style.backgroundPositionY = '66.66%';
+                winMon.setAttribute('data-skin', winner.skin || '');
+            }
+            if (loseMon) {
+                loseMon.style.backgroundImage = `url('${loseAvatar || resolveImg(loser.sprite)}')`;
+                loseMon.style.backgroundPositionX = '0%';
+                // Forçar treinador olhando para frente/baixo na tela de derrota
+                loseMon.style.backgroundPositionY = '66.66%';
+                loseMon.setAttribute('data-skin', loser.skin || '');
+            }
             
-            // Simula recompensas (você pode pegar do servidor)
-            const moneyReward = Math.floor(Math.random() * 200) + 100;
-            const expReward = Math.floor(Math.random() * 100) + 50;
+            // Recompensas: prefere valores do servidor quando disponíveis
+            const moneyReward = (srvData && (srvData.moneyReward !== undefined)) ? Number(srvData.moneyReward) : Math.floor(Math.random() * 200) + 100;
+            const expReward = (srvData && (srvData.expReward !== undefined)) ? Number(srvData.expReward) : Math.floor(Math.random() * 100) + 50;
             
             if (isSpectator) { 
                 title.innerText = `VITÓRIA DE ${winner.name}`; 
@@ -1591,13 +1648,26 @@
                     animateCounter(rewardMoney, 0, moneyReward, 1000, '+');
                     animateCounter(rewardExp, 0, expReward, 1200, '+');
                     
-                    // Mostra barra de XP (exemplo)
+                    // Mostra barra de XP com dados do servidor quando disponíveis
                     setTimeout(() => {
-                        xpContainer.style.display = 'block';
-                        levelDisplay.textContent = '5 → 6'; // Exemplo
-                        setTimeout(() => {
-                            xpFill.style.width = '85%'; // Anima barra
-                        }, 100);
+                        if (srvData && srvData.p1State) {
+                            const s = srvData.p1State;
+                            const curXp = Number(s.xp || 0);
+                            const xpToNext = Number(s.xpToNext || 100);
+                            const lvl = Number(s.level || 1);
+                            levelDisplay.textContent = `${lvl} → ${lvl + 1}`;
+                            xpContainer.style.display = 'block';
+                            setTimeout(() => {
+                                const pct = Math.max(0, Math.min(100, Math.round((curXp / (xpToNext || 1)) * 100)));
+                                xpFill.style.width = pct + '%';
+                            }, 100);
+                        } else {
+                            xpContainer.style.display = 'block';
+                            levelDisplay.textContent = '5 → 6';
+                            setTimeout(() => {
+                                xpFill.style.width = '85%';
+                            }, 100);
+                        }
                     }, 1500);
                 } else { 
                     title.innerText = "DERROTA..."; 
@@ -1732,7 +1802,7 @@
                 return; 
             }
 
-            if(data.winnerId) endGame(data.winnerId); 
+            if(data.winnerId) endGame(data.winnerId, data); 
             else if(!isSpectator) setControlsState(true); 
         });
         
@@ -1759,7 +1829,7 @@
             await wait(400);
             loader.style.display = 'none';
 
-            if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId)); } 
+            if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId, initialData)); } 
             else if (!isSpectator) { setControlsState(true); } 
 
             setTimeout(discoverSpriteAlts, 300);
@@ -1881,6 +1951,142 @@
                 }, i * 30);
             }
         }
+
+        // --- Editor do BattleBG (admin) ---
+        (function initBattleBgEditor() {
+            const canEdit = <%= (canEditBg ? 'true' : 'false') %>;
+            const mapId = <%- JSON.stringify(typeof battleMapId !== 'undefined' ? battleMapId : null) %>;
+            const userId = <%- JSON.stringify(typeof realUserId !== 'undefined' ? realUserId : null) %>;
+
+            const params = new URLSearchParams(window.location.search || '');
+            const wantEdit = params.get('bgEdit') === '1';
+            if (!canEdit || !wantEdit || !mapId || !userId) return;
+
+            const arena = document.getElementById('arena');
+            const panel = document.getElementById('bgEditor');
+            const rx = document.getElementById('bgPosX');
+            const ry = document.getElementById('bgPosY');
+            const vx = document.getElementById('bgPosXVal');
+            const vy = document.getElementById('bgPosYVal');
+            const rz = document.getElementById('bgZoom');
+            const vz = document.getElementById('bgZoomVal');
+            const btnSave = document.getElementById('bgSave');
+            const btnReset = document.getElementById('bgReset');
+            const btnClose = document.getElementById('bgClose');
+            if (!arena || !panel || !rx || !ry || !vx || !vy || !rz || !vz || !btnSave || !btnReset || !btnClose) return;
+
+            function readVar(name, fallback) {
+                const raw = getComputedStyle(arena).getPropertyValue(name);
+                const v = parseFloat(raw);
+                return Number.isFinite(v) ? v : fallback;
+            }
+
+            function apply(x, y, zoom) {
+                const px = Math.max(0, Math.min(100, Math.round(x)));
+                const py = Math.max(0, Math.min(100, Math.round(y)));
+                const pz = Math.max(50, Math.min(250, Math.round(zoom / 5) * 5));
+                arena.style.setProperty('--bgPosX', String(px));
+                arena.style.setProperty('--bgPosY', String(py));
+                arena.style.setProperty('--bgZoom', String(pz));
+                rx.value = String(px);
+                ry.value = String(py);
+                vx.textContent = String(px);
+                vy.textContent = String(py);
+                rz.value = String(pz);
+                vz.textContent = String(pz);
+            }
+
+            // Inicializa com o que veio do server
+            apply(readVar('--bgPosX', 50), readVar('--bgPosY', 50), readVar('--bgZoom', 100));
+            panel.style.display = 'block';
+
+            rx.addEventListener('input', () => apply(parseFloat(rx.value), parseFloat(ry.value), parseFloat(rz.value)));
+            ry.addEventListener('input', () => apply(parseFloat(rx.value), parseFloat(ry.value), parseFloat(rz.value)));
+            rz.addEventListener('input', () => apply(parseFloat(rx.value), parseFloat(ry.value), parseFloat(rz.value)));
+
+            // Arrastar para ajustar
+            let dragging = false;
+            let startX = 0, startY = 0;
+            let basePosX = 50, basePosY = 50;
+
+            function onDown(e) {
+                // Não captura se clicar dentro do painel
+                if (e && e.target && panel.contains(e.target)) return;
+                dragging = true;
+                const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+                startX = p.clientX;
+                startY = p.clientY;
+                basePosX = parseFloat(rx.value);
+                basePosY = parseFloat(ry.value);
+            }
+
+            function onMove(e) {
+                if (!dragging) return;
+                const p = (e.touches && e.touches[0]) ? e.touches[0] : e;
+                const dx = p.clientX - startX;
+                const dy = p.clientY - startY;
+                // Sensibilidade: 2px = 1%
+                apply(basePosX + (dx / 2), basePosY + (dy / 2), parseFloat(rz.value));
+            }
+
+            function onUp() { dragging = false; }
+
+            arena.addEventListener('mousedown', onDown);
+            arena.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+            arena.addEventListener('touchstart', onDown, { passive: true });
+            arena.addEventListener('touchmove', onMove, { passive: true });
+            window.addEventListener('touchend', onUp);
+            window.addEventListener('touchcancel', onUp);
+
+            btnReset.addEventListener('click', () => apply(50, 50, 100));
+            btnClose.addEventListener('click', () => {
+                panel.style.display = 'none';
+            });
+
+            btnSave.addEventListener('click', async () => {
+                const x = parseFloat(rx.value);
+                const y = parseFloat(ry.value);
+                const zoom = parseFloat(rz.value);
+                try {
+                    const res = await fetch('/api/map/battlebg', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, mapId, bgPosX: x, bgPosY: y, bgZoom: zoom })
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || (data && data.error)) {
+                        if (typeof showToast === 'function') showToast(data.error || 'Erro ao salvar.');
+                        else alert(data.error || 'Erro ao salvar.');
+                        return;
+                    }
+                    if (typeof showToast === 'function') showToast('Fundo da batalha salvo no mapa!');
+                    else alert('Fundo da batalha salvo no mapa!');
+                } catch (_) {
+                    if (typeof showToast === 'function') showToast('Erro ao salvar.');
+                    else alert('Erro ao salvar.');
+                }
+            });
+        })();
+
+        // --- Forçar treinadores olhando para baixo na tela de vitória/derrota ---
+    function setTrainersVictoryDown() {
+        // Seletores dos treinadores na tela de vitória
+        const trainers = document.querySelectorAll('.fighter-result .trainer');
+        trainers.forEach(tr => {
+            // Remove classes de frame que possam deslocar o sprite
+            tr.classList.remove('frame-1', 'frame-2', 'frame-3');
+            // Força posição do background para a primeira coluna/linha
+            tr.style.backgroundPosition = '0% 0%';
+        });
+    }
+    // Chama a função ao exibir a tela de vitória/derrota
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('.victory-container')) {
+            setTrainersVictoryDown();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
     </script>
 </body>
 
@@ -2001,5 +2207,24 @@
             }
         });
     })();
+
+    // --- Forçar treinadores olhando para baixo na tela de vitória/derrota ---
+    function setTrainersVictoryDown() {
+        // Seletores dos treinadores na tela de vitória
+        const trainers = document.querySelectorAll('.victory-container .trainer');
+        trainers.forEach(tr => {
+            // Remove classes de frame que possam deslocar o sprite
+            tr.classList.remove('frame-1', 'frame-2', 'frame-3');
+            // Força posição do background para a primeira coluna/linha
+            tr.style.backgroundPosition = '0% 0%';
+        });
+    }
+    // Chama a função ao exibir a tela de vitória/derrota
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('.victory-container .trainer')) {
+            setTrainersVictoryDown();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 </script>
 </html>

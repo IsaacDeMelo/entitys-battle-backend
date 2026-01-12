@@ -482,8 +482,25 @@
         // Carrega catálogo uma vez ao abrir a página (melhora dev editor)
         setTimeout(() => { loadItemCatalog(false); }, 0);
 
-        /* --- EQUIPE / MONSTROS --- */
-        async function openPokemon() { 
+        // Compatibilidade: popula `ITEM_DEFS` global (fallback para código legado)
+        (function syncItemDefs() {
+            try {
+                window.ITEM_DEFS = window.ITEM_DEFS || {};
+                if (Array.isArray(window.ITEM_CATALOG) && window.ITEM_CATALOG.length) {
+                    window.ITEM_CATALOG.forEach(it => {
+                        try {
+                            const key = String(it.id || '');
+                            window.ITEM_DEFS[key] = { name: it.name || key, icon: (it.hasIcon ? `/api/items/icon/${encodeURIComponent(key)}.png` : (it.icon || '')) };
+                        } catch (_) {}
+                    });
+                    return;
+                }
+            } catch (_) {}
+            setTimeout(syncItemDefs, 300);
+        })();
+
+        // --- EQUIPE / MONSTROS ---
+        async function openEntityTeam() { 
             document.getElementById('modalPokemon').style.display='flex'; 
             try { 
                 const r = await fetch(`/api/me?userId=${USER_ID}`); 
@@ -914,7 +931,7 @@
                 document.getElementById('bagItemsContent').innerHTML = "Erro ao carregar mochila.";
             }
         }
-        function startRareCandySelection() { closeModal('modalBag'); isSelectingMode = true; openPokemon(); }
+        function startRareCandySelection() { closeModal('modalBag'); isSelectingMode = true; openEntityTeam(); }
 
         async function useLevelUpCrystal(targetId) {
             try {
@@ -925,9 +942,18 @@
                 });
                 const d = await r.json().catch(() => ({}));
                 if (!d || d.error) return alert(d && d.error ? d.error : 'Erro ao usar item.');
+                // Atualiza bag client-side com retorno do servidor (defensivo)
+                if (typeof window !== 'undefined') {
+                    if (d && d.bag && typeof d.bag === 'object') {
+                        window.USER_BAG = d.bag;
+                    } else {
+                        if (!window.USER_BAG) window.USER_BAG = {};
+                        if (typeof d.levelUpCrystal === 'number') window.USER_BAG.levelUpCrystal = d.levelUpCrystal;
+                    }
+                }
                 showToast('Level Up Crystal usado!');
                 isSelectingMode = false;
-                openPokemon();
+                openEntityTeam();
             } catch (e) {
                 alert('Erro ao usar item.');
             }
@@ -936,21 +962,21 @@
         function startLevelUpCrystalSelection() {
             closeModal('modalBag');
             isSelectingMode = true;
-            // Reaproveita openPokemon, mas intercepta clique para usar o crystal
-            openPokemon();
+            // Reaproveita openEntityTeam, mas intercepta clique para usar o crystal
+            openEntityTeam();
             // Monkey-patch applyRareCandy to use crystal instead
             window.applyRareCandy = (pid) => useLevelUpCrystal(pid);
         }
-        function cancelSelection() { isSelectingMode = false; openPokemon(); }
+        function cancelSelection() { isSelectingMode = false; openEntityTeam(); }
 
         /* --- SKILLS & EDITOR --- */
         // Nova função segura para preparar o editor
         function prepareMoveEditor(instanceId) {
-            // Busca o Pokémon nos dados carregados
-            const pokemon = CURRENT_TEAM_DATA.find(p => p.instanceId === instanceId);
-            if (!pokemon) return alert("Erro ao carregar Pokémon.");
+            // Busca a criatura nos dados carregados
+            const entity = CURRENT_TEAM_DATA.find(p => p.instanceId === instanceId);
+            if (!entity) return alert("Erro ao carregar criatura.");
             
-            showMoveEditor(pokemon);
+            showMoveEditor(entity);
         }
 
         function showMoveEditor(p) {
@@ -998,17 +1024,17 @@
                 body:JSON.stringify({ userId:USER_ID, pokemonId:currentMonId, moves }) 
             });
             showToast("Salvo!");
-            openPokemon(); // Recarrega a lista
+            openEntityTeam(); // Recarrega a lista
         }
 
         async function setLead(id) { 
             await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); 
-            openPokemon(); 
+            openEntityTeam(); 
         }
         async function abandonPokemon(id) { 
             if(confirm('Tem certeza? Isso é permanente.')) { 
                 await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); 
-                openPokemon(); 
+                openEntityTeam(); 
             } 
         }
         async function applyRareCandy(pokeId) {
@@ -1016,9 +1042,10 @@
             try {
                 const res = await fetch('/api/use-item', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: USER_ID, itemId: 'rareCandy', pokemonId: pokeId, qty: 1 }) });
                 const data = await res.json();
-                if(data.success) { showToast(data.evolved ? '✨ Evoluiu! ✨' : '🆙 Subiu de Nível!'); isSelectingMode = false; openPokemon(); } 
+                if (data && data.bag && typeof data.bag === 'object') window.USER_BAG = data.bag;
+                if(data.success) { showToast(data.evolved ? '✨ Evoluiu! ✨' : '🆙 Subiu de Nível!'); isSelectingMode = false; openEntityTeam(); } 
                 else { alert(data.error); }
-            } catch(e) { alert("Erro."); isSelectingMode = false; openPokemon(); }
+            } catch(e) { alert("Erro."); isSelectingMode = false; openEntityTeam(); }
         }
     </script>
 </body>

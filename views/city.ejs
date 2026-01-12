@@ -898,6 +898,9 @@
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
         .dev-storyBarrier { background: rgba(230, 126, 34, 0.4) !important; border: 1px dashed #e67e22; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-storyBarrier::after { content: '🚫'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+        .dev-storyBarrier--yellow { background: rgba(250, 223, 81, 0.45) !important; border: 1px dashed #f1c40f; }
+        .storyBarrier--yellow { background: rgba(250, 223, 81, 0.25) !important; border: 1px dashed #f1c40f; z-index: 20; }
+        .storyBarrier--orange { background: rgba(230, 126, 34, 0.25) !important; border: 1px dashed #e67e22; z-index: 20; }
 
         .devGroupHeader {
             width: 100%;
@@ -1664,6 +1667,8 @@
     <!-- DADOS -->
     <script>
         let mapConfig = <%- JSON.stringify(mapData) %>;
+        // Garante visibilidade global para outros blocos
+        window.mapConfig = mapConfig;
         if (!mapConfig.foregroundImage) mapConfig.foregroundImage = '';
         let collisionMap = mapConfig.collisions || [];
         let grassMap = mapConfig.grass || [];
@@ -1752,6 +1757,156 @@
                     Promise.all(tasks),
                     new Promise(res => setTimeout(res, PRELOAD_TIMEOUT_MS))
                 ]);
+            }
+        }
+
+        // --- SISTEMA SPA: CARREGA E RENDERIZA MAPA SEM RELOAD ---
+        async function loadMapDataFull(mapId, targetX, targetY) {
+            try {
+                let url = `/api/map/${encodeURIComponent(mapId)}/full?userId=${window.CURRENT_USER_ID}`;
+                if (targetX !== undefined && targetY !== undefined) {
+                    url += `&x=${targetX}&y=${targetY}`;
+                }
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed to load map data');
+                return await res.json();
+            } catch (e) {
+                console.error('Erro ao carregar dados do mapa:', e);
+                return null;
+            }
+        }
+
+        async function transitionToMap(mapId, targetX, targetY) {
+            // Mostra overlay de transição
+            const overlay = document.getElementById('transitionOverlay');
+            if (overlay) {
+                overlay.classList.remove('hidden');
+            }
+
+            try {
+                // Carrega dados do novo mapa
+                const mapFullData = await loadMapDataFull(mapId, targetX, targetY);
+                if (!mapFullData || !mapFullData.map) {
+                    throw new Error('Dados do mapa inválidos');
+                }
+
+                // Atualiza config global do mapa
+                mapConfig = mapFullData.map;
+                collisionMap = mapConfig.collisions || [];
+                grassMap = mapConfig.grass || [];
+                interactsMap = mapConfig.interacts || [];
+                portalsMap = mapConfig.portals || [];
+                storyBarriersMap = mapConfig.storyBarriers || [];
+                objectsMap = mapConfig.objects || [];
+
+                // Aplica visuais do novo mapa
+                applyMapVisuals(mapConfig);
+
+                // Re-renderiza todos os objetos do mapa usando função existente
+                if (typeof renderMapObjects === 'function') {
+                    renderMapObjects();
+                }
+
+                // Remove NPCs antigos do DOM
+                const oldNpcs = document.querySelectorAll('.npc-entity');
+                oldNpcs.forEach(npc => npc.remove());
+
+                // Limpa registros de NPCs globais
+                if (window.npcEntities) {
+                    window.npcEntities = [];
+                }
+                if (window.npcRegistry) {
+                    window.npcRegistry.clear();
+                }
+
+                // Renderiza novos NPCs
+                if (mapFullData.npcs && Array.isArray(mapFullData.npcs)) {
+                    mapFullData.npcs.forEach(npc => {
+                        // Cria o elemento do NPC no DOM
+                        const npcEl = document.createElement('div');
+                        npcEl.className = 'player npc-entity';
+                        npcEl.setAttribute('data-skin', npc.skin || 'char1');
+                        npcEl.setAttribute('data-dir', npc.direction || 'down');
+                        npcEl.setAttribute('data-npc-id', npc.id);
+                        npcEl.style.left = npc.x + '%';
+                        npcEl.style.top = npc.y + '%';
+
+                        // Nome do NPC
+                        const nameEl = document.createElement('div');
+                        nameEl.className = 'player-name';
+                        nameEl.textContent = npc.name || 'NPC';
+                        npcEl.appendChild(nameEl);
+
+                        // Adiciona ao DOM
+                        gameArea.appendChild(npcEl);
+
+                        // Registra no sistema global de NPCs
+                        if (!window.npcEntities) window.npcEntities = [];
+                        window.npcEntities.push({
+                            id: npc.id,
+                            el: npcEl,
+                            data: npc,
+                            x: npc.x,
+                            y: npc.y
+                        });
+
+                        // Event listener para interação
+                        npcEl.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (typeof handleNpcClick === 'function') {
+                                handleNpcClick(npc);
+                            }
+                        });
+
+                        // Patrulha (se houver)
+                        if (npc.patrolRoute && npc.patrolRoute.length > 0 && typeof startNpcPatrol === 'function') {
+                            startNpcPatrol(npc.id, npc.patrolRoute);
+                        }
+                    });
+                }
+
+                // Move player para nova posição
+                const spawnX = (mapFullData.spawn && mapFullData.spawn.x) ? mapFullData.spawn.x : 50;
+                const spawnY = (mapFullData.spawn && mapFullData.spawn.y) ? mapFullData.spawn.y : 50;
+
+                // Atualiza posição do player local
+                const playerEl = document.querySelector(`#p-${window.myId}`);
+                if (playerEl) {
+                    playerEl.style.left = spawnX + '%';
+                    playerEl.style.top = spawnY + '%';
+                }
+
+                // Notifica o servidor da mudança de mapa via socket (entra no novo mapa)
+                socket.emit('enter_map', {
+                    userId: window.CURRENT_USER_ID,
+                    name: myName,
+                    skin: mySkin,
+                    map: mapId,
+                    x: spawnX,
+                    y: spawnY,
+                    direction: (playerEl && playerEl.getAttribute('data-dir')) ? playerEl.getAttribute('data-dir') : 'down'
+                });
+
+                // Atualiza variável global do mapa atual
+                currentMapId = mapId;
+
+                // Atualiza URL sem reload
+                const newUrl = `/city?map=${mapId}&userId=${window.CURRENT_USER_ID}`;
+                window.history.pushState({ mapId, x: spawnX, y: spawnY }, '', newUrl);
+
+                // Remove overlay após delay
+                setTimeout(() => {
+                    if (overlay) overlay.classList.add('hidden');
+                }, 300);
+
+                return true;
+            } catch (e) {
+                console.error('Erro na transição de mapa:', e);
+                if (overlay) overlay.classList.add('hidden');
+                // Fallback: usa navegação tradicional
+                const extra = (targetX !== undefined && targetY !== undefined) ? `&x=${targetX}&y=${targetY}` : '';
+                window.location.href = `/city?map=${mapId}&userId=${window.CURRENT_USER_ID}${extra}`;
+                return false;
             }
         }
         
@@ -2364,7 +2519,8 @@
             startY = parseFloat(urlParams.get('y'));
         }
         
-        let currentMapId = mapConfig.mapId;
+        // Fallback seguro caso mapConfig não esteja disponível por algum motivo
+        let currentMapId = (window.mapConfig && window.mapConfig.mapId) ? window.mapConfig.mapId : 'city';
         if(currentMapId.includes('?')) currentMapId = currentMapId.split('?')[0];
         let startDir = "<%= typeof startDir === 'string' ? startDir : 'down' %>";
 
@@ -4515,14 +4671,43 @@
             window.isInteracting = true; window.isMoving = false;
             let customImg = obj.image || null;
             if(customImg) setDialogImageStyle('full'); else setDialogImageStyle('pixel');
-            if (obj.messages && obj.messages.length > 0) { for (let msg of obj.messages) { await showRPGDialog('Sistema', customImg, msg); } } 
-            else { if(obj.type !== 'item') await showRPGDialog('Sistema', customImg, "Você encontrou algo interessante."); }
+
+            if (obj.messages && obj.messages.length > 0) {
+                for (let msg of obj.messages) { await showRPGDialog('Sistema', customImg, msg); }
+            } else {
+                if (obj.type !== 'item') await showRPGDialog('Sistema', customImg, "Você encontrou algo interessante.");
+            }
+
+            // Se o objeto dá um item, chama a API para garantir que ela só seja dada uma vez por usuário
             if (obj.type === 'item' || obj.type === 'both') {
-                if(obj.itemId) {
-                    if(typeof showToast === 'function') showToast(`Você encontrou: ${obj.qty || 1}x ${obj.itemId}!`, {bg: '#f1c40f', color: '#000'});
-                    await showRPGDialog('Sistema', customImg, `Você obteve ${obj.qty||1}x ${obj.itemId}!`);
+                if (obj.itemId) {
+                    try {
+                        const mapId = (window.mapConfig && window.mapConfig.mapId) ? window.mapConfig.mapId : '';
+                        const resp = await fetch('/api/map/interact', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: USER_ID, mapId, obj })
+                        });
+                        const data = await resp.json().catch(() => ({}));
+                        if (data && data.success && data.added) {
+                            if (typeof showToast === 'function') showToast(data.added.storage === 'keyItems' ? `Recebeu o item-chave ${obj.itemId}!` : `Você recebeu ${obj.qty||1}x ${obj.itemId}!`, { bg: '#f1c40f', color: '#000' });
+                        } else if (data && data.alreadyDone) {
+                            if (typeof showToast === 'function') showToast('Nada aqui.', { bg: '#aaa' });
+                        } else if (data && data.success && !data.added) {
+                            if (typeof showToast === 'function') showToast('Obrigado.', { bg: '#bbb' });
+                        } else if (data && data.error) {
+                            console.warn('map/interact error', data.error);
+                        }
+
+                        // Atualiza estados cliente
+                        if (data && data.bag) window.USER_BAG = data.bag;
+                        if (data && Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
+                        if (data && data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                    } catch (e) {
+                        console.error(e);
+                    }
                 }
             }
+
             window.isInteracting = false;
         }
 
@@ -4674,14 +4859,25 @@
                     if (portal.targetX !== undefined && portal.targetY !== undefined && !isNaN(portal.targetX)) {
                         extra = `&x=${portal.targetX}&y=${portal.targetY}`;
                     }
-                    // Precarrega assets do mapa alvo em background
+                    
+                    // Precarrega assets do mapa alvo
                     preloadMapAssets(portal.targetMap).catch(() => {});
                     setPortalCooldown(1300);
                     window.__transitionNavigating = true;
                     
-                    // Usa reload tradicional de página
-                    const newUrl = `/city?map=${portal.targetMap}&userId=${window.CURRENT_USER_ID}${extra}`;
-                    window.location.href = newUrl;
+                    // USA TRANSIÇÃO SPA ao invés de reload de página
+                    const targetX = portal.targetX !== undefined ? portal.targetX : undefined;
+                    const targetY = portal.targetY !== undefined ? portal.targetY : undefined;
+                    
+                    // Tenta transição SPA primeiro
+                    const success = await transitionToMap(portal.targetMap, targetX, targetY);
+                    
+                    // Se falhar, usa fallback tradicional (já está no transitionToMap)
+                    if (!success) {
+                        console.log('SPA transition failed, using traditional navigation');
+                    }
+                    
+                    window.__transitionNavigating = false;
                 });
             }
         }
@@ -4822,6 +5018,58 @@
             document.body.appendChild(marker); setTimeout(() => marker.remove(), 300);
 
             const hitObj = interactsMap.find(obj => targetX >= obj.x && targetX <= (obj.x + obj.w) && targetY >= obj.y && targetY <= (obj.y + obj.h));
+
+            // Clique numa Story Barrier? se sim, oferece usar item-chave (se houver)
+            try {
+                const hitBarrier = (Array.isArray(storyBarriersMap) ? storyBarriersMap : []).find(barrier => {
+                    if (!barrier) return false;
+                    return targetX >= barrier.x && targetX <= (barrier.x + barrier.w) && targetY >= barrier.y && targetY <= (barrier.y + barrier.h);
+                });
+                if (hitBarrier && hitBarrier.requiredFlag) {
+                    const flag = hitBarrier.requiredFlag;
+                    const flagActive = (window.STORY_FLAGS && window.STORY_FLAGS[flag]);
+                    if (!flagActive) {
+                        // Só sugere usar item-chave se o jogador tiver algum
+                        const keys = Array.isArray(window.USER_KEY_ITEMS) ? window.USER_KEY_ITEMS.slice() : [];
+                        // também verifica bag para itens (opcional)
+                        const bagItems = (window.USER_BAG && typeof window.USER_BAG === 'object') ? Object.keys(window.USER_BAG).filter(k => (window.USER_BAG[k] || 0) > 0) : [];
+                        if (keys.length > 0 || bagItems.length > 0) {
+                            // Prioriza um item exigido pela barreira, se definido
+                            const requiredItem = hitBarrier.requiredItemId || hitBarrier.requiredKey || hitBarrier.requiredKeyId || null;
+                            let useId = null;
+                            if (requiredItem) {
+                                const rid = String(requiredItem).trim();
+                                if (keys.includes(rid) || (window.USER_BAG && window.USER_BAG[rid] && (window.USER_BAG[rid] > 0))) {
+                                    useId = rid;
+                                }
+                            }
+                            if (!useId) useId = keys.length > 0 ? keys[0] : bagItems[0];
+                            if (confirm(`Usar ${useId} para remover a barreira?`)) {
+                                (async () => {
+                                    try {
+                                        const mapId = (window.mapConfig && window.mapConfig.mapId) ? window.mapConfig.mapId : '';
+                                        const resp = await fetch('/api/map/use-key', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: USER_ID, flagId: flag, itemId: useId, qty: 1 }) });
+                                        const data = await resp.json().catch(() => ({}));
+                                        if (data && data.success) {
+                                            if (typeof showToast === 'function') showToast('Barreira removida.');
+                                            if (data.bag) window.USER_BAG = data.bag;
+                                            if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
+                                            if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                                            // re-render (se houver função que atualize mundo)
+                                            try { renderMapObjects && renderMapObjects(); } catch(_){}
+                                        } else if (data && data.needsItem) {
+                                            alert('Você não possui o item necessário.');
+                                        } else {
+                                            alert('Não foi possível usar o item.');
+                                        }
+                                    } catch (e) { console.error(e); alert('Erro ao usar item.'); }
+                                })();
+                                return; // evita mover para o local da barreira
+                            }
+                        }
+                    }
+                }
+            } catch (_) {}
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
             const currX = parseFloat(myPlayer.style.left); const currY = parseFloat(myPlayer.style.top);
             // Para clique no chão, limita o tamanho do passo (um clique não pode atravessar o mapa)
@@ -5154,8 +5402,14 @@
                     try { await window.openBag(); } catch (_) {}
                     return;
                 }
-                if (!window.USER_BAG) window.USER_BAG = {};
-                window.USER_BAG.levelUpCrystal = (typeof js.levelUpCrystal === 'number') ? js.levelUpCrystal : window.USER_BAG.levelUpCrystal;
+                if (typeof window !== 'undefined') {
+                    if (js && js.bag && typeof js.bag === 'object') {
+                        window.USER_BAG = js.bag;
+                    } else {
+                        if (!window.USER_BAG) window.USER_BAG = {};
+                        window.USER_BAG.levelUpCrystal = (typeof js.levelUpCrystal === 'number') ? js.levelUpCrystal : window.USER_BAG.levelUpCrystal;
+                    }
+                }
                 if (typeof showToast === 'function') showToast('Crystal usado!', { bg: '#2ecc71', color: '#052e16' });
                 // reabre para atualizar contagem
                 await window.openBag();
@@ -5213,15 +5467,17 @@
             for (const [id, qty] of Object.entries({})) {
                 const n = parseInt(qty, 10);
                 if (Number.isFinite(n) && n > 0 && id !== 'captureCube' && id !== 'rareCandy') {
-                    const def = ITEM_DEFS[id] || { name: id, icon: '' };
-                    items.push({ id, name: def.name, icon: def.icon, qty: n });
+                    const metaOld = getMeta(id) || { name: id, hasIcon: false };
+                    const iconOld = metaOld.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (metaOld.icon || '/uploads/placeholder.png');
+                    items.push({ id, name: metaOld.name || id, icon: iconOld, qty: n });
                 }
             }
             // Itens-chave
             for (const id of keys) {
                 if (!items.find(it => it.id === id)) {
-                    const def = ITEM_DEFS[id] || { name: id, icon: '' };
-                    items.push({ id, name: def.name, icon: def.icon, qty: 1 });
+                    const metaKey = getMeta(id) || { name: id, hasIcon: false };
+                    const iconKey = metaKey.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (metaKey.icon || '/uploads/placeholder.png');
+                    items.push({ id, name: metaKey.name || id, icon: iconKey, qty: 1 });
                 }
             }
 
@@ -6041,7 +6297,9 @@
             // Story Barriers (barreiras que precisam de StoryFlag)
             storyBarriersMap.forEach((r, i) => {
                 const d = document.createElement('div');
-                d.className = 'collision-box';
+                d.className = 'collision-box storyBarrier';
+                // aplica classe de cor se fornecida (ex: 'yellow', 'orange')
+                if (r.color) d.classList.add(`storyBarrier--${String(r.color).toLowerCase()}`);
                 d.style.left = r.x + '%';
                 d.style.top = r.y + '%';
                 d.style.width = r.w + '%';
@@ -6049,6 +6307,7 @@
 
                 if (devMode && isAdmin) {
                     d.classList.add('dev-storyBarrier');
+                    if (r.color) d.classList.add(`dev-storyBarrier--${String(r.color).toLowerCase()}`);
                     d.onclick = (ev) => {
                         ev.stopPropagation();
 
@@ -6059,6 +6318,13 @@
                                 r.requiredFlag = flagName.trim();
                             } else {
                                 alert('Nome da flag não pode ser vazio!');
+                                return;
+                            }
+                            // permite escolher cor da barreira (ex: yellow)
+                            const color = prompt('Cor da barreira (ex: yellow). Deixe vazio para padrão:', r.color || 'yellow');
+                            if (color !== null) {
+                                if (String(color).trim()) r.color = String(color).trim().toLowerCase();
+                                else delete r.color;
                             }
                             renderMapObjects();
                             return;
@@ -6070,7 +6336,7 @@
                     };
 
                     const flagName = r.requiredFlag || '(sem flag)';
-                    d.title = `Barreira FLAG: ${flagName}`;
+                    d.title = `Barreira FLAG: ${flagName}` + (r.color ? ` (cor: ${r.color})` : '');
                 }
 
                 document.getElementById('collision-container').appendChild(d);
@@ -6165,6 +6431,8 @@
                         const flagName = prompt('Nome da StoryFlag necessária para passar:', '');
                         if (flagName && String(flagName).trim()) {
                             newRect.requiredFlag = String(flagName).trim();
+                            const color = prompt('Cor da barreira (ex: yellow). Deixe vazio para padrão:', 'yellow');
+                            if (color !== null && String(color).trim()) newRect.color = String(color).trim().toLowerCase();
                             storyBarriersMap.push(newRect);
                         } else {
                             alert('Nome da flag não pode ser vazio!');

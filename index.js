@@ -157,6 +157,8 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static('public'));
+// Servir imagens e uploads salvos em /uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const activeBattles = {}; 
 const onlineBattles = {}; 
@@ -993,6 +995,178 @@ app.post('/api/map/save', async (req, res) => {
 
 app.get('/api/map/:mapId', async (req, res) => {
     try { const { mapId } = req.params; let map = await GameMap.findOne({ mapId }).lean(); if (!map) return res.json({ bgImage: '/uploads/room_bg.png', width: 100, height: 100 }); res.json(map); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- API: BUSCAR MAPA COMPLETO COM NPCS (para transições SPA) ---
+app.get('/api/map/:mapId/full', async (req, res) => {
+    try {
+        const { mapId } = req.params;
+        const { userId, x, y } = req.query;
+        
+        // Carrega mapa
+        let mapData = await GameMap.findOne({ mapId }).lean();
+        if (!mapData) {
+            mapData = {
+                mapId: mapId,
+                name: 'Mapa',
+                bgImage: '/uploads/route_map.png',
+                foregroundImage: '',
+                collisions: [],
+                grass: [],
+                interacts: [],
+                portals: [],
+                storyBarriers: [],
+                objects: [],
+                spawnPoint: null,
+                width: 100,
+                height: 100,
+                darknessLevel: 0,
+                battleBackground: 'battle_bg.png',
+                battleBgPosX: 50,
+                battleBgPosY: 50,
+                battleBgZoom: 100
+            };
+        } else {
+            // Defaults retrocompatíveis
+            if (!('foregroundImage' in mapData)) mapData.foregroundImage = '';
+            if (!('battleBackground' in mapData)) mapData.battleBackground = 'battle_bg.png';
+            if (!('battleBgPosX' in mapData)) mapData.battleBgPosX = 50;
+            if (!('battleBgPosY' in mapData)) mapData.battleBgPosY = 50;
+            if (!('battleBgZoom' in mapData)) mapData.battleBgZoom = 100;
+        }
+        
+        // Carrega NPCs do mapa
+        const npcsRaw = await NPC.find({ map: mapId }).lean();
+        const npcs = npcsRaw.map(npc => ({
+            id: npc._id.toString(),
+            name: npc.name || 'NPC',
+            x: npc.x || 50,
+            y: npc.y || 50,
+            direction: npc.direction || 'down',
+            skin: npc.skin || 'char1',
+            mapId: npc.mapId,
+            type: npc.type || 'decor',
+            dialogLines: npc.dialogLines || [],
+            battleEntityId: npc.battleEntityId,
+            patrolRoute: npc.patrolRoute || [],
+            shopItems: npc.shopItems || [],
+            healAmount: npc.healAmount || 0,
+            starterId: npc.starterId,
+            requiredStoryFlag: npc.requiredStoryFlag,
+            requiredItem: npc.requiredItem,
+            givesStoryFlag: npc.givesStoryFlag,
+            givesItem: npc.givesItem
+        }));
+        
+        // Posição do spawn
+        let startX = 50, startY = 50;
+        if (x && y) {
+            startX = parseFloat(x);
+            startY = parseFloat(y);
+        } else if (mapData.spawnPoint && mapData.spawnPoint.x != null && mapData.spawnPoint.y != null) {
+            startX = parseFloat(mapData.spawnPoint.x);
+            startY = parseFloat(mapData.spawnPoint.y);
+        }
+        
+        // Sanitiza
+        if (!Number.isFinite(startX)) startX = 50;
+        if (!Number.isFinite(startY)) startY = 50;
+        startX = Math.max(0, Math.min(100, startX));
+        startY = Math.max(0, Math.min(100, startY));
+        
+        res.json({
+            map: mapData,
+            npcs: npcs,
+            spawn: { x: startX, y: startY }
+        });
+    } catch (e) {
+        console.error('Erro ao buscar mapa completo:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// API: interagir com um objeto do mapa (garante que itens só sejam obtidos uma vez)
+app.post('/api/map/interact', async (req, res) => {
+    try {
+        const { userId, mapId, obj } = req.body;
+        if (!userId || !obj) return res.status(400).json({ error: 'missing_params' });
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'user_not_found' });
+        ensureUserInventories(user);
+
+        // Key to mark this object as already taken for this user
+        const objKey = (obj.flagId && String(obj.flagId).trim()) ? String(obj.flagId).trim()
+            : `map:${String(mapId||'')}:obj:${String(obj.x||0)}:${String(obj.y||0)}:${String(obj.w||0)}:${String(obj.h||0)}`;
+
+        if (user.storyFlags && user.storyFlags[objKey]) {
+            return res.json({ success: true, alreadyDone: true, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+        }
+
+        if (!obj.itemId) {
+            // Nothing to give — just mark as visited and return
+            user.storyFlags = user.storyFlags || {};
+            user.storyFlags[objKey] = true;
+            if (typeof user.markModified === 'function') user.markModified('storyFlags');
+            await user.save();
+            return res.json({ success: true, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+        }
+
+        const giveId = String(obj.itemId || '').trim();
+        const giveQty = Math.max(1, parseInt(obj.qty || obj.givesQty || 1, 10) || 1);
+        const addRes = addItemToUser(user, giveId, giveQty, { keyItem: !!obj.givesKeyItem, unique: !!obj.givesUnique });
+        if (!addRes || !addRes.ok) return res.json({ success: false, error: addRes && addRes.reason ? addRes.reason : 'failed_add' });
+
+        user.storyFlags = user.storyFlags || {};
+        user.storyFlags[objKey] = true;
+        if (typeof user.markModified === 'function') user.markModified('storyFlags');
+        await user.save();
+
+        return res.json({ success: true, added: addRes, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: e.message });
+    }
+});
+
+// API: usar um item (pode ser key item) para ativar uma StoryFlag (por exemplo, remover barreira)
+app.post('/api/map/use-key', async (req, res) => {
+    try {
+        const { userId, flagId, itemId, qty } = req.body;
+        if (!userId || !flagId || !itemId) return res.status(400).json({ error: 'missing_params' });
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'user_not_found' });
+        ensureUserInventories(user);
+
+        const normalizedItem = normalizeItemId(itemId);
+        const haveCount = getItemCount(user, normalizedItem);
+        if (!haveCount || haveCount <= 0) return res.json({ success: false, needsItem: true, error: 'not_enough_item' });
+
+
+        // If the item is a key item owned by the user, DO NOT remove it — key items are required/usable in-place.
+        if (Array.isArray(user.keyItems) && user.keyItems.includes(normalizedItem)) {
+            // just set the flag
+            user.storyFlags = user.storyFlags || {};
+            user.storyFlags[flagId] = true;
+            if (typeof user.markModified === 'function') user.markModified('storyFlags');
+            await user.save();
+            return res.json({ success: true, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+        }
+
+        // Otherwise attempt to remove from bag (consumables)
+        const removeRes = removeItemFromUser(user, normalizedItem, qty || 1);
+        if (!removeRes || !removeRes.ok) return res.json({ success: false, error: removeRes && removeRes.reason ? removeRes.reason : 'failed_remove' });
+
+        // Set the story flag
+        user.storyFlags = user.storyFlags || {};
+        user.storyFlags[flagId] = true;
+        if (typeof user.markModified === 'function') user.markModified('storyFlags');
+        await user.save();
+
+        return res.json({ success: true, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: e.message });
+    }
 });
 
 // --- TOOL: CHROMA KEY (UI) ---
@@ -2486,7 +2660,8 @@ app.get('/api/me', async (req, res) => {
         rareCandy: (user.bag && user.bag.levelUpCrystal) || user.rareCandy || 0,
         bag: user.bag,
         keyItems: user.keyItems,
-        storyFlags: user.storyFlags
+        storyFlags: user.storyFlags,
+        defeatedNPCs: Array.isArray(user.defeatedNPCs) ? user.defeatedNPCs.map(d => String(d && d.npcId ? d.npcId : d)) : []
     });
 });
 
@@ -2706,41 +2881,82 @@ app.post('/api/use-item', async (req, res) => {
         ensureUserInventories(user);
         if ((user.bag.levelUpCrystal || 0) < q) return res.json({ error: 'Not enough LevelUpCrystal' });
 
-        const oldLevel = poke.level || 1;
-        poke.level = Math.min(100, oldLevel + q);
-        user.bag.levelUpCrystal = (user.bag.levelUpCrystal || 0) - q;
-
-        let base = await BaseEntity.findOne({ id: poke.baseId });
+        // Usar transação para evitar race conditions entre leituras/escritas concorrentes
+        const session = await mongoose.startSession();
         let evolved = false;
-        if (base) {
-            if (base.movePool) {
-                const newMove = base.movePool.find(m => m.level === poke.level);
-                if (newMove) {
-                    if (!poke.learnedMoves) poke.learnedMoves = [...poke.moves];
-                    if (!poke.learnedMoves.includes(newMove.moveId)) {
-                        poke.learnedMoves.push(newMove.moveId);
-                        if (poke.moves.length < 4) poke.moves.push(newMove.moveId);
+        try {
+            session.startTransaction();
+            const userTx = await User.findById(user._id).session(session);
+            if (!userTx) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(404).json({ error: 'User not found (tx)' });
+            }
+            // Re-checar inventário dentro da transação
+            ensureUserInventories(userTx);
+            if ((userTx.bag.levelUpCrystal || 0) < q) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.json({ error: 'Not enough LevelUpCrystal' });
+            }
+
+            // Atualiza nível do pokémon no documento transacional
+            let pokeTx = null;
+            try { pokeTx = userTx.entityTeam.id(pokemonId); } catch(e) { pokeTx = userTx.entityTeam.find(p => p._id.toString() === (pokemonId || '')); }
+            if (!pokeTx) {
+                await session.abortTransaction();
+                session.endSession();
+                return res.json({ error: 'Entity not found (tx)' });
+            }
+
+            const oldLevel = pokeTx.level || 1;
+            pokeTx.level = Math.min(100, oldLevel + q);
+            userTx.bag.levelUpCrystal = (userTx.bag.levelUpCrystal || 0) - q;
+
+            let base = await BaseEntity.findOne({ id: pokeTx.baseId }).session(session);
+            if (base) {
+                if (base.movePool) {
+                    const newMove = base.movePool.find(m => m.level === pokeTx.level);
+                    if (newMove) {
+                        if (!pokeTx.learnedMoves) pokeTx.learnedMoves = [...pokeTx.moves];
+                        if (!pokeTx.learnedMoves.includes(newMove.moveId)) {
+                            pokeTx.learnedMoves.push(newMove.moveId);
+                            if (pokeTx.moves.length < 4) pokeTx.moves.push(newMove.moveId);
+                        }
                     }
                 }
-            }
-            if (base.evolution && poke.level >= base.evolution.level) {
-                const nextPoke = await BaseEntity.findOne({ id: base.evolution.targetId });
-                if (nextPoke) {
-                    poke.baseId = nextPoke.id;
-                    poke.nickname = nextPoke.name;
-                    base = nextPoke;
-                    evolved = true;
-                    if (!user.dex) user.dex = [];
-                    if (!user.dex.includes(nextPoke.id)) { user.dex.push(nextPoke.id); }
+                if (base.evolution && pokeTx.level >= base.evolution.level) {
+                    const nextPoke = await BaseEntity.findOne({ id: base.evolution.targetId }).session(session);
+                    if (nextPoke) {
+                        pokeTx.baseId = nextPoke.id;
+                        pokeTx.nickname = nextPoke.name;
+                        base = nextPoke;
+                        evolved = true;
+                        if (!userTx.dex) userTx.dex = [];
+                        if (!userTx.dex.includes(nextPoke.id)) { userTx.dex.push(nextPoke.id); }
+                    }
                 }
+                pokeTx.stats = calculateStats(base.baseStats, pokeTx.level);
+                pokeTx.currentHp = pokeTx.stats.hp;
             }
-            poke.stats = calculateStats(base.baseStats, poke.level);
-            poke.currentHp = poke.stats.hp;
+
+            console.log(`[API] /api/use-item levelUpCrystal: (tx) saving user ${userTx._id}, new bag.levelUpCrystal=${userTx.bag.levelUpCrystal}`);
+            await userTx.save({ session });
+            await session.commitTransaction();
+            session.endSession();
+            console.log(`[API] /api/use-item levelUpCrystal: (tx) saved user ${userTx._id}`);
+            // Atualizar a referência local 'user' para retornar dados atuais
+            Object.assign(user, userTx.toObject());
+        } catch (saveErr) {
+            try { await session.abortTransaction(); } catch (_) {}
+            session.endSession();
+            console.error(`[API] /api/use-item ERROR saving user (tx) ${user && user._id}:`, saveErr);
+            return res.status(500).json({ error: 'Failed to save user (tx)' });
         }
-        await user.save();
         return res.json({
             success: true,
             levelUpCrystal: user.bag.levelUpCrystal || 0,
+            bag: user.bag,
             evolved: evolved,
             entity: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname }
         });
@@ -3222,6 +3438,7 @@ app.post('/api/turn', async (req, res) => {
     const { battleId, action, moveId, isForced } = req.body; const battle = activeBattles[battleId]; if(!battle) { return res.json({ finished: true }); }
     try {
         let p1 = battle.p1; const p2 = battle.p2; const events = []; let threwCaptureCube = false;
+        let npcDefeatedId = null;
         
         if (action === 'switch') { 
             // Custom Battle - use p1Reserve instead of user.entityTeam
@@ -3416,7 +3633,10 @@ app.post('/api/turn', async (req, res) => {
             }
             
             // Normal Battle - give XP
-            let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30; 
+            let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30;
+            // Valores de recompensa expostos para o front-end
+            let moneyReward = 0;
+            let expReward = 0;
             events.push({ type: 'MSG', text: `${p2.name} desmaiou!` }); 
             events.push({ type: 'MSG', text: `Ganhou ${xpGained} XP!` });
             const user = await User.findById(battle.userId); 
@@ -3450,11 +3670,19 @@ app.post('/api/turn', async (req, res) => {
                     if (user) { 
                         let reward = 0; if(npc && npc.moneyReward > 0) reward = npc.moneyReward; else reward = Math.max(5, (p2.level || 1) * 5 * (battle.npcReserve ? battle.npcReserve.length : 1));
                         user.money = (user.money || 0) + reward; 
+                        moneyReward = reward;
+                        expReward = xpGained;
                         if (!user.defeatedNPCs) user.defeatedNPCs = [];
                         const npcIdStr = String(battle.npcId);
                         const recordIndex = user.defeatedNPCs.findIndex(r => String(r.npcId) === npcIdStr);
                         if (recordIndex !== -1) { user.defeatedNPCs[recordIndex].defeatedAt = Date.now(); } else { user.defeatedNPCs.push({ npcId: npcIdStr, defeatedAt: Date.now() }); }
                         events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); 
+                        // adiciona diálogo de vitória do treinador (pré-desaparecimento)
+                        try {
+                            const winText = resolveNpcDialogue(npc, user, 'winDialogue') || npc.winDialogue || null;
+                            if (winText) events.push({ type: 'MSG', text: winText });
+                        } catch (e) {}
+                        npcDefeatedId = npcIdStr;
                         if (npc && npc.reward && npc.reward.type !== 'none') {
                             if (npc.reward.type === 'item') {
                                 ensureUserInventories(user);
@@ -3487,8 +3715,22 @@ app.post('/api/turn', async (req, res) => {
                     } 
                 } catch (e) { console.error(e); } 
             }
+            // Prepare p1State para retorno (XP/level atualizados) para o cliente animar a barra corretamente
+            let p1State = null;
+            try {
+                if (user) {
+                    const p1Poke = user.entityTeam.find(p => p._id.toString() === p1.instanceId);
+                    if (p1Poke) {
+                        const p1Xp = Number(p1Poke.xp || 0);
+                        const p1Level = Number(p1Poke.level || 1);
+                        const p1XpNext = getXpForNextLevel(p1Level) || 100;
+                        p1State = { xp: p1Xp, xpToNext: p1XpNext, level: p1Level };
+                    }
+                }
+            } catch (e) { console.error('Erro preparando p1State:', e); }
+
             delete activeBattles[battleId]; 
-            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube });
+            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube, npcDefeatedId, moneyReward, expReward, p1State });
         }
         const user = await User.findById(battle.userId);
         const p1PokeData = user ? user.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;

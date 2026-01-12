@@ -694,6 +694,31 @@ async function disengageNpc(npcId) {
     }
 }
 
+// Marca NPC derrotado localmente e faz fade-out suave (alinha client-side com /api/npc/disengage)
+window.markNpcDefeated = async function(npcId) {
+    try {
+        const id = String(npcId || '').trim();
+        if (!id) return;
+        window.DEFEATED_NPCS = Array.isArray(window.DEFEATED_NPCS) ? window.DEFEATED_NPCS : [];
+        if (!window.DEFEATED_NPCS.includes(id)) window.DEFEATED_NPCS.push(id);
+
+        const el = document.getElementById(`npc-${id}`) || document.querySelector(`.npc-entity[data-npc-id="${id}"]`);
+        if (el) {
+            try {
+                el.style.transition = 'opacity 320ms ease, transform 320ms ease';
+                el.style.opacity = '0';
+                el.style.transform = 'scale(0.94)';
+                setTimeout(() => { if (el && el.parentNode) el.parentNode.removeChild(el); }, 360);
+            } catch (_) {}
+        }
+
+        // best-effort notify server to resume patrol
+        try {
+            await fetch('/api/npc/disengage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ npcId: id }) });
+        } catch (_) {}
+    } catch (_) {}
+};
+
 // Ao voltar de uma batalha de NPC, retoma a patrulha do NPC imediatamente.
 (function resumeNpcFromUrl() {
     try {
@@ -714,9 +739,17 @@ if (typeof socket !== 'undefined') {
         const gameArea = document.getElementById('gameArea');
         if(!gameArea) return;
 
+        const defeated = Array.isArray(window.DEFEATED_NPCS) ? window.DEFEATED_NPCS.map(d => String(d)) : [];
+
         list.forEach(npc => {
+            const npcIdStr = String(npc._id || npc.id || '');
+            if (npcIdStr && defeated.includes(npcIdStr)) return; // pula NPCs já derrotados por este jogador
+
             const div = document.createElement('div');
-            div.className = 'player npc-entity'; 
+            div.className = 'player npc-entity';
+            // identificadores úteis para remoção/anim
+            if (npcIdStr) div.id = `npc-${npcIdStr}`;
+            if (npcIdStr) div.setAttribute('data-npc-id', npcIdStr);
             div.style.left = npc.x + '%';
             div.style.top = npc.y + '%';
             div.style.zIndex = Math.floor(npc.y);
@@ -887,6 +920,7 @@ async function interactWithNPC(npc) {
         if (payload.inventory && typeof payload.inventory === 'object') window.USER_INVENTORY = payload.inventory;
         if (Array.isArray(payload.keyItems)) window.USER_KEY_ITEMS = payload.keyItems;
         if (payload.storyFlags && typeof payload.storyFlags === 'object') window.STORY_FLAGS = payload.storyFlags;
+        if (Array.isArray(payload.defeatedNPCs)) window.DEFEATED_NPCS = payload.defeatedNPCs.map(d => String(d));
     }
 
     let currentMap = 'lobby';
