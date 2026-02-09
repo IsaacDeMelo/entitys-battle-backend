@@ -119,6 +119,25 @@
         #devTools .devSectionTitle { font-size: 0.62rem; color: #94a3b8; font-weight: 900; letter-spacing: 0.9px; text-transform: uppercase; margin: 6px 0 2px; }
         #devTools .devSection { display:flex; flex-direction:column; gap: 5px; }
 
+        /* Dev Console (overlay) */
+        #devConsoleOverlay { position: fixed; inset: 0; background: rgba(8, 10, 14, 0.85); z-index: 120000; display: none; align-items: center; justify-content: center; padding: 16px; pointer-events: auto; }
+        #devConsoleWindow { width: min(720px, 96vw); background: rgba(10, 12, 18, 0.98); border: 1px solid #334155; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); display: flex; flex-direction: column; overflow: hidden; }
+        #devConsoleHeader { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #334155; }
+        #devConsoleHeader h3 { margin: 0; font-size: 13px; color: #f1c40f; letter-spacing: 0.5px; }
+        #devConsoleHeader button { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-weight: 800; }
+        #devConsoleBody { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+        .devConsoleCard { border: 1px solid #334155; border-radius: 10px; padding: 10px; background: rgba(255,255,255,0.02); }
+        .devConsoleCard h4 { margin: 0 0 8px 0; font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; color: #cbd5f5; }
+        .devConsoleRow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .devConsoleRow input { background: #0b1220; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; font-family: 'Roboto', sans-serif; }
+        .devConsoleRow button { background: #1e293b; color: #fff; border: 1px solid #334155; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-weight: 800; }
+        .devConsoleRow button.ok { border-color: #2ecc71; color: #b7f7d2; }
+        .devConsoleRow button.warn { border-color: #f1c40f; color: #ffeaa7; }
+        .devConsoleRow button.danger { border-color: #e74c3c; color: #ffd0cc; }
+        #devConsoleLogs { max-height: 180px; overflow: auto; font-family: monospace; font-size: 11px; color: #e5e7eb; }
+        .devConsoleLogItem { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+        .devConsoleLogMeta { color: #94a3b8; }
+
         /* NPC Editor (janela PC) */
         #npcEditorOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200000; display: none; align-items: center; justify-content: center; padding: 18px; pointer-events: auto; }
         #npcEditorWindow { width: min(920px, 96vw); height: min(720px, 92vh); background: rgba(15, 23, 42, 0.98); border: 1px solid #334155; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.75); display: flex; flex-direction: column; overflow: hidden; }
@@ -344,7 +363,10 @@
         #startMenuOverlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.82);
+            background:
+                radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 55%),
+                repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px),
+                rgba(0,0,0,0.86);
             z-index: 12000;
             display: none;
             align-items: center;
@@ -354,10 +376,11 @@
         }
         #startMenuWindow {
             width: min(360px, 90vw);
-            background: linear-gradient(135deg, #2d4a6e 0%, #1a2940 100%);
-            border: 4px solid #f0f0f0;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.85), inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.3);
+            background:
+                linear-gradient(180deg, #314c7a 0%, #203457 100%);
+            border: 4px solid #f4e9c7;
+            border-radius: 6px;
+            box-shadow: 0 0 0 2px #17223a, 0 12px 32px rgba(0,0,0,0.75);
             overflow: hidden;
         }
         #startMenuHeader {
@@ -365,8 +388,8 @@
             align-items: center;
             justify-content: space-between;
             padding: 12px 14px;
-            background: linear-gradient(180deg, #4169a8 0%, #2d5080 100%);
-            border-bottom: 3px solid #1a2940;
+            background: linear-gradient(180deg, #3f6fbd 0%, #2c4f8c 100%);
+            border-bottom: 3px solid #1a2a46;
             color: #ffffff;
             font-family: 'Press Start 2P', monospace;
             font-size: 0.7rem;
@@ -374,45 +397,52 @@
             text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
         }
         #startMenuClose {
-            background: #2d3748;
-            color: #f7fafc;
-            border: 2px solid #4a5568;
-            border-radius: 4px;
+            background: #1b2b47;
+            color: #f9f4de;
+            border: 2px solid #f4e9c7;
+            border-radius: 2px;
             padding: 6px 10px;
             cursor: pointer;
             font-family: 'Press Start 2P', monospace;
             font-size: 0.55rem;
-            box-shadow: 0 2px 0 #1a202c;
+            box-shadow: 0 2px 0 #101a2c;
         }
         #startMenuClose:active { transform: translateY(2px); box-shadow: none; }
         #startMenuBody {
-            padding: 16px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
             gap: 8px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px),
+                linear-gradient(180deg, rgba(10,16,32,0.35), rgba(10,16,32,0.6));
         }
         .startMenuBtn {
-            background: linear-gradient(180deg, #f8f8f8 0%, #d0d0d0 100%);
-            color: #2a2a2a;
-            border: 3px solid #fff;
-            border-radius: 8px;
+            background: linear-gradient(180deg, #f9f2d5 0%, #e7d8a5 100%);
+            color: #1a2436;
+            border: 3px solid #fff2c2;
+            border-radius: 6px;
             padding: 14px 16px;
             cursor: pointer;
             font-family: 'Press Start 2P', monospace;
             font-size: 0.65rem;
             text-align: left;
             position: relative;
-            box-shadow: 0 4px 0 #1a2940, inset 0 1px 0 rgba(255,255,255,0.8);
+            box-shadow: 0 4px 0 #1a2436, inset 0 1px 0 rgba(255,255,255,0.85);
             transition: all 0.1s;
         }
-        .startMenuBtn:hover { background: linear-gradient(180deg, #fff 0%, #e8e8e8 100%); border-color: #fff; }
-        .startMenuBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2940; }
+        .startMenuBtn:hover { filter: brightness(1.03); border-color: #fff7d6; }
+        .startMenuBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2436; }
         .startMenuBtn::before {
-            content: '▶';
+            content: '■';
             position: absolute;
             left: 8px;
-            color: #2a2a2a;
+            color: #1a2436;
             font-size: 0.5rem;
+        }
+        .startMenuBtn--gold {
+            background: linear-gradient(180deg, #ffe48a 0%, #f1b948 100%);
+            border-color: #ffe9a6;
         }
 
         /* Variação do botão do menu (sem setinha) — usado em ações (bag/shop) */
@@ -1047,12 +1077,63 @@
                 </button>
                 <div class="devGroupBody" id="devGroupBody-actions">
                     <div class="devSection">
+                        <button class="devBtn--blue" onclick="openDevConsole()">DEV CONSOLE</button>
+                        <button class="devBtn--gray" onclick="openDevPage()">DEV PAGINA</button>
                         <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">📏 TAMANHO</button>
                         <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">💡 ILUMINAÇÃO</button>
                         <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">🗑️ APAGAR</button>
                         <button onclick="undoLast()">↩️ DESFAZER</button>
                         <button class="devBtn--green" onclick="saveMapToServer()">💾 SALVAR MAPA</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <% } %>
+
+    <% if(user.isAdmin) { %>
+    <div id="devConsoleOverlay" onclick="closeDevConsole()">
+        <div id="devConsoleWindow" onclick="event.stopPropagation()">
+            <div id="devConsoleHeader">
+                <h3>Dev Console</h3>
+                <button type="button" onclick="closeDevConsole()">Fechar</button>
+            </div>
+            <div id="devConsoleBody">
+                <div class="devConsoleCard">
+                    <h4>Session</h4>
+                    <div class="devConsoleRow">
+                        <button type="button" class="ok" onclick="toggleDevMode()">Alternar dev mode</button>
+                        <button type="button" onclick="openDevPage()">Abrir pagina</button>
+                    </div>
+                    <div class="devConsoleRow" style="margin-top:8px;">
+                        <button type="button" class="ok" onclick="devHealTeam()">Curar time</button>
+                        <button type="button" onclick="devRefreshLogs()">Atualizar logs</button>
+                        <button type="button" class="danger" onclick="devClearLogs()">Limpar logs</button>
+                    </div>
+                </div>
+                <div class="devConsoleCard">
+                    <h4>Dinheiro</h4>
+                    <div class="devConsoleRow">
+                        <input id="devMoneyDelta" type="number" placeholder="Delta" />
+                        <button type="button" onclick="devMoneyDelta()">Aplicar</button>
+                    </div>
+                    <div class="devConsoleRow" style="margin-top:8px;">
+                        <input id="devMoneySet" type="number" placeholder="Set" />
+                        <button type="button" class="warn" onclick="devMoneySet()">Definir</button>
+                    </div>
+                </div>
+                <div class="devConsoleCard">
+                    <h4>Inventario</h4>
+                    <div class="devConsoleRow">
+                        <input id="devItemId" type="text" placeholder="itemId" />
+                        <input id="devItemQty" type="number" placeholder="qty" value="1" />
+                        <button type="button" class="ok" onclick="devGrantItem()">Dar</button>
+                        <button type="button" class="danger" onclick="devRevokeItem()">Remover</button>
+                    </div>
+                </div>
+                <div class="devConsoleCard">
+                    <h4>Logs</h4>
+                    <div id="devConsoleLogs"></div>
                 </div>
             </div>
         </div>
@@ -1118,7 +1199,7 @@
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">     EQUIPE</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">     BOLSA</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">     PC</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); window.location.href='/custom-battle?userId=<%= userId %>';" style="background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%); border-color: #f59e0b;">⚔️ CUSTOM BATTLE</button>
+                <button class="startMenuBtn startMenuBtn--gold" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); window.location.href='/custom-battle?userId=<%= userId %>';">⚔️ CUSTOM BATTLE</button>
             </div>
         </div>
     </div>
@@ -1164,6 +1245,7 @@
                     <button type="button" onclick="newNpcDraftPreset('starter')">+ Starter (3)</button>
                     <button type="button" onclick="newNpcDraftPreset('heal')">+ Cura</button>
                     <button type="button" onclick="newNpcDraftPreset('shop')">+ Loja</button>
+                    <button type="button" onclick="newNpcDraftPreset('box')">+ Box</button>
                     <button type="button" onclick="newNpcDraftPreset('quest')">+ Quest</button>
                     <button type="button" onclick="newNpcDraftPreset('trainer')">+ Treinador</button>
                     <button type="button" class="danger" onclick="deleteNpcFromEditor()">Excluir</button>
@@ -1204,6 +1286,7 @@
                                 <option value="starter">🎁 Inicial</option>
                                 <option value="heal">💚 Curandeiro</option>
                                 <option value="shop">🛒 Loja</option>
+                                <option value="box">🎲 Box / Gacha</option>
                             </select>
                             <div class="npcHint" style="margin-top:6px;">Escolha um tipo para organizar o editor e preencher defaults.</div>
                         </div>
@@ -1481,6 +1564,7 @@
                                 <option value="">quest/itens (padrão)</option>
                                 <option value="heal">curar time</option>
                                 <option value="shop">loja</option>
+                                          <option value="box">box (gacha)</option>
                                    <option value="starter">starter (inicial)</option>
                             </select>
                             <div class="npcHint" style="margin-top:6px;">Para heal/shop, não marca flag automaticamente (é repetível por padrão).</div>
@@ -1531,6 +1615,29 @@
                                 <textarea id="npcEdInteractShopItemsJson" placeholder='[{"itemId":"pokeball","price":50}]'></textarea>
                             </details>
                         </div>
+
+                        <div class="npcField" id="npcEdInteractBoxBox" style="grid-column: 1 / -1; display:none;">
+                            <label>Box (gacha) - custo e chances (se serviço=box)</label>
+                            <div class="npcHint">Cobra moedas do jogador e entrega um monstro aleatório com pesos configuráveis.</div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
+                                <label class="npcHint">Preço</label>
+                                <input id="npcEdBoxPrice" type="number" min="0" step="1" style="width:120px;" />
+                                <button type="button" class="npcBtn" onclick="npcEdBoxAddRow()">+ adicionar prêmio</button>
+                                <button type="button" class="npcBtn" onclick="npcEdBoxAddPresetCommon()">preset comum</button>
+                                <button type="button" class="npcBtn" onclick="npcEdBoxClear()">limpar</button>
+                            </div>
+                            <div id="npcEdBoxRows" class="npcHint" style="display:flex; flex-direction:column; gap:8px;"></div>
+                            <details style="margin-top:10px;">
+                                <summary class="npcHint" style="cursor:pointer;">Avançado (JSON)</summary>
+                                <textarea id="npcEdInteractBoxJson" placeholder='[{"baseId":"slime","weight":70,"minLevel":3,"maxLevel":5}]'></textarea>
+                            </details>
+                        </div>
+
+                        <datalist id="npcBoxEntityDatalist">
+                            <% (entities || []).forEach(p => { %>
+                                <option value="<%= p.id %>"><%= p.name %></option>
+                            <% }) %>
+                        </datalist>
                         <div class="npcField" id="npcEdInteractNeedBox">
                             <label>Fala se faltar item</label>
                             <textarea id="npcEdInteractNeed" placeholder="Você precisa de algo..."></textarea>
@@ -2330,6 +2437,129 @@
             npcEdShopRender();
         }
 
+        let npcEdBoxState = [];
+        function npcEdBoxRender() {
+            const host = document.getElementById('npcEdBoxRows');
+            const textarea = document.getElementById('npcEdInteractBoxJson');
+            if (!host) return;
+            host.innerHTML = '';
+
+            if (!npcEdBoxState.length) {
+                const empty = document.createElement('div');
+                empty.className = 'npcHint';
+                empty.innerText = 'Sem prêmios configurados.';
+                host.appendChild(empty);
+            }
+
+            npcEdBoxState.forEach((row, idx) => {
+                const line = document.createElement('div');
+                line.style.display = 'grid';
+                line.style.gridTemplateColumns = '1fr 90px 90px 90px 46px';
+                line.style.gap = '8px';
+                line.style.alignItems = 'center';
+
+                const baseId = document.createElement('input');
+                baseId.placeholder = 'baseId (monstro)';
+                baseId.value = row.baseId || '';
+                baseId.setAttribute('list', 'npcBoxEntityDatalist');
+                baseId.oninput = () => { npcEdBoxState[idx].baseId = baseId.value; };
+
+                const weight = document.createElement('input');
+                weight.type = 'number';
+                weight.min = '0';
+                weight.step = '0.1';
+                weight.placeholder = 'peso';
+                weight.value = String(row.weight || 0);
+                weight.oninput = () => { npcEdBoxState[idx].weight = parseFloat(weight.value) || 0; };
+
+                const minLv = document.createElement('input');
+                minLv.type = 'number';
+                minLv.min = '1';
+                minLv.step = '1';
+                minLv.placeholder = 'min Lv';
+                minLv.value = String(row.minLevel || 1);
+                minLv.oninput = () => { npcEdBoxState[idx].minLevel = parseInt(minLv.value, 10) || 1; };
+
+                const maxLv = document.createElement('input');
+                maxLv.type = 'number';
+                maxLv.min = '1';
+                maxLv.step = '1';
+                maxLv.placeholder = 'max Lv';
+                maxLv.value = String(row.maxLevel || 1);
+                maxLv.oninput = () => { npcEdBoxState[idx].maxLevel = parseInt(maxLv.value, 10) || 1; };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'npcBtn';
+                rm.style.background = '#e74c3c';
+                rm.innerText = 'X';
+                rm.onclick = () => { npcEdBoxState.splice(idx, 1); npcEdBoxRender(); };
+
+                line.appendChild(baseId);
+                line.appendChild(weight);
+                line.appendChild(minLv);
+                line.appendChild(maxLv);
+                line.appendChild(rm);
+                host.appendChild(line);
+            });
+
+            if (textarea) textarea.value = npcEdBoxToJson();
+        }
+
+        function npcEdBoxLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                if (Array.isArray(arr)) {
+                    npcEdBoxState = arr
+                        .filter(x => x && (x.baseId || x.id))
+                        .map(x => ({
+                            baseId: String(x.baseId || x.id).trim(),
+                            weight: Math.max(0, parseFloat(x.weight) || 0),
+                            minLevel: Math.max(1, parseInt(x.minLevel, 10) || 1),
+                            maxLevel: Math.max(1, parseInt(x.maxLevel, 10) || 1)
+                        }));
+                } else npcEdBoxState = [];
+            } catch (_) {
+                npcEdBoxState = [];
+            }
+            npcEdBoxRender();
+        }
+
+        function npcEdBoxToJson() {
+            return JSON.stringify((npcEdBoxState || [])
+                .filter(x => x && String(x.baseId || '').trim() && (parseFloat(x.weight) || 0) > 0)
+                .map(x => ({
+                    baseId: String(x.baseId || '').trim(),
+                    weight: Math.max(0, parseFloat(x.weight) || 0),
+                    minLevel: Math.max(1, parseInt(x.minLevel, 10) || 1),
+                    maxLevel: Math.max(1, parseInt(x.maxLevel, 10) || 1)
+                }))
+            );
+        }
+
+        function npcEdBoxAddRow() {
+            npcEdBoxState.push({ baseId: '', weight: 1, minLevel: 1, maxLevel: 1 });
+            npcEdBoxRender();
+        }
+
+        function npcEdBoxAddPresetCommon() {
+            const list = Array.isArray(window.allMonsters) ? window.allMonsters : [];
+            const a = list[0] ? list[0].id : 'monstro_comum';
+            const b = list[1] ? list[1].id : 'monstro_raro';
+            const c = list[2] ? list[2].id : 'monstro_epico';
+            npcEdBoxState = [
+                { baseId: a, weight: 70, minLevel: 3, maxLevel: 5 },
+                { baseId: b, weight: 25, minLevel: 4, maxLevel: 6 },
+                { baseId: c, weight: 5, minLevel: 6, maxLevel: 8 }
+            ];
+            npcEdBoxRender();
+        }
+
+        function npcEdBoxClear() {
+            npcEdBoxState = [];
+            npcEdBoxRender();
+        }
+
         let npcEdConditionalState = [];
         function npcEdConditionalRender() {
             const host = document.getElementById('npcEdConditionalRows');
@@ -2524,6 +2754,32 @@
         if(currentMapId.includes('?')) currentMapId = currentMapId.split('?')[0];
         let startDir = "<%= typeof startDir === 'string' ? startDir : 'down' %>";
 
+        // Boot gate: prefetch dados principais antes de liberar o jogo
+        window.__ME_CACHE = window.__ME_CACHE || null;
+        window.__bootGatePromise = (async () => {
+            const tasks = [];
+            try {
+                const meReq = fetch(`/api/me?userId=${encodeURIComponent(window.CURRENT_USER_ID)}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d && !d.error) {
+                            window.__ME_CACHE = d;
+                            if (d.bag) window.USER_BAG = d.bag;
+                            if (d.keyItems) window.USER_KEY_ITEMS = d.keyItems;
+                            if (d.storyFlags) window.STORY_FLAGS = d.storyFlags;
+                        }
+                    })
+                    .catch(() => {});
+                tasks.push(meReq);
+            } catch (_) {}
+
+            try {
+                tasks.push(preloadMapAssets(currentMapId));
+            } catch (_) {}
+
+            await Promise.allSettled(tasks);
+        })();
+
         function setDialogImageStyle(mode) {
             setTimeout(() => {
                 const imgEl = document.getElementById('rpgPortrait');
@@ -2540,8 +2796,13 @@
         function markMapReady() {
             const overlay = document.getElementById('transitionOverlay');
             if (!overlay) return;
-            // Deixa o fade ocorrer mesmo no primeiro frame
-            requestAnimationFrame(() => overlay.classList.add('hidden'));
+            const finish = () => requestAnimationFrame(() => overlay.classList.add('hidden'));
+            const gate = window.__bootGatePromise;
+            if (gate && typeof gate.then === 'function') {
+                gate.then(finish).catch(finish);
+            } else {
+                finish();
+            }
         }
 
         function performTransition(onMidPoint) {
@@ -2880,7 +3141,7 @@
             
             // Agrupa NPCs por tipo
             const grouped = {
-                trainer: [], quest: [], starter: [], heal: [], shop: [], decor: []
+                trainer: [], quest: [], starter: [], heal: [], shop: [], box: [], decor: []
             };
             
             list.forEach(n => {
@@ -2975,6 +3236,10 @@
             document.getElementById('npcEdInteractShopItemsJson').value = '';
             npcEdShopState = [];
             npcEdShopRender();
+            document.getElementById('npcEdBoxPrice').value = 0;
+            document.getElementById('npcEdInteractBoxJson').value = '';
+            npcEdBoxState = [];
+            npcEdBoxRender();
 
             const s1 = document.getElementById('npcEdStarterOpt1');
             const s2 = document.getElementById('npcEdStarterOpt2');
@@ -3074,6 +3339,27 @@
                 if (typeof npcEdShopLoadFromJson === 'function') npcEdShopLoadFromJson(presetItems);
             }
 
+            if (p === 'box') {
+                document.getElementById('npcEdType').value = 'box';
+                document.getElementById('npcEdName').value = 'Mestre da Box';
+                document.getElementById('npcEdBlocksMovement').value = 'true';
+                document.getElementById('npcEdDialogue').value = 'Abra uma box e veja o que sai!';
+                document.getElementById('npcEdInteractEnabled').value = 'true';
+                document.getElementById('npcEdInteractServiceType').value = 'box';
+                document.getElementById('npcEdBoxPrice').value = 200;
+
+                const list = Array.isArray(window.allMonsters) ? window.allMonsters : [];
+                const a = list[0] ? list[0].id : 'monstro_comum';
+                const b = list[1] ? list[1].id : 'monstro_raro';
+                const c = list[2] ? list[2].id : 'monstro_epico';
+                npcEdBoxState = [
+                    { baseId: a, weight: 70, minLevel: 3, maxLevel: 5 },
+                    { baseId: b, weight: 25, minLevel: 4, maxLevel: 6 },
+                    { baseId: c, weight: 5, minLevel: 6, maxLevel: 8 }
+                ];
+                npcEdBoxRender();
+            }
+
             if (p === 'quest') {
                 document.getElementById('npcEdType').value = 'quest';
                 document.getElementById('npcEdName').value = 'Morador';
@@ -3114,6 +3400,7 @@
                 if (svc === 'starter') return 'starter';
                 if (svc === 'heal') return 'heal';
                 if (svc === 'shop') return 'shop';
+                if (svc === 'box') return 'box';
                 const hasTeam = !!(npc && Array.isArray(npc.team) && npc.team.length > 0);
                 if (hasTeam) return 'trainer';
                 const hasInteract = !!(npc && npc.interact && npc.interact.enabled);
@@ -3131,7 +3418,8 @@
             trainer: { icon: '⚔️', text: 'TREINADOR', color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.2)' },
             starter: { icon: '🎁', text: 'INICIAL', color: '#9b59b6', bg: 'rgba(155, 89, 182, 0.2)' },
             heal: { icon: '💚', text: 'CURANDEIRO', color: '#2ecc71', bg: 'rgba(46, 204, 113, 0.2)' },
-            shop: { icon: '🛒', text: 'LOJA', color: '#f39c12', bg: 'rgba(243, 156, 18, 0.2)' }
+            shop: { icon: '🛒', text: 'LOJA', color: '#f39c12', bg: 'rgba(243, 156, 18, 0.2)' },
+            box: { icon: '🎲', text: 'BOX / GACHA', color: '#16a085', bg: 'rgba(22, 160, 133, 0.2)' }
         };
         
         function updateNpcTypeBadge(type) {
@@ -3177,6 +3465,7 @@
             const isStarter = type === 'starter';
             const isHeal = type === 'heal';
             const isShop = type === 'shop';
+            const isBox = type === 'box';
             
             // Controla visibilidade das abas
             setDisp('tabDialogos', !isDecor);
@@ -3315,6 +3604,32 @@
                         document.getElementById('npcEdInteractGivesUnique').value = 'false';
                     } catch (_) {}
                 }
+
+                if (isBox) {
+                    document.getElementById('npcEdInteractEnabled').value = 'true';
+                    document.getElementById('npcEdInteractServiceType').value = 'box';
+                    // box não usa quest/itens
+                    try {
+                        document.getElementById('npcEdInteractFlag').value = '';
+                        document.getElementById('npcEdInteractConsume').value = 'false';
+                        document.getElementById('npcEdInteractReqId').value = '';
+                        document.getElementById('npcEdInteractReqQty').value = 1;
+                        document.getElementById('npcEdInteractGivesId').value = '';
+                        document.getElementById('npcEdInteractGivesQty').value = 1;
+                        document.getElementById('npcEdInteractGivesKey').value = 'false';
+                        document.getElementById('npcEdInteractGivesUnique').value = 'false';
+                        document.getElementById('npcEdInteractShopItemsJson').value = '';
+                        npcEdShopState = [];
+                        npcEdShopRender();
+                        if (!npcEdBoxState || !npcEdBoxState.length) {
+                            npcEdBoxState = [{ baseId: '', weight: 1, minLevel: 1, maxLevel: 1 }];
+                        }
+                        if (document.getElementById('npcEdBoxPrice')) {
+                            document.getElementById('npcEdBoxPrice').value = document.getElementById('npcEdBoxPrice').value || 200;
+                        }
+                        npcEdBoxRender();
+                    } catch (_) {}
+                }
             }
 
             npcInteractServiceUiSync();
@@ -3370,6 +3685,13 @@
             document.getElementById('npcEdInteractHealDialogue').value = (npc.interact && npc.interact.healDialogue) ? npc.interact.healDialogue : '';
             document.getElementById('npcEdInteractShopItemsJson').value = (npc.interact && npc.interact.shopItems) ? JSON.stringify(npc.interact.shopItems) : '';
             npcEdShopLoadFromJson(document.getElementById('npcEdInteractShopItemsJson').value);
+
+            const boxPrice = (npc.interact && npc.interact.box && Number.isFinite(parseFloat(npc.interact.box.price))) ? parseFloat(npc.interact.box.price) : 0;
+            document.getElementById('npcEdBoxPrice').value = boxPrice;
+            document.getElementById('npcEdInteractBoxJson').value = (npc.interact && npc.interact.box && npc.interact.box.rewards)
+                ? JSON.stringify(npc.interact.box.rewards)
+                : '';
+            npcEdBoxLoadFromJson(document.getElementById('npcEdInteractBoxJson').value);
 
             try {
                 const arr = (npc.interact && Array.isArray(npc.interact.starterOptions)) ? npc.interact.starterOptions : [];
@@ -3475,6 +3797,8 @@
             fd.append('interactServiceType', document.getElementById('npcEdInteractServiceType').value || '');
             fd.append('interactHealDialogue', document.getElementById('npcEdInteractHealDialogue').value || '');
             fd.append('interactShopItemsJson', npcEdShopToJson());
+            fd.append('interactBoxPrice', document.getElementById('npcEdBoxPrice').value || '0');
+            fd.append('interactBoxRewardsJson', npcEdBoxToJson());
 
             // Starter options (por NPC)
             try {
@@ -3547,8 +3871,10 @@
             const healBox = document.getElementById('npcEdInteractHealBox');
             const shopBox = document.getElementById('npcEdInteractShopBox');
             const starterBox = document.getElementById('npcEdInteractStarterBox');
+            const boxBox = document.getElementById('npcEdInteractBoxBox');
             if (healBox) healBox.style.display = (svc === 'heal') ? 'block' : 'none';
             if (shopBox) shopBox.style.display = (svc === 'shop') ? 'block' : 'none';
+            if (boxBox) boxBox.style.display = (svc === 'box') ? 'block' : 'none';
             if (starterBox) starterBox.style.display = (svc === 'starter') ? 'block' : 'none';
 
             // Mostra só campos relevantes (editor por categoria, simples)
@@ -3901,11 +4227,12 @@
             const isHealNpcForInteract = (svcForInteract === 'heal') || (typeForInteract === 'heal');
             const isShopNpcForInteract = (svcForInteract === 'shop') || (typeForInteract === 'shop');
             const isStarterNpcForInteract = (svcForInteract === 'starter') || (typeForInteract === 'starter');
-            const isServiceNpcForPreview = isHealNpcForInteract || isShopNpcForInteract || isStarterNpcForInteract;
+            const isBoxNpcForInteract = (svcForInteract === 'box') || (typeForInteract === 'box');
+            const isServiceNpcForPreview = isHealNpcForInteract || isShopNpcForInteract || isStarterNpcForInteract || isBoxNpcForInteract;
             const hasInteract = isStarterNpcForInteract || !!(npc.interact && npc.interact.enabled);
             const canBattleRaw = npc.team && npc.team.length > 0;
-            const isNonBattleNpc = (svcForInteract === 'heal' || svcForInteract === 'shop' || svcForInteract === 'starter')
-                || (typeForInteract === 'heal' || typeForInteract === 'shop' || typeForInteract === 'starter');
+            const isNonBattleNpc = (svcForInteract === 'heal' || svcForInteract === 'shop' || svcForInteract === 'starter' || svcForInteract === 'box')
+                || (typeForInteract === 'heal' || typeForInteract === 'shop' || typeForInteract === 'starter' || typeForInteract === 'box');
             const canBattle = !!(canBattleRaw && !isNonBattleNpc);
             
             // Função que resolve o diálogo correto (com condicionais)
@@ -4182,6 +4509,13 @@
                             });
                         }
                     }
+
+                    if (kind === 'box') {
+                        const text = (data && data.text)
+                            ? data.text
+                            : (data && data.error ? 'Não foi possível abrir a box.' : 'Box aberta.');
+                        await showRPGDialog(cleanName, npc.skin, text);
+                    }
                 } catch (e) {
                     if (typeof showToast === 'function') showToast('Erro ao interagir.', { bg: '#e74c3c' });
                 }
@@ -4233,12 +4567,18 @@
             // Simplificação: se não há escolha real, normalmente não abre menu.
             // EXCEÇÃO (serviços): mostra botão específico para o jogador confirmar.
             if ((hasTalkOption || canTalkWithConditionals) && !hasBattleOption) {
-                if ((isHealNpcForInteract || isShopNpcForInteract || isStarterNpcForInteract) && hasTalkOption && !canTalkWithConditionals) {
+                if ((isHealNpcForInteract || isShopNpcForInteract || isStarterNpcForInteract || isBoxNpcForInteract) && hasTalkOption && !canTalkWithConditionals) {
+                    const boxPriceLabel = (() => {
+                        const val = npc && npc.interact && npc.interact.box ? parseInt(npc.interact.box.price, 10) || 0 : 0;
+                        return val > 0 ? `ABRIR BOX (${val}$)` : 'ABRIR BOX';
+                    })();
                     const primaryBtn = isHealNpcForInteract
                         ? { text: 'CURAR', value: 'heal', class: 'confirm' }
                         : (isShopNpcForInteract
                             ? { text: 'LOJA', value: 'shop', class: 'confirm' }
-                            : { text: 'ESCOLHER', value: 'starter', class: 'confirm' });
+                            : (isBoxNpcForInteract
+                                ? { text: boxPriceLabel, value: 'box', class: 'confirm' }
+                                : { text: 'ESCOLHER', value: 'starter', class: 'confirm' }));
                     resolveDialogueText('dialogue').then((dialogueText) => {
                         setDialogImageStyle('pixel');
                         showRPGDialog(cleanName, npc.skin, dialogueText, [
@@ -4246,7 +4586,7 @@
                             { text: 'SAIR', value: 'exit', class: 'cancel' }
                         ]).then(async (choice) => {
                             window.isInteracting = false;
-                            if (choice === 'heal' || choice === 'shop' || choice === 'starter') {
+                            if (choice === 'heal' || choice === 'shop' || choice === 'starter' || choice === 'box') {
                                 await runNpcServiceAction(choice);
                                 return;
                             }
@@ -4271,25 +4611,6 @@
                 } else {
                     runNpcTalk();
                 }
-                return;
-            }
-            if (!hasTalkOption && !canTalkWithConditionals && hasBattleOption) {
-                // NPC com batalha (ex.: treinador) sem opção de fala/serviço: mostra um texto antes da batalha.
-                // Resolve o diálogo condicionado antes de exibir
-                resolveDialogueText('dialogue').then(dialogueText => {
-                    setDialogImageStyle('pixel');
-                    showRPGDialog(cleanName, npc.skin, dialogueText, [
-                        { text: 'BATALHAR', value: 'battle', class: 'confirm' },
-                        { text: 'SAIR', value: 'exit', class: 'cancel' }
-                    ]).then((choice) => {
-                        endInteraction();
-                        if (choice === 'battle') {
-                            runNpcBattle();
-                        } else {
-                        disengageNow();
-                    }
-                });
-                });
                 return;
             }
             if (!hasTalkOption && !canTalkWithConditionals && !hasBattleOption) {
@@ -4672,13 +4993,10 @@
             let customImg = obj.image || null;
             if(customImg) setDialogImageStyle('full'); else setDialogImageStyle('pixel');
 
-            if (obj.messages && obj.messages.length > 0) {
-                for (let msg of obj.messages) { await showRPGDialog('Sistema', customImg, msg); }
-            } else {
-                if (obj.type !== 'item') await showRPGDialog('Sistema', customImg, "Você encontrou algo interessante.");
-            }
+            let toastMsg = '';
+            let toastOpts = null;
 
-            // Se o objeto dá um item, chama a API para garantir que ela só seja dada uma vez por usuário
+            // Se o objeto dá um item, chama a API antes para checar unicidade
             if (obj.type === 'item' || obj.type === 'both') {
                 if (obj.itemId) {
                     try {
@@ -4688,12 +5006,25 @@
                             body: JSON.stringify({ userId: USER_ID, mapId, obj })
                         });
                         const data = await resp.json().catch(() => ({}));
-                        if (data && data.success && data.added) {
-                            if (typeof showToast === 'function') showToast(data.added.storage === 'keyItems' ? `Recebeu o item-chave ${obj.itemId}!` : `Você recebeu ${obj.qty||1}x ${obj.itemId}!`, { bg: '#f1c40f', color: '#000' });
-                        } else if (data && data.alreadyDone) {
+
+                        if (data && data.alreadyDone) {
                             if (typeof showToast === 'function') showToast('Nada aqui.', { bg: '#aaa' });
+                            // Atualiza estados cliente
+                            if (data && data.bag) window.USER_BAG = data.bag;
+                            if (data && Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
+                            if (data && data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                            window.isInteracting = false;
+                            return;
+                        }
+
+                        if (data && data.success && data.added) {
+                            toastMsg = data.added.storage === 'keyItems'
+                                ? `Recebeu o item-chave ${obj.itemId}!`
+                                : `Você recebeu ${obj.qty||1}x ${obj.itemId}!`;
+                            toastOpts = { bg: '#f1c40f', color: '#000' };
                         } else if (data && data.success && !data.added) {
-                            if (typeof showToast === 'function') showToast('Obrigado.', { bg: '#bbb' });
+                            toastMsg = 'Obrigado.';
+                            toastOpts = { bg: '#bbb' };
                         } else if (data && data.error) {
                             console.warn('map/interact error', data.error);
                         }
@@ -4707,6 +5038,14 @@
                     }
                 }
             }
+
+            if (obj.messages && obj.messages.length > 0) {
+                for (let msg of obj.messages) { await showRPGDialog('Sistema', customImg, msg); }
+            } else {
+                if (obj.type !== 'item') await showRPGDialog('Sistema', customImg, "Você encontrou algo interessante.");
+            }
+
+            if (toastMsg && typeof showToast === 'function') showToast(toastMsg, toastOpts || undefined);
 
             window.isInteracting = false;
         }
@@ -5456,9 +5795,12 @@
                 if (Number.isFinite(n) && n > 0) {
                     const meta = getMeta(id);
                     const name = (meta && meta.name) ? meta.name : String(id);
-                    const icon = (meta && meta.hasIcon)
-                        ? `/api/items/icon/${encodeURIComponent(id)}.png`
-                        : '/uploads/placeholder.png';
+                    const icon = (() => {
+                        if (meta && meta.hasIcon) return `/api/items/icon/${encodeURIComponent(id)}.png`;
+                        if (meta && meta.iconUrl) return meta.iconUrl;
+                        if (meta && meta.icon) return meta.icon;
+                        return '/uploads/placeholder.png';
+                    })();
                     items.push({ id, name, icon, qty: n });
                 }
             }
@@ -5934,6 +6276,7 @@
             sessionStorage.setItem('devPanelOpen', devPanelOpen ? '1' : '0');
             setDevToolsVisible(devPanelOpen);
             syncDevPanelButton();
+            saveDevSettingsPartial({ panelOpen: devPanelOpen });
         }
 
         function toggleDevMode() {
@@ -5943,6 +6286,158 @@
             syncDevPanelButton();
             renderMapObjects();
             syncPlayUiVisibility();
+            saveDevSettingsPartial({ devMode: devMode });
+        }
+
+        async function loadDevSettings() {
+            if (!isAdmin) return;
+            try {
+                const res = await fetch(`/api/dev/settings?userId=${encodeURIComponent(window.CURRENT_USER_ID)}`);
+                const js = await res.json();
+                if (!js || !js.success || !js.settings) return;
+                const settings = js.settings;
+                devMode = !!settings.devMode;
+                devPanelOpen = !!settings.panelOpen;
+                sessionStorage.setItem('devPanelOpen', devPanelOpen ? '1' : '0');
+                setDevToolsVisible(devMode && devPanelOpen);
+                document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO";
+                syncDevPanelButton();
+                renderMapObjects();
+                syncPlayUiVisibility();
+            } catch (_) {}
+        }
+
+        async function saveDevSettingsPartial(partial) {
+            if (!isAdmin) return;
+            try {
+                await fetch('/api/dev/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: window.CURRENT_USER_ID, settings: partial })
+                });
+            } catch (_) {}
+        }
+
+        function openDevPage() {
+            if (!isAdmin) return;
+            window.location.href = `/admin/dev?userId=${encodeURIComponent(window.CURRENT_USER_ID)}`;
+        }
+
+        function openDevConsole() {
+            if (!isAdmin) return;
+            const overlay = document.getElementById('devConsoleOverlay');
+            if (overlay) overlay.style.display = 'flex';
+            devRefreshLogs();
+        }
+
+        function closeDevConsole() {
+            const overlay = document.getElementById('devConsoleOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function toggleDevConsole() {
+            const overlay = document.getElementById('devConsoleOverlay');
+            if (!overlay) return;
+            if (overlay.style.display === 'flex') closeDevConsole();
+            else openDevConsole();
+        }
+
+        async function devHealTeam() {
+            await fetch('/api/heal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID })
+            });
+        }
+
+        async function devMoneyDelta() {
+            const delta = document.getElementById('devMoneyDelta').value;
+            await fetch('/api/dev/money', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID, delta })
+            });
+        }
+
+        async function devMoneySet() {
+            const set = document.getElementById('devMoneySet').value;
+            await fetch('/api/dev/money', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID, set })
+            });
+        }
+
+        async function devGrantItem() {
+            const itemId = document.getElementById('devItemId').value;
+            const qty = document.getElementById('devItemQty').value || 1;
+            await fetch('/api/dev/inventory/grant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID, itemId, qty })
+            });
+        }
+
+        async function devRevokeItem() {
+            const itemId = document.getElementById('devItemId').value;
+            const qty = document.getElementById('devItemQty').value || 1;
+            await fetch('/api/dev/inventory/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID, itemId, qty })
+            });
+        }
+
+        async function devRefreshLogs() {
+            const host = document.getElementById('devConsoleLogs');
+            if (!host) return;
+            try {
+                const res = await fetch(`/api/dev/logs?userId=${encodeURIComponent(window.CURRENT_USER_ID)}&limit=40`);
+                const js = await res.json();
+                host.innerHTML = '';
+                if (!js || !js.success || !Array.isArray(js.logs) || js.logs.length === 0) {
+                    host.innerText = 'Sem logs.';
+                    return;
+                }
+                js.logs.forEach(l => {
+                    const div = document.createElement('div');
+                    div.className = 'devConsoleLogItem';
+                    const dt = new Date(l.createdAt || Date.now());
+                    const meta = l.meta ? JSON.stringify(l.meta) : '';
+                    div.innerHTML = `<div>${l.action || 'log'}</div><div class="devConsoleLogMeta">${dt.toLocaleString()} ${meta}</div>`;
+                    host.appendChild(div);
+                });
+            } catch (_) {
+                host.innerText = 'Falha ao carregar logs.';
+            }
+        }
+
+        async function devClearLogs() {
+            await fetch('/api/dev/logs/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: window.CURRENT_USER_ID })
+            });
+            devRefreshLogs();
+        }
+
+        function isTextInput(target) {
+            if (!target) return false;
+            const tag = (target.tagName || '').toLowerCase();
+            return tag === 'input' || tag === 'textarea' || target.isContentEditable;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!isAdmin) return;
+            if (isTextInput(e.target)) return;
+            if (e.ctrlKey && e.shiftKey && String(e.key || '').toLowerCase() === 'd') {
+                e.preventDefault();
+                toggleDevConsole();
+            }
+        });
+
+        if (isAdmin) {
+            loadDevSettings();
         }
 
         function isDrawingTool(tool) {
@@ -6441,11 +6936,27 @@
                     else if(currentTool === 'grass') grassMap.push(newRect);
                     else if(currentTool === 'interact') {
                         const type = prompt("Tipo (msg, item, both)?", "msg");
-                        const msgs = prompt("Mensagens (separadas por |):", "Olá!");
+                        const msgsRaw = prompt("Mensagens (separadas por |):", "Olá!");
                         const img = prompt("URL da Imagem (opcional):");
+                        const flagRaw = prompt("Flag ID (opcional, p/ unicidade fixa):", "");
+                        const flagId = (flagRaw && String(flagRaw).trim()) ? String(flagRaw).trim() : '';
                         let item = null, qty = 0;
-                        if(type === 'item' || type === 'both') { item = prompt("ID do Item:"); qty = parseInt(prompt("Qtd:", "1")); }
-                        interactsMap.push({ ...newRect, type, messages: msgs.split('|'), image: img, itemId: item, qty });
+                        let givesKeyItem = false;
+                        let givesUnique = false;
+                        if(type === 'item' || type === 'both') {
+                            item = prompt("ID do Item:");
+                            qty = Math.max(1, parseInt(prompt("Qtd:", "1"), 10) || 1);
+                            givesKeyItem = confirm('Recompensa e item-chave?');
+                            if (givesKeyItem) {
+                                givesUnique = confirm('Recompensa unica?');
+                            }
+                        }
+                        const msgs = (msgsRaw === null || msgsRaw === undefined) ? '' : String(msgsRaw);
+                        const payload = { ...newRect, type, messages: msgs.split('|'), image: img, itemId: item, qty };
+                        if (flagId) payload.flagId = flagId;
+                        if (givesKeyItem) payload.givesKeyItem = true;
+                        if (givesUnique) payload.givesUnique = true;
+                        interactsMap.push(payload);
                     }
                     else if(currentTool === 'object') {
                         const zMode = confirm('Objeto fica sempre acima do jogador?') ? 'above' : 'normal';

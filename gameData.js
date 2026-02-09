@@ -54,9 +54,8 @@ const TypeChart = {
     
     // SKY: Strong against Forest (wind cuts), Beast (aerial advantage), Aqua (evaporate), weak to Earth (grounded)
     [EntityType.SKY]: { 
-        [EntityType.FOREST]: 2, 
+        [EntityType.FOREST]: 2,
         [EntityType.BEAST]: 2,
-        [EntityType.AQUA]: 2,
         [EntityType.SKY]: 0.5,
         [EntityType.EARTH]: 0.5, 
         [EntityType.METAL]: 0.5 
@@ -101,8 +100,6 @@ const TypeChart = {
     // VENOM: Strong against Forest (poison plants), Beast (toxins), Mystic (corrupts), weak to Earth (absorbs), Shadow
     [EntityType.VENOM]: { 
         [EntityType.FOREST]: 2, 
-        [EntityType.BEAST]: 2,
-        [EntityType.MYSTIC]: 2,
         [EntityType.VENOM]: 0.5,
         [EntityType.EARTH]: 0.5, 
         [EntityType.SHADOW]: 0.5 
@@ -118,8 +115,8 @@ const MOVES_LIBRARY = {
     'rend': { id: 'rend', name: 'Rend', type: MoveType.ATTACK, category: 'physical', power: 70, cost: 3, icon: '🔪', element: EntityType.BEAST },
     'star_burst': { id: 'star_burst', name: 'Star Burst', type: MoveType.ATTACK, category: 'special', power: 60, cost: 3, icon: '⭐', element: EntityType.BEAST },
     'triple_strike': { id: 'triple_strike', name: 'Triple Strike', type: MoveType.ATTACK, category: 'special', power: 80, cost: 4, icon: '🔺', element: EntityType.BEAST },
-    'primal_roar': { id: 'primal_roar', name: 'Primal Roar', type: MoveType.ATTACK, category: 'special', power: 150, cost: 8, icon: '🦁', element: EntityType.BEAST },
-    'rampage': { id: 'rampage', name: 'Rampage', type: MoveType.ATTACK, category: 'physical', power: 150, cost: 8, icon: '💥', element: EntityType.BEAST },
+    'primal_roar': { id: 'primal_roar', name: 'Primal Roar', type: MoveType.ATTACK, category: 'special', power: 120, cost: 6, icon: '🦁', element: EntityType.BEAST },
+    'rampage': { id: 'rampage', name: 'Rampage', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 6, icon: '💥', element: EntityType.BEAST },
     'body_crash': { id: 'body_crash', name: 'Body Crash', type: MoveType.ATTACK, category: 'physical', power: 85, cost: 4, icon: '🏋️', element: EntityType.BEAST },
 
     // --- FLAME (Fire) ---
@@ -128,8 +125,8 @@ const MOVES_LIBRARY = {
     'blazing_fist': { id: 'blazing_fist', name: 'Blazing Fist', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 3, icon: '🥊', element: EntityType.FLAME },
     'flame_spiral': { id: 'flame_spiral', name: 'Flame Spiral', type: MoveType.ATTACK, category: 'special', power: 35, cost: 1, icon: '🌀', element: EntityType.FLAME },
     'phoenix_charge': { id: 'phoenix_charge', name: 'Phoenix Charge', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 6, icon: '🧨', element: EntityType.FLAME },
-    'scorching_wave': { id: 'scorching_wave', name: 'Scorching Wave', type: MoveType.ATTACK, category: 'special', power: 95, cost: 5, icon: '♨️', element: EntityType.FLAME },
-    'magma_burst': { id: 'magma_burst', name: 'Magma Burst', type: MoveType.ATTACK, category: 'special', power: 110, cost: 5, icon: '🌋', element: EntityType.FLAME },
+    'scorching_wave': { id: 'scorching_wave', name: 'Scorching Wave', type: MoveType.ATTACK, category: 'special', power: 90, cost: 4, icon: '♨️', element: EntityType.FLAME },
+    'magma_burst': { id: 'magma_burst', name: 'Magma Burst', type: MoveType.ATTACK, category: 'special', power: 95, cost: 5, icon: '🌋', element: EntityType.FLAME },
     'burning_wheel': { id: 'burning_wheel', name: 'Burning Wheel', type: MoveType.ATTACK, category: 'physical', power: 60, cost: 3, icon: '🎡', element: EntityType.FLAME },
 
     // --- AQUA (Water/Ice) ---
@@ -140,9 +137,9 @@ const MOVES_LIBRARY = {
     'cascade': { id: 'cascade', name: 'Cascade', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 4, icon: '🌊', element: EntityType.AQUA },
     'wave_rider': { id: 'wave_rider', name: 'Wave Rider', type: MoveType.ATTACK, category: 'special', power: 90, cost: 4, icon: '🏄', element: EntityType.AQUA },
     'whirlpool_tail': { id: 'whirlpool_tail', name: 'Whirlpool Tail', type: MoveType.ATTACK, category: 'physical', power: 90, cost: 4, icon: '🐋', element: EntityType.AQUA },
-    'tidal_surge': { id: 'tidal_surge', name: 'Tidal Surge', type: MoveType.ATTACK, category: 'special', power: 110, cost: 5, icon: '💧', element: EntityType.AQUA },
+    'tidal_surge': { id: 'tidal_surge', name: 'Tidal Surge', type: MoveType.ATTACK, category: 'special', power: 95, cost: 5, icon: '💧', element: EntityType.AQUA },
     'ice_shard': { id: 'ice_shard', name: 'Ice Shard', type: MoveType.ATTACK, category: 'physical', power: 40, cost: 1, icon: '🧊', element: EntityType.AQUA },
-    'blizzard_storm': { id: 'blizzard_storm', name: 'Blizzard Storm', type: MoveType.ATTACK, category: 'special', power: 110, cost: 5, icon: '🌬️', element: EntityType.AQUA },
+    'blizzard_storm': { id: 'blizzard_storm', name: 'Blizzard Storm', type: MoveType.ATTACK, category: 'special', power: 95, cost: 5, icon: '🌬️', element: EntityType.AQUA },
 
     // --- FOREST (Nature/Plants/Insects) ---
     'root_lash': { id: 'root_lash', name: 'Root Lash', type: MoveType.ATTACK, category: 'physical', power: 45, cost: 2, icon: '🍃', element: EntityType.FOREST },
@@ -164,9 +161,9 @@ const MOVES_LIBRARY = {
     'voltage_fist': { id: 'voltage_fist', name: 'Voltage Fist', type: MoveType.ATTACK, category: 'physical', power: 75, cost: 3, icon: '🤜', element: EntityType.SKY },
     'lightning_strike': { id: 'lightning_strike', name: 'Lightning Strike', type: MoveType.ATTACK, category: 'special', power: 90, cost: 4, icon: '🌩️', element: EntityType.SKY },
     'tempest': { id: 'tempest', name: 'Tempest', type: MoveType.ATTACK, category: 'special', power: 110, cost: 5, icon: '⛈️', element: EntityType.SKY },
-    'thunder_crash': { id: 'thunder_crash', name: 'Thunder Crash', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 6, icon: '⚡️', element: EntityType.SKY },
+    'thunder_crash': { id: 'thunder_crash', name: 'Thunder Crash', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 5, icon: '⚡️', element: EntityType.SKY },
     'aerial_blade': { id: 'aerial_blade', name: 'Aerial Blade', type: MoveType.ATTACK, category: 'special', power: 75, cost: 3, icon: '🌬️', element: EntityType.SKY },
-    'cyclone': { id: 'cyclone', name: 'Cyclone', type: MoveType.ATTACK, category: 'special', power: 110, cost: 5, icon: '🌪️', element: EntityType.SKY },
+    'cyclone': { id: 'cyclone', name: 'Cyclone', type: MoveType.ATTACK, category: 'special', power: 95, cost: 5, icon: '🌪️', element: EntityType.SKY },
 
     // --- EARTH (Ground/Rock) ---
     'dirt_toss': { id: 'dirt_toss', name: 'Dirt Toss', type: MoveType.ATTACK, category: 'special', power: 20, cost: 1, icon: '💩', element: EntityType.EARTH },
@@ -217,8 +214,8 @@ const MOVES_LIBRARY = {
     'acid_spray': { id: 'acid_spray', name: 'Acid Spray', type: MoveType.ATTACK, category: 'special', power: 40, cost: 1, icon: '🧪', element: EntityType.VENOM },
     'toxic_wave': { id: 'toxic_wave', name: 'Toxic Wave', type: MoveType.ATTACK, category: 'special', power: 65, cost: 3, icon: '💩', element: EntityType.VENOM },
     'venom_fang': { id: 'venom_fang', name: 'Venom Fang', type: MoveType.ATTACK, category: 'physical', power: 80, cost: 4, icon: '☠️', element: EntityType.VENOM },
-    'poison_burst': { id: 'poison_burst', name: 'Poison Burst', type: MoveType.ATTACK, category: 'special', power: 90, cost: 4, icon: '💣', element: EntityType.VENOM },
-    'toxic_shot': { id: 'toxic_shot', name: 'Toxic Shot', type: MoveType.ATTACK, category: 'physical', power: 120, cost: 6, icon: '🗑️', element: EntityType.VENOM },
+    'poison_burst': { id: 'poison_burst', name: 'Poison Burst', type: MoveType.ATTACK, category: 'special', power: 85, cost: 4, icon: '💣', element: EntityType.VENOM },
+    'toxic_shot': { id: 'toxic_shot', name: 'Toxic Shot', type: MoveType.ATTACK, category: 'physical', power: 100, cost: 5, icon: '🗑️', element: EntityType.VENOM },
 
     // --- STATUS (HEAL & DEFEND) ---
     'quick_mend': { id: 'quick_mend', name: 'Quick Mend', type: MoveType.HEAL, category: 'status', power: 50, cost: 3, icon: '💚', element: EntityType.MYSTIC },

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0f16;
+            --panel: rgba(16, 23, 34, 0.9);
+            --border: rgba(255,255,255,0.1);
+            --text: #e5e7eb;
+            --muted: #9aa3b2;
+            --accent: #f1c40f;
+            --danger: #e74c3c;
+            --ok: #2ecc71;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(5, 8, 12, 0.85);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 1px;
+            color: var(--accent);
+        }
+        header .meta {
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .container {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+        }
+        .card h2 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #cbd5f5;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        label { font-size: 12px; color: var(--muted); }
+        input, select {
+            background: #0b1220;
+            border: 1px solid #334155;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        input[type="number"] { width: 120px; }
+        .btn {
+            background: #111827;
+            border: 1px solid rgba(255,255,255,0.12);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .btn:hover { border-color: rgba(255,255,255,0.25); }
+        .btn.ok { border-color: rgba(46,204,113,0.6); color: #b7f7d2; }
+        .btn.warn { border-color: rgba(241,196,15,0.6); color: #ffeaa7; }
+        .btn.danger { border-color: rgba(231,76,60,0.6); color: #ffd0cc; }
+        .btn.link { background: transparent; }
+        .inline { display: inline-flex; align-items: center; gap: 8px; }
+        .list { max-height: 280px; overflow: auto; font-family: 'Fira Code', monospace; font-size: 12px; }
+        .log-item { padding: 8px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+        .log-item:last-child { border-bottom: none; }
+        .log-meta { color: var(--muted); }
+        .status { font-size: 12px; color: var(--muted); }
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Dev Console</h1>
+            <div class="meta">Usuario: <%= username %></div>
+        </div>
+        <div class="row">
+            <a class="btn link" href="/city?userId=<%= userId %>">Voltar ao jogo</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>Settings</h2>
+            <div class="row" style="align-items:center; gap:16px;">
+                <label class="inline"><input type="checkbox" id="devModeChk"> Dev mode</label>
+                <label class="inline"><input type="checkbox" id="panelOpenChk"> Painel aberto</label>
+                <label class="inline"><input type="checkbox" id="debugHudChk"> Debug HUD</label>
+                <button class="btn ok" onclick="saveSettings()">Salvar</button>
+            </div>
+            <div class="status" id="settingsStatus"></div>
+        </div>
+
+        <div class="card">
+            <h2>Acoes Rapidas</h2>
+            <div class="row" style="align-items:center;">
+                <button class="btn ok" onclick="healTeam()">Curar time</button>
+                <button class="btn" onclick="refreshLogs()">Atualizar logs</button>
+                <button class="btn danger" onclick="clearLogs()">Limpar logs</button>
+            </div>
+            <div class="row" style="margin-top:10px;">
+                <input type="number" id="moneyDelta" placeholder="Delta dinheiro" />
+                <button class="btn" onclick="applyMoneyDelta()">Aplicar</button>
+            </div>
+            <div class="row" style="margin-top:10px;">
+                <input type="number" id="moneySet" placeholder="Set dinheiro" />
+                <button class="btn warn" onclick="applyMoneySet()">Definir</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Inventario</h2>
+            <div class="row">
+                <input type="text" id="itemId" placeholder="itemId" />
+                <input type="number" id="itemQty" placeholder="qty" value="1" />
+                <button class="btn ok" onclick="grantItem()">Dar item</button>
+                <button class="btn danger" onclick="revokeItem()">Remover item</button>
+            </div>
+            <div class="status" id="inventoryStatus"></div>
+        </div>
+
+        <div class="card">
+            <h2>Logs</h2>
+            <div class="list" id="logsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const userId = "<%= userId %>";
+        const initialSettings = <%- JSON.stringify(settings || {}) %>;
+
+        function setSettingsUI(settings) {
+            document.getElementById('devModeChk').checked = !!settings.devMode;
+            document.getElementById('panelOpenChk').checked = !!settings.panelOpen;
+            document.getElementById('debugHudChk').checked = !!settings.showDebugHud;
+        }
+
+        async function fetchSettings() {
+            const res = await fetch(`/api/dev/settings?userId=${encodeURIComponent(userId)}`);
+            const js = await res.json();
+            if (js && js.success) setSettingsUI(js.settings || {});
+        }
+
+        async function saveSettings() {
+            const settings = {
+                devMode: document.getElementById('devModeChk').checked,
+                panelOpen: document.getElementById('panelOpenChk').checked,
+                showDebugHud: document.getElementById('debugHudChk').checked
+            };
+            const res = await fetch('/api/dev/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, settings })
+            });
+            const js = await res.json();
+            const status = document.getElementById('settingsStatus');
+            status.textContent = js && js.success ? 'Salvo.' : (js.error || 'Erro ao salvar.');
+        }
+
+        async function refreshLogs() {
+            const res = await fetch(`/api/dev/logs?userId=${encodeURIComponent(userId)}&limit=50`);
+            const js = await res.json();
+            const host = document.getElementById('logsList');
+            host.innerHTML = '';
+            if (!js || !js.success || !Array.isArray(js.logs)) {
+                host.textContent = 'Falha ao carregar logs.';
+                return;
+            }
+            if (js.logs.length === 0) {
+                host.textContent = 'Sem logs.';
+                return;
+            }
+            js.logs.forEach(l => {
+                const div = document.createElement('div');
+                div.className = 'log-item';
+                const dt = new Date(l.createdAt || Date.now());
+                const meta = l.meta ? JSON.stringify(l.meta) : '';
+                div.innerHTML = `<div>${l.action || 'log'}</div><div class="log-meta">${dt.toLocaleString()} ${meta}</div>`;
+                host.appendChild(div);
+            });
+        }
+
+        async function clearLogs() {
+            await fetch('/api/dev/logs/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            refreshLogs();
+        }
+
+        async function healTeam() {
+            await fetch('/api/heal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+        }
+
+        async function applyMoneyDelta() {
+            const delta = document.getElementById('moneyDelta').value;
+            await fetch('/api/dev/money', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, delta })
+            });
+        }
+
+        async function applyMoneySet() {
+            const set = document.getElementById('moneySet').value;
+            await fetch('/api/dev/money', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, set })
+            });
+        }
+
+        async function grantItem() {
+            const itemId = document.getElementById('itemId').value;
+            const qty = document.getElementById('itemQty').value || 1;
+            const res = await fetch('/api/dev/inventory/grant', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, itemId, qty })
+            });
+            const js = await res.json();
+            const status = document.getElementById('inventoryStatus');
+            status.textContent = js && js.success ? 'Item adicionado.' : (js.error || 'Erro ao adicionar.');
+        }
+
+        async function revokeItem() {
+            const itemId = document.getElementById('itemId').value;
+            const qty = document.getElementById('itemQty').value || 1;
+            const res = await fetch('/api/dev/inventory/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, itemId, qty })
+            });
+            const js = await res.json();
+            const status = document.getElementById('inventoryStatus');
+            status.textContent = js && js.success ? 'Item removido.' : (js.error || 'Erro ao remover.');
+        }
+
+        setSettingsUI(initialSettings || {});
+        refreshLogs();
+    </script>
+</body>
+</html>

@@ -6,20 +6,50 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
-const { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin } = require('./models');
+const { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog } = require('./models');
 const { processPngBuffer } = require('./lib/chromaKey');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
 
 const SKIN_COUNT = 12; 
-const GLOBAL_GRASS_CHANCE = 0.35;
+const GLOBAL_GRASS_CHANCE = 0; // Encontros selvagens desativados (substituídos por contratos)
 
-// === NOVO SISTEMA DE ENERGIA (TIPO ELIXIR/MANA) ===
+// === SISTEMA DE ENERGIA BALANCEADO ===
 const ENERGY_CONFIG = {
     maxEnergy: 10,           // Máximo de energia por combatente
-    energyPerTurn: 3,        // Energia recebida no início de cada turno
-    restBonus: 4,            // Bônus extra ao usar REST
+    energyPerTurn: 1,        // Regeneração lenta para forçar escolhas estratégicas
+    restBonus: 2,            // REST não pode ser spam infinito
 };
+
+// Contratos de batalha (desafios opt-in em vez de encontros selvagens)
+const CONTRACTS = [
+    { id: 'spar_easy',   name: 'Treino Fácil',   levelOffset: -1, rewardMoney: 50 },
+    { id: 'spar_medium', name: 'Treino Médio',   levelOffset: 0,  rewardMoney: 120 },
+    { id: 'spar_hard',   name: 'Treino Difícil', levelOffset: 2,  rewardMoney: 250 }
+];
+
+function getContractById(id) {
+    const clean = String(id || '').trim();
+    return CONTRACTS.find(c => c.id === clean) || null;
+}
+
+async function getOrCreateDevSettings(userId) {
+    if (!userId) return null;
+    let settings = await DevSettings.findOne({ userId });
+    if (!settings) {
+        settings = await DevSettings.create({ userId, devMode: false, panelOpen: true, showDebugHud: true, updatedAt: Date.now() });
+    }
+    return settings;
+}
+
+async function recordDevLog(userId, action, meta = {}) {
+    try {
+        if (!userId) return;
+        await DevLog.create({ userId, action: String(action || ''), meta: meta || {}, createdAt: Date.now() });
+    } catch (_) {
+        // silencioso: logs nao devem quebrar o fluxo
+    }
+}
 
 // --- STARTER (criatura inicial obtida via NPC no jogo) ---
 const STARTER_FLAG_ID = 'starter_chosen';
@@ -1316,6 +1346,8 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
         interactServiceType,
         interactHealDialogue,
         interactShopItemsJson,
+        interactBoxPrice,
+        interactBoxRewardsJson,
         interactStarterOptionsJson,
 
         conditionalDialoguesJson
@@ -1377,6 +1409,30 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
                         .filter(x => x.itemId && x.price > 0);
                 } catch (_) {
                     return [];
+                }
+            })(),
+
+            box: (() => {
+                const price = Math.max(0, parseInt(interactBoxPrice, 10) || 0);
+                if (!interactBoxRewardsJson) return { price, rewards: [] };
+                try {
+                    const raw = JSON.parse(interactBoxRewardsJson);
+                    const list = Array.isArray(raw) ? raw : [];
+                    const rewards = list
+                        .map(r => ({
+                            baseId: r && r.baseId ? String(r.baseId).trim() : '',
+                            weight: Math.max(0, parseFloat(r && r.weight) || 0),
+                            minLevel: Math.max(1, parseInt(r && r.minLevel, 10) || 1),
+                            maxLevel: Math.max(1, parseInt(r && r.maxLevel, 10) || 1)
+                        }))
+                        .filter(r => r.baseId && r.weight > 0)
+                        .map(r => ({
+                            ...r,
+                            maxLevel: Math.max(r.minLevel, r.maxLevel)
+                        }));
+                    return { price, rewards };
+                } catch (_) {
+                    return { price, rewards: [] };
                 }
             })(),
 
@@ -1806,6 +1862,89 @@ app.post('/api/npc/interact', async (req, res) => {
             });
         }
 
+        if (serviceType === 'box') {
+            const boxCfg = interact.box || {};
+            const price = Math.max(0, parseInt(boxCfg.price, 10) || 0);
+            const rewardsRaw = Array.isArray(boxCfg.rewards) ? boxCfg.rewards : [];
+            const rewards = rewardsRaw
+                .map(r => ({
+                    baseId: r && r.baseId ? String(r.baseId).trim() : '',
+                    weight: Math.max(0, parseFloat(r && r.weight) || 0),
+                    minLevel: Math.max(1, parseInt(r && r.minLevel, 10) || 1),
+                    maxLevel: Math.max(1, parseInt(r && r.maxLevel, 10) || 1)
+                }))
+                .filter(r => r.baseId && r.weight > 0)
+                .map(r => ({ ...r, maxLevel: Math.max(r.minLevel, r.maxLevel) }));
+
+            if (!rewards.length) {
+                return res.json({ success: false, error: 'box_not_configured', text: 'Esta box não tem prêmios configurados.' });
+            }
+
+            if ((user.money || 0) < price) {
+                const missing = Math.max(0, price - (user.money || 0));
+                const msg = interact.needItemDialogue || `Faltam ${missing} moedas para abrir esta box (custa ${price}).`;
+                return res.json({ success: false, error: 'not_enough_money', text: msg, money: user.money });
+            }
+
+            if (price > 0) {
+                user.money = Math.max(0, (user.money || 0) - price);
+            }
+
+            const total = rewards.reduce((sum, r) => sum + r.weight, 0);
+            let roll = Math.random() * total;
+            let chosen = rewards[0];
+            for (let r of rewards) {
+                if (roll < r.weight) { chosen = r; break; }
+                roll -= r.weight;
+            }
+
+            const base = await BaseEntity.findOne({ id: chosen.baseId }).lean();
+            if (!base) {
+                return res.json({ success: false, error: 'invalid_reward', text: 'Prêmio configurado não existe no banco.' });
+            }
+
+            const levelMin = Math.max(1, chosen.minLevel || 1);
+            const levelMax = Math.max(levelMin, chosen.maxLevel || levelMin);
+            const level = levelMin === levelMax ? levelMin : (levelMin + Math.floor(Math.random() * (levelMax - levelMin + 1)));
+
+            const stats = calculateStats(base.baseStats, level);
+            let moves = base.movePool ? base.movePool.filter(m => m.level <= level).map(m => m.moveId) : [];
+            if (!moves.length) moves = ['strike'];
+            const newEntity = { baseId: base.id, nickname: base.name, level, currentHp: stats.hp, stats, moves, learnedMoves: moves, xp: 0 };
+            let storage = 'pc';
+            if (!Array.isArray(user.entityTeam)) user.entityTeam = [];
+            if (!Array.isArray(user.pc)) user.pc = [];
+            if (user.entityTeam.length < 6) { user.entityTeam.push(newEntity); storage = 'team'; }
+            else { user.pc.push(newEntity); storage = 'pc'; }
+
+            if (!Array.isArray(user.dex)) user.dex = [];
+            if (!user.dex.includes(base.id)) user.dex.push(base.id);
+
+            await user.save();
+
+            const whereText = storage === 'team' ? 'seu time' : 'o PC';
+            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
+            const defaultText = `Você abriu a box e recebeu ${base.name} (nível ${level})! Foi enviado para ${whereText}.`;
+            const finalText = dialogueText !== null ? `${dialogueText}
+
+${defaultText}` : defaultText;
+
+            return res.json({
+                success: true,
+                text: finalText,
+                action: {
+                    type: 'box_result',
+                    prize: { baseId: base.id, name: base.name, level, storage },
+                    spent: price
+                },
+                npcMoved,
+                bag: user.bag,
+                keyItems: user.keyItems,
+                storyFlags: user.storyFlags,
+                money: user.money
+            });
+        }
+
         const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
         const successText = dialogueText !== null ? dialogueText : (giveMsg || 'Feito.');
         return res.json({
@@ -2060,6 +2199,14 @@ app.post('/api/npc/shop/buy', async (req, res) => {
 });
 
 // --- CRIAÇÃO DE NPC ---
+app.get('/admin/dev', async (req, res) => {
+    const { userId } = req.query;
+    const user = await User.findById(userId);
+    if (!user || !user.isAdmin) return res.redirect('/');
+    const settings = await getOrCreateDevSettings(user._id);
+    res.render('dev', { userId: user._id, username: user.username, settings });
+});
+
 app.get('/lab', async (req, res) => {
     const { userId } = req.query;
     const user = await User.findById(userId);
@@ -2805,6 +2952,7 @@ app.post('/api/dev/inventory/grant', async (req, res) => {
         if (!result.ok) return res.status(400).json({ success: false, error: result.reason || 'Falha ao adicionar item' });
 
         await user.save();
+        await recordDevLog(admin._id, 'inventory_grant', { targetUserId: user._id, itemId: id, qty: amount });
         res.json({ success: true, bag: user.bag, keyItems: user.keyItems });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Erro ao dar item.' });
@@ -2831,12 +2979,139 @@ app.post('/api/dev/inventory/revoke', async (req, res) => {
         const result = removeItemFromUser(user, id, amount);
         if (!result.ok) return res.status(400).json({ success: false, error: result.reason || 'Falha ao remover item' });
         await user.save();
+        await recordDevLog(admin._id, 'inventory_revoke', { targetUserId: user._id, itemId: id, qty: amount });
         res.json({ success: true, bag: user.bag, keyItems: user.keyItems });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Erro ao remover item.' });
     }
 });
-app.post('/api/heal', async (req, res) => { const { userId } = req.body; const user = await User.findById(userId); if (!user) return res.status(404).json({ error: 'Usuário não encontrado' }); let count = 0; for (let p of user.entityTeam) { const base = await BaseEntity.findOne({ id: p.baseId }); if (base) { p.stats = calculateStats(base.baseStats, p.level); p.currentHp = p.stats.hp; count++; } } await user.save(); res.json({ success: true, message: `${count} Monstros curados!` }); });
+
+// Dev/Admin: ajustar dinheiro do jogador
+app.post('/api/dev/money', async (req, res) => {
+    try {
+        const { userId, targetUserId, delta, set } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatorio' });
+        const admin = await User.findById(userId);
+        if (!admin || !admin.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissao' });
+
+        const tgtId = String(targetUserId || userId).trim();
+        const user = await User.findById(tgtId);
+        if (!user) return res.status(404).json({ success: false, error: 'Usuario alvo nao encontrado' });
+
+        let newMoney = user.money || 0;
+        if (set !== undefined && set !== null && set !== '') {
+            const val = parseInt(set, 10);
+            newMoney = Number.isFinite(val) ? Math.max(0, val) : newMoney;
+        } else {
+            const d = parseInt(delta, 10);
+            newMoney = Number.isFinite(d) ? Math.max(0, newMoney + d) : newMoney;
+        }
+
+        user.money = newMoney;
+        await user.save();
+        await recordDevLog(admin._id, 'money_update', { targetUserId: user._id, money: newMoney });
+        res.json({ success: true, money: user.money });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao atualizar dinheiro.' });
+    }
+});
+
+// Dev/Admin: settings
+app.get('/api/dev/settings', async (req, res) => {
+    try {
+        const { userId } = req.query || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatorio' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissao' });
+        const settings = await getOrCreateDevSettings(user._id);
+        res.json({ success: true, settings });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao carregar settings.' });
+    }
+});
+
+app.post('/api/dev/settings', async (req, res) => {
+    try {
+        const { userId, settings } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatorio' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissao' });
+
+        const allowed = ['devMode', 'panelOpen', 'showDebugHud'];
+        const patch = {};
+        allowed.forEach(k => {
+            if (settings && Object.prototype.hasOwnProperty.call(settings, k)) {
+                patch[k] = !!settings[k];
+            }
+        });
+        patch.updatedAt = Date.now();
+
+        const doc = await DevSettings.findOneAndUpdate(
+            { userId: user._id },
+            { $set: patch },
+            { new: true, upsert: true }
+        );
+        await recordDevLog(user._id, 'settings_update', patch);
+        res.json({ success: true, settings: doc });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao salvar settings.' });
+    }
+});
+
+// Dev/Admin: logs
+app.get('/api/dev/logs', async (req, res) => {
+    try {
+        const { userId, targetUserId, limit } = req.query || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatorio' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissao' });
+
+        const tgtId = targetUserId ? String(targetUserId).trim() : String(user._id);
+        const lim = Math.min(200, Math.max(10, parseInt(limit, 10) || 50));
+        const logs = await DevLog.find({ userId: tgtId }).sort({ createdAt: -1 }).limit(lim).lean();
+        res.json({ success: true, logs });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao carregar logs.' });
+    }
+});
+
+app.post('/api/dev/logs/clear', async (req, res) => {
+    try {
+        const { userId, targetUserId } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatorio' });
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissao' });
+
+        const tgtId = targetUserId ? String(targetUserId).trim() : String(user._id);
+        await DevLog.deleteMany({ userId: tgtId });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao limpar logs.' });
+    }
+});
+app.post('/api/heal', async (req, res) => {
+    const { userId } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    // Busca todas as bases de uma vez para evitar N+1 queries
+    const baseIds = [...new Set(user.entityTeam.map(p => p.baseId).filter(Boolean))];
+    const bases = await BaseEntity.find({ id: { $in: baseIds } }).lean();
+    const baseMap = new Map(bases.map(b => [b.id, b]));
+
+    let count = 0;
+    for (let p of user.entityTeam) {
+        const base = baseMap.get(p.baseId);
+        if (base) {
+            p.stats = calculateStats(base.baseStats, p.level);
+            p.currentHp = p.stats.hp;
+            count++;
+        }
+    }
+
+    await user.save();
+    res.json({ success: true, message: `${count} Monstros curados!` });
+});
 app.post('/api/equip-move', async (req, res) => { const { userId, entityId, moves } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const poke = user.entityTeam.id(entityId); if(!poke) return res.json({error: "Entity not found"}); if(moves.length < 1 || moves.length > 4) return res.json({error: "Deve ter entre 1 e 4 ataques."}); poke.moves = moves; await user.save(); res.json({success: true}); });
 app.post('/api/set-lead', async (req, res) => { const { userId, entityId } = req.body; const user = await User.findById(userId); if(!user) return res.json({error: "User not found"}); const index = user.entityTeam.findIndex(p => p._id.toString() === entityId); if (index > 0) { const poke = user.entityTeam.splice(index, 1)[0]; user.entityTeam.unshift(poke); await user.save(); res.json({success: true}); } else { res.json({success: true}); } });
 app.post('/api/abandon-entity', async (req, res) => { const { userId, entityId } = req.body; const user = await User.findById(userId); if(!user) return res.json({ error: 'User not found' }); if(user.entityTeam.length <= 1) return res.json({ error: 'Não pode abandonar o último monstro.' }); const index = user.entityTeam.findIndex(p => p._id.toString() === entityId); if(index === -1) return res.json({ error: 'Entity not found' }); user.entityTeam.splice(index, 1); await user.save(); res.json({ success: true }); });
@@ -2912,6 +3187,7 @@ app.post('/api/use-item', async (req, res) => {
             const oldLevel = pokeTx.level || 1;
             pokeTx.level = Math.min(100, oldLevel + q);
             userTx.bag.levelUpCrystal = (userTx.bag.levelUpCrystal || 0) - q;
+            if (typeof userTx.markModified === 'function') userTx.markModified('bag');
 
             let base = await BaseEntity.findOne({ id: pokeTx.baseId }).session(session);
             if (base) {
@@ -3034,6 +3310,67 @@ app.post('/battle/wild', async (req, res) => {
         mapId: mapName
     }; 
     res.json({ battleId }); 
+});
+
+// Lista contratos disponíveis (desafios opt-in em vez de encontros aleatórios)
+app.get('/api/contracts', async (_req, res) => {
+    res.json({ contracts: CONTRACTS });
+});
+
+// Inicia batalha de contrato (PVE escalado)
+app.post('/battle/contract', async (req, res) => {
+    const { userId, contractId, currentMap, currentX, currentY } = req.body;
+    const contract = getContractById(contractId);
+    if (!contract) return res.status(400).json({ error: 'Contrato inválido' });
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.entityTeam || user.entityTeam.length === 0) return res.status(400).json({ error: 'Time vazio. Pegue seu starter.' });
+    const lead = user.entityTeam.find(p => p.currentHp > 0) || user.entityTeam[0];
+    if (!lead || lead.currentHp <= 0) return res.status(400).json({ error: 'Nenhum monstro apto para lutar.' });
+
+    const leadBase = await BaseEntity.findOne({ id: lead.baseId }).lean();
+    if (!leadBase) return res.status(404).json({ error: 'Base do jogador não encontrada' });
+    const p1 = userEntityToEntity(lead, leadBase); 
+    p1.playerName = user.username; 
+    p1.skin = user.skin;
+
+    // Escolhe inimigo aleatório do catálogo, com nível escalado
+    const sampled = await BaseEntity.aggregate([{ $sample: { size: 1 } }]);
+    const enemyBase = sampled && sampled[0] ? sampled[0] : null;
+    if (!enemyBase) return res.status(400).json({ error: 'Sem criaturas cadastradas.' });
+
+    const enemyLevel = Math.max(1, p1.level + (contract.levelOffset || 0));
+    const enemyStats = calculateStats(enemyBase.baseStats, enemyLevel);
+    const enemyMoves = pickDeterministicMovesFromPool(enemyBase.movePool, enemyLevel, 4, enemyBase.type);
+
+    const p2 = {
+        instanceId: 'contract_' + Date.now(),
+        baseId: enemyBase.id,
+        name: enemyBase.name,
+        type: enemyBase.type,
+        level: enemyLevel,
+        hp: enemyStats.hp,
+        maxHp: enemyStats.hp,
+        energy: enemyStats.energy,
+        maxEnergy: enemyStats.energy,
+        stats: enemyStats,
+        moves: enemyMoves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
+        sprite: enemyBase.sprite,
+        playerName: 'Desafio',
+        skin: 'char2',
+        status: null
+    };
+
+    const battleId = `contract_${contract.id}_${Date.now()}`;
+    let returnMapUrl = currentMap || 'city';
+
+    activeBattles[battleId] = { 
+        p1, p2, type: 'contract', userId: user._id, turn: 1, mode: 'manual', returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50,
+        contractReward: contract.rewardMoney || 0,
+        mapId: returnMapUrl
+    };
+    res.json({ battleId });
 });
 
 app.post('/battle/npc', async (req, res) => {
@@ -3488,54 +3825,32 @@ app.post('/api/turn', async (req, res) => {
                 if((user.bag.captureCube || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem Capture Cubes!' }); return res.json({ events }); } 
                 user.bag.captureCube--; threwCaptureCube = true; 
                 
-                // --- SISTEMA DE CAPTURA CRIATIVO ---
+                // --- SISTEMA DE CAPTURA SIMPLIFICADO ---
                 
-                // 1. CÁLCULO DE CHANCE MELHORADO
-                // HP baixo aumenta chance drasticamente
-                const hpFactor = Math.pow(1 - (p2.hp / p2.maxHp), 1.5); // Exponencial para HP muito baixo ser melhor
+                // Fatores simples e claros:
+                // 1. HP baixo (0-100% linear)
+                const hpPercent = p2.hp / p2.maxHp;
+                const hpBonus = 1 - hpPercent;
                 
-                // Status aumentam chance (envenenado/queimado/paralizado)
-                const statusBonus = p2.status ? 0.25 : 0;
+                // 2. Status dobra chances (recompensa estratégia)
+                const statusMultiplier = p2.status ? 2.0 : 1.0;
                 
-                // Nível relativo (capturar criaturas de nível similar é mais fácil)
-                const levelDiff = Math.abs(p1.level - p2.level);
-                const levelPenalty = Math.min(0.2, levelDiff * 0.02); // Máx 20% de penalidade
-                
-                // Raridade da criatura (catch rate base)
+                // 3. Raridade base
                 const baseChance = (p2.catchRate || 0.3);
                 
-                // Chance final
-                let captureChance = baseChance * (0.4 + (hpFactor * 0.6)) + statusBonus - levelPenalty;
-                captureChance = Math.max(0.05, Math.min(0.95, captureChance)); // Entre 5% e 95%
+                // Fórmula transparente
+                let captureChance = baseChance * (0.3 + (hpBonus * 0.7)) * statusMultiplier;
+                captureChance = Math.max(0.05, Math.min(0.98, captureChance));
                 
-                // 2. SISTEMA DE SHAKES (como Pokémon)
-                // Cada "shake" tem 25% de chance de falhar
-                let shakes = 0;
-                let captured = false;
-                const shakeChance = Math.sqrt(captureChance); // Raiz quadrada para suavizar
+                const captured = Math.random() < captureChance;
+                const chancePercent = Math.floor(captureChance * 100);
                 
-                for (let i = 0; i < 4; i++) {
-                    if (Math.random() < shakeChance) {
-                        shakes++;
-                    } else {
-                        break; // Escapou neste shake
-                    }
-                }
-                
-                // Se passar os 4 shakes, capturou
-                if (shakes >= 4) {
-                    captured = true;
-                }
-                
-                // 3. FEEDBACK VISUAL POR SHAKE
-                events.push({ type: 'CAPTURE_ATTEMPT', shakes: shakes, captured: captured, chance: Math.floor(captureChance * 100) });
-                
-                if (shakes >= 1) events.push({ type: 'MSG', text: '● Shake 1...' });
-                if (shakes >= 2) events.push({ type: 'MSG', text: '●● Shake 2...' });
-                if (shakes >= 3) events.push({ type: 'MSG', text: '●●● Shake 3...' });
-                if (shakes >= 4) events.push({ type: 'MSG', text: '●●●● Capturado!' });
+                // Feedback claro
+                events.push({ type: 'CAPTURE_ATTEMPT', captured, chance: chancePercent });
+                events.push({ type: 'MSG', text: `Chance de captura: ${chancePercent}%` });
                 
                 if (captured) { 
+                                        events.push({ type: 'MSG', text: '✓ Capturado com sucesso!' });
                     const activeP1Index = user.entityTeam.findIndex(p => p._id.toString() === p1.instanceId); 
                     if (activeP1Index !== -1) user.entityTeam[activeP1Index].currentHp = p1.hp; 
                     const newStats = calculateStats(p2.stats, p2.level); 
@@ -3546,16 +3861,10 @@ app.post('/api/turn', async (req, res) => {
                     if (!user.dex) user.dex = [];
                     if (!user.dex.includes(p2.baseId)) { user.dex.push(p2.baseId); }
                     await user.save(); delete activeBattles[battleId]; 
-                    return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwCaptureCube, shakes }); 
+                    return res.json({ events, finished: true, win: true, captured: true, sentToPC, winnerId: p1.instanceId, threw: threwCaptureCube });
                 } else { 
                     await user.save(); 
-                    const escapeMsgs = [
-                        `${p2.name} escapou do cubo!`,
-                        `Ah não! ${p2.name} quebrou o cubo!`,
-                        `${p2.name} se libertou!`,
-                        `Quase lá... ${p2.name} escapou!`
-                    ];
-                    events.push({ type: 'MSG', text: escapeMsgs[Math.min(shakes, 3)] });
+                    events.push({ type: 'MSG', text: `✗ ${p2.name} escapou! Estava com ${Math.floor(hpPercent*100)}% HP.` });
                     performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); 
                 } 
             } catch (e) { events.push({ type: 'MSG', text: 'Erro.' }); return res.json({ events }); } 
@@ -3631,6 +3940,19 @@ app.post('/api/turn', async (req, res) => {
                 delete activeBattles[battleId];
                 return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube });
             }
+
+            // Contrato (desafio opt-in): recompensa moedas fixa, sem time do NPC
+            if (battle.type === 'contract') {
+                events.push({ type: 'MSG', text: `${p2.name} desmaiou!` });
+                const user = await User.findById(battle.userId);
+                if (user && battle.contractReward) {
+                    user.money = (user.money || 0) + battle.contractReward;
+                    await user.save();
+                    events.push({ type: 'MSG', text: `Recompensa do contrato: ${battle.contractReward} moedas.` });
+                }
+                delete activeBattles[battleId];
+                return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube });
+            }
             
             // Normal Battle - give XP
             let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30;
@@ -3684,30 +4006,49 @@ app.post('/api/turn', async (req, res) => {
                         } catch (e) {}
                         npcDefeatedId = npcIdStr;
                         if (npc && npc.reward && npc.reward.type !== 'none') {
-                            if (npc.reward.type === 'item') {
-                                ensureUserInventories(user);
-                                const itemId = normalizeItemId(npc.reward.value);
-                                const qty = Math.max(1, parseInt(npc.reward.qty, 10) || 1);
-                                const addRes = addItemToUser(user, itemId, qty, { keyItem: !!npc.reward.keyItem, unique: !!npc.reward.unique });
-                                if (addRes.ok) {
-                                    const msg = (addRes.storage === 'keyItems')
-                                        ? `Recebeu o item-chave ${itemId}!`
-                                        : `Recebeu ${qty}x ${itemId}!`;
-                                    events.push({ type: 'MSG', text: msg });
-                                } else if (addRes.reason === 'already_has_key_item') {
-                                    events.push({ type: 'MSG', text: `Você já tem o item-chave ${itemId}.` });
+                            const rewardIsUnique = !!npc.reward.unique;
+                            const rewardFlagId = `npc_reward_${npcIdStr}`;
+                            const rewardAlready = rewardIsUnique && readStoryFlag(user.storyFlags, rewardFlagId);
+
+                            if (rewardAlready) {
+                                events.push({ type: 'MSG', text: 'Recompensa já recebida.' });
+                            } else {
+                                let rewardGiven = false;
+
+                                if (npc.reward.type === 'item') {
+                                    ensureUserInventories(user);
+                                    const itemId = normalizeItemId(npc.reward.value);
+                                    const qty = Math.max(1, parseInt(npc.reward.qty, 10) || 1);
+                                    const addRes = addItemToUser(user, itemId, qty, { keyItem: !!npc.reward.keyItem, unique: !!npc.reward.unique });
+                                    if (addRes.ok) {
+                                        const msg = (addRes.storage === 'keyItems')
+                                            ? `Recebeu o item-chave ${itemId}!`
+                                            : `Recebeu ${qty}x ${itemId}!`;
+                                        events.push({ type: 'MSG', text: msg });
+                                        rewardGiven = true;
+                                    } else if (addRes.reason === 'already_has_key_item') {
+                                        events.push({ type: 'MSG', text: `Você já tem o item-chave ${itemId}.` });
+                                        rewardGiven = true;
+                                    }
+                                } else if (npc.reward.type === 'entity') {
+                                    const rewardBase = await BaseEntity.findOne({ id: npc.reward.value });
+                                    if (rewardBase) {
+                                        const rewardLvl = npc.reward.level || 1;
+                                        const rStats = calculateStats(rewardBase.baseStats, rewardLvl);
+                                        let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['strike'];
+                                        const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves };
+                                        if (user.entityTeam.length < 6) user.entityTeam.push(newPoke); else user.pc.push(newPoke);
+                                        if (!user.dex) user.dex = [];
+                                        if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); }
+                                        events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` });
+                                        rewardGiven = true;
+                                    }
                                 }
-                            } else if (npc.reward.type === 'entity') {
-                                const rewardBase = await BaseEntity.findOne({ id: npc.reward.value });
-                                if (rewardBase) {
-                                    const rewardLvl = npc.reward.level || 1;
-                                    const rStats = calculateStats(rewardBase.baseStats, rewardLvl);
-                                    let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['strike'];
-                                    const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves };
-                                    if (user.entityTeam.length < 6) user.entityTeam.push(newPoke); else user.pc.push(newPoke);
-                                    if (!user.dex) user.dex = [];
-                                    if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); }
-                                    events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` });
+
+                                if (rewardIsUnique && rewardGiven) {
+                                    user.storyFlags = user.storyFlags || {};
+                                    user.storyFlags[rewardFlagId] = true;
+                                    if (typeof user.markModified === 'function') user.markModified('storyFlags');
                                 }
                             }
                         }

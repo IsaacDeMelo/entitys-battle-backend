@@ -190,10 +190,12 @@ window.GlobalLoader = (() => {
                 #globalGameLoader {
                     position: fixed;
                     inset: 0;
-                    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0a0a0f 100%);
+                    background:
+                        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 55%),
+                        repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px),
+                        #0b1222;
                     z-index: 99999;
                     display: flex;
-                    flex-direction: column;
                     align-items: center;
                     justify-content: center;
                     transition: opacity 0.5s ease-out;
@@ -202,63 +204,69 @@ window.GlobalLoader = (() => {
                     opacity: 0;
                     pointer-events: none;
                 }
-                .loader-logo {
-                    font-family: 'Orbitron', 'Press Start 2P', cursive;
-                    font-size: 2.5rem;
-                    font-weight: 900;
-                    background: linear-gradient(135deg, #818cf8, #fbbf24);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    margin-bottom: 40px;
-                    letter-spacing: 3px;
-                    animation: pulse 2s ease-in-out infinite;
+                .loader-frame {
+                    width: min(420px, 90vw);
+                    background: linear-gradient(180deg, #314c7a 0%, #203457 100%);
+                    border: 4px solid #f4e9c7;
+                    border-radius: 6px;
+                    box-shadow: 0 0 0 2px #17223a, 0 12px 32px rgba(0,0,0,0.75);
+                    padding: 18px 16px 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    font-family: 'Press Start 2P', monospace;
+                    color: #f9f4de;
+                    letter-spacing: 1px;
                 }
-                .loader-spinner {
-                    width: 60px;
-                    height: 60px;
-                    border: 4px solid rgba(99, 102, 241, 0.1);
-                    border-top: 4px solid #6366f1;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin-bottom: 30px;
+                .loader-title {
+                    font-size: 0.85rem;
+                    text-align: center;
+                    text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+                }
+                .loader-sub {
+                    font-size: 0.6rem;
+                    text-align: center;
+                    color: #a8b7d4;
                 }
                 .loader-progress {
-                    width: 280px;
-                    height: 6px;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 3px;
+                    width: 100%;
+                    height: 12px;
+                    background: #101a2c;
+                    border: 2px solid #f4e9c7;
+                    border-radius: 4px;
                     overflow: hidden;
-                    margin-bottom: 15px;
+                    box-shadow: inset 0 2px 0 rgba(0,0,0,0.4);
                 }
                 .loader-progress-bar {
                     height: 100%;
-                    background: linear-gradient(90deg, #6366f1, #818cf8);
+                    background: linear-gradient(180deg, #ffe48a 0%, #f1b948 100%);
                     width: 0%;
-                    transition: width 0.3s ease-out;
-                    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+                    transition: width 0.2s steps(6, end);
                 }
                 .loader-text {
-                    color: #94a3b8;
-                    font-family: 'Inter', sans-serif;
-                    font-size: 0.85rem;
-                    letter-spacing: 1px;
+                    font-size: 0.55rem;
+                    text-align: center;
+                    color: #f3c969;
                 }
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
+                .loader-dots {
+                    display: inline-block;
+                    animation: dots 1s steps(4, end) infinite;
                 }
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; transform: scale(1); }
-                    50% { opacity: 0.8; transform: scale(1.05); }
+                @keyframes dots {
+                    0% { content: ''; }
+                    25% { content: '.'; }
+                    50% { content: '..'; }
+                    75% { content: '...'; }
                 }
             </style>
-            <div class="loader-logo">MMO-RPG</div>
-            <div class="loader-spinner"></div>
-            <div class="loader-progress">
-                <div class="loader-progress-bar" id="loaderProgressBar"></div>
+            <div class="loader-frame">
+                <div class="loader-title">PREPARANDO A AVENTURA</div>
+                <div class="loader-sub">CARREGANDO...</div>
+                <div class="loader-progress">
+                    <div class="loader-progress-bar" id="loaderProgressBar"></div>
+                </div>
+                <div class="loader-text" id="loaderProgressText">LOADING 0/0</div>
             </div>
-            <div class="loader-text" id="loaderProgressText">Carregando recursos...</div>
         `;
 
         document.body.appendChild(loaderElement);
@@ -286,7 +294,7 @@ window.GlobalLoader = (() => {
         if (!progressBar || !progressText) return;
         const percent = Math.round((current / total) * 100);
         progressBar.style.width = percent + '%';
-        progressText.textContent = `Carregando... ${current}/${total}`;
+        progressText.textContent = `LOADING ${current}/${total}`;
     }
 
     return { create, show, hide, updateProgress };
@@ -294,33 +302,39 @@ window.GlobalLoader = (() => {
 
 // Inicializar preload apenas na primeira carga da sessão
 (function() {
-    // Usa performance.navigation.type para detectar se é primeira carga
-    // Ou verifica se os assets já estão em sessionStorage
     const isFirstLoad = !sessionStorage.getItem('game_session_initialized');
-    
-    if (isFirstLoad && (performance.navigation.type === 0 || !performance.navigation)) {
-        window.addEventListener('DOMContentLoaded', async () => {
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        const bootGate = window.__bootGatePromise;
+        const hasBootGate = bootGate && typeof bootGate.then === 'function';
+        const shouldShow = isFirstLoad || hasBootGate;
+
+        if (shouldShow) GlobalLoader.show();
+
+        if (isFirstLoad && (performance.navigation.type === 0 || !performance.navigation)) {
             console.log('[PRELOAD] Primeira carga detectada! Carregando assets...');
-            GlobalLoader.show();
-            
             const assets = GameCache.getCriticalAssets();
             await GameCache.preloadBatch(assets, (loaded, total) => {
                 GlobalLoader.updateProgress(loaded, total);
             });
-            
             sessionStorage.setItem('game_session_initialized', 'true');
-            
+        }
+
+        if (hasBootGate) {
+            try {
+                await bootGate;
+            } catch (_) {}
+        }
+
+        if (shouldShow) {
             setTimeout(() => {
                 GlobalLoader.hide();
-            }, 300);
-        }, { once: true });
-    } else {
-        // Sessão já inicializada, esconde loader imediatamente
-        window.addEventListener('DOMContentLoaded', () => {
+            }, 200);
+        } else {
             const loader = document.getElementById('globalGameLoader');
             if (loader) loader.style.display = 'none';
-        }, { once: true });
-    }
+        }
+    }, { once: true });
 })();
 
 // =============================================================================

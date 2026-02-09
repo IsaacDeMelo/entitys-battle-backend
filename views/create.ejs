@@ -7,38 +7,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { 
-            --bg: #0f172a; --panel: #1e293b; --accent: #3498db; --text: #e2e8f0; 
+            --bg: #0b1220; --panel: #121a2a; --panel-soft: rgba(255,255,255,0.03); --accent: #3b82f6; --text: #e2e8f0; 
             --danger: #e74c3c; --success: #2ecc71; --warning: #f1c40f;
             --beast: #a8a878; --flame: #f08030; --aqua: #6890f0; --forest: #78c850;
             --sky: #a890f0; --earth: #e0c068; --mystic: #f85888; --shadow: #705898;
             --metal: #b8b8d0; --venom: #a040a0;
         }
         * { box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; padding: 20px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #333; margin-bottom: 20px; }
-        h1 { margin: 0; color: var(--warning); text-shadow: 0 0 10px rgba(241, 196, 15, 0.3); font-size: 1.8rem; }
-        .back-btn { text-decoration: none; color: #94a3b8; font-weight: bold; border: 1px solid #333; padding: 8px 15px; border-radius: 8px; transition: 0.2s; background: rgba(0,0,0,0.3); }
-        .back-btn:hover { background: #333; color: #fff; border-color: #555; }
-        .main-layout { display: flex; gap: 20px; height: 100%; overflow: hidden; }
-        .sidebar { width: 340px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; }
-        .sidebar-header { padding: 15px; background: rgba(255,255,255,0.05); font-weight: bold; text-align: center; border-bottom: 1px solid #333; letter-spacing: 1px; }
+        body { background: radial-gradient(circle at top, #0f172a 0%, #0b1220 55%, #0a0f1a 100%); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; padding: 20px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(8, 12, 20, 0.75); border-radius: 12px; margin-bottom: 16px; }
+        h1 { margin: 0; color: #e5e7eb; font-size: 1.4rem; letter-spacing: 1px; }
+        .header-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+        .meta-pill { font-size: 0.7rem; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); background: var(--panel-soft); color: #cbd5f5; letter-spacing: 0.4px; }
+        .back-btn { text-decoration: none; color: #cbd5f5; font-weight: bold; border: 1px solid rgba(255,255,255,0.12); padding: 8px 12px; border-radius: 10px; transition: 0.2s; background: rgba(15, 23, 42, 0.7); }
+        .back-btn:hover { background: rgba(30, 41, 59, 0.9); border-color: rgba(255,255,255,0.2); }
+        .main-layout { display: flex; gap: 16px; height: 100%; overflow: hidden; }
+        .sidebar { width: 340px; background: rgba(8, 12, 20, 0.55); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; overflow: hidden; }
+        .sidebar-header { padding: 12px; background: rgba(255,255,255,0.03); font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); letter-spacing: 1px; }
         .list-container { flex: 1; overflow-y: auto; padding: 10px; display: none; }
         .list-container.active { display: flex; flex-direction: column; }
-        .search-box { margin: 10px; padding: 10px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; font-family: inherit; font-size: 0.9rem; }
+        .search-box { margin: 10px; padding: 10px; background: #0b1220; border: 1px solid #334155; border-radius: 8px; color: #fff; font-family: inherit; font-size: 0.9rem; }
         .search-box:focus { border-color: var(--accent); outline: none; }
-        .list-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #333; cursor: pointer; transition: 0.2s; border-radius: 6px; margin-bottom: 4px; }
-        .list-item:hover { background: rgba(52, 152, 219, 0.1); border-left: 3px solid var(--accent); }
+        .list-item { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid transparent; cursor: pointer; transition: 0.2s; border-radius: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); }
+        .list-item:hover { background: rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.35); }
+        .list-item.active { border-color: rgba(241, 196, 15, 0.5); box-shadow: inset 0 0 0 1px rgba(241,196,15,0.12); }
         .list-item img, .npc-thumb { width: 40px; height: 40px; border-radius: 50%; background-color: rgba(0,0,0,0.3); image-rendering: pixelated; object-fit: contain; flex-shrink: 0; border: 1px solid #444; }
         .npc-thumb { background-size: 400% auto; background-position: 0 0; }
         .skin-thumb { width: 40px; height: 40px; border-radius: 8px; border: 1px solid #444; background: rgba(0,0,0,0.3); object-fit: contain; image-rendering: pixelated; flex-shrink: 0; }
         .item-info { flex: 1; overflow: hidden; }
         .item-name { font-weight: bold; color: #fff; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .item-sub { font-size: 0.7rem; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .editor-area { flex: 1; background: var(--panel); border-radius: 12px; padding: 25px; overflow-y: auto; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #333; }
-        .tab-btn { background: none; border: none; padding: 10px 25px; color: #777; font-weight: bold; cursor: pointer; font-size: 1.1rem; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: 0.2s; }
-        .tab-btn:hover { color: #aaa; }
-        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .editor-area { flex: 1; background: rgba(18, 26, 42, 0.85); border-radius: 12px; padding: 22px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+        .tabs { display: flex; gap: 10px; margin-bottom: 18px; }
+        .tab-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; color: #9aa3b2; font-weight: bold; cursor: pointer; font-size: 0.95rem; border-radius: 999px; transition: 0.2s; }
+        .tab-btn:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.2); }
+        .tab-btn.active { color: #e2e8f0; border-color: rgba(59,130,246,0.6); background: rgba(59,130,246,0.12); }
         .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
         .full-width { grid-column: span 3; }
         .half-width { grid-column: span 2; }
@@ -75,12 +78,12 @@
         .btn-row { display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; }
         button { cursor: pointer; transition: 0.2s; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
         button:active { transform: translateY(1px); }
-        .btn-save { flex: 1; padding: 14px; border: none; border-radius: 6px; font-weight: bold; background: var(--success); color: #052e16; font-size: 1rem; }
-        .btn-save:hover { filter: brightness(1.1); }
-        .btn-delete { flex: 0.3; padding: 14px; border: none; border-radius: 6px; font-weight: bold; background: var(--danger); color: #fff; font-size: 1rem; }
-        .btn-delete:hover { background: #c0392b; }
-        .btn-new { background: var(--accent); color: #fff; margin-bottom: 10px; width: 100%; padding: 12px; border-radius: 6px; border: none; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .btn-new:hover { background: #2980b9; }
+        .btn-save { flex: 1; padding: 12px; border: 1px solid rgba(46,204,113,0.6); border-radius: 8px; font-weight: bold; background: rgba(46,204,113,0.12); color: #b7f7d2; font-size: 0.95rem; }
+        .btn-save:hover { background: rgba(46,204,113,0.18); }
+        .btn-delete { flex: 0.3; padding: 12px; border: 1px solid rgba(231,76,60,0.6); border-radius: 8px; font-weight: bold; background: rgba(231,76,60,0.12); color: #ffd0cc; font-size: 0.95rem; }
+        .btn-delete:hover { background: rgba(231,76,60,0.2); }
+        .btn-new { background: rgba(59,130,246,0.12); color: #cbe7ff; margin-bottom: 10px; width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(59,130,246,0.4); font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-new:hover { background: rgba(59,130,246,0.2); }
         .hidden { display: none; }
         h4 { color: var(--warning); border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 15px; margin-top: 25px; font-size: 1rem; }
         #imgPreview, #npcImgPreview { margin-top:10px; height:80px; border:1px dashed #444; border-radius: 6px; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.2); color: #555; overflow: hidden; }
@@ -123,13 +126,28 @@
         .badge.consumable { background: #3498db; color: #fff; }
         .badge.key { background: #f1c40f; color: #2d2d2d; }
         .no-results { text-align: center; padding: 20px; color: #64748b; font-size: 0.9rem; }
+        @media (max-width: 1200px) {
+            .form-grid { grid-template-columns: repeat(2, 1fr); }
+            .full-width { grid-column: span 2; }
+            .half-width { grid-column: span 2; }
+        }
+        @media (max-width: 900px) {
+            body { padding: 12px; }
+            .main-layout { flex-direction: column; }
+            .sidebar { width: 100%; height: 280px; }
+        }
     </style>
 </head>
 <body>
     <header>
         <div>
             <h1>LABORATÓRIO</h1>
-            <small style="color:#777">Painel de Criação e Balanceamento</small>
+            <small style="color:#94a3b8">Painel de Criação e Balanceamento</small>
+            <div class="header-meta">
+                <span class="meta-pill">ENTIDADES: <%= entities.length %></span>
+                <span class="meta-pill">NPCS: <%= npcs.length %></span>
+                <span class="meta-pill">SKINS: <%= (skins || []).length %></span>
+            </div>
         </div>
         <a href="/city?userId=<%= user._id %>" class="back-btn">⬅️ VOLTAR AO JOGO</a>
     </header>

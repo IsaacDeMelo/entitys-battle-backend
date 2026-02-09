@@ -74,11 +74,12 @@
     #bgEditor button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.5); }
     #bgEditor .hint { font-size: 0.5rem; color: #94a3b8; line-height: 1.4; margin-top: 6px; }
     
-    .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 6px 10px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: 150px; font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 6px 10px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: min(180px, 46vw); font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     .hud-p1 { left: 10px; border-left: 5px solid #3498db; text-align: left; }
     .hud-p2 { right: 10px; border-right: 5px solid #e74c3c; text-align: right; }
-    .poke-name { font-size: 0.55rem; margin-bottom: 5px; color: #fff; text-shadow: 1px 1px 0 #000; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .poke-lv { font-size: 0.45rem; color: #f1c40f; margin-left: 4px; }
+    .poke-name { display: flex; align-items: baseline; gap: 6px; font-size: 0.55rem; margin-bottom: 5px; color: #fff; text-shadow: 1px 1px 0 #000; text-transform: uppercase; letter-spacing: 0.5px; min-width: 0; }
+    .poke-name > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .poke-lv { font-size: 0.45rem; color: #f1c40f; flex: none; white-space: nowrap; }
     .trainer-sub { font-size: 0.45rem; color: #bbb; margin-bottom: 5px; text-transform: uppercase; font-family: sans-serif; font-weight: bold; letter-spacing: 1px; }
     .bar-container { width: 100%; height: 8px; background: #333; border-radius: 5px; overflow: hidden; border: 1px solid #000; margin-bottom: 4px; position: relative; }
     .hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); transition: width 0.5s ease-out; }
@@ -176,14 +177,16 @@
     .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
     .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 14px; color: #ecf0f1; height: 180px; background: #111; line-height: 1.5; }
     .log-entry { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
-    .move-btn { background: linear-gradient(180deg, #2c3e50, #1a252f); border: 2px solid #34495e; color: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; padding: 6px 8px; position: relative; overflow: hidden; height: 70px; min-height: 70px; }
+    .move-btn { --accent: #9aa6b2; background: #101722; border: 1px solid #2a3645; color: #e5e7eb; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s; padding: 8px 10px 8px 14px; position: relative; overflow: hidden; height: 70px; min-height: 70px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 3px 0 #0b0f16; }
+    .move-btn::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); opacity: 0.9; }
     .move-btn strong { font-size: 0.65rem; margin-bottom: 2px; text-transform: uppercase; line-height: 1.1; text-align: center; word-wrap: break-word; }
-    .move-btn small { font-size: 0.55rem; color: #f1c40f; font-weight: bold; }
-    .move-btn:active { transform: scale(0.96); border-color: #f1c40f; background: #1a252f; }
+    .move-btn small { font-size: 0.55rem; color: #b7c2cf; font-weight: 700; letter-spacing: 0.3px; }
+    .move-btn:hover { border-color: #3a4656; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 4px 0 #0b0f16; }
+    .move-btn:active { transform: translateY(1px); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 2px 0 #0b0f16; }
     .move-btn:disabled { opacity: 0.5; pointer-events: none; filter: grayscale(1); }
 
     /* Ícone pequeno do tipo do ataque (substitui emojis dos golpes) */
-    .move-title { display: inline-flex; align-items: center; gap: 8px; }
+    .move-title { display: inline-flex; align-items: center; gap: 6px; }
     .move-type-icon {
         width: 12px;
         height: 12px;
@@ -202,69 +205,67 @@
     .move-type-shadow { background: #2d3436; }
     .move-type-metal { background: #bdc3c7; }
     .move-type-venom { background: #8e44ad; }
-    .rest-btn { grid-column: span 2; background: linear-gradient(180deg, #27ae60, #1e8449); border-color: #2ecc71; }
-    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(10,10,20,0.95), rgba(30,30,50,0.98)); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.5s; backdrop-filter: blur(10px); }
+    .rest-btn { grid-column: span 2; --accent: #3fbf7f; background: #0f1f16; border-color: #1f4d33; }
+    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(8, 10, 14, 0.9); z-index: 999; display: none; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.3s; backdrop-filter: blur(6px); }
     
-    .victory-container { max-width: 500px; width: 90%; }
-    .victory-title { font-family: 'Press Start 2P'; text-align: center; color: #f1c40f; text-shadow: 0 4px 0 #c27c0e, 0 0 20px rgba(241, 196, 15, 0.5); margin-bottom: 30px; font-size: 1.8rem; animation: title-bounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-    @keyframes title-bounce { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.1) rotate(5deg); } 100% { transform: scale(1) rotate(0); } }
+    .victory-container { max-width: 520px; width: 92%; background: rgba(10, 12, 18, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,0.55); }
+    .victory-title { font-family: 'Press Start 2P'; text-align: left; color: #e5e7eb; margin: 0 0 18px 0; font-size: 1.05rem; letter-spacing: 1px; text-shadow: none; }
+    @keyframes title-bounce { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
     
-    .battle-comparison { display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 35px; }
-    .fighter-result { flex: 1; max-width: 180px; position: relative; }
-    .fighter-result.winner { animation: slide-winner 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-    .fighter-result.loser { animation: slide-loser 0.8s ease-out forwards; opacity: 0; }
+    .battle-comparison { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin-bottom: 18px; }
+    .fighter-result { position: relative; }
+    .fighter-result.winner { animation: none; }
+    .fighter-result.loser { animation: none; opacity: 0.7; }
     
-    @keyframes slide-winner { 0% { transform: translateX(-100px) scale(0.5); opacity: 0; } 100% { transform: translateX(0) scale(1); opacity: 1; } }
-    @keyframes slide-loser { 0% { transform: translateX(100px) scale(0.5); opacity: 0; } 100% { transform: translateX(0) scale(1); opacity: 0.4; } }
+    .fighter-crown { display: none; }
     
-    .fighter-crown { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 2.5rem; z-index: 10; animation: crown-float 2s ease-in-out infinite; filter: drop-shadow(0 0 10px gold); }
-    @keyframes crown-float { 0%, 100% { transform: translateX(-50%) translateY(0) rotate(-5deg); } 50% { transform: translateX(-50%) translateY(-10px) rotate(5deg); } }
+    .fighter-avatar { position: relative; width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; }
+    .fighter-result.winner .fighter-avatar { border-color: rgba(255,255,255,0.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
+    .fighter-result.loser .fighter-avatar { filter: grayscale(0.9); }
     
-    .fighter-avatar { position: relative; width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 20px; padding: 15px; display: flex; align-items: center; justify-content: center; border: 3px solid rgba(255,255,255,0.1); overflow: hidden; }
-    .fighter-result.winner .fighter-avatar { border-color: #f1c40f; background: radial-gradient(circle, rgba(241,196,15,0.15), transparent); box-shadow: 0 0 30px rgba(241,196,15,0.3), inset 0 0 30px rgba(241,196,15,0.1); }
-    .fighter-result.loser .fighter-avatar { filter: grayscale(1); }
+    .fighter-monster { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45)); }
+    .fighter-result.winner .fighter-monster { animation: none; }
     
-    .fighter-monster { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); }
-    .fighter-result.winner .fighter-monster { animation: winner-pulse 1.5s ease-in-out infinite; }
-    @keyframes winner-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5)); } 50% { transform: scale(1.05); filter: drop-shadow(0 10px 30px rgba(241,196,15,0.4)); } }
+    .fighter-name { font-family: 'Press Start 2P'; font-size: 0.65rem; text-align: center; margin-top: 10px; color: #e5e7eb; background: rgba(0,0,0,0.35); padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); }
+    .fighter-result.winner .fighter-name { color: #f8fafc; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); }
     
-    .fighter-name { font-family: 'Press Start 2P'; font-size: 0.7rem; text-align: center; margin-top: 12px; color: white; background: rgba(0,0,0,0.5); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
-    .fighter-result.winner .fighter-name { color: #f1c40f; border-color: #f1c40f; background: rgba(241,196,15,0.1); }
+    .vs-badge { font-size: 0.7rem; font-family: 'Press Start 2P'; color: #94a3b8; text-shadow: none; transform: none; opacity: 0.9; }
     
-    .vs-badge { font-size: 1.5rem; font-family: 'Press Start 2P'; color: #e74c3c; text-shadow: 0 0 10px rgba(231,76,60,0.5); transform: rotate(-10deg); opacity: 0.8; }
+    .rewards-section { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06); animation: none; }
+    @keyframes rewards-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
     
-    .rewards-section { background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1); animation: rewards-fade 0.5s 0.8s backwards; }
-    @keyframes rewards-fade { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+    .rewards-title { font-family: 'Press Start 2P'; font-size: 0.7rem; color: #cbd5f5; text-align: left; margin-bottom: 10px; letter-spacing: 0.6px; }
+    .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .reward-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.02); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); animation: none; }
+    .reward-item:nth-child(1) { border-left: 2px solid rgba(255,255,255,0.18); }
+    .reward-item:nth-child(2) { border-left: 2px solid rgba(255,255,255,0.18); }
+    @keyframes reward-pop { 0% { opacity: 0; } 100% { opacity: 1; } }
     
-    .rewards-title { font-family: 'Press Start 2P'; font-size: 0.8rem; color: #2ecc71; text-align: center; margin-bottom: 15px; }
-    .rewards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .reward-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; border-left: 3px solid; animation: reward-pop 0.4s backwards; }
-    .reward-item:nth-child(1) { animation-delay: 1s; border-left-color: #f1c40f; }
-    .reward-item:nth-child(2) { animation-delay: 1.15s; border-left-color: #3498db; }
-    @keyframes reward-pop { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.1) rotate(5deg); } 100% { transform: scale(1) rotate(0); opacity: 1; } }
-    
-    .reward-icon { font-size: 1.5rem; }
+    .reward-icon { display: none; }
     .reward-text { flex: 1; }
-    .reward-label { font-size: 0.65rem; color: #94a3b8; text-transform: uppercase; }
-    .reward-value { font-family: 'Press Start 2P'; font-size: 0.75rem; color: white; margin-top: 2px; }
+    .reward-label { font-size: 0.6rem; color: #9aa3b2; text-transform: uppercase; letter-spacing: 0.4px; }
+    .reward-value { font-family: 'Press Start 2P'; font-size: 0.7rem; color: #e5e7eb; margin-top: 2px; }
     
-    .xp-bar-container { margin-top: 15px; animation: xp-fade 0.5s 1.3s backwards; }
-    .xp-bar-label { font-size: 0.7rem; color: #94a3b8; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-    .xp-bar { height: 12px; background: rgba(0,0,0,0.5); border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative; }
-    .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3498db, #5dade2); border-radius: 20px; transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 10px rgba(52,152,219,0.5); position: relative; overflow: hidden; }
-    .xp-bar-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: xp-shimmer 2s infinite; }
+    .xp-bar-container { margin-top: 12px; animation: none; }
+    .xp-bar-label { font-size: 0.6rem; color: #9aa3b2; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .xp-bar { height: 8px; background: rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); position: relative; }
+    .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #94a3b8, #cbd5f5); border-radius: 8px; transition: width 1s ease-out; box-shadow: none; position: relative; overflow: hidden; }
+    .xp-bar-fill::after { display: none; }
     @keyframes xp-shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-    @keyframes xp-fade { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes xp-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
     
-    .level-up-badge { font-family: 'Press Start 2P'; font-size: 0.65rem; background: linear-gradient(135deg, #f39c12, #e67e22); padding: 4px 10px; border-radius: 12px; color: white; animation: level-badge-pop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-    @keyframes level-badge-pop { 0% { transform: scale(0) rotate(-180deg); } 60% { transform: scale(1.2) rotate(10deg); } 100% { transform: scale(1) rotate(0); } }
+    .level-up-badge { font-family: 'Press Start 2P'; font-size: 0.6rem; background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 8px; color: #e5e7eb; animation: none; border: 1px solid rgba(255,255,255,0.1); }
+    @keyframes level-badge-pop { 0% { opacity: 0; } 100% { opacity: 1; } }
     
-    .btn-restart { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 18px 40px; border-radius: 40px; border: none; font-family: 'Press Start 2P'; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 0 #1c5980, 0 8px 25px rgba(52,152,219,0.3); text-transform: uppercase; animation: btn-fade 0.5s 1.5s backwards; }
-    @keyframes btn-fade { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
-    .btn-restart:active { transform: translateY(4px); box-shadow: none; }
+    .btn-restart { background: #111827; color: #e5e7eb; padding: 12px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); font-family: 'Press Start 2P'; font-size: 0.75rem; cursor: pointer; transition: border-color 0.2s, background 0.2s; box-shadow: none; text-transform: uppercase; animation: none; }
+    @keyframes btn-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
+    .btn-restart:hover { border-color: rgba(255,255,255,0.25); background: #0f172a; }
+    .btn-restart:active { transform: translateY(1px); }
     .spectator-banner { position: absolute; bottom: 0; width: 100%; text-align: center; background: rgba(0,0,0,0.8); color: #f1c40f; padding: 10px; font-family: 'Press Start 2P'; font-size: 0.8rem; pointer-events: none; z-index: 50; letter-spacing: 2px; }
     .catchball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 2000; pointer-events: none; transform-origin: center center; }
-    .flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; opacity: 0; pointer-events: none; z-index: 500; transition: opacity 0.15s; }
+    .flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; opacity: 0; pointer-events: none; z-index: 500; transition: opacity 0.15s; }
+    .flash-overlay.impact { opacity: 0.35; }
+    .flash-overlay.impact-strong { opacity: 0.55; background: #ffe9bf; }
     .flash-overlay.active { opacity: 0.9; }
     .absorbed-state { filter: brightness(10) sepia(1) hue-rotate(-50deg) saturate(5) !important; transform: scale(0) !important; transition: transform 0.4s ease-in, filter 0.1s !important; }
     .catchball.captured-lock { filter: brightness(0.6); }
@@ -374,8 +375,20 @@
         10%, 30%, 50%, 70%, 90% { transform: translate(-4px, 2px); } 
         20%, 40%, 60%, 80% { transform: translate(4px, -2px); } 
     }
+    @keyframes shake-screen-strong { 
+        0%, 100% { transform: translate(0, 0); } 
+        10%, 30%, 50%, 70%, 90% { transform: translate(-7px, 4px); } 
+        20%, 40%, 60%, 80% { transform: translate(7px, -4px); } 
+    }
+    @keyframes arena-pulse {
+        0% { filter: brightness(1) saturate(1); }
+        50% { filter: brightness(1.15) saturate(1.2); }
+        100% { filter: brightness(1) saturate(1); }
+    }
     
     .arena.shake { animation: shake-screen 0.4s; }
+    .arena.shake-strong { animation: shake-screen-strong 0.45s; }
+    .arena.pulse { animation: arena-pulse 0.35s ease-out; }
     
     /* Partículas Melhoradas por Tipo */
     .particle { 
@@ -469,78 +482,26 @@
         animation: particle-swirl 1s ease-out forwards; 
     }
     
-    /* === DIFERENCIAÇÃO VISUAL PHYSICAL vs SPECIAL === */
-    /* === DIFERENCIAÇÃO SUTIL PHYSICAL vs SPECIAL === */
-    .move-btn.physical {
-        background: linear-gradient(180deg, #2c3e50, #1a252f) !important;
-        border: 2px solid #e74c3c !important;
-        border-left: 5px solid #e74c3c !important;
-        box-shadow: 0 0 0 1px rgba(231, 76, 60, 0.3) inset;
-    }
+    .move-btn.physical { --accent: #ef6b6b; }
+    .move-btn.special { --accent: #5dade2; }
+    .move-btn.status { --accent: #b487d6; }
     
-    .move-btn.physical:hover {
-        background: linear-gradient(180deg, #34495e, #2c3e50) !important;
-        box-shadow: 0 0 15px rgba(231, 76, 60, 0.4), 0 0 0 1px rgba(231, 76, 60, 0.5) inset !important;
-        border-color: #ff6b6b !important;
-    }
-    
-    .move-btn.special {
-        background: linear-gradient(180deg, #2c3e50, #1a252f) !important;
-        border: 2px solid #3498db !important;
-        border-left: 5px solid #3498db !important;
-        box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.3) inset;
-    }
-    
-    .move-btn.special:hover {
-        background: linear-gradient(180deg, #34495e, #2c3e50) !important;
-        box-shadow: 0 0 15px rgba(52, 152, 219, 0.4), 0 0 0 1px rgba(52, 152, 219, 0.5) inset !important;
-        border-color: #5dade2 !important;
-    }
-    
-    .move-btn.status {
-        background: linear-gradient(180deg, #2c3e50, #1a252f) !important;
-        border: 2px solid #9b59b6 !important;
-        border-left: 5px solid #9b59b6 !important;
-        box-shadow: 0 0 0 1px rgba(155, 89, 182, 0.3) inset;
-    }
-    
-    .move-btn.status:hover {
-        background: linear-gradient(180deg, #34495e, #2c3e50) !important;
-        box-shadow: 0 0 15px rgba(155, 89, 182, 0.4), 0 0 0 1px rgba(155, 89, 182, 0.5) inset !important;
-        border-color: #af7ac5 !important;
-    }
-    
-    /* Indicadores de tipo no botão - mais sutis */
     .move-category-badge {
-        font-size: 0.65rem;
+        font-size: 0.55rem;
         padding: 2px 5px;
-        border-radius: 3px;
+        border-radius: 4px;
         display: inline-block;
-        margin-right: 5px;
-        font-weight: 600;
+        margin-right: 4px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.8;
-        border: 1px solid currentColor;
+        letter-spacing: 0.4px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #cbd5f5;
     }
-    
-    .move-category-badge.physical {
-        background: rgba(231, 76, 60, 0.2);
-        color: #ff6b6b;
-        border-color: #e74c3c;
-    }
-    
-    .move-category-badge.special {
-        background: rgba(52, 152, 219, 0.2);
-        color: #5dade2;
-        border-color: #3498db;
-    }
-    
-    .move-category-badge.status {
-        background: rgba(155, 89, 182, 0.2);
-        color: #af7ac5;
-        border-color: #9b59b6;
-    }
+    .move-category-badge.physical { color: #ef6b6b; border-color: rgba(239, 107, 107, 0.5); }
+    .move-category-badge.special { color: #5dade2; border-color: rgba(93, 173, 226, 0.5); }
+    .move-category-badge.status { color: #b487d6; border-color: rgba(180, 135, 214, 0.5); }
     
     /* === ANIMAÇÕES DE VITÓRIA/DERROTA === */
     .confetti {
@@ -607,52 +568,25 @@
         }
     }
     
-    #overlay.victory-show {
-        animation: victory-fade-in 0.8s ease-out forwards;
-    }
+    #overlay.victory-show { animation: victory-fade-in 0.35s ease-out forwards; }
     
-    @keyframes victory-fade-in {
-        0% {
-            opacity: 0;
-            backdrop-filter: blur(0px);
-        }
-        100% {
-            opacity: 1;
-            backdrop-filter: blur(8px);
-        }
-    }
+    @keyframes victory-fade-in { 0% { opacity: 0; backdrop-filter: blur(0px); } 100% { opacity: 1; backdrop-filter: blur(6px); } }
     
-    #result-title.animate-in {
-        animation: float-up 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
+    #result-title.animate-in { animation: float-up 0.35s ease-out forwards; }
     
-    .winner-box.animate-in {
-        animation: podium-enter 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
+    .winner-box.animate-in { animation: podium-enter 0.4s ease-out forwards; }
     
     .winner-box.animate-in #win-name,
     .winner-box.animate-in #win-name,
-    .winner-box.animate-in #win-trainer {
-        animation: winner-glow 2s ease-in-out infinite;
-    }
+    .winner-box.animate-in #win-trainer { animation: none; }
     
-    .loser-box.animate-in {
-        animation: loser-fade 0.8s ease-out forwards;
-    }
+    .loser-box.animate-in { animation: loser-fade 0.35s ease-out forwards; }
     
-    .btn-restart.animate-in {
-        animation: float-up 1s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s backwards;
-    }
+    .btn-restart.animate-in { animation: float-up 0.35s ease-out 0.1s backwards; }
     
-    .btn-restart:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 8px 0 #1c5980, 0 12px 25px rgba(0, 0, 0, 0.4) !important;
-    }
+    .btn-restart:hover { transform: translateY(-1px); box-shadow: none !important; }
     
-    .btn-restart:active {
-        transform: translateY(2px);
-        box-shadow: 0 4px 0 #1c5980 !important;
-    }
+    .btn-restart:active { transform: translateY(1px); box-shadow: none !important; }
     
     /* === MELHOR ANIMAÇÃO DE DEPLOY === */
     @keyframes deploy-epic {
@@ -745,7 +679,7 @@
         </div>
 
         <div class="hud-panel hud-p1">
-            <div class="poke-name"><span id="p1-name"><%= p1.name %></span> <span class="poke-lv">Lv.<span id="p1-lv"><%= p1.level %></span></span></div>
+            <div class="poke-name"><span id="p1-name"><%= p1.name || '???' %></span> <span class="poke-lv">Lv.<span id="p1-lv"><%= (Number.isFinite(p1.level) ? p1.level : (parseInt(p1.level, 10) || 1)) %></span></span></div>
             <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
             <div class="bar-container"><div class="hp-fill" id="hp-bar-p1"></div></div>
             <div class="stat-text"><span id="hp-val-p1"><%= p1.hp %></span>/<span id="max-hp-p1"><%= p1.maxHp %></span></div>
@@ -759,7 +693,7 @@
         </div>
 
         <div class="hud-panel hud-p2">
-            <div class="poke-name"><span id="p2-name"><%= p2.name %></span> <span class="poke-lv">Lv.<span id="p2-lv"><%= p2.level %></span></span></div>
+            <div class="poke-name"><span id="p2-name"><%= p2.name || '???' %></span> <span class="poke-lv">Lv.<span id="p2-lv"><%= (Number.isFinite(p2.level) ? p2.level : (parseInt(p2.level, 10) || 1)) %></span></span></div>
             <% if(battleMode !== 'wild') { %> <div class="trainer-sub"><%= p2.playerName || 'Oponente' %></div>
             <% } else { %> <div class="trainer-sub">Selvagem</div> <% } %>
             <div class="bar-container"><div class="hp-fill" id="hp-bar-p2"></div></div>
@@ -874,7 +808,7 @@
                                     <span class="move-type-icon move-type-<%= (move.element || 'beast') %>" title="<%= (move.element || 'beast').toUpperCase() %>"></span>
                                     <span><%= move.name %></span>
                                 </strong>
-                                <small>💎 <%= move.cost %> EN</small>
+                                <small><%= move.cost %> EN</small>
                             </button>
                         <% }) %>
                     </div>
@@ -913,10 +847,10 @@
         const isSpectator = <%= isSpectator ? 'true' : 'false' %>;
         const returnUrl = "<%- returnUrl %>"; 
         
-        let p1RawId = "<%= p1.instanceId %>"; 
-        let p2RawId = "<%= p2.instanceId %>";
-        let p1Mon = "<%= p1.name %>"; 
-        let p2Mon = "<%= p2.name %>";
+        let p1RawId = <%- JSON.stringify(p1.instanceId || '') %>; 
+        let p2RawId = <%- JSON.stringify(p2.instanceId || '') %>;
+        let p1Mon = <%- JSON.stringify(p1.name || '') %>; 
+        let p2Mon = <%- JSON.stringify(p2.name || '') %>;
         
         let p1CurHp = Number(<%= p1.hp %>); 
         let p2CurHp = Number(<%= p2.hp %>);
@@ -934,7 +868,24 @@
             const cost = (move && move.cost != null) ? String(move.cost) : '0';
             const safeEl = element.replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'beast';
             const title = safeEl.toUpperCase();
-            return `<strong class="move-title"><span class="move-type-icon move-type-${safeEl}" title="${title}"></span><span>${name}</span></strong><small>${cost} EN</small>`;
+            const category = (move && move.category) ? String(move.category) : 'physical';
+            const safeCat = category.replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'physical';
+            const catLabel = safeCat.slice(0, 3).toUpperCase();
+            return `<strong class="move-title"><span class="move-category-badge ${safeCat}">${catLabel}</span><span class="move-type-icon move-type-${safeEl}" title="${title}"></span><span>${name}</span></strong><small>${cost} EN</small>`;
+        }
+
+        function getMoveCategory(move) {
+            const category = (move && move.category) ? String(move.category) : 'physical';
+            const safeCat = category.replace(/[^a-z0-9_-]/gi, '').toLowerCase();
+            return safeCat || 'physical';
+        }
+
+        function setHudNameLevel(side, name, level) {
+            const nameEl = document.getElementById(`${side}-name`);
+            const levelEl = document.getElementById(`${side}-lv`);
+            if (nameEl && name) nameEl.innerText = name;
+            const levelNum = Number(level);
+            if (levelEl && Number.isFinite(levelNum)) levelEl.innerText = levelNum;
         }
 
         let p1Data = { name: "<%= p1.playerName %>", skin: "<%= p1.skin %>", sprite: resolveImg("<%= p1.sprite %>"), mon: "<%= p1.name %>" };
@@ -1130,6 +1081,7 @@
             if (category === 'special') {
                 const elemClass = `effect-${(type || 'beast').toLowerCase()}`;
                 setTimeout(() => { createProjectile(attackerSide, defenderSide, elemClass); }, 100);
+                pulseArena();
             }
             if(defImg) {
                 setTimeout(() => {
@@ -1207,6 +1159,7 @@
                     await wait(300); 
                 } else if (evt.type === 'ATTACK_HIT') { 
                     createImpact(targetSide, `effect-${lastMoveElement.toLowerCase()}`);
+                    triggerImpactFlash(evt.damage > 80 ? 'strong' : 'soft');
                     
                     // Hit Marker simples
                     const hitMarker = document.createElement('div');
@@ -1232,14 +1185,17 @@
                     
                     // Screen Shake em ataques fortes
                     if (evt.damage > 80) {
-                        screenShake();
+                        screenShake('strong');
                         if (navigator.vibrate) {
                             navigator.vibrate([30, 10, 30]);
                         }
+                    } else if (evt.damage > 40) {
+                        screenShake();
                     }
                     
                     // Partículas melhoradas por tipo
-                    createParticles(targetSide, lastMoveElement.toLowerCase(), 1);
+                    const fxLevel = evt.damage > 80 ? 3 : (evt.isEffective ? 2 : 1);
+                    createParticles(targetSide, lastMoveElement.toLowerCase(), fxLevel);
                     
                     await wait(500);
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
@@ -1423,8 +1379,7 @@
                         p2Data.sprite = resolveImg(data.p2State.sprite);
                         p2Data.mon = data.p2State.name;
                         p2Data.skin = data.p2State.skin;
-                        document.getElementById('p2-name').innerText = p2Mon;
-                        document.getElementById('p2-lv').innerText = data.p2State.level;
+                        setHudNameLevel('p2', p2Mon, data.p2State.level);
                         document.getElementById('max-hp-p2').innerText = p2MaxHp;
                         const s2 = document.querySelector('#sprite-p2 img');
                         s2.src = resolveImg(data.p2State.sprite);
@@ -1437,8 +1392,7 @@
                         p1CurHp = data.p1State.hp; 
                         p1MaxHp = data.p1State.maxHp; 
                         currentEnergy = data.p1State.energy;
-                        document.getElementById('p1-name').innerText = p1Mon; 
-                        document.getElementById('p1-lv').innerText = data.p1State.level; 
+                        setHudNameLevel('p1', p1Mon, data.p1State.level);
                         document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
                         document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
                         deployPokemon('p1', false); 
@@ -1446,7 +1400,7 @@
                         updateBar(p1RawId, currentEnergy, 100, 'en'); 
                         const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                         data.p1State.moves.forEach(move => { 
-                            const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                            const btn = document.createElement('button'); btn.className = `move-btn ${getMoveCategory(move)}`; 
                             btn.onclick = () => sendAction('move', move.id); 
                             btn.innerHTML = renderMoveBtnInner(move);
                             mc.appendChild(btn); 
@@ -1543,14 +1497,14 @@
                 if (data.switched) {
                     await wait(500);
                     p1RawId = data.newP1Id; p1Mon = data.p1State.name; p1CurHp = data.p1State.hp; p1MaxHp = data.p1State.maxHp; currentEnergy = data.p1State.energy;
-                    document.getElementById('p1-name').innerText = p1Mon; document.getElementById('p1-lv').innerText = data.p1State.level; document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
+                    setHudNameLevel('p1', p1Mon, data.p1State.level); document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
                     document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
                     deployPokemon('p1', false); 
                     updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
                     updateBar(p1RawId, currentEnergy, 100, 'en'); 
                     const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                     data.p1State.moves.forEach(move => { 
-                        const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                        const btn = document.createElement('button'); btn.className = `move-btn ${getMoveCategory(move)}`; 
                         btn.onclick = () => sendAction('move', move.id); 
                         btn.innerHTML = renderMoveBtnInner(move);
                         mc.appendChild(btn); 
@@ -1748,8 +1702,7 @@
                     p2Data.mon = newState.name;
                     p2Data.skin = newState.skin;
                     
-                    document.getElementById('p2-name').innerText = p2Mon;
-                    document.getElementById('p2-lv').innerText = newState.level;
+                    setHudNameLevel('p2', p2Mon, newState.level);
                     document.getElementById('max-hp-p2').innerText = p2MaxHp;
                     
                     const s2 = document.querySelector('#sprite-p2 img');
@@ -1766,8 +1719,7 @@
                     p1MaxHp = newState.maxHp; 
                     currentEnergy = newState.energy;
                     
-                    document.getElementById('p1-name').innerText = p1Mon; 
-                    document.getElementById('p1-lv').innerText = newState.level; 
+                    setHudNameLevel('p1', p1Mon, newState.level);
                     document.getElementById('max-hp-p1').innerText = newState.maxHp;
                     document.querySelector('#sprite-p1 img').src = resolveImg(newState.sprite); 
                     
@@ -1777,7 +1729,7 @@
                     
                     const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                     newState.moves.forEach(move => { 
-                        const btn = document.createElement('button'); btn.className = 'move-btn'; 
+                        const btn = document.createElement('button'); btn.className = `move-btn ${getMoveCategory(move)}`; 
                         btn.onclick = () => sendAction('move', move.id); 
                         btn.innerHTML = renderMoveBtnInner(move);
                         mc.appendChild(btn); 
@@ -1915,10 +1867,27 @@
             }
         }
         
-        function screenShake() {
+        function screenShake(strength = 'normal') {
             const arena = document.getElementById('arena');
-            arena.classList.add('shake');
-            setTimeout(() => arena.classList.remove('shake'), 400);
+            if (!arena) return;
+            const cls = (strength === 'strong') ? 'shake-strong' : 'shake';
+            arena.classList.add(cls);
+            setTimeout(() => arena.classList.remove(cls), 450);
+        }
+
+        function triggerImpactFlash(strength = 'soft') {
+            const flash = document.getElementById('flashOverlay');
+            if (!flash) return;
+            const cls = (strength === 'strong') ? 'impact-strong' : 'impact';
+            flash.classList.add(cls);
+            setTimeout(() => flash.classList.remove(cls), 140);
+        }
+
+        function pulseArena() {
+            const arena = document.getElementById('arena');
+            if (!arena) return;
+            arena.classList.add('pulse');
+            setTimeout(() => arena.classList.remove('pulse'), 360);
         }
         
         function createParticles(targetSide, element, comboLevel) {

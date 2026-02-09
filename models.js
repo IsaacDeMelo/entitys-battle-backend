@@ -101,6 +101,7 @@ const NPCSchema = new mongoose.Schema({
         // - '' (padrão): interação de história/itens (quest)
         // - 'heal': cura o time do jogador
         // - 'shop': abre uma lojinha (itens configuráveis)
+        // - 'box': gacha/box que entrega um monstro aleatório pago
         serviceType: { type: String, default: '' },
 
         // Texto opcional usado por alguns serviços
@@ -109,6 +110,18 @@ const NPCSchema = new mongoose.Schema({
         // Itens vendidos quando serviceType='shop'
         // Ex: [{ itemId: 'captureCube', price: 50 }, { itemId: 'levelUpCrystal', price: 2000 }]
         shopItems: { type: Array, default: [] },
+
+        // Box (gacha) quando serviceType='box'
+        // Estrutura: { price: Number, rewards: [{ baseId, weight, minLevel, maxLevel }] }
+        box: {
+            price: { type: Number, default: 0 },
+            rewards: [{
+                baseId: { type: String, default: '' },
+                weight: { type: Number, default: 1 },
+                minLevel: { type: Number, default: 1 },
+                maxLevel: { type: Number, default: 1 }
+            }]
+        },
 
         // Starter custom (quando serviceType='starter')
         // Lista de baseIds oferecidos por este NPC. Se vazio, usa os 3 do banco (isStarter=true).
@@ -251,11 +264,30 @@ const PlayerSkinSchema = new mongoose.Schema({
     updatedAt: { type: Number, default: () => Date.now() }
 });
 
+// --- DEV SETTINGS (admin/dev-mode prefs per user) ---
+const DevSettingsSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, required: true, unique: true, index: true },
+    devMode: { type: Boolean, default: false },
+    panelOpen: { type: Boolean, default: true },
+    showDebugHud: { type: Boolean, default: true },
+    updatedAt: { type: Number, default: () => Date.now() }
+});
+
+// --- DEV LOGS (audit for admin/dev actions) ---
+const DevLogSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    action: { type: String, default: '' },
+    meta: { type: Object, default: {} },
+    createdAt: { type: Number, default: () => Date.now() }
+});
+
 const BaseEntity = mongoose.model('BaseEntity', EntitySchema);
 const User = mongoose.model('User', UserSchema);
 const NPC = mongoose.model('NPC', NPCSchema);
 const GameMap = mongoose.model('GameMap', MapSchema);
 const ItemDefinition = mongoose.model('ItemDefinition', ItemDefinitionSchema);
 const PlayerSkin = mongoose.model('PlayerSkin', PlayerSkinSchema);
+const DevSettings = mongoose.model('DevSettings', DevSettingsSchema);
+const DevLog = mongoose.model('DevLog', DevLogSchema);
 
-module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin };
+module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog };
