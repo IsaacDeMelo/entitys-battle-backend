@@ -1923,7 +1923,7 @@
 
         // --- Editor do BattleBG (admin) ---
         (function initBattleBgEditor() {
-            const canEdit = <%= (canEditBg ? 'true' : 'false') %>;
+            const canEdit = <%= ((typeof canEditBg !== 'undefined' && canEditBg) ? 'true' : 'false') %>;
             const mapId = <%- JSON.stringify(typeof battleMapId !== 'undefined' ? battleMapId : null) %>;
             const userId = <%- JSON.stringify(typeof realUserId !== 'undefined' ? realUserId : null) %>;
 
@@ -2061,8 +2061,8 @@
 
 <script>
     // --- Editor do BattleBG (admin) ---
-    (function initBattleBgEditor() {
-        const canEdit = <%= (canEditBg ? 'true' : 'false') %>;
+        (function initBattleBgEditor() {
+            const canEdit = <%= ((typeof canEditBg !== 'undefined' && canEditBg) ? 'true' : 'false') %>;
         const mapId = <%- JSON.stringify(typeof battleMapId !== 'undefined' ? battleMapId : null) %>;
         const userId = <%- JSON.stringify(typeof realUserId !== 'undefined' ? realUserId : null) %>;
 

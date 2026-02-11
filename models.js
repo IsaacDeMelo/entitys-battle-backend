@@ -19,6 +19,7 @@ const EntitySchema = new mongoose.Schema({
     spawnChance: Number,
     isStarter: Boolean,
     sprite: String, // Base64 ou URL
+    dexOrder: Number,
     evolution: {
         targetId: String,
         level: Number
@@ -41,6 +42,11 @@ const UserSchema = new mongoose.Schema({
     keyItems: { type: [String], default: [] },
     // Flags de história/progressão (quest states)
     storyFlags: { type: Object, default: {} },
+
+    // PvP ranking
+    pvpPoints: { type: Number, default: 0 },
+    pvpWins: { type: Number, default: 0 },
+    pvpLosses: { type: Number, default: 0 },
 
     isAdmin: { type: Boolean, default: false },
 
@@ -65,7 +71,8 @@ const UserSchema = new mongoose.Schema({
     }],
     pc: Array,
     dex: [String],
-    defeatedNPCs: [{ npcId: String, defeatedAt: Number }]
+    defeatedNPCs: [{ npcId: String, defeatedAt: Number }],
+    followingEntityId: { type: String, default: '' }
 });
 
 // --- NPC SCHEMA ---

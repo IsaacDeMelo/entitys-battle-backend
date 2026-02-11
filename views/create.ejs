@@ -49,7 +49,11 @@
         input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; color: white; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 0.9rem; transition: 0.2s; }
         input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; background: #162032; }
         input[disabled] { background: #1e293b; color: #555; border-color: #222; }
-        .moves-wrapper { background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 8px; max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+        .moves-panel { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 12px; }
+        .moves-column { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .moves-header { font-size: 0.8rem; font-weight: 800; color: #cbd5f5; letter-spacing: 0.6px; text-transform: uppercase; }
+        .moves-wrapper { background: #0f172a; border: 1px solid #333; padding: 10px; border-radius: 8px; max-height: 420px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+        .moves-selected { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(59, 130, 246, 0.4); padding: 10px; border-radius: 8px; min-height: 140px; max-height: 420px; overflow-y: auto; display: grid; grid-template-columns: 1fr; gap: 8px; }
         .move-filter { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
         .move-filter input { flex: 1; min-width: 200px; }
         .filter-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: 2px solid transparent; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -69,6 +73,7 @@
         .move-option { display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 0.85rem; cursor: pointer; user-select: none; border: 1px solid transparent; position: relative; transition: 0.2s; }
         .move-option:hover { background: rgba(255,255,255,0.08); border-color: #444; transform: translateY(-1px); }
         .move-option.checked { background: rgba(52, 152, 219, 0.15); border-color: var(--accent); }
+        .move-option.selected { border-color: rgba(59,130,246,0.6); background: rgba(59,130,246,0.12); }
         .move-option input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
         .move-type-badge { position: absolute; top: 2px; right: 2px; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
         .move-info { display: flex; flex-direction: column; flex: 1; gap: 2px; }
@@ -245,6 +250,10 @@
                             <label>ID (Gerado Auto)</label>
                             <input type="text" name="id" id="pokeId" disabled placeholder="Novo">
                         </div>
+                        <div>
+                            <label>Posicao na Dex</label>
+                            <input type="number" name="dexOrder" id="pokeDexOrder" min="1" step="1" placeholder="Ex: 25">
+                        </div>
                         <div class="half-width">
                             <label class="required-field">Nome do Monstro</label>
                             <input type="text" name="name" id="pokeName" required autocomplete="off" placeholder="Ex: Flarezard">
@@ -361,18 +370,27 @@
                         <span class="filter-badge metal" onclick="filterMovesByType('metal')">METAL</span>
                         <span class="filter-badge venom" onclick="filterMovesByType('venom')">VENOM</span>
                     </div>
-                    <div class="moves-wrapper" id="moves-wrapper">
-                        <% Object.keys(moves).forEach(moveKey => { const m = moves[moveKey]; %>
-                            <div class="move-option" data-move-id="<%= moveKey %>" data-element="<%= m.element %>" data-name="<%= m.name.toLowerCase() %>">
-                                <input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>" onchange="updateMoveChecked(this)">
-                                <span class="move-type-badge <%= m.element %>" style="background: var(--<%= m.element %>); color: <%= ['beast','forest','earth','metal'].includes(m.element) ? '#2d2d2d' : '#fff' %>;"><%= m.element.substring(0,3).toUpperCase() %></span>
-                                <div class="move-info">
-                                    <span class="move-name"><%= m.name %></span>
-                                    <span class="move-details">💪 <%= m.power || 0 %> | ⚡ <%= m.cost || 0 %> | <%= m.type === 'attack' ? '⚔️' : m.type === 'heal' ? '❤️' : '🛡️' %></span>
-                                </div>
-                                <input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1" title="Nível para aprender" min="1" max="100">
+                    <div class="moves-panel">
+                        <div class="moves-column">
+                            <div class="moves-header">Disponiveis</div>
+                            <div class="moves-wrapper" id="moves-available">
+                                <% Object.keys(moves).forEach(moveKey => { const m = moves[moveKey]; %>
+                                    <div class="move-option" data-move-id="<%= moveKey %>" data-element="<%= m.element %>" data-name="<%= m.name.toLowerCase() %>">
+                                        <input type="checkbox" class="move-check" data-id="<%= moveKey %>" id="chk_<%= moveKey %>" onchange="updateMoveChecked(this)">
+                                        <span class="move-type-badge <%= m.element %>" style="background: var(--<%= m.element %>); color: <%= ['beast','forest','earth','metal'].includes(m.element) ? '#2d2d2d' : '#fff' %>;"> <%= m.element.substring(0,3).toUpperCase() %> </span>
+                                        <div class="move-info">
+                                            <span class="move-name"><%= m.name %></span>
+                                            <span class="move-details">💪 <%= m.power || 0 %> | ⚡ <%= m.cost || 0 %> | <%= m.type === 'attack' ? '⚔️' : m.type === 'heal' ? '❤️' : '🛡️' %></span>
+                                        </div>
+                                        <input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1" title="Nível para aprender" min="1" max="100">
+                                    </div>
+                                <% }) %>
                             </div>
-                        <% }) %>
+                        </div>
+                        <div class="moves-column">
+                            <div class="moves-header">Selecionados</div>
+                            <div class="moves-selected" id="moves-selected"></div>
+                        </div>
                     </div>
 
                     <div class="form-grid" style="margin-top:20px;">
@@ -592,8 +610,10 @@
                             <label>Serviço do NPC (opcional)</label>
                             <select name="interactServiceType" id="npcInteractServiceType">
                                 <option value="">Quest / Itens (padrão)</option>
+                                <option value="starter">Starter (Escolha inicial)</option>
                                 <option value="heal">Curar time</option>
                                 <option value="shop">Loja</option>
+                                <option value="box">Roleta (Box / Gacha)</option>
                             </select>
                             <div class="hint" style="margin-top:6px; color:#9aa7bd; font-size:0.85rem;">Para "Curar time" e "Loja", a interação NÃO é única por padrão.</div>
                         </div>
@@ -637,6 +657,32 @@
                                 <option value="pokeball"></option>
                                 <option value="rareCandy"></option>
                             </datalist>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Roleta / Box (se serviço = Roleta)</label>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+                                <button type="button" class="mini-btn" onclick="npcBoxAddRow()">+ adicionar premio</button>
+                                <button type="button" class="mini-btn" onclick="npcBoxClear()">limpar</button>
+                                <div style="font-size:0.85rem; color:#9aa7bd;">(gera o JSON automaticamente)</div>
+                            </div>
+
+                            <div class="form-grid" style="grid-template-columns: 180px 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+                                <div>
+                                    <label>Preço (moedas)</label>
+                                    <input type="number" name="interactBoxPrice" id="npcInteractBoxPrice" value="1000" min="0" step="1">
+                                </div>
+                                <div style="display:flex; align-items:flex-end; color:#9aa7bd; font-size:0.85rem; grid-column: span 3;">Dica: peso maior = mais chance.</div>
+                            </div>
+
+                            <div id="npcBoxRows" class="row-list"></div>
+
+                            <details class="advanced" style="margin-top:10px;">
+                                <summary>Avançado (JSON)</summary>
+                                <textarea name="interactBoxRewardsJson" id="npcInteractBoxRewardsJson" placeholder='[{"baseId":"bulbasaur","weight":1,"minLevel":1,"maxLevel":3}]'></textarea>
+                            </details>
                         </div>
                     </div>
 
@@ -1115,7 +1161,10 @@
         function clearPokeForm() { 
             document.getElementById('pokeForm').reset(); document.getElementById('existingId').value = ""; 
             document.getElementById('imgPreview').innerHTML = "Sem imagem"; 
+            const dexEl = document.getElementById('pokeDexOrder');
+            if (dexEl) dexEl.value = '';
             document.querySelectorAll('.move-check').forEach(c => c.checked = false); 
+            syncMovePanels();
         }
         
         function loadEntity(p) {
@@ -1134,7 +1183,10 @@
                 const src = (p.sprite.startsWith('http') || p.sprite.startsWith('data:')) ? p.sprite : '/uploads/' + p.sprite; 
                 document.getElementById('imgPreview').innerHTML = `<img src="${src}" style="height:100%; object-fit:contain;">`; 
             }
+            const dexEl = document.getElementById('pokeDexOrder');
+            if (dexEl) dexEl.value = Number.isFinite(parseInt(p.dexOrder, 10)) ? parseInt(p.dexOrder, 10) : '';
             if(p.movePool) { p.movePool.forEach(mp => { const check = document.getElementById('chk_' + mp.moveId); const lvlInp = document.getElementById('lvl_' + mp.moveId); if(check) check.checked = true; if(lvlInp) lvlInp.value = mp.level; }); }
+            syncMovePanels();
         }
         
         function prepareMoves() { 
@@ -1155,6 +1207,10 @@
             document.getElementById('npcInteractServiceType').value = '';
             document.getElementById('npcInteractHealDialogue').value = '';
             document.getElementById('npcInteractShopItemsJson').value = '';
+            const boxPriceEl = document.getElementById('npcInteractBoxPrice');
+            if (boxPriceEl) boxPriceEl.value = 1000;
+            const boxJsonEl = document.getElementById('npcInteractBoxRewardsJson');
+            if (boxJsonEl) boxJsonEl.value = '';
             document.getElementById('npcInteractRange').value = 0;
             document.getElementById('npcInteractReqId').value = '';
             document.getElementById('npcInteractReqQty').value = 1;
@@ -1185,6 +1241,7 @@
 
             npcTeamLoadFromJson(document.getElementById('npcTeam').value);
             npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
+            npcBoxLoadFromJson(document.getElementById('npcInteractBoxRewardsJson')?.value || '[]');
             const condField = document.getElementById('npcConditionalDialoguesJson');
             if (condField) { condField.value = ''; npcCondLoadFromJson('[]'); }
         }
@@ -1253,6 +1310,13 @@
                 document.getElementById('npcInteractShopItemsJson').value = n.interact.shopItems ? JSON.stringify(n.interact.shopItems) : '';
                 document.getElementById('npcInteractRange').value = (n.interact && n.interact.range) ? n.interact.range : 0;
                 npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson').value);
+
+                const boxPriceEl = document.getElementById('npcInteractBoxPrice');
+                if (boxPriceEl) boxPriceEl.value = (n.interact.box && (n.interact.box.price != null)) ? n.interact.box.price : 0;
+                const boxJsonEl = document.getElementById('npcInteractBoxRewardsJson');
+                if (boxJsonEl) boxJsonEl.value = (n.interact.box && Array.isArray(n.interact.box.rewards)) ? JSON.stringify(n.interact.box.rewards) : '';
+                npcBoxLoadFromJson(document.getElementById('npcInteractBoxRewardsJson')?.value || '[]');
+
                 document.getElementById('npcInteractReqId').value = n.interact.requiresItemId || '';
                 document.getElementById('npcInteractReqQty').value = n.interact.requiresItemQty || 1;
                 document.getElementById('npcInteractConsume').checked = !!n.interact.consumesRequiredItem;
@@ -1488,6 +1552,127 @@
             }
         });
 
+        // ======== EDITOR VISUAL: BOX / ROLETA ========
+        let npcBoxRowsState = [];
+
+        function npcBoxRender() {
+            const container = document.getElementById('npcBoxRows');
+            if (!container) return;
+            container.innerHTML = '';
+
+            npcBoxRowsState.forEach((row, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'row-item';
+                wrap.style.gridTemplateColumns = '1fr 90px 90px 90px 46px';
+
+                const selTemplate = document.getElementById('npcTeamPokemonOptionsTemplate');
+                const baseId = document.createElement('select');
+                if (selTemplate) baseId.innerHTML = selTemplate.innerHTML;
+                baseId.value = row.baseId || '';
+                baseId.onchange = () => { npcBoxRowsState[idx].baseId = baseId.value; npcBoxSyncJson(); };
+
+                const weight = document.createElement('input');
+                weight.type = 'number';
+                weight.min = '0';
+                weight.step = '0.1';
+                weight.placeholder = 'peso';
+                weight.value = String(row.weight || 1);
+                weight.oninput = () => { npcBoxRowsState[idx].weight = parseFloat(weight.value) || 0; npcBoxSyncJson(); };
+
+                const minLevel = document.createElement('input');
+                minLevel.type = 'number';
+                minLevel.min = '1';
+                minLevel.step = '1';
+                minLevel.placeholder = 'min lvl';
+                minLevel.value = String(row.minLevel || 1);
+                minLevel.oninput = () => { npcBoxRowsState[idx].minLevel = parseInt(minLevel.value, 10) || 1; npcBoxSyncJson(); };
+
+                const maxLevel = document.createElement('input');
+                maxLevel.type = 'number';
+                maxLevel.min = '1';
+                maxLevel.step = '1';
+                maxLevel.placeholder = 'max lvl';
+                maxLevel.value = String(row.maxLevel || 1);
+                maxLevel.oninput = () => { npcBoxRowsState[idx].maxLevel = parseInt(maxLevel.value, 10) || 1; npcBoxSyncJson(); };
+
+                const rm = document.createElement('button');
+                rm.type = 'button';
+                rm.className = 'row-remove';
+                rm.innerText = 'X';
+                rm.onclick = () => { npcBoxRowsState.splice(idx, 1); npcBoxRender(); npcBoxSyncJson(); };
+
+                wrap.appendChild(baseId);
+                wrap.appendChild(weight);
+                wrap.appendChild(minLevel);
+                wrap.appendChild(maxLevel);
+                wrap.appendChild(rm);
+                container.appendChild(wrap);
+            });
+
+            if (npcBoxRowsState.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.color = '#9aa7bd';
+                empty.style.fontSize = '0.9rem';
+                empty.innerText = 'Sem prêmios configurados.';
+                container.appendChild(empty);
+            }
+        }
+
+        function npcBoxSyncJson() {
+            const out = (npcBoxRowsState || [])
+                .filter(x => x && String(x.baseId || '').trim())
+                .map(x => ({
+                    baseId: String(x.baseId || '').trim(),
+                    weight: Math.max(0, parseFloat(x.weight) || 0),
+                    minLevel: Math.max(1, parseInt(x.minLevel, 10) || 1),
+                    maxLevel: Math.max(1, parseInt(x.maxLevel, 10) || 1)
+                }))
+                .filter(x => x.baseId && x.weight > 0)
+                .map(x => ({ ...x, maxLevel: Math.max(x.minLevel, x.maxLevel) }));
+            const el = document.getElementById('npcInteractBoxRewardsJson');
+            if (el) el.value = JSON.stringify(out);
+        }
+
+        function npcBoxLoadFromJson(json) {
+            try {
+                const arr = JSON.parse(json || '[]');
+                if (Array.isArray(arr)) {
+                    npcBoxRowsState = arr
+                        .filter(x => x && (x.baseId || x.id))
+                        .map(x => ({
+                            baseId: String(x.baseId || x.id).trim(),
+                            weight: Math.max(0, parseFloat(x.weight) || 0) || 1,
+                            minLevel: Math.max(1, parseInt(x.minLevel, 10) || 1),
+                            maxLevel: Math.max(1, parseInt(x.maxLevel, 10) || 1)
+                        }));
+                } else {
+                    npcBoxRowsState = [];
+                }
+            } catch (_) {
+                npcBoxRowsState = [];
+            }
+            npcBoxRender();
+            npcBoxSyncJson();
+        }
+
+        function npcBoxAddRow() {
+            npcBoxRowsState.push({ baseId: '', weight: 1, minLevel: 1, maxLevel: 1 });
+            npcBoxRender();
+            npcBoxSyncJson();
+        }
+
+        function npcBoxClear() {
+            npcBoxRowsState = [];
+            npcBoxRender();
+            npcBoxSyncJson();
+        }
+
+        document.addEventListener('input', (e) => {
+            if (e && e.target && e.target.id === 'npcInteractBoxRewardsJson') {
+                npcBoxLoadFromJson(e.target.value);
+            }
+        });
+
         // ======== EDITOR VISUAL: DIÁLOGOS CONDICIONAIS ========
         let npcCondRowsState = [];
 
@@ -1650,6 +1835,7 @@
         setTimeout(() => {
             npcTeamLoadFromJson(document.getElementById('npcTeam')?.value || '[]');
             npcShopLoadFromJson(document.getElementById('npcInteractShopItemsJson')?.value || '[]');
+            npcBoxLoadFromJson(document.getElementById('npcInteractBoxRewardsJson')?.value || '[]');
             npcCondLoadFromJson(document.getElementById('npcConditionalDialoguesJson')?.value || '[]');
 
             // Define estado inicial dos toggles com base nos campos carregados
@@ -1723,7 +1909,7 @@
         
         function filterMoves() {
             const searchQuery = (document.getElementById('move-search')?.value || '').toLowerCase();
-            const moves = document.querySelectorAll('.move-option');
+            const moves = document.querySelectorAll('#moves-available .move-option');
             let visibleCount = 0;
             
             moves.forEach(move => {
@@ -1739,7 +1925,7 @@
             });
             
             // Mostra mensagem se não houver resultados
-            const wrapper = document.getElementById('moves-wrapper');
+            const wrapper = document.getElementById('moves-available');
             let noResults = wrapper.querySelector('.no-results');
             if (visibleCount === 0) {
                 if (!noResults) {
@@ -1754,14 +1940,38 @@
             }
         }
         
+        function syncMovePanels() {
+            const available = document.getElementById('moves-available');
+            const selected = document.getElementById('moves-selected');
+            if (!available || !selected) return;
+
+            document.querySelectorAll('.move-option').forEach(option => {
+                const checkbox = option.querySelector('.move-check');
+                if (!checkbox) return;
+                if (checkbox.checked) {
+                    selected.appendChild(option);
+                    option.classList.add('checked', 'selected');
+                } else {
+                    available.appendChild(option);
+                    option.classList.remove('checked', 'selected');
+                }
+            });
+            filterMoves();
+        }
+
         function updateMoveChecked(checkbox) {
             const moveOption = checkbox.closest('.move-option');
             if (moveOption) {
+                const available = document.getElementById('moves-available');
+                const selected = document.getElementById('moves-selected');
                 if (checkbox.checked) {
-                    moveOption.classList.add('checked');
+                    selected.appendChild(moveOption);
+                    moveOption.classList.add('checked', 'selected');
                 } else {
-                    moveOption.classList.remove('checked');
+                    available.appendChild(moveOption);
+                    moveOption.classList.remove('checked', 'selected');
                 }
+                filterMoves();
             }
         }
 
@@ -1791,6 +2001,7 @@
         // Inicializa preview ao carregar página
         setTimeout(() => {
             updateStatsPreview();
+            syncMovePanels();
         }, 100);
     </script>
 </body>

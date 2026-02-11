@@ -43,6 +43,15 @@
         /* Entidades */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% 400%; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
+        .follower { position: absolute; width: 72px; height: 72px; margin-left: -36px; margin-top: -60px; z-index: 9; pointer-events: none; transition: top 0.18s linear, left 0.18s linear; }
+        .follower img { width: 72px; height: 72px; image-rendering: pixelated; transform-origin: center; }
+        .follower.flip img { transform: scaleX(-1); }
+        .follower.hop { animation: followerHop 0.36s ease-in-out; }
+        @keyframes followerHop {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+            100% { transform: translateY(0); }
+        }
         <% for(let i = 1; i <= skinCount; i++) { %> .player[data-skin="char<%= i %>"] { background-image: url('/uploads/char<%= i %>.png'); } <% } %>
         .player.walking { animation: walk-anim 0.48s step-end infinite; }
         @keyframes walk-anim { 
@@ -137,6 +146,35 @@
         #devConsoleLogs { max-height: 180px; overflow: auto; font-family: monospace; font-size: 11px; color: #e5e7eb; }
         .devConsoleLogItem { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
         .devConsoleLogMeta { color: #94a3b8; }
+
+        .player.player-remote { pointer-events: auto; cursor: pointer; }
+
+        /* Player Profile / Challenge */
+        #playerProfileOverlay, #playerChallengeOverlay { position: fixed; inset: 0; background: rgba(5, 8, 14, 0.86); z-index: 12150; display: none; align-items: center; justify-content: center; padding: 16px; pointer-events: auto; }
+        .player-profile-card { width: min(360px, 92vw); background: linear-gradient(180deg, #1d2b46 0%, #101b2f 100%); border: 3px solid #f0e3b0; border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.7), inset 0 2px 0 rgba(255,255,255,0.15); display: flex; flex-direction: column; gap: 12px; padding: 14px; color: #f8f3dd; font-family: 'Press Start 2P', monospace; text-align: left; }
+        .player-profile-header { display: flex; gap: 12px; align-items: center; }
+        .player-profile-avatar { width: 56px; height: 56px; border-radius: 12px; background: #0b1220; border: 2px solid #f1c40f; background-size: 400% 400%; background-position: 0% 0%; background-repeat: no-repeat; image-rendering: pixelated; box-shadow: inset 0 2px 6px rgba(0,0,0,0.6); }
+        .player-profile-name { font-size: 0.7rem; letter-spacing: 0.6px; }
+        .player-profile-status { font-size: 0.55rem; color: #cbd5f5; letter-spacing: 0.4px; }
+        .player-profile-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .player-profile-actions button { background: #1e293b; color: #fff; border: 2px solid #334155; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-family: 'Press Start 2P', monospace; font-size: 0.55rem; box-shadow: 0 2px 0 #0f172a; }
+        .player-profile-actions button:active { transform: translateY(2px); box-shadow: none; }
+        .player-profile-actions button.primary { background: #f1c40f; color: #1a1a2e; border-color: #c27c0e; }
+        .player-profile-actions button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .player-profile-notice { font-size: 0.5rem; color: #aab1c5; min-height: 12px; }
+
+        /* Barrier Prompt */
+        #barrierPromptOverlay { position: fixed; inset: 0; background: rgba(6, 8, 12, 0.88); z-index: 12140; display: none; align-items: center; justify-content: center; padding: 16px; pointer-events: auto; }
+        .barrier-card { width: min(360px, 92vw); background: linear-gradient(180deg, #1b263d 0%, #0f172a 100%); border: 3px solid #f1c40f; border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,0.7), inset 0 2px 0 rgba(255,255,255,0.12); display: flex; flex-direction: column; gap: 12px; padding: 14px; color: #f8f3dd; font-family: 'Press Start 2P', monospace; }
+        .barrier-row { display: flex; gap: 12px; align-items: center; }
+        .barrier-icon { width: 52px; height: 52px; border-radius: 12px; background: #0b1220; border: 2px solid #c27c0e; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .barrier-icon img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+        .barrier-name { font-size: 0.62rem; letter-spacing: 0.5px; line-height: 1.2; }
+        .barrier-sub { font-size: 0.5rem; color: #cbd5f5; letter-spacing: 0.4px; }
+        .barrier-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .barrier-actions button { background: #1e293b; color: #fff; border: 2px solid #334155; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-family: 'Press Start 2P', monospace; font-size: 0.55rem; box-shadow: 0 2px 0 #0f172a; }
+        .barrier-actions button.primary { background: #f1c40f; color: #1a1a2e; border-color: #c27c0e; }
+        .barrier-actions button:active { transform: translateY(2px); box-shadow: none; }
 
         /* NPC Editor (janela PC) */
         #npcEditorOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200000; display: none; align-items: center; justify-content: center; padding: 18px; pointer-events: auto; }
@@ -1199,7 +1237,58 @@
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">     EQUIPE</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">     BOLSA</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">     PC</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openRank==='function') openRank();">     RANK</button>
                 <button class="startMenuBtn startMenuBtn--gold" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); window.location.href='/custom-battle?userId=<%= userId %>';">⚔️ CUSTOM BATTLE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="playerProfileOverlay" onclick="closePlayerProfile()">
+        <div class="player-profile-card" onclick="event.stopPropagation()">
+            <div class="player-profile-header">
+                <div class="player-profile-avatar" id="playerProfileAvatar"></div>
+                <div>
+                    <div class="player-profile-name" id="playerProfileName">Jogador</div>
+                    <div class="player-profile-status" id="playerProfileStatus">Online</div>
+                </div>
+            </div>
+            <div class="player-profile-actions">
+                <button class="primary" id="playerProfileChallengeBtn" type="button">DESAFIAR</button>
+                <button id="playerProfileCloseBtn" type="button">FECHAR</button>
+            </div>
+            <div class="player-profile-notice" id="playerProfileNotice"></div>
+        </div>
+    </div>
+
+    <div id="playerChallengeOverlay" onclick="closePlayerChallengePrompt()">
+        <div class="player-profile-card" onclick="event.stopPropagation()">
+            <div class="player-profile-header">
+                <div class="player-profile-avatar" id="playerChallengeAvatar"></div>
+                <div>
+                    <div class="player-profile-name" id="playerChallengeName">Desafio</div>
+                    <div class="player-profile-status">Quer batalhar com voce</div>
+                </div>
+            </div>
+            <div class="player-profile-actions">
+                <button class="primary" id="playerChallengeAcceptBtn" type="button">ACEITAR</button>
+                <button id="playerChallengeDeclineBtn" type="button">RECUSAR</button>
+            </div>
+            <div class="player-profile-notice" id="playerChallengeNotice"></div>
+        </div>
+    </div>
+
+    <div id="barrierPromptOverlay" onclick="closeBarrierPrompt()">
+        <div class="barrier-card" onclick="event.stopPropagation()">
+            <div class="barrier-row">
+                <div class="barrier-icon"><img id="barrierPromptIcon" alt="item" /></div>
+                <div>
+                    <div class="barrier-name" id="barrierPromptName">Item</div>
+                    <div class="barrier-sub">Deseja usar este item?</div>
+                </div>
+            </div>
+            <div class="barrier-actions">
+                <button class="primary" id="barrierPromptUse" type="button">USAR</button>
+                <button id="barrierPromptCancel" type="button">CANCELAR</button>
             </div>
         </div>
     </div>
@@ -2733,6 +2822,7 @@
         window.USER_BAG = <%- JSON.stringify(user.bag || { captureCube: 5, levelUpCrystal: 0 }) %>;
         window.USER_KEY_ITEMS = <%- JSON.stringify(user.keyItems || []) %>;
         window.STORY_FLAGS = <%- JSON.stringify(user.storyFlags || {}) %>;
+        window.FOLLOWING_ENTITY_ID = <%- JSON.stringify(user.followingEntityId || '') %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
         
         // --- LÓGICA DE SPAWN INICIAL ---
@@ -2767,6 +2857,8 @@
                             if (d.bag) window.USER_BAG = d.bag;
                             if (d.keyItems) window.USER_KEY_ITEMS = d.keyItems;
                             if (d.storyFlags) window.STORY_FLAGS = d.storyFlags;
+                            if (typeof d.followingEntityId === 'string') window.FOLLOWING_ENTITY_ID = d.followingEntityId;
+                            try { setupFollower(); } catch (_) {}
                         }
                     })
                     .catch(() => {});
@@ -2833,12 +2925,30 @@
 
         socket.on('map_state', (players) => { 
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => { if(el.id !== `p-${window.myId}`) el.remove(); });
+            remoteFollowers.forEach((_, id) => removeRemoteFollower(id));
             players.forEach(p => { if(p.id !== window.myId) createPlayerElement(p); else { const myEl = document.getElementById(`p-${window.myId}`); if(myEl && !window.isMoving) { myEl.style.left = p.x + '%'; myEl.style.top = p.y + '%'; } } });
             if (!document.getElementById(`p-${window.myId}`)) { createPlayerElement({ id: window.myId, name: myName, skin: mySkin, x: startX, y: startY, direction: startDir }); }
+            setupFollower();
             markMapReady();
         });
         
         socket.on('player_joined', (p) => { if(p.id !== window.myId) createPlayerElement(p); });
+
+        socket.on('player_following_updated', (data) => {
+            if (!data || !data.id || data.id === window.myId) return;
+            const el = document.getElementById(`p-${data.id}`);
+            const x = el ? parseFloat(el.style.left) : 50;
+            const y = el ? parseFloat(el.style.top) : 50;
+            const direction = el ? (el.getAttribute('data-dir') || 'down') : 'down';
+            syncRemoteFollower({
+                id: data.id,
+                x: Number.isFinite(x) ? x : 50,
+                y: Number.isFinite(y) ? y : 50,
+                direction,
+                followerSprite: data.followerSprite,
+                followerName: data.followerName
+            });
+        });
         
         socket.on('player_moved', (data) => {
             const el = document.getElementById(`p-${data.id}`);
@@ -2874,6 +2984,7 @@
                         const sameY = Math.abs(curT - data.y) < 0.001;
                         if (sameX && sameY) {
                             el.setAttribute('data-dir', data.direction);
+                            if (data.id === window.myId) enqueueFollowerPosition({ x: data.x, y: data.y, dir: data.direction });
                             // Mesmo ignorando o eco (predição local), ainda precisamos checar portais.
                             if (data.id === window.myId) {
                                 window.isMoving = false;
@@ -2909,6 +3020,8 @@
                 }
                 el.style.transition = `top ${duration}s ${easing}, left ${duration}s ${easing}`; 
                 void el.offsetWidth; el.style.left = data.x + '%'; el.style.top = data.y + '%'; el.style.zIndex = Math.floor(data.y); el.setAttribute('data-dir', data.direction);
+                if (data.id === window.myId) enqueueFollowerPosition({ x: data.x, y: data.y, dir: data.direction });
+                else updateRemoteFollowerPosition(data.id, { x: data.x, y: data.y, dir: data.direction });
                 if (duration > 0) { 
                     if (!el.classList.contains('walking')) el.classList.add('walking'); 
                     if (el.walkTimeout) clearTimeout(el.walkTimeout); 
@@ -2926,14 +3039,201 @@
             }
         });
         
-        socket.on('player_left', (id) => { const el = document.getElementById(`p-${id}`); if (el) el.remove(); });
+        socket.on('player_left', (id) => {
+            const el = document.getElementById(`p-${id}`);
+            if (el) el.remove();
+            removeRemoteFollower(id);
+        });
         socket.on('chat_message', (data) => { const p = document.getElementById(`p-${data.id}`); if(p) { const b = document.createElement('div'); b.className='chat-bubble'; b.innerText=data.msg; p.appendChild(b); setTimeout(()=>b.remove(),4000); }});
+
+        socket.on('match_found', ({ roomId, me, opponent }) => {
+            if (!roomId || !me || !opponent) {
+                if (typeof showToast === 'function') showToast('Falha ao iniciar batalha.', { bg: '#e74c3c' });
+                return;
+            }
+            try {
+                closePlayerProfile();
+                closePlayerChallengePrompt();
+            } catch (_) {}
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/battle/online';
+            const addField = (name, value) => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            };
+            addField('roomId', roomId);
+            addField('meData', JSON.stringify(me || {}));
+            addField('opponentData', JSON.stringify(opponent || {}));
+            document.body.appendChild(form);
+            form.submit();
+        });
+
+        socket.on('player_challenge_request', (payload) => {
+            openPlayerChallengePrompt(payload);
+        });
+
+        socket.on('player_challenge_sent', () => {
+            setPlayerProfileNotice('Desafio enviado.');
+            const btn = document.getElementById('playerProfileChallengeBtn');
+            if (btn) { btn.disabled = true; btn.textContent = 'AGUARDE'; }
+        });
+
+        socket.on('player_challenge_declined', () => {
+            setPlayerProfileNotice('Desafio recusado.');
+            const btn = document.getElementById('playerProfileChallengeBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'DESAFIAR'; }
+        });
+
+        socket.on('player_challenge_expired', () => {
+            setPlayerProfileNotice('Desafio expirou.');
+            const btn = document.getElementById('playerProfileChallengeBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'DESAFIAR'; }
+        });
+
+        socket.on('player_challenge_error', (msg) => {
+            setPlayerProfileNotice(String(msg || 'Nao foi possivel desafiar.'));
+            if (typeof showToast === 'function') showToast(String(msg || 'Nao foi possivel desafiar.'), { bg: '#e74c3c' });
+            const btn = document.getElementById('playerProfileChallengeBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'DESAFIAR'; }
+        });
 
         const setNpcIdleFrame = (el) => {
             if (!el) return;
             // Snap to the first column so idle shows the neutral pose
             el.style.backgroundPositionX = '0%';
         };
+
+        function configureStoryBarrier(barrier) {
+            const existingFlag = String(barrier.requiredFlag || '').trim();
+            const existingItem = String(barrier.requiredItemId || barrier.requiredKey || barrier.requiredKeyId || '').trim();
+            const defaultType = existingItem ? 'item' : 'flag';
+            const typeRaw = prompt('Tipo de barreira (flag/item)?', defaultType);
+            if (typeRaw === null) return null;
+            const type = String(typeRaw || '').trim().toLowerCase();
+
+            let flagId = existingFlag;
+            let itemId = existingItem;
+
+            if (type === 'item') {
+                const itemRaw = prompt('ID do item necessario:', existingItem || '');
+                if (itemRaw === null) return null;
+                const itemTrim = String(itemRaw || '').trim();
+                if (!itemTrim) { alert('ID do item nao pode ser vazio!'); return null; }
+                itemId = itemTrim;
+                if (!flagId) flagId = `barrier_${Date.now()}`;
+            } else {
+                const flagRaw = prompt('Nome da StoryFlag necessaria para passar:', existingFlag || '');
+                if (flagRaw === null) return null;
+                const flagTrim = String(flagRaw || '').trim();
+                if (!flagTrim) { alert('Nome da flag nao pode ser vazio!'); return null; }
+                flagId = flagTrim;
+                itemId = '';
+            }
+
+            const color = prompt('Cor da barreira (ex: yellow). Deixe vazio para padrao:', barrier.color || 'yellow');
+            if (color !== null) {
+                if (String(color).trim()) barrier.color = String(color).trim().toLowerCase();
+                else delete barrier.color;
+            }
+
+            barrier.requiredFlag = flagId;
+            if (itemId) barrier.requiredItemId = itemId; else delete barrier.requiredItemId;
+            delete barrier.requiredKey;
+            delete barrier.requiredKeyId;
+            return barrier;
+        }
+
+        let __playerProfileTarget = null;
+        let __pendingChallenge = null;
+
+        function setPlayerProfileNotice(text) {
+            const notice = document.getElementById('playerProfileNotice');
+            if (notice) notice.textContent = text || '';
+        }
+
+        function openPlayerProfile(p) {
+            if (!p) return;
+            const overlay = document.getElementById('playerProfileOverlay');
+            if (!overlay) return;
+            __playerProfileTarget = p;
+            const nameEl = document.getElementById('playerProfileName');
+            const avatarEl = document.getElementById('playerProfileAvatar');
+            const statusEl = document.getElementById('playerProfileStatus');
+            if (nameEl) nameEl.textContent = p.name || 'Jogador';
+            if (statusEl) statusEl.textContent = 'Online';
+            if (avatarEl) {
+                const skinUrl = getSkinUrl(p.skin);
+                avatarEl.style.backgroundImage = skinUrl ? `url('${skinUrl}')` : 'none';
+                avatarEl.style.backgroundPosition = '0% 0%';
+            }
+            const btn = document.getElementById('playerProfileChallengeBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'DESAFIAR'; }
+            setPlayerProfileNotice('');
+            overlay.style.display = 'flex';
+        }
+
+        function closePlayerProfile() {
+            const overlay = document.getElementById('playerProfileOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function openPlayerChallengePrompt(payload) {
+            if (!payload || !payload.from) return;
+            const overlay = document.getElementById('playerChallengeOverlay');
+            if (!overlay) return;
+            __pendingChallenge = payload;
+            const nameEl = document.getElementById('playerChallengeName');
+            const avatarEl = document.getElementById('playerChallengeAvatar');
+            if (nameEl) nameEl.textContent = payload.from.name || 'Desafio';
+            if (avatarEl) {
+                const skinUrl = getSkinUrl(payload.from.skin);
+                avatarEl.style.backgroundImage = skinUrl ? `url('${skinUrl}')` : 'none';
+                avatarEl.style.backgroundPosition = '0% 0%';
+            }
+            const notice = document.getElementById('playerChallengeNotice');
+            if (notice) notice.textContent = '';
+            overlay.style.display = 'flex';
+        }
+
+        function closePlayerChallengePrompt() {
+            const overlay = document.getElementById('playerChallengeOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        (function setupPlayerProfileUi() {
+            const closeBtn = document.getElementById('playerProfileCloseBtn');
+            if (closeBtn) closeBtn.addEventListener('click', () => closePlayerProfile());
+
+            const challengeBtn = document.getElementById('playerProfileChallengeBtn');
+            if (challengeBtn) {
+                challengeBtn.addEventListener('click', () => {
+                    if (!__playerProfileTarget || !__playerProfileTarget.id) return;
+                    socket.emit('player_challenge_request', { targetSocketId: __playerProfileTarget.id });
+                });
+            }
+
+            const acceptBtn = document.getElementById('playerChallengeAcceptBtn');
+            const declineBtn = document.getElementById('playerChallengeDeclineBtn');
+            if (acceptBtn) {
+                acceptBtn.addEventListener('click', () => {
+                    if (!__pendingChallenge || !__pendingChallenge.challengeId) return;
+                    socket.emit('player_challenge_accept', { challengeId: __pendingChallenge.challengeId });
+                    closePlayerChallengePrompt();
+                });
+            }
+            if (declineBtn) {
+                declineBtn.addEventListener('click', () => {
+                    if (!__pendingChallenge || !__pendingChallenge.challengeId) return;
+                    socket.emit('player_challenge_decline', { challengeId: __pendingChallenge.challengeId });
+                    closePlayerChallengePrompt();
+                });
+            }
+        })();
 
         // ========== NAVEGAÇÃO CLIENT-SIDE DE MAPAS (SPA) ==========
         async function navigateToMapClientSide(targetMapId, targetX, targetY) {
@@ -4909,7 +5209,6 @@
             if (!foundKey) {
                 // Se não achou rota, ainda permite falar se já estiver dentro do alcance.
                 if (dist <= interactRange) interactWithNPC(npc);
-                else if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
                 return;
             }
 
@@ -4958,7 +5257,6 @@
                     const py = me ? parseFloat(me.style.top) : currY;
                     const remain = Math.hypot(npcX - px, npcY - py);
                     if (remain <= interactRange) interactWithNPC(npc);
-                    else if (typeof showToast === 'function') showToast('Não consigo chegar até esse NPC.', { bg: '#e74c3c' });
                     return;
                 }
 
@@ -5074,23 +5372,36 @@
         }
 
         // --- BASE ---
+        function getSkinUrl(skinId) {
+            const s = String(skinId || '').trim();
+            if (!s) return '';
+            return `/skins/${encodeURIComponent(s)}.png`;
+        }
+
         function createPlayerElement(p) { 
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
             if (p.name && p.name.toLowerCase().includes('(kid)')) { div.classList.add('kid-scale'); }
-            function getSkinUrl(skinId) {
-                const s = String(skinId || '').trim();
-                if (!s) return '';
-                return `/skins/${encodeURIComponent(s)}.png`;
-            }
             if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; div.appendChild(img); div.style.backgroundImage='none'; }
             else {
                 const url = getSkinUrl(p.skin);
                 div.style.backgroundImage = url ? `url('${url}')` : 'none';
             }
             const displayName = (p.name || "").replace(/\(kid\)/i, '').trim();
-            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; div.appendChild(label); 
+            const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; div.appendChild(label);
+
+            const isSelf = (p.id === window.myId) || (p.userId && String(p.userId) === String(window.CURRENT_USER_ID));
+            if (!isSelf) {
+                div.classList.add('player-remote');
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.__devClickCapture || devMode || window.isTeleporting || window.isInteracting) return;
+                    openPlayerProfile({ id: p.id, userId: p.userId, name: displayName || p.name, skin: p.skin, sprite: p.sprite });
+                });
+            }
+
             gameArea.appendChild(div); 
+            syncRemoteFollower(p);
         }
 
         function getSafeTarget(currX, currY, targetX, targetY) {
@@ -5140,9 +5451,306 @@
             });
         }
 
+        let followerEl = null;
+        let followerQueue = [];
+        let followerTimer = null;
+
+        function setFollowingEntityId(id) {
+            window.FOLLOWING_ENTITY_ID = id || '';
+            setupFollower();
+        }
+        window.setFollowingEntityId = setFollowingEntityId;
+
+        function getFollowerData() {
+            const cache = window.__ME_CACHE;
+            if (!cache || !Array.isArray(cache.team)) return null;
+            const id = String(window.FOLLOWING_ENTITY_ID || '').trim();
+            if (!id) return null;
+            return cache.team.find(p => String(p.instanceId) === id) || null;
+        }
+
+        function removeFollower() {
+            if (followerEl) followerEl.remove();
+            followerEl = null;
+            followerQueue = [];
+            if (followerTimer) { clearInterval(followerTimer); followerTimer = null; }
+        }
+
+        function ensureFollowerElement(data) {
+            if (!data || !data.sprite) return false;
+            if (!followerEl) {
+                followerEl = document.createElement('div');
+                followerEl.id = 'follower';
+                followerEl.className = 'follower';
+                const img = document.createElement('img');
+                img.src = resolveImg(data.sprite);
+                img.alt = data.name || 'Seguidor';
+                followerEl.appendChild(img);
+                gameArea.appendChild(followerEl);
+            } else {
+                const img = followerEl.querySelector('img');
+                const nextSrc = resolveImg(data.sprite);
+                if (img && img.src !== nextSrc) img.src = nextSrc;
+            }
+            return true;
+        }
+
+        function setupFollower() {
+            const data = getFollowerData();
+            if (!data) { removeFollower(); return; }
+            if (!ensureFollowerElement(data)) { removeFollower(); return; }
+            const me = document.getElementById(`p-${window.myId}`);
+            if (me) {
+                const x = parseFloat(me.style.left) || 50;
+                const y = parseFloat(me.style.top) || 50;
+                updateFollowerPosition({ x, y, dir: me.getAttribute('data-dir') || 'down' }, true);
+            }
+            if (!followerTimer) startFollowerLoop();
+        }
+
+        function applyFollowerOffset(pos) {
+            let x = pos.x;
+            let y = pos.y;
+            const dir = pos.dir || 'down';
+            const offset = 6;
+            if (dir === 'up') y = y + offset;
+            else if (dir === 'down') y = y - offset;
+            else if (dir === 'left') x = x + offset;
+            else if (dir === 'right') x = x - offset;
+            x = Math.max(0, Math.min(100, x));
+            y = Math.max(0, Math.min(100, y));
+            return { x, y, dir };
+        }
+
+        function updateFollowerPosition(pos, immediate = false) {
+            if (!followerEl) return;
+            const next = applyFollowerOffset(pos);
+            followerEl.style.transition = immediate ? 'none' : 'top 0.18s linear, left 0.18s linear';
+            followerEl.style.left = next.x + '%';
+            followerEl.style.top = next.y + '%';
+            followerEl.style.zIndex = Math.floor(next.y) - 1;
+            if (next.dir === 'right') followerEl.classList.add('flip');
+            else if (next.dir === 'left') followerEl.classList.remove('flip');
+
+            followerEl.classList.remove('hop');
+            void followerEl.offsetWidth;
+            followerEl.classList.add('hop');
+            setTimeout(() => { if (followerEl) followerEl.classList.remove('hop'); }, 360);
+        }
+
+        function enqueueFollowerPosition(pos) {
+            if (!followerEl) return;
+            followerQueue.push(pos);
+            if (followerQueue.length > 20) followerQueue.shift();
+            if (followerQueue.length === 1) updateFollowerPosition(pos);
+        }
+
+        function startFollowerLoop() {
+            if (followerTimer) return;
+            followerTimer = setInterval(() => {
+                if (!followerEl) return;
+                if (followerQueue.length === 0) return;
+                const next = followerQueue.shift();
+                updateFollowerPosition(next);
+            }, 180);
+        }
+
+        const remoteFollowers = new Map();
+
+        function ensureRemoteFollower(playerId, sprite, name) {
+            if (!playerId || !sprite) return null;
+            let entry = remoteFollowers.get(playerId);
+            if (!entry) {
+                const el = document.createElement('div');
+                el.className = 'follower';
+                el.dataset.ownerId = playerId;
+                const img = document.createElement('img');
+                img.src = resolveImg(sprite);
+                img.alt = name || 'Seguidor';
+                el.appendChild(img);
+                gameArea.appendChild(el);
+                entry = { el, sprite };
+                remoteFollowers.set(playerId, entry);
+            } else {
+                const img = entry.el.querySelector('img');
+                const nextSrc = resolveImg(sprite);
+                if (img && img.src !== nextSrc) img.src = nextSrc;
+                entry.sprite = sprite;
+            }
+            return entry;
+        }
+
+        function removeRemoteFollower(playerId) {
+            const entry = remoteFollowers.get(playerId);
+            if (entry && entry.el) entry.el.remove();
+            remoteFollowers.delete(playerId);
+        }
+
+        function updateRemoteFollowerPosition(playerId, pos, immediate = false) {
+            const entry = remoteFollowers.get(playerId);
+            if (!entry || !entry.el) return;
+            const next = applyFollowerOffset(pos);
+            entry.el.style.transition = immediate ? 'none' : 'top 0.18s linear, left 0.18s linear';
+            entry.el.style.left = next.x + '%';
+            entry.el.style.top = next.y + '%';
+            entry.el.style.zIndex = Math.floor(next.y) - 1;
+            if (next.dir === 'right') entry.el.classList.add('flip');
+            else if (next.dir === 'left') entry.el.classList.remove('flip');
+        }
+
+        function syncRemoteFollower(p) {
+            if (!p || !p.id || p.id === window.myId) return;
+            if (!p.followerSprite) { removeRemoteFollower(p.id); return; }
+            ensureRemoteFollower(p.id, p.followerSprite, p.followerName);
+            updateRemoteFollowerPosition(p.id, { x: p.x, y: p.y, dir: p.direction || 'down' }, true);
+        }
+
+        function findNearbyStoryBarrier(x, y, margin = 0) {
+            const list = Array.isArray(storyBarriersMap) ? storyBarriersMap : [];
+            const m = Number.isFinite(margin) ? Math.max(0, margin) : 0;
+            return list.find(barrier => {
+                if (!barrier || !barrier.requiredFlag) return false;
+                return x >= (barrier.x - m)
+                    && x <= (barrier.x + barrier.w + m)
+                    && y >= (barrier.y - m)
+                    && y <= (barrier.y + barrier.h + m);
+            }) || null;
+        }
+
+        let __itemCatalogCache = null;
+        let __itemCatalogById = null;
+        let __barrierPromptContext = null;
+
+        async function loadItemCatalogCache() {
+            if (__itemCatalogCache) return __itemCatalogCache;
+            try {
+                const res = await fetch('/api/items/catalog');
+                const json = await res.json().catch(() => ({}));
+                __itemCatalogCache = (json && json.success && Array.isArray(json.items)) ? json.items : [];
+            } catch (_) {
+                __itemCatalogCache = [];
+            }
+            __itemCatalogById = new Map((__itemCatalogCache || []).map(it => [String(it.id), String(it.name || it.id || '')]));
+            return __itemCatalogCache;
+        }
+
+        function getItemNameFromCache(itemId) {
+            if (!__itemCatalogById || !itemId) return '';
+            return __itemCatalogById.get(String(itemId)) || '';
+        }
+
+        function openBarrierPrompt(flagId, itemId) {
+            const overlay = document.getElementById('barrierPromptOverlay');
+            const nameEl = document.getElementById('barrierPromptName');
+            const iconEl = document.getElementById('barrierPromptIcon');
+            const btnUse = document.getElementById('barrierPromptUse');
+            const btnCancel = document.getElementById('barrierPromptCancel');
+            if (!overlay || !nameEl || !iconEl || !btnUse || !btnCancel) return;
+
+            __barrierPromptContext = { flagId, itemId };
+            window.__barrierPromptActive = true;
+            window.__lastBarrierPromptAt = Date.now();
+
+            nameEl.textContent = itemId || 'Item';
+            iconEl.src = itemId ? `/api/items/icon/${encodeURIComponent(itemId)}.png` : '';
+
+            btnUse.disabled = false;
+            btnUse.textContent = 'USAR';
+
+            btnUse.onclick = async () => {
+                if (!__barrierPromptContext) return;
+                btnUse.disabled = true;
+                btnUse.textContent = 'AGUARDE';
+                try {
+                    const resp = await fetch('/api/map/use-key', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: USER_ID,
+                            flagId: __barrierPromptContext.flagId,
+                            itemId: __barrierPromptContext.itemId,
+                            qty: 1
+                        })
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (data && data.success) {
+                        if (typeof showToast === 'function') showToast('Barreira removida.');
+                        if (data.bag) window.USER_BAG = data.bag;
+                        if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
+                        if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                        try { renderMapObjects && renderMapObjects(); } catch (_) {}
+                        closeBarrierPrompt();
+                        return;
+                    }
+
+                    if (data && data.needsItem) {
+                        if (typeof showToast === 'function') showToast('Voce nao possui o item necessario.', { bg: '#e74c3c' });
+                    } else {
+                        if (typeof showToast === 'function') showToast('Nao foi possivel usar o item.', { bg: '#e74c3c' });
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (typeof showToast === 'function') showToast('Erro ao usar item.', { bg: '#e74c3c' });
+                } finally {
+                    btnUse.disabled = false;
+                    btnUse.textContent = 'USAR';
+                }
+            };
+
+            btnCancel.onclick = () => closeBarrierPrompt();
+
+            overlay.style.display = 'flex';
+
+            loadItemCatalogCache().then(() => {
+                const label = getItemNameFromCache(itemId);
+                if (label) nameEl.textContent = label;
+            }).catch(() => {});
+        }
+
+        function closeBarrierPrompt() {
+            const overlay = document.getElementById('barrierPromptOverlay');
+            if (overlay) overlay.style.display = 'none';
+            window.__barrierPromptActive = false;
+            __barrierPromptContext = null;
+        }
+
+        function maybePromptStoryBarrier(x, y, margin = 0) {
+            if (window.__barrierPromptActive) return false;
+            if (window.__lastBarrierPromptAt && (Date.now() - window.__lastBarrierPromptAt) < 1200) return false;
+
+            const hitBarrier = findNearbyStoryBarrier(x, y, margin);
+            if (!hitBarrier || !hitBarrier.requiredFlag) return false;
+
+            const flag = hitBarrier.requiredFlag;
+            const flagActive = (window.STORY_FLAGS && window.STORY_FLAGS[flag]);
+            if (flagActive) return false;
+
+            const keys = Array.isArray(window.USER_KEY_ITEMS) ? window.USER_KEY_ITEMS.slice() : [];
+            const bagItems = (window.USER_BAG && typeof window.USER_BAG === 'object')
+                ? Object.keys(window.USER_BAG).filter(k => (window.USER_BAG[k] || 0) > 0)
+                : [];
+
+            if (keys.length === 0 && bagItems.length === 0) return false;
+
+            const requiredItem = hitBarrier.requiredItemId || hitBarrier.requiredKey || hitBarrier.requiredKeyId || null;
+            let useId = null;
+            if (requiredItem) {
+                const rid = String(requiredItem).trim();
+                if (keys.includes(rid) || (window.USER_BAG && window.USER_BAG[rid] && (window.USER_BAG[rid] > 0))) {
+                    useId = rid;
+                }
+            }
+            if (!useId) useId = keys.length > 0 ? keys[0] : bagItems[0];
+            openBarrierPrompt(flag, useId);
+            return true;
+        }
+
         function checkTriggers(x, y) {
             if (window.isTeleporting) return;
             if (isPortalCooldownActive()) return;
+
+            // Se estiver perto de uma barreira, oferece usar item
+            maybePromptStoryBarrier(x, y, 1.6);
 
             const portal = portalsMap.find(p => x >= p.x && x <= (p.x + p.w) && y >= p.y && y <= (p.y + p.h));
             if (portal) {
@@ -5360,54 +5968,7 @@
 
             // Clique numa Story Barrier? se sim, oferece usar item-chave (se houver)
             try {
-                const hitBarrier = (Array.isArray(storyBarriersMap) ? storyBarriersMap : []).find(barrier => {
-                    if (!barrier) return false;
-                    return targetX >= barrier.x && targetX <= (barrier.x + barrier.w) && targetY >= barrier.y && targetY <= (barrier.y + barrier.h);
-                });
-                if (hitBarrier && hitBarrier.requiredFlag) {
-                    const flag = hitBarrier.requiredFlag;
-                    const flagActive = (window.STORY_FLAGS && window.STORY_FLAGS[flag]);
-                    if (!flagActive) {
-                        // Só sugere usar item-chave se o jogador tiver algum
-                        const keys = Array.isArray(window.USER_KEY_ITEMS) ? window.USER_KEY_ITEMS.slice() : [];
-                        // também verifica bag para itens (opcional)
-                        const bagItems = (window.USER_BAG && typeof window.USER_BAG === 'object') ? Object.keys(window.USER_BAG).filter(k => (window.USER_BAG[k] || 0) > 0) : [];
-                        if (keys.length > 0 || bagItems.length > 0) {
-                            // Prioriza um item exigido pela barreira, se definido
-                            const requiredItem = hitBarrier.requiredItemId || hitBarrier.requiredKey || hitBarrier.requiredKeyId || null;
-                            let useId = null;
-                            if (requiredItem) {
-                                const rid = String(requiredItem).trim();
-                                if (keys.includes(rid) || (window.USER_BAG && window.USER_BAG[rid] && (window.USER_BAG[rid] > 0))) {
-                                    useId = rid;
-                                }
-                            }
-                            if (!useId) useId = keys.length > 0 ? keys[0] : bagItems[0];
-                            if (confirm(`Usar ${useId} para remover a barreira?`)) {
-                                (async () => {
-                                    try {
-                                        const mapId = (window.mapConfig && window.mapConfig.mapId) ? window.mapConfig.mapId : '';
-                                        const resp = await fetch('/api/map/use-key', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: USER_ID, flagId: flag, itemId: useId, qty: 1 }) });
-                                        const data = await resp.json().catch(() => ({}));
-                                        if (data && data.success) {
-                                            if (typeof showToast === 'function') showToast('Barreira removida.');
-                                            if (data.bag) window.USER_BAG = data.bag;
-                                            if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
-                                            if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
-                                            // re-render (se houver função que atualize mundo)
-                                            try { renderMapObjects && renderMapObjects(); } catch(_){}
-                                        } else if (data && data.needsItem) {
-                                            alert('Você não possui o item necessário.');
-                                        } else {
-                                            alert('Não foi possível usar o item.');
-                                        }
-                                    } catch (e) { console.error(e); alert('Erro ao usar item.'); }
-                                })();
-                                return; // evita mover para o local da barreira
-                            }
-                        }
-                    }
-                }
+                if (maybePromptStoryBarrier(targetX, targetY, 0)) return;
             } catch (_) {}
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
             const currX = parseFloat(myPlayer.style.left); const currY = parseFloat(myPlayer.style.top);
@@ -5456,6 +6017,7 @@
                 else dir = dy > 0 ? 'down' : 'up';
                 myPlayer.setAttribute('data-dir', dir);
                 myPlayer.classList.add('walking');
+                enqueueFollowerPosition({ x: safeDest.x, y: safeDest.y, dir });
                 // Se o servidor não responder (ou o movimento for bloqueado), evita ficar "estátua" com animação presa
                 if (myPlayer.__preWalkTimeout) clearTimeout(myPlayer.__preWalkTimeout);
                 myPlayer.__preWalkTimeout = setTimeout(() => {
@@ -6058,6 +6620,8 @@
                     myPlayer.style.top = safeDest.y + '%';
                     myPlayer.style.zIndex = Math.floor(safeDest.y);
                 } catch (_) {}
+
+                enqueueFollowerPosition({ x: safeDest.x, y: safeDest.y, dir });
 
                 emitMovePlayer(safeDest.x, safeDest.y);
 
@@ -6807,20 +7371,7 @@
                         ev.stopPropagation();
 
                         if (currentTool === 'storyBarrier') {
-                            const flagName = prompt('Nome da StoryFlag necessária para passar:', r.requiredFlag || '');
-                            if (flagName === null) return;
-                            if (flagName.trim()) {
-                                r.requiredFlag = flagName.trim();
-                            } else {
-                                alert('Nome da flag não pode ser vazio!');
-                                return;
-                            }
-                            // permite escolher cor da barreira (ex: yellow)
-                            const color = prompt('Cor da barreira (ex: yellow). Deixe vazio para padrão:', r.color || 'yellow');
-                            if (color !== null) {
-                                if (String(color).trim()) r.color = String(color).trim().toLowerCase();
-                                else delete r.color;
-                            }
+                            if (!configureStoryBarrier(r)) return;
                             renderMapObjects();
                             return;
                         }
@@ -6831,7 +7382,8 @@
                     };
 
                     const flagName = r.requiredFlag || '(sem flag)';
-                    d.title = `Barreira FLAG: ${flagName}` + (r.color ? ` (cor: ${r.color})` : '');
+                    const itemName = r.requiredItemId ? ` | item: ${r.requiredItemId}` : '';
+                    d.title = `Barreira FLAG: ${flagName}${itemName}` + (r.color ? ` (cor: ${r.color})` : '');
                 }
 
                 document.getElementById('collision-container').appendChild(d);
@@ -6923,14 +7475,8 @@
                         collisionMap.push(newRect);
                     }
                     else if(currentTool === 'storyBarrier') {
-                        const flagName = prompt('Nome da StoryFlag necessária para passar:', '');
-                        if (flagName && String(flagName).trim()) {
-                            newRect.requiredFlag = String(flagName).trim();
-                            const color = prompt('Cor da barreira (ex: yellow). Deixe vazio para padrão:', 'yellow');
-                            if (color !== null && String(color).trim()) newRect.color = String(color).trim().toLowerCase();
+                        if (configureStoryBarrier(newRect)) {
                             storyBarriersMap.push(newRect);
-                        } else {
-                            alert('Nome da flag não pode ser vazio!');
                         }
                     }
                     else if(currentTool === 'grass') grassMap.push(newRect);

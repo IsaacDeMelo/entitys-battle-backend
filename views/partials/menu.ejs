@@ -177,6 +177,7 @@
             display: flex; align-items: center; justify-content: center; cursor: pointer;
             box-shadow: 0 2px 0 #101a2c;
         }
+        .icon-btn.following { background: rgba(251, 191, 36, 0.18); border-color: rgba(251, 191, 36, 0.6); color: #fbbf24; }
 
         /* PC SYSTEM */
         .pc-layout { display: flex; flex-direction: column; gap: 15px; height: 100%; }
@@ -250,6 +251,16 @@
         .dex-entry { aspect-ratio: 1; background: rgba(255,255,255,0.03); border-radius: 8px; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; }
         .dex-entry.unlocked { background: rgba(63, 111, 189, 0.18); border-color: var(--accent-primary); }
         .dex-entry.locked img { filter: grayscale(1); opacity: 0.3; }
+
+        /* RANK */
+        .rank-list { display: flex; flex-direction: column; gap: 8px; }
+        .rank-row { display: grid; grid-template-columns: 50px 1fr 80px 70px 70px; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(15, 23, 42, 0.6); font-size: 0.85rem; }
+        .rank-row.header { background: rgba(63, 111, 189, 0.25); text-transform: uppercase; font-weight: 800; letter-spacing: 0.6px; }
+        .rank-num { color: var(--accent-gold); font-weight: 900; }
+        .rank-points { color: #38bdf8; font-weight: 800; }
+        .rank-wins { color: #22c55e; font-weight: 800; }
+        .rank-losses { color: #ef4444; font-weight: 800; }
+        .rank-empty { text-align: center; padding: 20px; color: var(--text-muted); }
         
         /* MENU FLUTUANTE */
         .float-container { position: fixed; right: 20px; bottom: 100px; z-index: 9999; display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; }
@@ -349,6 +360,22 @@
         </div>
     </div>
 
+    <!-- MODAL: RANK -->
+    <div class="modal-overlay" id="modalRank">
+        <div class="modal-content" style="height:70vh;">
+            <div class="modal-header">
+                <h2><span style="color:#fbbf24;">★</span> Rank PvP</h2>
+                <button class="close-icon-btn" onclick="closeModal('modalRank')">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="rankContent" class="rank-list">Carregando...</div>
+            </div>
+            <div class="modal-footer-close">
+                <button class="btn-big-close" onclick="closeModal('modalRank')">FECHAR JANELA</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: PC STORAGE -->
     <div class="modal-overlay" id="modalPC">
         <div class="modal-content">
@@ -416,12 +443,29 @@
         const RAW_TEAM = <%- JSON.stringify(user.entityTeam || user.pokemonTeam || []) %>;
         const RAW_PC = <%- JSON.stringify(user.pc || []) %>;
         const REGISTERED_DEX_HISTORY = <%- JSON.stringify(user.dex || []) %>;
+
+        const DEX_ENTITIES = [...RAW_ENTITIES].sort((a, b) => {
+            const da = parseInt(a.dexOrder, 10);
+            const db = parseInt(b.dexOrder, 10);
+            const aHas = Number.isFinite(da);
+            const bHas = Number.isFinite(db);
+            if (aHas && bHas && da !== db) return da - db;
+            if (aHas && !bHas) return -1;
+            if (!aHas && bHas) return 1;
+            const an = String(a.name || '').toLowerCase();
+            const bn = String(b.name || '').toLowerCase();
+            if (an < bn) return -1;
+            if (an > bn) return 1;
+            return 0;
+        });
         
         const UNLOCKED_IDS = new Set([
             ...REGISTERED_DEX_HISTORY,
             ...RAW_TEAM.map(p => String(p.baseId||p.id)), 
             ...RAW_PC.map(p => String(p.baseId||p.id))
         ]);
+
+        let CURRENT_FOLLOWING_ID = (window.__ME_CACHE && window.__ME_CACHE.followingEntityId) ? String(window.__ME_CACHE.followingEntityId) : '';
 
         function resolveImg(s) {
             return s ? s : '/uploads/placeholder.png'; // Fallback se imagem faltar
@@ -520,6 +564,7 @@
             if (cached && Array.isArray(cached.team)) {
                 if (cached.allMoves) GLOBAL_MOVES_LIB = cached.allMoves;
                 CURRENT_TEAM_DATA = cached.team;
+                if (typeof cached.followingEntityId === 'string') CURRENT_FOLLOWING_ID = String(cached.followingEntityId || '');
                 renderPokemonList(cached.team);
             } else {
                 document.getElementById('pokemonListContent').innerHTML = '';
@@ -531,6 +576,7 @@
                 if (d && !d.error) window.__ME_CACHE = d;
                 if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; 
                 CURRENT_TEAM_DATA = d.team; // Salvar time no cache global
+                if (typeof d.followingEntityId === 'string') CURRENT_FOLLOWING_ID = String(d.followingEntityId || '');
                 renderPokemonList(d.team); 
             } catch(e) { 
                 if (!cached) document.getElementById('pokemonListContent').innerHTML = 'Erro de conexão.'; 
@@ -552,6 +598,7 @@
                 const hpPct = Math.min(100, (p.hp/p.maxHp)*100);
                 const xpMax = p.xpToNext || 100;
                 const xpPct = Math.min(100, (p.xp / xpMax) * 100);
+                const isFollowing = CURRENT_FOLLOWING_ID && String(p.instanceId) === String(CURRENT_FOLLOWING_ID);
                 
                 const clickAttr = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
                 const cardClass = isSelectingMode ? 'mon-card leader' : `mon-card ${idx===0?'leader':''}`;
@@ -570,6 +617,7 @@
                     ${!isSelectingMode ? `
                     <div class="mon-actions">
                         <div class="icon-btn" onclick="prepareMoveEditor('${p.instanceId}')">⚔️</div>
+                        <div class="icon-btn ${isFollowing ? 'following' : ''}" onclick="toggleFollow('${p.instanceId}')" title="Seguir">🐾</div>
                         ${idx!==0 ? `<div class="icon-btn" onclick="setLead('${p.instanceId}')">⭐</div>` : ''}
                         <div class="icon-btn" onclick="abandonPokemon('${p.instanceId}')" style="color:#ef4444; border-color:rgba(239,68,68,0.3);">✕</div>
                     </div>` : ''}
@@ -577,6 +625,28 @@
             });
             if(isSelectingMode) html += `<button onclick="cancelSelection()" class="btn-big-close" style="background:#333;">CANCELAR USO</button>`;
             content.innerHTML = html;
+        }
+
+        async function toggleFollow(instanceId) {
+            const nextId = (CURRENT_FOLLOWING_ID && String(CURRENT_FOLLOWING_ID) === String(instanceId)) ? '' : String(instanceId);
+            try {
+                const res = await fetch('/api/following', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: USER_ID, instanceId: nextId })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    showToast('Nao foi possivel seguir.');
+                    return;
+                }
+                CURRENT_FOLLOWING_ID = data.followingEntityId || '';
+                if (window.__ME_CACHE) window.__ME_CACHE.followingEntityId = CURRENT_FOLLOWING_ID;
+                if (typeof window.setFollowingEntityId === 'function') window.setFollowingEntityId(CURRENT_FOLLOWING_ID);
+                renderPokemonList(CURRENT_TEAM_DATA);
+            } catch (_) {
+                showToast('Erro ao salvar seguidor.');
+            }
         }
 
         /* --- POKEDEX --- */
@@ -587,11 +657,12 @@
         }
         function renderDexGrid() {
             const grid = document.getElementById('dexGrid'); grid.innerHTML = '';
-            RAW_ENTITIES.forEach((p, index) => {
+            DEX_ENTITIES.forEach((p, index) => {
                 const id = String(p.id||p._id);
                 const isUnlocked = UNLOCKED_IDS.has(id);
+                const dexNumber = Number.isFinite(parseInt(p.dexOrder, 10)) ? parseInt(p.dexOrder, 10) : (index + 1);
                 grid.innerHTML += `<div class="dex-entry ${isUnlocked ? 'unlocked' : 'locked'}" onclick="selectDexMonster('${id}')" data-name="${(p.name||'').toLowerCase()}">
-                    <span class="dex-num">#${(index+1).toString().padStart(3,'0')}</span>
+                    <span class="dex-num">#${dexNumber.toString().padStart(3,'0')}</span>
                     <img src="${resolveImg(p.sprite)}" loading="lazy" class="pixel-art" style="width:40px; height:40px;">
                 </div>`;
             });
@@ -632,6 +703,51 @@
         }
         function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); }
         function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-entry').forEach(e => e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
+
+        /* --- RANK --- */
+        async function openRank() {
+            document.getElementById('modalRank').style.display = 'flex';
+            const host = document.getElementById('rankContent');
+            if (!host) return;
+            host.innerHTML = 'Carregando...';
+            try {
+                const r = await fetch('/api/rank');
+                const d = await r.json();
+                if (!d || !d.success) throw new Error('rank_error');
+                renderRankList(d.list || []);
+            } catch (_) {
+                host.innerHTML = '<div class="rank-empty">Nao foi possivel carregar o rank.</div>';
+            }
+        }
+
+        function renderRankList(list) {
+            const host = document.getElementById('rankContent');
+            if (!host) return;
+            if (!Array.isArray(list) || list.length === 0) {
+                host.innerHTML = '<div class="rank-empty">Nenhum jogador com pontos ainda.</div>';
+                return;
+            }
+            const rows = list.map((p, idx) => `
+                <div class="rank-row">
+                    <div class="rank-num">${idx + 1}</div>
+                    <div>${p.username || 'Jogador'}</div>
+                    <div class="rank-points">${p.pvpPoints || 0}</div>
+                    <div class="rank-wins">${p.pvpWins || 0}</div>
+                    <div class="rank-losses">${p.pvpLosses || 0}</div>
+                </div>
+            `).join('');
+
+            host.innerHTML = `
+                <div class="rank-row header">
+                    <div>#</div>
+                    <div>Jogador</div>
+                    <div>Pontos</div>
+                    <div>Vitorias</div>
+                    <div>Derrotas</div>
+                </div>
+                ${rows}
+            `;
+        }
 
         /* --- PC SYSTEM --- */
         async function openPC(forceRefresh = false) { 

@@ -194,6 +194,7 @@ const activeBattles = {};
 const onlineBattles = {}; 
 const players = {}; 
 let matchmakingQueue = []; // Declarado globalmente
+const playerChallenges = {};
 const roomSpectators = {}; 
 
 // Cache da lista de NPCs por mapa (para sockets/patrol sem query constante)
@@ -214,6 +215,86 @@ const skinUpload = multer({
 
 function isLegacyCharSkinId(s) {
     return /^char\d+$/i.test(String(s || '').trim());
+}
+
+function isSocketInOnlineBattle(socketId) {
+    return Object.values(onlineBattles).some(b => b && ((b.p1 && b.p1.id === socketId) || (b.p2 && b.p2.id === socketId)));
+}
+
+function hasActiveChallengeForSocket(socketId) {
+    return Object.values(playerChallenges).some(ch => ch && (ch.fromSocketId === socketId || ch.toSocketId === socketId));
+}
+
+function cleanupChallengesForSocket(socketId) {
+    Object.keys(playerChallenges).forEach((id) => {
+        const ch = playerChallenges[id];
+        if (ch && (ch.fromSocketId === socketId || ch.toSocketId === socketId)) delete playerChallenges[id];
+    });
+}
+
+function createChallenge(fromSocketId, toSocketId) {
+    const id = `ch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const expiresAt = Date.now() + 45000;
+    playerChallenges[id] = { id, fromSocketId, toSocketId, expiresAt };
+    setTimeout(() => {
+        const ch = playerChallenges[id];
+        if (ch && ch.expiresAt <= Date.now()) {
+            delete playerChallenges[id];
+            io.to(ch.fromSocketId).emit('player_challenge_expired', { challengeId: id });
+            io.to(ch.toSocketId).emit('player_challenge_expired', { challengeId: id });
+        }
+    }, 46000);
+    return id;
+}
+
+async function createDirectOnlineBattle(p1SocketId, p2SocketId) {
+    const p1Player = players[p1SocketId];
+    const p2Player = players[p2SocketId];
+    if (!p1Player || !p2Player) return { success: false, error: 'Jogador offline.' };
+
+    const userA = await User.findById(p1Player.userId);
+    const userB = await User.findById(p2Player.userId);
+    if (!userA || !userB) return { success: false, error: 'Jogador inválido.' };
+
+    const pickAlive = async (user, playerInfo, socketId) => {
+        const pokeData = (user.entityTeam || []).find(p => p && p.currentHp > 0);
+        if (!pokeData) return null;
+        const base = await BaseEntity.findOne({ id: pokeData.baseId });
+        if (!base) return null;
+        const entity = userEntityToEntity(pokeData, base);
+        entity.userId = user._id;
+        entity.id = socketId;
+        entity.playerName = playerInfo.name || 'Jogador';
+        entity.skin = playerInfo.skin || 'char1';
+        return entity;
+    };
+
+    const p1Entity = await pickAlive(userA, p1Player, p1SocketId);
+    const p2Entity = await pickAlive(userB, p2Player, p2SocketId);
+    if (!p1Entity || !p2Entity) return { success: false, error: 'Time inválido.' };
+
+    const roomId = `room_${Date.now()}`;
+    onlineBattles[roomId] = { p1: p1Entity, p2: p2Entity, turn: 1, bet: 0, mode: 'challenge' };
+    return { success: true, roomId, p1: p1Entity, p2: p2Entity };
+}
+
+async function applyPvpRankingResult(battle, winnerId, events = []) {
+    try {
+        const winnerUser = (String(winnerId) === String(battle.p1.userId)) ? await User.findById(battle.p1.userId) : await User.findById(battle.p2.userId);
+        const loserUser = (String(winnerId) === String(battle.p1.userId)) ? await User.findById(battle.p2.userId) : await User.findById(battle.p1.userId);
+        if (!winnerUser || !loserUser) return;
+        const WIN_POINTS = 10;
+        const LOSS_POINTS = 5;
+        winnerUser.pvpPoints = Math.max(0, (winnerUser.pvpPoints || 0) + WIN_POINTS);
+        loserUser.pvpPoints = Math.max(0, (loserUser.pvpPoints || 0) - LOSS_POINTS);
+        winnerUser.pvpWins = (winnerUser.pvpWins || 0) + 1;
+        loserUser.pvpLosses = (loserUser.pvpLosses || 0) + 1;
+        await winnerUser.save();
+        await loserUser.save();
+        events.push({ type: 'MSG', text: `Rank: +${WIN_POINTS} para ${winnerUser.username}` });
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 async function getDefaultSkinId() {
@@ -579,6 +660,26 @@ function userEntityToEntity(userEntity, baseData) {
         status: null,
         defending: false
     }; 
+}
+
+async function buildFollowerInfo(user) {
+    try {
+        if (!user || !user.followingEntityId) {
+            return { followingEntityId: '', sprite: '', name: '' };
+        }
+        const followId = String(user.followingEntityId);
+        const team = Array.isArray(user.entityTeam) ? user.entityTeam : [];
+        const entry = team.find(p => String(p && (p._id || p.instanceId)) === followId);
+        if (!entry) return { followingEntityId: '', sprite: '', name: '' };
+        const base = await BaseEntity.findOne({ id: entry.baseId }).lean();
+        return {
+            followingEntityId: followId,
+            sprite: (base && base.sprite) ? base.sprite : '',
+            name: entry.nickname || (base ? base.name : '')
+        };
+    } catch (_) {
+        return { followingEntityId: '', sprite: '', name: '' };
+    }
 }
 
 function applyStatusDamage(entity, events) {
@@ -948,7 +1049,7 @@ app.get('/city', async (req, res) => {
         // best-effort
     }
 
-    const allEntities = await BaseEntity.find().lean();
+    const allEntities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 }).lean();
     const teamData = []; 
     for(let p of user.entityTeam) { const base = await BaseEntity.findOne({id: p.baseId}); if(base) teamData.push(userEntityToEntity(p, base)); }
     
@@ -2211,7 +2312,7 @@ app.get('/lab', async (req, res) => {
     const { userId } = req.query;
     const user = await User.findById(userId);
     if (!user || !user.isAdmin) return res.redirect('/');
-    const entities = await BaseEntity.find();
+    const entities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 });
     const npcs = await NPC.find();
     const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
     res.render('create', { types: EntityType, moves: MOVES_LIBRARY, entities, npcs, skins: skins || [], user });
@@ -2318,18 +2419,21 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             interactServiceType,
             interactHealDialogue,
             interactShopItemsJson,
+            interactBoxPrice,
+            interactBoxRewardsJson,
 
             conditionalDialoguesJson,
 
             userId,
             battleBg
         } = req.body; 
+        const prevNpc = npcId ? await NPC.findById(npcId).lean() : null;
         let finalSkin = skinSelect, isCustom = false; 
         if (req.files['npcSkinFile']) { finalSkin = `data:${req.files['npcSkinFile'][0].mimetype};base64,${req.files['npcSkinFile'][0].buffer.toString('base64')}`; isCustom = true; } 
-        else if (npcId && !skinSelect) { const old = await NPC.findById(npcId); if(old) { finalSkin = old.skin; isCustom = old.isCustomSkin; } } 
+        else if (prevNpc && !skinSelect) { finalSkin = prevNpc.skin; isCustom = prevNpc.isCustomSkin; } 
         let finalBattleBg = 'battle_bg.png';
         if (req.files['battleBgFile']) { finalBattleBg = `data:${req.files['battleBgFile'][0].mimetype};base64,${req.files['battleBgFile'][0].buffer.toString('base64')}`; }
-        else if (npcId) { const old = await NPC.findById(npcId); if(old && old.battleBackground) finalBattleBg = old.battleBackground; }
+        else if (prevNpc && prevNpc.battleBackground) { finalBattleBg = prevNpc.battleBackground; }
         let team = []; try { team = JSON.parse(teamJson); } catch (e) {} 
         const reward = {
             type: rewardType || 'none',
@@ -2362,6 +2466,42 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
                 } catch (_) {
                     return [];
                 }
+            })(),
+
+            box: (() => {
+                // Se não veio nada do form, tenta manter o valor anterior no update.
+                const prevBox = (prevNpc && prevNpc.interact && prevNpc.interact.box) ? prevNpc.interact.box : null;
+
+                const priceRaw = (interactBoxPrice != null && String(interactBoxPrice).trim() !== '')
+                    ? parseInt(interactBoxPrice, 10)
+                    : (prevBox && prevBox.price != null ? prevBox.price : 0);
+                const price = Math.max(0, Number.isFinite(priceRaw) ? priceRaw : 0);
+
+                let rewards = [];
+                const jsonRaw = (interactBoxRewardsJson != null) ? String(interactBoxRewardsJson) : '';
+                if (jsonRaw && jsonRaw.trim()) {
+                    try {
+                        const arr = JSON.parse(jsonRaw);
+                        if (Array.isArray(arr)) {
+                            rewards = arr
+                                .map(r => ({
+                                    baseId: r && r.baseId ? String(r.baseId).trim() : '',
+                                    weight: Math.max(0, parseFloat(r && r.weight) || 0),
+                                    minLevel: Math.max(1, parseInt(r && r.minLevel, 10) || 1),
+                                    maxLevel: Math.max(1, parseInt(r && r.maxLevel, 10) || 1)
+                                }))
+                                .filter(r => r.baseId && r.weight > 0)
+                                .map(r => ({ ...r, maxLevel: Math.max(r.minLevel, r.maxLevel) }));
+                        }
+                    } catch (_) {
+                        rewards = [];
+                    }
+                } else if (prevBox && Array.isArray(prevBox.rewards)) {
+                    // fallback no update
+                    rewards = prevBox.rewards;
+                }
+
+                return { price, rewards };
             })(),
 
             requiresItemId: interactRequiresItemId || '',
@@ -2399,8 +2539,6 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
                 return [];
             }
         })();
-
-        const prevNpc = npcId ? await NPC.findById(npcId).lean() : null;
 
         // Processa diálogos condicionais com fallback ao valor anterior
         const conditionalDialoguesParsed = (() => {
@@ -2723,7 +2861,7 @@ setInterval(async () => {
         console.error('NPC patrol tick error', e);
     }
 }, NPC_PATROL_TICK_MS);
-app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), spawnChance: parseFloat(spawnChance) || 10, isStarter: isStarter === 'on', evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool }; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BaseEntity.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BaseEntity(data).save(); } res.redirect(req.header('Referer') || '/'); });
+app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId, dexOrder } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const dexPos = parseInt(dexOrder, 10); const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), spawnChance: parseFloat(spawnChance) || 10, isStarter: isStarter === 'on', evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool, dexOrder: dexPos }; if (!Number.isFinite(dexPos)) delete data.dexOrder; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BaseEntity.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BaseEntity(data).save(); } res.redirect(req.header('Referer') || '/'); });
 app.post('/lab/delete', async (req, res) => { try { const { id } = req.body; if (id) await BaseEntity.deleteOne({ id }); res.redirect(req.get('referer')); } catch (e) { res.send('Erro ao excluir: ' + e.message); } });
 app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
 app.get('/api/pc', async (req, res) => {
@@ -2808,8 +2946,66 @@ app.get('/api/me', async (req, res) => {
         bag: user.bag,
         keyItems: user.keyItems,
         storyFlags: user.storyFlags,
-        defeatedNPCs: Array.isArray(user.defeatedNPCs) ? user.defeatedNPCs.map(d => String(d && d.npcId ? d.npcId : d)) : []
+        defeatedNPCs: Array.isArray(user.defeatedNPCs) ? user.defeatedNPCs.map(d => String(d && d.npcId ? d.npcId : d)) : [],
+        followingEntityId: user.followingEntityId || ''
     });
+});
+
+app.post('/api/following', async (req, res) => {
+    try {
+        const { userId, instanceId } = req.body || {};
+        if (!userId) return res.status(400).json({ success: false, error: 'userId obrigatorio' });
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, error: 'user_not_found' });
+
+        const nextId = instanceId ? String(instanceId) : '';
+        if (nextId) {
+            const exists = (user.entityTeam || []).some(p => String(p._id || p.instanceId) === nextId);
+            if (!exists) return res.status(400).json({ success: false, error: 'invalid_instance' });
+            user.followingEntityId = nextId;
+        } else {
+            user.followingEntityId = '';
+        }
+
+        await user.save();
+
+        try {
+            const followerInfo = await buildFollowerInfo(user);
+            const entry = Object.entries(players).find(([_, p]) => p && p.userId && String(p.userId) === String(userId));
+            if (entry) {
+                const [sid, p] = entry;
+                p.followingEntityId = followerInfo.followingEntityId || '';
+                p.followerSprite = followerInfo.sprite || '';
+                p.followerName = followerInfo.name || '';
+                if (p.map) {
+                    io.to(p.map).emit('player_following_updated', {
+                        id: sid,
+                        userId: String(userId),
+                        followingEntityId: p.followingEntityId,
+                        followerSprite: p.followerSprite,
+                        followerName: p.followerName
+                    });
+                }
+            }
+        } catch (_) {}
+
+        return res.json({ success: true, followingEntityId: user.followingEntityId || '' });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: 'erro_interno' });
+    }
+});
+
+app.get('/api/rank', async (req, res) => {
+    try {
+        const list = await User.find({ pvpPoints: { $gt: 0 } })
+            .sort({ pvpPoints: -1, pvpWins: -1, username: 1 })
+            .limit(200)
+            .select('username pvpPoints pvpWins pvpLosses')
+            .lean();
+        res.json({ success: true, list: list || [] });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao carregar rank.' });
+    }
 });
 
 // Catálogo central de itens (no DB)
@@ -3658,7 +3854,7 @@ app.post('/api/custom-battle/start', async (req, res) => {
     }
 });
 
-app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl: '/city', energyConfig: ENERGY_CONFIG }); });
+app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); const returnUrl = me && me.userId ? `/city?userId=${me.userId}` : '/city'; res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl, energyConfig: ENERGY_CONFIG }); });
 app.post('/battle', async (req, res) => {
     const { fighterId, playerName, playerSkin, userId } = req.body;
     const user = await User.findById(userId);
@@ -4035,8 +4231,9 @@ app.post('/api/turn', async (req, res) => {
                                     if (rewardBase) {
                                         const rewardLvl = npc.reward.level || 1;
                                         const rStats = calculateStats(rewardBase.baseStats, rewardLvl);
-                                        let rMoves = rewardBase.movePool ? rewardBase.movePool.filter(m => m.level <= rewardLvl).map(m => m.moveId) : ['strike'];
-                                        const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves: rMoves };
+                                        const learnedMoves = getLearnedMovesFromPool(rewardBase.movePool, rewardLvl, rewardBase.type);
+                                        const rMoves = pickDeterministicMovesFromPool(rewardBase.movePool, rewardLvl, 4, rewardBase.type);
+                                        const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves };
                                         if (user.entityTeam.length < 6) user.entityTeam.push(newPoke); else user.pc.push(newPoke);
                                         if (!user.dex) user.dex = [];
                                         if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); }
@@ -4108,6 +4305,12 @@ io.on('connection', (socket) => {
                 } 
             } 
             
+            const prevMap = players[socket.id] && players[socket.id].map ? players[socket.id].map : null;
+            if (prevMap && prevMap !== data.map) {
+                try { socket.leave(prevMap); } catch (_) {}
+                try { io.to(prevMap).emit('player_left', socket.id); } catch (_) {}
+            }
+
             socket.join(data.map); 
             let mapNpcs = [];
             try { mapNpcs = await NPC.find({ map: data.map }).lean(); } catch(e) {}
@@ -4117,8 +4320,15 @@ io.on('connection', (socket) => {
             const startX = clampPct(data.x, 50);
             const startY = clampPct(data.y, 50);
             const startDir = normalizeDir(data.direction);
+            let followerInfo = { followingEntityId: '', sprite: '', name: '' };
+            try {
+                if (data && data.userId) {
+                    const user = await User.findById(data.userId).lean();
+                    followerInfo = await buildFollowerInfo(user);
+                }
+            } catch (_) {}
             
-            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, isSearching: false, _lastPersistAt: 0, _lastUserCheckAt: Date.now() }; 
+            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, followingEntityId: followerInfo.followingEntityId || '', followerSprite: followerInfo.sprite || '', followerName: followerInfo.name || '', isSearching: false, _lastPersistAt: 0, _lastUserCheckAt: Date.now() }; 
             const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
             socket.emit('map_state', mapPlayers); 
             socket.to(data.map).emit('player_joined', players[socket.id]);
@@ -4184,6 +4394,7 @@ io.on('connection', (socket) => {
     
     socket.on('disconnect', () => {
         matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id);
+        cleanupChallengesForSocket(socket.id);
         if (players[socket.id]) {
             const p = players[socket.id];
             const map = p.map;
@@ -4194,6 +4405,80 @@ io.on('connection', (socket) => {
         }
     });
     socket.on('cancel_match', () => { matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== socket.id); if(players[socket.id]) { players[socket.id].isSearching = false; io.emit('player_updated', players[socket.id]); } });
+
+    socket.on('player_challenge_request', (payload) => {
+        const targetSocketId = payload && payload.targetSocketId ? String(payload.targetSocketId) : '';
+        if (!targetSocketId || targetSocketId === socket.id) return;
+
+        const fromPlayer = players[socket.id];
+        const toPlayer = players[targetSocketId];
+        if (!fromPlayer || !toPlayer) {
+            socket.emit('player_challenge_error', 'Jogador offline.');
+            return;
+        }
+
+        if (isSocketInOnlineBattle(socket.id) || isSocketInOnlineBattle(targetSocketId)) {
+            socket.emit('player_challenge_error', 'Jogador em batalha.');
+            return;
+        }
+
+        if (matchmakingQueue.find(u => u.socket.id === socket.id || u.socket.id === targetSocketId)) {
+            socket.emit('player_challenge_error', 'Jogador ocupado.');
+            return;
+        }
+
+        if (hasActiveChallengeForSocket(socket.id) || hasActiveChallengeForSocket(targetSocketId)) {
+            socket.emit('player_challenge_error', 'Desafio pendente.');
+            return;
+        }
+
+        const challengeId = createChallenge(socket.id, targetSocketId);
+        socket.emit('player_challenge_sent', { challengeId, targetSocketId });
+        io.to(targetSocketId).emit('player_challenge_request', {
+            challengeId,
+            from: { socketId: socket.id, userId: fromPlayer.userId, name: fromPlayer.name, skin: fromPlayer.skin }
+        });
+    });
+
+    socket.on('player_challenge_decline', ({ challengeId }) => {
+        const id = String(challengeId || '').trim();
+        const ch = playerChallenges[id];
+        if (!ch || ch.toSocketId !== socket.id) return;
+        delete playerChallenges[id];
+        io.to(ch.fromSocketId).emit('player_challenge_declined', { challengeId: id });
+    });
+
+    socket.on('player_challenge_accept', async ({ challengeId }) => {
+        const id = String(challengeId || '').trim();
+        const ch = playerChallenges[id];
+        if (!ch || ch.toSocketId !== socket.id) return;
+
+        delete playerChallenges[id];
+
+        if (isSocketInOnlineBattle(ch.fromSocketId) || isSocketInOnlineBattle(ch.toSocketId)) {
+            io.to(ch.fromSocketId).emit('player_challenge_error', 'Jogador em batalha.');
+            io.to(ch.toSocketId).emit('player_challenge_error', 'Jogador em batalha.');
+            return;
+        }
+
+        matchmakingQueue = matchmakingQueue.filter(u => u.socket.id !== ch.fromSocketId && u.socket.id !== ch.toSocketId);
+        if (players[ch.fromSocketId]) { players[ch.fromSocketId].isSearching = false; io.emit('player_updated', players[ch.fromSocketId]); }
+        if (players[ch.toSocketId]) { players[ch.toSocketId].isSearching = false; io.emit('player_updated', players[ch.toSocketId]); }
+
+        try {
+            const result = await createDirectOnlineBattle(ch.fromSocketId, ch.toSocketId);
+            if (!result.success) {
+                io.to(ch.fromSocketId).emit('player_challenge_error', result.error || 'Falha ao criar batalha.');
+                io.to(ch.toSocketId).emit('player_challenge_error', result.error || 'Falha ao criar batalha.');
+                return;
+            }
+            io.to(ch.fromSocketId).emit('match_found', { roomId: result.roomId, me: result.p1, opponent: result.p2, bet: 0 });
+            io.to(ch.toSocketId).emit('match_found', { roomId: result.roomId, me: result.p2, opponent: result.p1, bet: 0 });
+        } catch (e) {
+            io.to(ch.fromSocketId).emit('player_challenge_error', 'Falha ao criar batalha.');
+            io.to(ch.toSocketId).emit('player_challenge_error', 'Falha ao criar batalha.');
+        }
+    });
     
     socket.on('find_match', async (fighterId, userId, playerName, playerSkin, bet = 0) => { 
         if(matchmakingQueue.find(u => u.socket.id === socket.id)) return; 
@@ -4272,7 +4557,9 @@ io.on('connection', (socket) => {
 
         if (action === 'forfeit') {
             const events = [{ type: 'MSG', text: `${actor.playerName} desistiu da batalha!` }];
-            io.to(roomId).emit('turn_result', { events, winnerId: isP1 ? battle.p2.userId : battle.p1.userId });
+            const winnerId = isP1 ? battle.p2.userId : battle.p1.userId;
+            await applyPvpRankingResult(battle, winnerId, events);
+            io.to(roomId).emit('turn_result', { events, winnerId });
             delete onlineBattles[roomId];
             return;
         }
@@ -4419,6 +4706,7 @@ io.on('connection', (socket) => {
                         } 
                     } catch (e) { console.error(e); } 
                 }
+                await applyPvpRankingResult(battle, winnerId, events);
                 delete onlineBattles[roomId];
             }
             
