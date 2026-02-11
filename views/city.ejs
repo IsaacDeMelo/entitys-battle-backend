@@ -483,6 +483,102 @@
             border-color: #ffe9a6;
         }
 
+        /* BOSS EVENT */
+        #bossEventOverlay {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 55%),
+                repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px),
+                rgba(0,0,0,0.86);
+            z-index: 12050;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            pointer-events: auto;
+        }
+        #bossEventWindow {
+            width: min(520px, 92vw);
+            max-height: 84vh;
+            background: linear-gradient(180deg, #314c7a 0%, #203457 100%);
+            border: 4px solid #f4e9c7;
+            border-radius: 6px;
+            box-shadow: 0 0 0 2px #17223a, 0 12px 32px rgba(0,0,0,0.75);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #bossEventHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: linear-gradient(180deg, #3f6fbd 0%, #2c4f8c 100%);
+            border-bottom: 3px solid #1a2a46;
+            color: #ffffff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
+        }
+        #bossEventClose {
+            background: #1b2b47;
+            color: #f9f4de;
+            border: 2px solid #f4e9c7;
+            border-radius: 2px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem;
+            box-shadow: 0 2px 0 #101a2c;
+        }
+        #bossEventClose:active { transform: translateY(2px); box-shadow: none; }
+        #bossEventBody {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: auto;
+            background:
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px),
+                linear-gradient(180deg, rgba(10,16,32,0.35), rgba(10,16,32,0.6));
+        }
+        .bossEventRow {
+            background: rgba(0,0,0,0.25);
+            border: 2px solid rgba(244,233,199,0.35);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .bossEventMeta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            color: #f9f4de;
+            min-width: 0;
+        }
+        .bossEventName {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bossEventSub {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 900;
+            color: rgba(249,244,222,0.85);
+            font-size: 0.9rem;
+        }
+        .bossEventBtn {
+            width: auto;
+            min-width: 120px;
+        }
+
         /* Variação do botão do menu (sem setinha) — usado em ações (bag/shop) */
         .cityActionBtn {
             text-align: center;
@@ -1238,7 +1334,20 @@
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">     BOLSA</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">     PC</button>
                 <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openRank==='function') openRank();">     RANK</button>
-                <button class="startMenuBtn startMenuBtn--gold" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); window.location.href='/custom-battle?userId=<%= userId %>';">⚔️ CUSTOM BATTLE</button>
+                <button class="startMenuBtn startMenuBtn--gold" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBossEvent==='function') openBossEvent();">👹 EVENTO BOSS</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bossEventOverlay" onclick="window.__closeBossEvent && window.__closeBossEvent()">
+        <div id="bossEventWindow" onclick="event.stopPropagation()">
+            <div id="bossEventHeader">
+                <div id="bossEventTitle">EVENTO BOSS</div>
+                <button id="bossEventClose" type="button">FECHAR</button>
+            </div>
+            <div id="bossEventBody">
+                <div id="bossEventStatus" style="color:#f9f4de; opacity:0.9; font-family:'Rajdhani', sans-serif; font-weight:900;"></div>
+                <div id="bossEventList"></div>
             </div>
         </div>
     </div>
@@ -6067,6 +6176,142 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && overlay.style.display !== 'none') close();
             });
+        })();
+
+        // BOSS EVENT (overlay)
+        (function setupBossEvent() {
+            const overlay = document.getElementById('bossEventOverlay');
+            const closeBtn = document.getElementById('bossEventClose');
+            const titleEl = document.getElementById('bossEventTitle');
+            const statusEl = document.getElementById('bossEventStatus');
+            const listEl = document.getElementById('bossEventList');
+            if (!overlay || !titleEl || !statusEl || !listEl) return;
+
+            function close() { overlay.style.display = 'none'; }
+            window.__closeBossEvent = close;
+            if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && overlay.style.display !== 'none') close();
+            });
+
+            function getMapParam() {
+                try {
+                    return (window.currentMapId && window.currentMapId !== 'city') ? `city?map=${window.currentMapId}` : 'city';
+                } catch (_) { return 'city'; }
+            }
+
+            function getPlayerPos() {
+                try {
+                    const el = document.getElementById(`p-${window.myId}`);
+                    if (!el) return { x: 50, y: 50 };
+                    return { x: parseFloat(el.style.left) || 50, y: parseFloat(el.style.top) || 50 };
+                } catch (_) { return { x: 50, y: 50 }; }
+            }
+
+            async function startBossEventBattle(slot) {
+                const pos = getPlayerPos();
+                const body = {
+                    userId: window.CURRENT_USER_ID,
+                    slot,
+                    currentMap: getMapParam(),
+                    currentX: pos.x,
+                    currentY: pos.y
+                };
+                try {
+                    const res = await fetch('/battle/boss-event', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || (json && json.error)) {
+                        const code = json && json.error;
+                        const msg = (code === 'boss_locked') ? 'Derrote os 3 mini-bosses primeiro.'
+                            : (code === 'already_defeated') ? 'Você já derrotou este boss.'
+                            : (code === 'event_disabled') ? 'Evento desativado.'
+                            : 'Não foi possível iniciar a batalha.';
+                        if (typeof showToast === 'function') showToast(msg, { bg: '#e74c3c' });
+                        return;
+                    }
+                    if (json && json.battleId) {
+                        window.location.href = '/battle/' + json.battleId;
+                    }
+                } catch (_) {
+                    if (typeof showToast === 'function') showToast('Erro ao iniciar batalha.', { bg: '#e74c3c' });
+                }
+            }
+
+            window.openBossEvent = async function() {
+                overlay.style.display = 'flex';
+                titleEl.textContent = 'EVENTO BOSS';
+                statusEl.textContent = 'Carregando...';
+                listEl.innerHTML = '';
+
+                try {
+                    const url = `/api/boss-event?userId=${encodeURIComponent(window.CURRENT_USER_ID || '')}`;
+                    const res = await fetch(url);
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || !data) {
+                        statusEl.textContent = 'Não foi possível carregar o evento.';
+                        return;
+                    }
+
+                    if (!data.enabled) {
+                        statusEl.textContent = 'Nenhum evento ativo no momento.';
+                        return;
+                    }
+
+                    titleEl.textContent = data.title || 'EVENTO BOSS';
+                    statusEl.textContent = 'Derrote os mini-bosses para liberar o boss.';
+
+                    const rows = [];
+                    const minis = Array.isArray(data.miniBosses) ? data.miniBosses : [];
+                    minis.forEach(m => {
+                        const defeated = !!m.defeated;
+                        const div = document.createElement('div');
+                        div.className = 'bossEventRow';
+                        div.innerHTML = `
+                            <div class="bossEventMeta">
+                                <div class="bossEventName">${(m.name || 'Mini Boss').toString().toUpperCase()}</div>
+                                <div class="bossEventSub">Lv ${m.level || 1} ${defeated ? '— DERROTADO' : ''}</div>
+                            </div>
+                        `;
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'startMenuBtn bossEventBtn';
+                        btn.textContent = defeated ? 'OK' : 'BATALHAR';
+                        btn.disabled = defeated;
+                        btn.onclick = () => startBossEventBattle(m.slot);
+                        div.appendChild(btn);
+                        rows.push(div);
+                    });
+
+                    const boss = data.boss || {};
+                    const bossRow = document.createElement('div');
+                    bossRow.className = 'bossEventRow';
+                    const bossDefeated = !!boss.defeated;
+                    const bossUnlocked = !!boss.unlocked;
+                    bossRow.innerHTML = `
+                        <div class="bossEventMeta">
+                            <div class="bossEventName">${(boss.name || 'Boss').toString().toUpperCase()}</div>
+                            <div class="bossEventSub">Lv ${boss.level || 1} ${bossDefeated ? '— DERROTADO' : (!bossUnlocked ? '— BLOQUEADO' : '')}</div>
+                        </div>
+                    `;
+                    const bossBtn = document.createElement('button');
+                    bossBtn.type = 'button';
+                    bossBtn.className = 'startMenuBtn startMenuBtn--gold bossEventBtn';
+                    bossBtn.textContent = bossDefeated ? 'OK' : (bossUnlocked ? 'BATALHAR' : 'BLOQUEADO');
+                    bossBtn.disabled = bossDefeated || !bossUnlocked;
+                    bossBtn.onclick = () => startBossEventBattle('boss');
+                    bossRow.appendChild(bossBtn);
+                    rows.push(bossRow);
+
+                    listEl.innerHTML = '';
+                    rows.forEach(r => listEl.appendChild(r));
+                } catch (_) {
+                    statusEl.textContent = 'Erro ao carregar o evento.';
+                }
+            };
         })();
 
         // SHOP MODAL (global) — usado quando /api/npc/interact retorna action.type === 'shop'

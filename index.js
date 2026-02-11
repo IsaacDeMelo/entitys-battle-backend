@@ -6,7 +6,7 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
-const { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog } = require('./models');
+const { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog, BossEvent } = require('./models');
 const { processPngBuffer } = require('./lib/chromaKey');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
 const { MONGO_URI } = require('./config'); 
@@ -49,6 +49,40 @@ async function recordDevLog(userId, action, meta = {}) {
     } catch (_) {
         // silencioso: logs nao devem quebrar o fluxo
     }
+}
+
+// --- BOSS EVENT (global) ---
+async function getOrCreateBossEventConfig() {
+    let cfg = await BossEvent.findOne({ key: 'global' });
+    if (!cfg) {
+        cfg = await BossEvent.create({
+            key: 'global',
+            enabled: false,
+            eventKey: 'event1',
+            title: 'Evento Boss',
+            trainerSkin: 'char2',
+            trainerIsCustomSkin: false,
+            miniBosses: [
+                { slot: 'mini1', baseId: '', level: 5, name: '', moneyReward: 0, reward: { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false } },
+                { slot: 'mini2', baseId: '', level: 10, name: '', moneyReward: 0, reward: { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false } },
+                { slot: 'mini3', baseId: '', level: 15, name: '', moneyReward: 0, reward: { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false } }
+            ],
+            boss: { baseId: '', level: 20, name: '', moneyReward: 0, reward: { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false } },
+            updatedAt: Date.now()
+        });
+    }
+
+    // Compat: garante defaults em configs antigas
+    if (cfg.trainerSkin == null || String(cfg.trainerSkin).trim() === '') cfg.trainerSkin = 'char2';
+    if (cfg.trainerIsCustomSkin == null) cfg.trainerIsCustomSkin = false;
+
+    return cfg;
+}
+
+function bossEventDefeatFlag(eventKey, slot) {
+    const ek = String(eventKey || '').trim() || 'event1';
+    const s = String(slot || '').trim();
+    return `boss_event_${ek}_${s}_defeated`;
 }
 
 // --- STARTER (criatura inicial obtida via NPC no jogo) ---
@@ -573,11 +607,10 @@ function buildAutoMovePoolForType(entityType) {
     }));
 }
 
-function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4, entityType = null) {
+function getLearnedMovesFromPool(movePool, level, entityType = null) {
     const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
     let pool = Array.isArray(movePool) ? movePool : [];
 
-    // Fallback automático baseado no tipo (estilo Pokémon)
     if ((!pool || pool.length === 0) && entityType) {
         pool = buildAutoMovePoolForType(entityType);
     }
@@ -599,7 +632,12 @@ function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4, entityTyp
         unique.push(m.moveId);
     }
 
-    const picked = unique.length > 0 ? unique.slice(-Math.max(1, maxMoves)) : [];
+    return unique.length > 0 ? unique : ['strike'];
+}
+
+function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4, entityType = null) {
+    const learned = getLearnedMovesFromPool(movePool, level, entityType);
+    const picked = learned.length > 0 ? learned.slice(-Math.max(1, maxMoves)) : [];
     return picked.length > 0 ? picked : ['strike'];
 }
 
@@ -1739,6 +1777,12 @@ app.post('/api/npc/dialogue', async (req, res) => {
         console.log(`[/api/npc/dialogue] User storyFlags:`, JSON.stringify(user.storyFlags));
         console.log(`[/api/npc/dialogue] NPC conditionalDialogues:`, JSON.stringify(npc.conditionalDialogues));
         
+        const interact = npc.interact || {};
+        // Serviço: gacha/roleta (preview antes de abrir)
+        if (interact.enabled && interact.serviceType === 'box' && interact.boxDialogue) {
+            return res.json({ text: String(interact.boxDialogue) });
+        }
+
         const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
         const finalText = dialogueText !== null ? dialogueText : '...';
         
@@ -2009,9 +2053,9 @@ app.post('/api/npc/interact', async (req, res) => {
             const level = levelMin === levelMax ? levelMin : (levelMin + Math.floor(Math.random() * (levelMax - levelMin + 1)));
 
             const stats = calculateStats(base.baseStats, level);
-            let moves = base.movePool ? base.movePool.filter(m => m.level <= level).map(m => m.moveId) : [];
-            if (!moves.length) moves = ['strike'];
-            const newEntity = { baseId: base.id, nickname: base.name, level, currentHp: stats.hp, stats, moves, learnedMoves: moves, xp: 0 };
+            const learnedMoves = getLearnedMovesFromPool(base.movePool, level, base.type);
+            const moves = pickDeterministicMovesFromPool(base.movePool, level, 4, base.type);
+            const newEntity = { baseId: base.id, nickname: base.name, level, currentHp: stats.hp, stats, moves, learnedMoves, xp: 0 };
             let storage = 'pc';
             if (!Array.isArray(user.entityTeam)) user.entityTeam = [];
             if (!Array.isArray(user.pc)) user.pc = [];
@@ -2024,11 +2068,16 @@ app.post('/api/npc/interact', async (req, res) => {
             await user.save();
 
             const whereText = storage === 'team' ? 'seu time' : 'o PC';
-            const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
             const defaultText = `Você abriu a box e recebeu ${base.name} (nível ${level})! Foi enviado para ${whereText}.`;
-            const finalText = dialogueText !== null ? `${dialogueText}
 
-${defaultText}` : defaultText;
+            const tpl = (interact.boxResultDialogue && String(interact.boxResultDialogue).trim())
+                ? String(interact.boxResultDialogue)
+                : defaultText;
+            const finalText = tpl
+                .replace(/\{prizeName\}/g, String(base.name))
+                .replace(/\{prizeLevel\}/g, String(level))
+                .replace(/\{where\}/g, String(whereText))
+                .replace(/\{spent\}/g, String(price));
 
             return res.json({
                 success: true,
@@ -2129,8 +2178,8 @@ app.post('/api/starter/choose', async (req, res) => {
         if (!starter) return res.status(404).json({ error: 'Monstro não encontrado.' });
 
         const stats = calculateStats(starter.baseStats, 1);
-        let moves = starter.movePool ? starter.movePool.filter(m => m.level <= 1).map(m => m.moveId) : [];
-        if (!moves.length) moves = ['strike'];
+        const learnedMoves = getLearnedMovesFromPool(starter.movePool, 1, starter.type);
+        const moves = pickDeterministicMovesFromPool(starter.movePool, 1, 4, starter.type);
 
         user.entityTeam = Array.isArray(user.entityTeam) ? user.entityTeam : [];
         user.entityTeam.push({
@@ -2140,7 +2189,7 @@ app.post('/api/starter/choose', async (req, res) => {
             currentHp: stats.hp,
             stats,
             moves,
-            learnedMoves: moves,
+            learnedMoves,
             xp: 0
         });
 
@@ -2312,10 +2361,271 @@ app.get('/lab', async (req, res) => {
     const { userId } = req.query;
     const user = await User.findById(userId);
     if (!user || !user.isAdmin) return res.redirect('/');
-    const entities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 });
-    const npcs = await NPC.find();
+    const entities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 }).lean();
+    const npcs = await NPC.find().lean();
     const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
-    res.render('create', { types: EntityType, moves: MOVES_LIBRARY, entities, npcs, skins: skins || [], user });
+    const bossEvent = await getOrCreateBossEventConfig();
+    res.render('create', { types: EntityType, moves: MOVES_LIBRARY, entities, npcs, skins: skins || [], user, bossEvent });
+});
+
+// --- BOSS EVENT API ---
+app.get('/api/boss-event', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const user = userId ? await User.findById(userId).lean() : null;
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        const cfg = await getOrCreateBossEventConfig();
+
+        const eventKey = String(cfg.eventKey || '').trim() || 'event1';
+        const enabled = !!cfg.enabled;
+
+        const minis = Array.isArray(cfg.miniBosses) ? cfg.miniBosses : [];
+        const miniSlots = ['mini1', 'mini2', 'mini3'];
+        const miniFixed = miniSlots.map(slot => minis.find(m => String(m && m.slot) === slot) || { slot, baseId: '', level: 1, name: '', moneyReward: 0, reward: { type: 'none' } });
+
+        const baseIds = [];
+        for (const m of miniFixed) {
+            if (m && m.baseId) baseIds.push(String(m.baseId));
+        }
+        if (cfg.boss && cfg.boss.baseId) baseIds.push(String(cfg.boss.baseId));
+        const uniqBaseIds = Array.from(new Set(baseIds.filter(Boolean)));
+        const bases = uniqBaseIds.length ? await BaseEntity.find({ id: { $in: uniqBaseIds } }).lean() : [];
+        const baseById = new Map((bases || []).map(b => [String(b.id), b]));
+
+        const miniProgress = miniFixed.map(m => {
+            const slot = String(m.slot || '').trim();
+            const defeated = readStoryFlag(user.storyFlags, bossEventDefeatFlag(eventKey, slot));
+            const b = baseById.get(String(m.baseId || ''));
+            return {
+                slot,
+                baseId: String(m.baseId || ''),
+                level: Math.max(1, parseInt(m.level, 10) || 1),
+                name: (m.name && String(m.name).trim()) ? String(m.name).trim() : (b ? b.name : ''),
+                sprite: b ? (b.sprite || '') : '',
+                defeated: !!defeated,
+                moneyReward: Math.max(0, parseInt(m.moneyReward, 10) || 0),
+                reward: m.reward || { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false }
+            };
+        });
+
+        const allMinisDefeated = miniProgress.every(x => x.defeated);
+        const bossSlot = 'boss';
+        const bossDefeated = readStoryFlag(user.storyFlags, bossEventDefeatFlag(eventKey, bossSlot));
+        const bossBase = cfg.boss ? baseById.get(String(cfg.boss.baseId || '')) : null;
+        const boss = {
+            slot: bossSlot,
+            baseId: String((cfg.boss && cfg.boss.baseId) || ''),
+            level: Math.max(1, parseInt(cfg.boss && cfg.boss.level, 10) || 1),
+            name: (cfg.boss && cfg.boss.name && String(cfg.boss.name).trim()) ? String(cfg.boss.name).trim() : (bossBase ? bossBase.name : ''),
+            sprite: bossBase ? (bossBase.sprite || '') : '',
+            unlocked: !!allMinisDefeated,
+            defeated: !!bossDefeated,
+            moneyReward: Math.max(0, parseInt(cfg.boss && cfg.boss.moneyReward, 10) || 0),
+            reward: (cfg.boss && cfg.boss.reward) ? cfg.boss.reward : { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false }
+        };
+
+        return res.json({
+            enabled,
+            eventKey,
+            title: String(cfg.title || 'Evento Boss'),
+            miniBosses: miniProgress,
+            boss
+        });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
+});
+
+const bossEventUpload = upload.fields([{ name: 'trainerSkinFile', maxCount: 1 }]);
+app.post('/lab/boss-event/save', bossEventUpload, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.redirect('/');
+
+        const cfg = await getOrCreateBossEventConfig();
+        cfg.enabled = req.body.enabled === 'on' || req.body.enabled === true || req.body.enabled === 'true';
+        cfg.eventKey = String(req.body.eventKey || cfg.eventKey || 'event1').trim() || 'event1';
+        cfg.title = String(req.body.title || cfg.title || 'Evento Boss');
+
+        // Skin do treinador do boss (mesma regra do NPC): upload => data-url + flag
+        const trainerSkinSelect = String(req.body.trainerSkinSelect || '').trim();
+        let trainerSkin = trainerSkinSelect;
+        let trainerIsCustomSkin = false;
+
+        if (req.files && req.files['trainerSkinFile'] && req.files['trainerSkinFile'][0]) {
+            const img = req.files['trainerSkinFile'][0];
+            const mime = img.mimetype || 'image/png';
+            trainerSkin = `data:${mime};base64,` + img.buffer.toString('base64');
+            trainerIsCustomSkin = true;
+        }
+
+        if (!trainerSkin) trainerSkin = 'char2';
+        cfg.trainerSkin = trainerSkin;
+        cfg.trainerIsCustomSkin = trainerIsCustomSkin;
+
+        const parseReward = (prefix) => {
+            const type = String(req.body[`${prefix}RewardType`] || 'none').trim();
+            const value = String(req.body[`${prefix}RewardVal`] || '').trim();
+            const qty = Math.max(1, parseInt(req.body[`${prefix}RewardQty`], 10) || 1);
+            const lvl = Math.max(1, parseInt(req.body[`${prefix}RewardLevel`], 10) || 1);
+            const keyItem = req.body[`${prefix}RewardKeyItem`] === 'on' || req.body[`${prefix}RewardKeyItem`] === true || req.body[`${prefix}RewardKeyItem`] === 'true';
+            const unique = req.body[`${prefix}RewardUnique`] === 'on' || req.body[`${prefix}RewardUnique`] === true || req.body[`${prefix}RewardUnique`] === 'true';
+            if (type !== 'item' && type !== 'entity') return { type: 'none', value: '', qty: 1, level: 1, keyItem: false, unique: false };
+            return { type, value, qty, level: lvl, keyItem, unique };
+        };
+
+        const miniSlots = ['mini1', 'mini2', 'mini3'];
+        cfg.miniBosses = miniSlots.map(slot => {
+            const baseId = String(req.body[`${slot}BaseId`] || '').trim();
+            const level = Math.max(1, parseInt(req.body[`${slot}Level`], 10) || 1);
+            const name = String(req.body[`${slot}Name`] || '').trim();
+            const moneyReward = Math.max(0, parseInt(req.body[`${slot}MoneyReward`], 10) || 0);
+            const reward = parseReward(`${slot}`);
+            return { slot, baseId, level, name, moneyReward, reward };
+        });
+
+        cfg.boss = {
+            baseId: String(req.body.bossBaseId || '').trim(),
+            level: Math.max(1, parseInt(req.body.bossLevel, 10) || 1),
+            name: String(req.body.bossName || '').trim(),
+            moneyReward: Math.max(0, parseInt(req.body.bossMoneyReward, 10) || 0),
+            reward: parseReward('boss')
+        };
+
+        cfg.updatedAt = Date.now();
+        await cfg.save();
+        return res.redirect('/lab?userId=' + userId);
+    } catch (e) {
+        console.error(e);
+        return res.status(500).send('Erro ao salvar evento');
+    }
+});
+
+// Inicia batalha do Boss Event
+app.post('/battle/boss-event', async (req, res) => {
+    try {
+        const { userId, slot, currentMap, currentX, currentY } = req.body;
+        const [user, cfg] = await Promise.all([
+            User.findById(userId),
+            getOrCreateBossEventConfig()
+        ]);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!cfg.enabled) return res.status(400).json({ error: 'event_disabled' });
+        if (!user.entityTeam || user.entityTeam.length === 0) return res.json({ error: 'Você precisa pegar seu monstro inicial com o Professor.', needStarter: true });
+        const lead = user.entityTeam.find(p => p.currentHp > 0) || user.entityTeam[0];
+        if (!lead || lead.currentHp <= 0) return res.json({ error: 'Seus Monstros estão desmaiados!' });
+
+        const eventKey = String(cfg.eventKey || 'event1').trim() || 'event1';
+        const s = String(slot || '').trim();
+        const miniSlots = ['mini1', 'mini2', 'mini3'];
+        const isBoss = (s === 'boss');
+        const isMini = miniSlots.includes(s);
+        if (!isBoss && !isMini) return res.status(400).json({ error: 'invalid_slot' });
+
+        const alreadyDefeated = readStoryFlag(user.storyFlags, bossEventDefeatFlag(eventKey, s));
+        if (alreadyDefeated) return res.status(400).json({ error: 'already_defeated' });
+
+        // gating do boss principal
+        if (isBoss) {
+            const allMinisDefeated = miniSlots.every(ms => readStoryFlag(user.storyFlags, bossEventDefeatFlag(eventKey, ms)));
+            if (!allMinisDefeated) return res.status(400).json({ error: 'boss_locked' });
+        }
+
+        const cfgMini = Array.isArray(cfg.miniBosses) ? cfg.miniBosses : [];
+        const selected = isBoss
+            ? (cfg.boss || null)
+            : (cfgMini.find(m => String(m && m.slot) === s) || null);
+        const baseId = selected && selected.baseId ? String(selected.baseId).trim() : '';
+        const level = Math.max(1, parseInt(selected && selected.level, 10) || 1);
+        if (!baseId) return res.status(400).json({ error: 'boss_not_configured' });
+
+        const userBase = await BaseEntity.findOne({ id: lead.baseId }).lean();
+        if (!userBase) return res.status(404).json({ error: 'Base do jogador não encontrada' });
+        const p1 = userEntityToEntity(lead, userBase);
+        p1.playerName = user.username;
+        p1.skin = user.skin;
+
+        const enemyBase = await BaseEntity.findOne({ id: baseId }).lean();
+        if (!enemyBase) return res.status(404).json({ error: 'Base do boss não encontrada' });
+        const stats = calculateStats(enemyBase.baseStats, level);
+        const moves = pickDeterministicMovesFromPool(enemyBase.movePool, level, 4, enemyBase.type);
+        const displayName = (selected && selected.name && String(selected.name).trim()) ? String(selected.name).trim() : enemyBase.name;
+
+        const trainerSkin = (cfg && cfg.trainerSkin) ? String(cfg.trainerSkin).trim() : 'char2';
+        const trainerIsCustomSkin = !!(cfg && cfg.trainerIsCustomSkin);
+        const p2 = {
+            instanceId: `boss_${s}_${Date.now()}`,
+            baseId: enemyBase.id,
+            name: displayName,
+            type: enemyBase.type,
+            level,
+            maxHp: stats.hp,
+            hp: stats.hp,
+            maxEnergy: ENERGY_CONFIG.maxEnergy,
+            energy: ENERGY_CONFIG.maxEnergy,
+            stats,
+            moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
+            sprite: enemyBase.sprite,
+            playerName: displayName,
+            skin: trainerSkin || 'char2',
+            isCustomSkin: trainerIsCustomSkin,
+            isWild: false,
+            status: null,
+            defending: false
+        };
+
+        // Background por mapa
+        let mapName = 'city';
+        if (currentMap) {
+            if (String(currentMap).includes('map=')) {
+                const match = String(currentMap).match(/map=([^&]+)/);
+                if (match && match[1]) mapName = match[1];
+            } else if (currentMap !== 'city' && !String(currentMap).includes('?')) {
+                mapName = currentMap;
+            }
+        }
+        const mapDoc = await GameMap.findOne({ mapId: mapName }).lean();
+        let finalBg = 'battle_bg.png';
+        if (mapDoc && mapDoc.battleBackground) finalBg = mapDoc.battleBackground;
+        const battleBgPosX = (mapDoc && Number.isFinite(mapDoc.battleBgPosX)) ? mapDoc.battleBgPosX : 50;
+        const battleBgPosY = (mapDoc && Number.isFinite(mapDoc.battleBgPosY)) ? mapDoc.battleBgPosY : 50;
+        const battleBgZoom = (mapDoc && Number.isFinite(mapDoc.battleBgZoom)) ? mapDoc.battleBgZoom : 100;
+
+        let returnMapUrl = currentMap || 'city';
+        if (mapName !== 'city' && mapName !== 'forest' && currentMap && !String(currentMap).includes('map=')) {
+            returnMapUrl = `city?map=${mapName}`;
+        }
+
+        const battleId = `boss_event_${s}_${Date.now()}`;
+        activeBattles[battleId] = {
+            p1,
+            p2,
+            type: 'boss_event',
+            userId: user._id,
+            turn: 1,
+            mode: 'manual',
+            returnMap: returnMapUrl,
+            returnX: currentX || 50,
+            returnY: currentY || 50,
+            customBackground: finalBg,
+            bgPosX: battleBgPosX,
+            bgPosY: battleBgPosY,
+            bgZoom: battleBgZoom,
+            mapId: mapName,
+            bossEventMeta: {
+                eventKey,
+                slot: s,
+                moneyReward: Math.max(0, parseInt(selected && selected.moneyReward, 10) || 0),
+                reward: selected && selected.reward ? selected.reward : { type: 'none' }
+            }
+        };
+        return res.json({ battleId });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro interno' });
+    }
 });
 
 app.post('/lab/skins/create', skinUpload.single('skinFile'), async (req, res) => {
@@ -2421,6 +2731,8 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             interactShopItemsJson,
             interactBoxPrice,
             interactBoxRewardsJson,
+            interactBoxDialogue,
+            interactBoxResultDialogue,
 
             conditionalDialoguesJson,
 
@@ -2452,6 +2764,8 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
 
             serviceType: (interactServiceType || '').trim(),
             healDialogue: interactHealDialogue || '',
+            boxDialogue: interactBoxDialogue || '',
+            boxResultDialogue: interactBoxResultDialogue || '',
             shopItems: (() => {
                 if (!interactShopItemsJson) return [];
                 try {
@@ -2861,7 +3175,44 @@ setInterval(async () => {
         console.error('NPC patrol tick error', e);
     }
 }, NPC_PATROL_TICK_MS);
-app.post('/lab/create', upload.single('sprite'), async (req, res) => { const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId, dexOrder } = req.body; const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) }; let movePool = []; try { movePool = JSON.parse(movesJson); } catch(e){} const dexPos = parseInt(dexOrder, 10); const data = { name, type, baseStats: stats, spawnLocation: location, minSpawnLevel: parseInt(minLvl), maxSpawnLevel: parseInt(maxLvl), catchRate: parseFloat(catchRate), spawnChance: parseFloat(spawnChance) || 10, isStarter: isStarter === 'on', evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 }, movePool: movePool, dexOrder: dexPos }; if (!Number.isFinite(dexPos)) delete data.dexOrder; if(req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`; if(existingId) await BaseEntity.findOneAndUpdate({ id: existingId }, data); else { data.id = Date.now().toString(); await new BaseEntity(data).save(); } res.redirect(req.header('Referer') || '/'); });
+app.post('/lab/create', upload.single('sprite'), async (req, res) => {
+    const { name, type, hp, energy, atk, def, spd, location, minLvl, maxLvl, catchRate, spawnChance, isStarter, movesJson, evoTarget, evoLevel, existingId, dexOrder } = req.body;
+    const stats = { hp: parseInt(hp), energy: parseInt(energy), attack: parseInt(atk), defense: parseInt(def), speed: parseInt(spd) };
+    let movePool = [];
+    try { movePool = JSON.parse(movesJson); } catch(e){}
+
+    const dexPos = parseInt(dexOrder, 10);
+    const data = {
+        name,
+        type,
+        baseStats: stats,
+        spawnLocation: location,
+        minSpawnLevel: parseInt(minLvl),
+        maxSpawnLevel: parseInt(maxLvl),
+        catchRate: parseFloat(catchRate),
+        spawnChance: parseFloat(spawnChance) || 10,
+        isStarter: isStarter === 'on',
+        evolution: { targetId: evoTarget, level: parseInt(evoLevel) || 100 },
+        movePool: movePool,
+        dexOrder: dexPos
+    };
+
+    if (!Number.isFinite(dexPos)) delete data.dexOrder;
+    if (req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    if (existingId) {
+        const clean = String(existingId).trim();
+        const updated = await BaseEntity.findOneAndUpdate({ id: clean }, data);
+        if (!updated && mongoose.isValidObjectId(clean)) {
+            await BaseEntity.findByIdAndUpdate(clean, data);
+        }
+    } else {
+        data.id = Date.now().toString();
+        await new BaseEntity(data).save();
+    }
+
+    res.redirect(req.header('Referer') || '/');
+});
 app.post('/lab/delete', async (req, res) => { try { const { id } = req.body; if (id) await BaseEntity.deleteOne({ id }); res.redirect(req.get('referer')); } catch (e) { res.send('Erro ao excluir: ' + e.message); } });
 app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
 app.get('/api/pc', async (req, res) => {
@@ -3703,156 +4054,7 @@ app.post('/api/map/battlebg', async (req, res) => {
     }
 });
 
-// Custom Battle - Page
-app.get('/custom-battle', async (req, res) => {
-    const { userId } = req.query;
-    const user = await User.findById(userId);
-    if (!user) return res.redirect('/');
-    
-    res.render('custom_battle', {
-        userId: user._id,
-        playerName: user.username,
-        playerSkin: user.skin || 'char1'
-    });
-});
-
-// Custom Battle - List all base entities
-app.get('/api/base-entities', async (req, res) => {
-    try {
-        const entities = await BaseEntity.find().lean();
-        res.json(entities);
-    } catch (e) {
-        res.status(500).json({ error: 'Erro ao carregar monstros' });
-    }
-});
-
-// Custom Battle - Start battle
-app.post('/api/custom-battle/start', async (req, res) => {
-    try {
-        const { userId, playerName, playerSkin, playerTeam, enemyTeam } = req.body;
-        
-        if (!playerTeam || playerTeam.length === 0 || !enemyTeam || enemyTeam.length === 0) {
-            return res.json({ error: 'Ambos os times precisam ter pelo menos 1 monstro!' });
-        }
-        
-        const user = await User.findById(userId);
-        if (!user) return res.json({ error: 'Usuário não encontrado' });
-        
-        function normalizeMovePool(raw) {
-            const arr = Array.isArray(raw) ? raw : [];
-            return arr
-                .map(m => {
-                    if (!m) return null;
-                    if (typeof m === 'string') return { moveId: m, level: 1 };
-                    const moveIdRaw = (m.moveId != null) ? m.moveId : (m.id != null ? m.id : (m.move != null ? m.move : ''));
-                    const moveId = (moveIdRaw != null) ? String(moveIdRaw).trim() : '';
-                    const level = Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1);
-                    if (!moveId) return null;
-                    return { moveId, level: Math.max(1, level) };
-                })
-                .filter(Boolean);
-        }
-
-        function pickMovesFromPool(pool, level) {
-            const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
-            const available = normalizeMovePool(pool)
-                .filter(m => m.level <= lvl)
-                .sort((a, b) => a.level - b.level)
-                .map(m => m.moveId)
-                .filter(mid => !!(mid && MOVES_LIBRARY[mid]));
-
-            const unique = Array.from(new Set(available));
-            const picked = unique.length > 0 ? unique.slice(-4) : [];
-            return picked.length > 0 ? picked : ['strike'];
-        }
-
-        // Create player team instances
-        const p1Team = [];
-        for (const monsterData of playerTeam) {
-            const base = monsterData && monsterData.baseId
-                ? await BaseEntity.findOne({ id: String(monsterData.baseId) }).lean()
-                : null;
-
-            const baseStats = (base && base.baseStats) ? base.baseStats : (monsterData && monsterData.baseStats);
-            const stats = calculateStats(baseStats || { hp: 0, energy: 0, attack: 0, defense: 0, speed: 0 }, monsterData.level);
-            const pool = (base && base.movePool) ? base.movePool : (monsterData && monsterData.movePool);
-            const moves = pickMovesFromPool(pool, monsterData.level);
-            
-            const instance = {
-                instanceId: 'p1_custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                baseId: monsterData.baseId,
-                name: monsterData.name,
-                type: monsterData.type,
-                level: monsterData.level,
-                hp: stats.hp,
-                maxHp: stats.hp,
-                energy: stats.energy,
-                maxEnergy: stats.energy,
-                stats: stats,
-                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
-                sprite: monsterData.sprite,
-                playerName: playerName,
-                skin: playerSkin,
-                status: null
-            };
-            p1Team.push(instance);
-        }
-        
-        // Create enemy team instances
-        const p2Team = [];
-        for (const monsterData of enemyTeam) {
-            const base = monsterData && monsterData.baseId
-                ? await BaseEntity.findOne({ id: String(monsterData.baseId) }).lean()
-                : null;
-
-            const baseStats = (base && base.baseStats) ? base.baseStats : (monsterData && monsterData.baseStats);
-            const stats = calculateStats(baseStats || { hp: 0, energy: 0, attack: 0, defense: 0, speed: 0 }, monsterData.level);
-            const pool = (base && base.movePool) ? base.movePool : (monsterData && monsterData.movePool);
-            const moves = pickMovesFromPool(pool, monsterData.level);
-            
-            const instance = {
-                instanceId: 'p2_custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                baseId: monsterData.baseId,
-                name: monsterData.name,
-                type: monsterData.type,
-                level: monsterData.level,
-                hp: stats.hp,
-                maxHp: stats.hp,
-                energy: stats.energy,
-                maxEnergy: stats.energy,
-                stats: stats,
-                moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
-                sprite: monsterData.sprite,
-                playerName: playerName, // Same skin as player
-                skin: playerSkin, // Same skin as player
-                status: null
-            };
-            p2Team.push(instance);
-        }
-        
-        const battleId = 'custom_' + Date.now();
-        activeBattles[battleId] = {
-            p1: p1Team[0],
-            p2: p2Team[0],
-            npcReserve: p2Team, // Use npcReserve for enemy team
-            type: 'local',
-            userId: user._id,
-            turn: 1,
-            returnMap: 'city',
-            customBattle: true
-        };
-        
-        // Also store player reserve
-        if (p1Team.length > 1) {
-            activeBattles[battleId].p1Reserve = p1Team;
-        }
-        
-        res.json({ battleId });
-    } catch (e) {
-        console.error('Custom battle error:', e);
-        res.json({ error: 'Erro ao criar batalha customizada' });
-    }
-});
+// (Custom Battle removido)
 
 app.post('/battle/online', (req, res) => { res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); const { roomId, meData, opponentData } = req.body; if (!onlineBattles[roomId]) return res.redirect('/'); const me = JSON.parse(meData); const op = JSON.parse(opponentData); const returnUrl = me && me.userId ? `/city?userId=${me.userId}` : '/city'; res.render('battle', { p1: me, p2: op, battleMode: 'online', battleId: roomId, myRoleId: me.id, realUserId: me.userId, playerName: me.playerName, playerSkin: me.skin, isSpectator: false, bgImage: 'battle_bg.png', bgPosX: 50, bgPosY: 50, bgZoom: 100, battleData: JSON.stringify({ log: [{type: 'INIT'}] }), switchable: [], returnUrl, energyConfig: ENERGY_CONFIG }); });
 app.post('/battle', async (req, res) => {
@@ -3907,12 +4109,8 @@ app.get('/battle/:id', async (req, res) => {
     let switchable = []; 
     let canEditBg = false;
     
-    // Custom Battle - use p1Reserve
-    if (battle.customBattle && battle.p1Reserve) {
-        switchable = battle.p1Reserve.filter(p => p.instanceId !== battle.p1.instanceId && p.hp > 0);
-    }
     // Normal Battle - use user.entityTeam
-    else if (battle.userId) { 
+    if (battle.userId) { 
         const user = await User.findById(battle.userId); 
         if (user) { 
             canEditBg = !!user.isAdmin;
@@ -3974,28 +4172,6 @@ app.post('/api/turn', async (req, res) => {
         let npcDefeatedId = null;
         
         if (action === 'switch') { 
-            // Custom Battle - use p1Reserve instead of user.entityTeam
-            if (battle.customBattle && battle.p1Reserve) {
-                if (!isForced) {
-                    const prevPoke = battle.p1Reserve.find(p => p.instanceId === p1.instanceId);
-                    if (prevPoke) prevPoke.hp = p1.hp;
-                }
-                const newEntity = battle.p1Reserve.find(p => p.instanceId === moveId);
-                if (!newEntity || newEntity.hp <= 0) return res.json({ events: [{type:'MSG', text:'Desmaiado!'}]});
-                
-                battle.p1 = newEntity;
-                p1 = battle.p1;
-                events.push({ type: 'MSG', text: `Vai, ${p1.name}!` });
-                if (p2.hp > 0 && !isForced) { performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); }
-                return res.json({ 
-                    events, 
-                    p1State: { hp: p1.hp, maxHp: p1.maxHp, energy: p1.energy, maxEnergy: p1.maxEnergy, name: p1.name, level: p1.level, sprite: p1.sprite, moves: p1.moves, xp: 0, xpToNext: 100 }, 
-                    p2State: { hp: p2.hp }, 
-                    switched: true, 
-                    newP1Id: p1.instanceId 
-                });
-            }
-            
             // Normal battle - use user.entityTeam
             const user = await User.findById(battle.userId); if (!user) return res.json({ events: [{type:'MSG', text:'Erro'}]}); 
             if (!isForced) { const prevPoke = user.entityTeam.find(p => p._id.toString() === p1.instanceId); if(prevPoke) prevPoke.currentHp = p1.hp; } 
@@ -4080,21 +4256,6 @@ app.post('/api/turn', async (req, res) => {
         }
         
         if (p1.hp <= 0) {
-            // Custom Battle
-            if (battle.customBattle && battle.p1Reserve) {
-                const currentPoke = battle.p1Reserve.find(p => p.instanceId === p1.instanceId);
-                if (currentPoke) currentPoke.hp = 0;
-                
-                const hasAlive = battle.p1Reserve.some(p => p.hp > 0);
-                if (hasAlive) {
-                    events.push({ type: 'MSG', text: `${p1.name} desmaiou!` });
-                    let switchable = battle.p1Reserve.filter(p => p.hp > 0);
-                    return res.json({ events, forceSwitch: true, switchable });
-                }
-                delete activeBattles[battleId];
-                return res.json({ events, finished: true, win: false, winnerId: p2.instanceId, threw: threwCaptureCube });
-            }
-            
             // Normal Battle
             const user = await User.findById(battle.userId); 
             if(user) { 
@@ -4118,25 +4279,6 @@ app.post('/api/turn', async (req, res) => {
         }
         
         if (p2.hp <= 0) {
-            // Custom Battle - no XP, just finish
-            if (battle.customBattle) {
-                events.push({ type: 'MSG', text: `${p2.name} desmaiou!` });
-                
-                if (battle.npcReserve) {
-                    const currentInReserve = battle.npcReserve.find(p => p.instanceId === p2.instanceId);
-                    if (currentInReserve) currentInReserve.hp = 0;
-                    const nextNpcPoke = battle.npcReserve.find(p => p.hp > 0);
-                    if (nextNpcPoke) {
-                        battle.p2 = nextNpcPoke;
-                        events.push({ type: 'MSG', text: `Inimigo vai usar ${nextNpcPoke.name}!` });
-                        return res.json({ events, switched: true, p2Switched: true, newP1Id: p1.instanceId, p1State: p1, p2State: nextNpcPoke });
-                    }
-                }
-                
-                delete activeBattles[battleId];
-                return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube });
-            }
-
             // Contrato (desafio opt-in): recompensa moedas fixa, sem time do NPC
             if (battle.type === 'contract') {
                 events.push({ type: 'MSG', text: `${p2.name} desmaiou!` });
@@ -4170,6 +4312,66 @@ app.post('/api/turn', async (req, res) => {
                         const currentBase = await BaseEntity.findOne({ id: poke.baseId }); poke.stats = calculateStats(currentBase.baseStats, poke.level);
                     }
                     poke.currentHp = p1.hp; await user.save(); 
+                }
+            }
+
+            // Boss Event: recompensa + marca flags por jogador
+            if (battle.type === 'boss_event') {
+                try {
+                    const meta = battle.bossEventMeta || {};
+                    const eventKey = String(meta.eventKey || 'event1').trim() || 'event1';
+                    const slot = String(meta.slot || '').trim();
+
+                    if (user && slot) {
+                        user.storyFlags = user.storyFlags || {};
+                        user.storyFlags[bossEventDefeatFlag(eventKey, slot)] = true;
+                        if (typeof user.markModified === 'function') user.markModified('storyFlags');
+
+                        const mReward = Math.max(0, parseInt(meta.moneyReward, 10) || 0);
+                        if (mReward > 0) {
+                            user.money = (user.money || 0) + mReward;
+                            moneyReward = mReward;
+                            events.push({ type: 'MSG', text: `Ganhou ${mReward} moedas!` });
+                        }
+
+                        const r = meta.reward || { type: 'none' };
+                        if (r && r.type && r.type !== 'none') {
+                            if (r.type === 'item') {
+                                ensureUserInventories(user);
+                                const itemId = normalizeItemId(r.value);
+                                const qty = Math.max(1, parseInt(r.qty, 10) || 1);
+                                const addRes = addItemToUser(user, itemId, qty, { keyItem: !!r.keyItem, unique: !!r.unique });
+                                if (addRes.ok) {
+                                    const msg = (addRes.storage === 'keyItems')
+                                        ? `Recebeu o item-chave ${itemId}!`
+                                        : `Recebeu ${qty}x ${itemId}!`;
+                                    events.push({ type: 'MSG', text: msg });
+                                } else if (addRes.reason === 'already_has_key_item') {
+                                    events.push({ type: 'MSG', text: `Você já tem o item-chave ${itemId}.` });
+                                }
+                            } else if (r.type === 'entity') {
+                                const rewardBase = await BaseEntity.findOne({ id: r.value });
+                                if (rewardBase) {
+                                    const rewardLvl = Math.max(1, parseInt(r.level, 10) || 1);
+                                    const rStats = calculateStats(rewardBase.baseStats, rewardLvl);
+                                    const learnedMoves = getLearnedMovesFromPool(rewardBase.movePool, rewardLvl, rewardBase.type);
+                                    const rMoves = pickDeterministicMovesFromPool(rewardBase.movePool, rewardLvl, 4, rewardBase.type);
+                                    const newPoke = { baseId: rewardBase.id, nickname: rewardBase.name, level: rewardLvl, currentHp: rStats.hp, stats: rStats, moves: rMoves, learnedMoves };
+                                    if (!Array.isArray(user.entityTeam)) user.entityTeam = [];
+                                    if (!Array.isArray(user.pc)) user.pc = [];
+                                    if (user.entityTeam.length < 6) user.entityTeam.push(newPoke); else user.pc.push(newPoke);
+                                    if (!user.dex) user.dex = [];
+                                    if (!user.dex.includes(rewardBase.id)) { user.dex.push(rewardBase.id); }
+                                    events.push({ type: 'MSG', text: `Recebeu ${rewardBase.name}!` });
+                                }
+                            }
+                        }
+
+                        expReward = xpGained;
+                        await user.save();
+                    }
+                } catch (e) {
+                    console.error('Erro aplicando boss_event reward:', e);
                 }
             }
             if (battle.npcReserve) {

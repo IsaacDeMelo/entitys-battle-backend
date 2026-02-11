@@ -228,6 +228,13 @@
                 <% }) %>
                 </div>
             </div>
+
+            <div id="list-event" class="list-container">
+                <div class="sidebar-header">EVENTO (GLOBAL)</div>
+                <div style="padding:10px; color:#9aa7bd; font-size:0.9rem; line-height:1.4;">
+                    Configure o evento de boss (3 mini-bosses + 1 boss) para todos os jogadores.
+                </div>
+            </div>
         </div>
 
         <!-- EDITOR AREA -->
@@ -237,6 +244,7 @@
                 <button id="btn-tab-npc" class="tab-btn" onclick="switchMode('npc')">NPC</button>
                 <button id="btn-tab-item" class="tab-btn" onclick="switchMode('item')">ITENS</button>
                 <button id="btn-tab-skin" class="tab-btn" onclick="switchMode('skin')">SKINS</button>
+                <button id="btn-tab-event" class="tab-btn" onclick="switchMode('event')">EVENTO</button>
             </div>
 
             <!-- ================= FORM ENTIDADE ================= -->
@@ -687,6 +695,22 @@
                     </div>
 
                     <div class="form-grid">
+                        <div class="full-width">
+                            <label>Texto antes de abrir (se serviço = Roleta)</label>
+                            <input type="text" name="interactBoxDialogue" id="npcInteractBoxDialogue" placeholder="Quer tentar a sorte?" autocomplete="off">
+                            <div class="hint" style="margin-top:6px; color:#9aa7bd; font-size:0.85rem;">Este texto aparece no menu (preview) antes de girar.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="full-width">
+                            <label>Texto do resultado (template) (se serviço = Roleta)</label>
+                            <input type="text" name="interactBoxResultDialogue" id="npcInteractBoxResultDialogue" placeholder="Você ganhou {prizeName} (Lv {prizeLevel})!" autocomplete="off">
+                            <div class="hint" style="margin-top:6px; color:#9aa7bd; font-size:0.85rem;">Placeholders: {prizeName}, {prizeLevel}, {where}, {spent}.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
                         <div>
                             <label>Requer Item (ID)</label>
                             <input type="text" name="interactRequiresItemId" id="npcInteractReqId" placeholder="ex: key, key_forest" autocomplete="off">
@@ -906,6 +930,329 @@
                 <form id="deleteSkinForm" action="/lab/skins/delete" method="POST" style="display:none;">
                     <input type="hidden" name="userId" value="<%= user._id %>">
                     <input type="hidden" name="id" id="deleteSkinId">
+                </form>
+            </div>
+
+            <!-- ================= FORM EVENTO (BOSS EVENT) ================= -->
+            <div id="tab-event" class="tab-content hidden">
+                <% const be = (typeof bossEvent !== 'undefined' && bossEvent) ? bossEvent : {}; %>
+                <form id="bossEventForm" action="/lab/boss-event/save" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="userId" value="<%= user._id %>">
+
+                    <h4>👹 EVENTO DE BOSS (GLOBAL)</h4>
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
+                        <input type="checkbox" name="enabled" style="width:auto;" <%= be.enabled ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--warning);">Habilitar evento</span>
+                    </label>
+
+                    <div class="form-grid" style="margin-top:14px;">
+                        <div>
+                            <label>Event Key</label>
+                            <input type="text" name="eventKey" value="<%= be.eventKey || 'event1' %>" autocomplete="off">
+                        </div>
+                        <div class="half-width">
+                            <label>Título</label>
+                            <input type="text" name="title" value="<%= be.title || 'Evento Boss' %>" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top:14px;">
+                        <div>
+                            <label>Skin do Treinador (Boss)</label>
+                            <% const beTrainerIsCustom = !!be.trainerIsCustomSkin; %>
+                            <% const beTrainerSkin = (be && be.trainerSkin) ? String(be.trainerSkin) : 'char2'; %>
+                            <select name="trainerSkinSelect" id="bossTrainerSkinSelect">
+                                <option value="char2" <%= (!beTrainerIsCustom && String(beTrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
+                                <option value="" <%= beTrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
+                                <% (skins || []).forEach(s => { %>
+                                    <option value="<%= s._id %>" <%= (!beTrainerIsCustom && String(beTrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Ou Upload Skin Própria</label>
+                            <input type="file" name="trainerSkinFile" accept="image/*" onchange="previewImage(this, 'bossTrainerSkinPreview')">
+                            <% const _tSkin = beTrainerSkin ? String(beTrainerSkin) : 'char2'; %>
+                            <% const _tUrl = (beTrainerIsCustom || (_tSkin && (_tSkin.startsWith('http') || _tSkin.startsWith('data:')))) ? _tSkin : ((/^char\d+$/i.test(_tSkin)) ? ('/uploads/' + _tSkin + '.png') : ('/skins/' + _tSkin + '.png')); %>
+                            <div id="bossTrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
+                                <% if (_tUrl) { %>
+                                    <img src="<%= _tUrl %>" style="height:100%; object-fit:contain;">
+                                <% } else { %>
+                                    <span style="font-size:0.7rem; color:#555">Sem imagem</span>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <datalist id="bossEntitySuggestions">
+                        <% (entities || []).forEach(p => { %>
+                            <option value="<%= p.id %>"><%= p.name %></option>
+                        <% }) %>
+                    </datalist>
+
+                    <% const minis = Array.isArray(be.miniBosses) ? be.miniBosses : []; %>
+                    <% const m1 = minis.find(m => m && m.slot === 'mini1') || {}; %>
+                    <% const m2 = minis.find(m => m && m.slot === 'mini2') || {}; %>
+                    <% const m3 = minis.find(m => m && m.slot === 'mini3') || {}; %>
+                    <% const boss = be.boss || {}; %>
+
+                    <h4>🐲 MINI-BOSSES (3)</h4>
+
+                    <% { const slot = 'mini1'; const data = m1; %>
+                        <div class="accordion">
+                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
+                                <span>⚔️ MINI 1</span>
+                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Base ID</label>
+                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nome (opcional)</label>
+                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nível</label>
+                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Recompensa (moedas)</label>
+                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Type</label>
+                                        <select name="<%= slot %>RewardType">
+                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
+                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
+                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label>Reward Value (itemId/baseId)</label>
+                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Reward Qty</label>
+                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Level (se entidade)</label>
+                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+
+                    <% { const slot = 'mini2'; const data = m2; %>
+                        <div class="accordion">
+                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
+                                <span>⚔️ MINI 2</span>
+                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Base ID</label>
+                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nome (opcional)</label>
+                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nível</label>
+                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Recompensa (moedas)</label>
+                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Type</label>
+                                        <select name="<%= slot %>RewardType">
+                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
+                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
+                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label>Reward Value (itemId/baseId)</label>
+                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Reward Qty</label>
+                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Level (se entidade)</label>
+                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+
+                    <% { const slot = 'mini3'; const data = m3; %>
+                        <div class="accordion">
+                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
+                                <span>⚔️ MINI 3</span>
+                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Base ID</label>
+                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nome (opcional)</label>
+                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nível</label>
+                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Recompensa (moedas)</label>
+                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Type</label>
+                                        <select name="<%= slot %>RewardType">
+                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
+                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
+                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label>Reward Value (itemId/baseId)</label>
+                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Reward Qty</label>
+                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Level (se entidade)</label>
+                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+
+                    <h4>👑 BOSS PRINCIPAL</h4>
+                    <% { const slot = 'boss'; const data = boss; %>
+                        <div class="accordion">
+                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
+                                <span>👑 BOSS</span>
+                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
+                            </div>
+                            <div class="accordion-body">
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Base ID</label>
+                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nome (opcional)</label>
+                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
+                                    </div>
+                                    <div>
+                                        <label>Nível</label>
+                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Recompensa (moedas)</label>
+                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Type</label>
+                                        <select name="<%= slot %>RewardType">
+                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
+                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
+                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label>Reward Value (itemId/baseId)</label>
+                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div>
+                                        <label>Reward Qty</label>
+                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div>
+                                        <label>Reward Level (se entidade)</label>
+                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
+                                    </div>
+                                    <div style="display:flex; gap:10px; align-items:center;">
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
+                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% } %>
+
+                    <div class="btn-row">
+                        <button type="submit" class="btn-save">💾 SALVAR EVENTO</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -1211,6 +1558,10 @@
             if (boxPriceEl) boxPriceEl.value = 1000;
             const boxJsonEl = document.getElementById('npcInteractBoxRewardsJson');
             if (boxJsonEl) boxJsonEl.value = '';
+            const boxDlgEl = document.getElementById('npcInteractBoxDialogue');
+            if (boxDlgEl) boxDlgEl.value = '';
+            const boxResDlgEl = document.getElementById('npcInteractBoxResultDialogue');
+            if (boxResDlgEl) boxResDlgEl.value = '';
             document.getElementById('npcInteractRange').value = 0;
             document.getElementById('npcInteractReqId').value = '';
             document.getElementById('npcInteractReqQty').value = 1;
@@ -1316,6 +1667,11 @@
                 const boxJsonEl = document.getElementById('npcInteractBoxRewardsJson');
                 if (boxJsonEl) boxJsonEl.value = (n.interact.box && Array.isArray(n.interact.box.rewards)) ? JSON.stringify(n.interact.box.rewards) : '';
                 npcBoxLoadFromJson(document.getElementById('npcInteractBoxRewardsJson')?.value || '[]');
+
+                const boxDlgEl = document.getElementById('npcInteractBoxDialogue');
+                if (boxDlgEl) boxDlgEl.value = n.interact.boxDialogue || '';
+                const boxResDlgEl = document.getElementById('npcInteractBoxResultDialogue');
+                if (boxResDlgEl) boxResDlgEl.value = n.interact.boxResultDialogue || '';
 
                 document.getElementById('npcInteractReqId').value = n.interact.requiresItemId || '';
                 document.getElementById('npcInteractReqQty').value = n.interact.requiresItemQty || 1;

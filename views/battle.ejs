@@ -1602,26 +1602,37 @@
                     animateCounter(rewardMoney, 0, moneyReward, 1000, '+');
                     animateCounter(rewardExp, 0, expReward, 1200, '+');
                     
-                    // Mostra barra de XP com dados do servidor quando disponíveis
+                    // Mostra barra de XP com dados do servidor quando disponíveis.
+                    // No modo online, o servidor mantém p1/p2 fixos; no client, "p1" é sempre "eu".
+                    // Então escolhemos o state certo pelo userId.
                     setTimeout(() => {
-                        if (srvData && srvData.p1State) {
-                            const s = srvData.p1State;
-                            const curXp = Number(s.xp || 0);
-                            const xpToNext = Number(s.xpToNext || 100);
-                            const lvl = Number(s.level || 1);
-                            levelDisplay.textContent = `${lvl} → ${lvl + 1}`;
-                            xpContainer.style.display = 'block';
-                            setTimeout(() => {
-                                const pct = Math.max(0, Math.min(100, Math.round((curXp / (xpToNext || 1)) * 100)));
-                                xpFill.style.width = pct + '%';
-                            }, 100);
-                        } else {
-                            xpContainer.style.display = 'block';
-                            levelDisplay.textContent = '5 → 6';
-                            setTimeout(() => {
-                                xpFill.style.width = '85%';
-                            }, 100);
-                        }
+                        const pickMyState = () => {
+                            if (!srvData) return null;
+                            const ru = String(realUserId || '');
+                            const s1 = srvData.p1State;
+                            const s2 = srvData.p2State;
+                            if (s1 && String(s1.userId || '') === ru) return s1;
+                            if (s2 && String(s2.userId || '') === ru) return s2;
+                            return null;
+                        };
+
+                        const myState = pickMyState();
+                        const fallbackXpMax = (() => {
+                            const el = document.getElementById('xp-max-p1');
+                            const n = el ? Number(el.textContent) : NaN;
+                            return Number.isFinite(n) ? n : 100;
+                        })();
+
+                        const lvl = Number((myState && myState.level) || winner.level || 1);
+                        const curXp = Number((myState && myState.xp) || winner.xp || 0);
+                        const xpToNext = Number((myState && myState.xpToNext) || winner.xpToNext || fallbackXpMax || 100);
+
+                        xpContainer.style.display = 'block';
+                        levelDisplay.textContent = `${lvl} → ${lvl + 1}`;
+                        setTimeout(() => {
+                            const pct = Math.max(0, Math.min(100, Math.round((curXp / (xpToNext || 1)) * 100)));
+                            xpFill.style.width = pct + '%';
+                        }, 100);
                     }, 1500);
                 } else { 
                     title.innerText = "DERROTA..."; 

@@ -114,6 +114,12 @@ const NPCSchema = new mongoose.Schema({
         // Texto opcional usado por alguns serviços
         healDialogue: { type: String, default: '' },
 
+        // Texto opcional para box/gacha (serviceType='box')
+        // boxDialogue: mostrado ANTES de abrir (menu/confirm)
+        // boxResultDialogue: mostrado DEPOIS do giro (resultado)
+        boxDialogue: { type: String, default: '' },
+        boxResultDialogue: { type: String, default: '' },
+
         // Itens vendidos quando serviceType='shop'
         // Ex: [{ itemId: 'captureCube', price: 50 }, { itemId: 'levelUpCrystal', price: 2000 }]
         shopItems: { type: Array, default: [] },
@@ -288,6 +294,54 @@ const DevLogSchema = new mongoose.Schema({
     createdAt: { type: Number, default: () => Date.now() }
 });
 
+// --- BOSS EVENT (global configurable event) ---
+const BossEventSchema = new mongoose.Schema({
+    key: { type: String, default: 'global', unique: true, index: true },
+    enabled: { type: Boolean, default: false },
+
+    // Troque este valor para “resetar” o progresso por jogador (flags)
+    eventKey: { type: String, default: 'event1' },
+    title: { type: String, default: 'Evento Boss' },
+
+    // Skin do treinador (boss) na batalha: pode ser 'char2', um id de /skins/:id.png,
+    // ou um data-url (quando trainerIsCustomSkin=true)
+    trainerSkin: { type: String, default: 'char2' },
+    trainerIsCustomSkin: { type: Boolean, default: false },
+
+    miniBosses: [{
+        slot: { type: String, default: '' }, // 'mini1' | 'mini2' | 'mini3'
+        baseId: { type: String, default: '' },
+        level: { type: Number, default: 1 },
+        name: { type: String, default: '' },
+        moneyReward: { type: Number, default: 0 },
+        reward: {
+            type: { type: String, default: 'none' },
+            value: { type: String, default: '' },
+            qty: { type: Number, default: 1 },
+            level: { type: Number, default: 1 },
+            keyItem: { type: Boolean, default: false },
+            unique: { type: Boolean, default: false }
+        }
+    }],
+
+    boss: {
+        baseId: { type: String, default: '' },
+        level: { type: Number, default: 1 },
+        name: { type: String, default: '' },
+        moneyReward: { type: Number, default: 0 },
+        reward: {
+            type: { type: String, default: 'none' },
+            value: { type: String, default: '' },
+            qty: { type: Number, default: 1 },
+            level: { type: Number, default: 1 },
+            keyItem: { type: Boolean, default: false },
+            unique: { type: Boolean, default: false }
+        }
+    },
+
+    updatedAt: { type: Number, default: () => Date.now() }
+});
+
 const BaseEntity = mongoose.model('BaseEntity', EntitySchema);
 const User = mongoose.model('User', UserSchema);
 const NPC = mongoose.model('NPC', NPCSchema);
@@ -296,5 +350,6 @@ const ItemDefinition = mongoose.model('ItemDefinition', ItemDefinitionSchema);
 const PlayerSkin = mongoose.model('PlayerSkin', PlayerSkinSchema);
 const DevSettings = mongoose.model('DevSettings', DevSettingsSchema);
 const DevLog = mongoose.model('DevLog', DevLogSchema);
+const BossEvent = mongoose.model('BossEvent', BossEventSchema);
 
-module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog };
+module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog, BossEvent };
