@@ -862,6 +862,32 @@
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
 
+        function resolveSkinUrl(skin) {
+            if (!skin) return '';
+            try {
+                const s = String(skin || '');
+                if (s.startsWith('http') || s.startsWith('data:')) return s;
+                if (/^char\d+$/i.test(s)) return '/uploads/' + s + '.png';
+                return '/skins/' + s + '.png';
+            } catch (_) { return ''; }
+        }
+
+        function applyTrainerSkin(side, skin) {
+            const trainerEl = document.getElementById(`trainer-${side}`);
+            if (!trainerEl) return;
+            const url = resolveSkinUrl(skin);
+            if (skin != null) trainerEl.setAttribute('data-skin', String(skin || ''));
+            if (url) trainerEl.style.backgroundImage = `url('${url}')`;
+        }
+
+        function applyTrainerName(side, name) {
+            try {
+                const hud = document.querySelector(`.hud-${side} .trainer-sub`);
+                if (!hud) return;
+                hud.innerText = name || (side === 'p1' ? 'Você' : 'Oponente');
+            } catch (_) {}
+        }
+
         function renderMoveBtnInner(move) {
             const element = (move && move.element) ? String(move.element) : 'beast';
             const name = (move && move.name) ? String(move.name) : '';
@@ -1379,6 +1405,8 @@
                         p2Data.sprite = resolveImg(data.p2State.sprite);
                         p2Data.mon = data.p2State.name;
                         p2Data.skin = data.p2State.skin;
+                        applyTrainerName('p2', data.p2State.playerName);
+                        applyTrainerSkin('p2', data.p2State.skin);
                         setHudNameLevel('p2', p2Mon, data.p2State.level);
                         document.getElementById('max-hp-p2').innerText = p2MaxHp;
                         const s2 = document.querySelector('#sprite-p2 img');
@@ -1392,6 +1420,8 @@
                         p1CurHp = data.p1State.hp; 
                         p1MaxHp = data.p1State.maxHp; 
                         currentEnergy = data.p1State.energy;
+                        applyTrainerName('p1', data.p1State.playerName);
+                        applyTrainerSkin('p1', data.p1State.skin);
                         setHudNameLevel('p1', p1Mon, data.p1State.level);
                         document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
                         document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
@@ -1455,6 +1485,8 @@
                     }
                     if (data.p2State) updateBar(p2RawId, data.p2State.hp, p2MaxHp, 'hp'); 
                     setControlsState(true); 
+                        applyTrainerName('p2', newState.playerName);
+                        applyTrainerSkin('p2', newState.skin);
                 } 
             } 
         }
@@ -2050,23 +2082,25 @@
         })();
 
         // --- Forçar treinadores olhando para baixo na tela de vitória/derrota ---
-    function setTrainersVictoryDown() {
-        // Seletores dos treinadores na tela de vitória
-        const trainers = document.querySelectorAll('.fighter-result .trainer');
-        trainers.forEach(tr => {
-            // Remove classes de frame que possam deslocar o sprite
-            tr.classList.remove('frame-1', 'frame-2', 'frame-3');
-            // Força posição do background para a primeira coluna/linha
-            tr.style.backgroundPosition = '0% 0%';
-        });
-    }
-    // Chama a função ao exibir a tela de vitória/derrota
-    const observer = new MutationObserver(() => {
-        if (document.querySelector('.victory-container')) {
-            setTrainersVictoryDown();
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+        (function initVictoryObserverOnce() {
+            if (window.__victoryObserverInitialized) return;
+            window.__victoryObserverInitialized = true;
+
+            function setTrainersVictoryDown() {
+                const trainers = document.querySelectorAll('.fighter-result .trainer');
+                trainers.forEach(tr => {
+                    tr.classList.remove('frame-1', 'frame-2', 'frame-3');
+                    tr.style.backgroundPosition = '0% 0%';
+                });
+            }
+
+            const victoryObserver = new MutationObserver(() => {
+                if (document.querySelector('.victory-container')) {
+                    setTrainersVictoryDown();
+                }
+            });
+            victoryObserver.observe(document.body, { childList: true, subtree: true });
+        })();
     </script>
 </body>
 
@@ -2188,23 +2222,6 @@
         });
     })();
 
-    // --- Forçar treinadores olhando para baixo na tela de vitória/derrota ---
-    function setTrainersVictoryDown() {
-        // Seletores dos treinadores na tela de vitória
-        const trainers = document.querySelectorAll('.victory-container .trainer');
-        trainers.forEach(tr => {
-            // Remove classes de frame que possam deslocar o sprite
-            tr.classList.remove('frame-1', 'frame-2', 'frame-3');
-            // Força posição do background para a primeira coluna/linha
-            tr.style.backgroundPosition = '0% 0%';
-        });
-    }
-    // Chama a função ao exibir a tela de vitória/derrota
-    const observer = new MutationObserver(() => {
-        if (document.querySelector('.victory-container .trainer')) {
-            setTrainersVictoryDown();
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Victory observer já inicializado no bloco acima.
 </script>
 </html>

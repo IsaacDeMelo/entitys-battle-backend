@@ -1020,6 +1020,14 @@
                                 </div>
 
                                 <div class="form-grid">
+                                    <div class="full-width">
+                                        <label>Equipe do Treinador (JSON)</label>
+                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
+                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
                                     <div>
                                         <label>Recompensa (moedas)</label>
                                         <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
@@ -1079,6 +1087,14 @@
                                     <div>
                                         <label>Nível</label>
                                         <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div class="full-width">
+                                        <label>Equipe do Treinador (JSON)</label>
+                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
+                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
                                     </div>
                                 </div>
 
@@ -1146,6 +1162,14 @@
                                 </div>
 
                                 <div class="form-grid">
+                                    <div class="full-width">
+                                        <label>Equipe do Treinador (JSON)</label>
+                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
+                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
                                     <div>
                                         <label>Recompensa (moedas)</label>
                                         <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
@@ -1206,6 +1230,14 @@
                                     <div>
                                         <label>Nível</label>
                                         <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
+                                    </div>
+                                </div>
+
+                                <div class="form-grid">
+                                    <div class="full-width">
+                                        <label>Equipe do Treinador (JSON)</label>
+                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
+                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
                                     </div>
                                 </div>
 

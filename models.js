@@ -313,6 +313,12 @@ const BossEventSchema = new mongoose.Schema({
         baseId: { type: String, default: '' },
         level: { type: Number, default: 1 },
         name: { type: String, default: '' },
+        // Time do treinador (raid). Se vazio, cai no baseId/level acima.
+        team: [{
+            baseId: { type: String, default: '' },
+            level: { type: Number, default: 1 },
+            name: { type: String, default: '' }
+        }],
         moneyReward: { type: Number, default: 0 },
         reward: {
             type: { type: String, default: 'none' },
@@ -328,6 +334,11 @@ const BossEventSchema = new mongoose.Schema({
         baseId: { type: String, default: '' },
         level: { type: Number, default: 1 },
         name: { type: String, default: '' },
+        team: [{
+            baseId: { type: String, default: '' },
+            level: { type: Number, default: 1 },
+            name: { type: String, default: '' }
+        }],
         moneyReward: { type: Number, default: 0 },
         reward: {
             type: { type: String, default: 'none' },

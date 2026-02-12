@@ -9,6 +9,7 @@
     
     <style>
         /* --- 1. BASE --- */
+    const __storyBarrierAutoUnlocking = new Set();
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; touch-action: manipulation; }
         body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: flex-start; padding-top: env(safe-area-inset-top); user-select: none; }
         
@@ -553,6 +554,22 @@
             gap: 10px;
             align-items: center;
             justify-content: space-between;
+        }
+        .bossEventLeft {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .bossEventSprite {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            background: rgba(0,0,0,0.25);
+            border: 2px solid rgba(244,233,199,0.28);
+            border-radius: 8px;
+            flex: 0 0 auto;
         }
         .bossEventMeta {
             display: flex;
@@ -5760,8 +5777,8 @@
             window.__barrierPromptActive = true;
             window.__lastBarrierPromptAt = Date.now();
 
-            nameEl.textContent = itemId || 'Item';
-            iconEl.src = itemId ? `/api/items/icon/${encodeURIComponent(itemId)}.png` : '';
+            nameEl.textContent = itemId || 'Liberar passagem';
+            iconEl.src = itemId ? `/api/items/icon/${encodeURIComponent(itemId)}.png` : '/uploads/placeholder.png';
 
             btnUse.disabled = false;
             btnUse.textContent = 'USAR';
@@ -5795,11 +5812,11 @@
                     if (data && data.needsItem) {
                         if (typeof showToast === 'function') showToast('Voce nao possui o item necessario.', { bg: '#e74c3c' });
                     } else {
-                        if (typeof showToast === 'function') showToast('Nao foi possivel usar o item.', { bg: '#e74c3c' });
+                        if (typeof showToast === 'function') showToast('Nao foi possivel liberar a passagem.', { bg: '#e74c3c' });
                     }
                 } catch (e) {
                     console.error(e);
-                    if (typeof showToast === 'function') showToast('Erro ao usar item.', { bg: '#e74c3c' });
+                    if (typeof showToast === 'function') showToast('Erro ao liberar passagem.', { bg: '#e74c3c' });
                 } finally {
                     btnUse.disabled = false;
                     btnUse.textContent = 'USAR';
@@ -5839,17 +5856,45 @@
                 ? Object.keys(window.USER_BAG).filter(k => (window.USER_BAG[k] || 0) > 0)
                 : [];
 
-            if (keys.length === 0 && bagItems.length === 0) return false;
-
             const requiredItem = hitBarrier.requiredItemId || hitBarrier.requiredKey || hitBarrier.requiredKeyId || null;
+            if (!requiredItem) {
+                const lockKey = String(flag || '').trim();
+                if (!lockKey || __storyBarrierAutoUnlocking.has(lockKey)) return false;
+                __storyBarrierAutoUnlocking.add(lockKey);
+
+                (async () => {
+                    try {
+                        const resp = await fetch('/api/map/use-key', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: USER_ID, flagId: lockKey, qty: 1 })
+                        });
+                        const data = await resp.json().catch(() => ({}));
+                        if (data && data.success) {
+                            if (data.bag) window.USER_BAG = data.bag;
+                            if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
+                            if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                            try { renderMapObjects && renderMapObjects(); } catch (_) {}
+                        }
+                    } catch (_) {
+                    } finally {
+                        setTimeout(() => {
+                            try { __storyBarrierAutoUnlocking.delete(lockKey); } catch (_) {}
+                        }, 400);
+                    }
+                })();
+
+                return false;
+            }
+
             let useId = null;
             if (requiredItem) {
                 const rid = String(requiredItem).trim();
                 if (keys.includes(rid) || (window.USER_BAG && window.USER_BAG[rid] && (window.USER_BAG[rid] > 0))) {
                     useId = rid;
                 }
+                if (!useId) return false;
             }
-            if (!useId) useId = keys.length > 0 ? keys[0] : bagItems[0];
             openBarrierPrompt(flag, useId);
             return true;
         }
@@ -6208,17 +6253,17 @@
                 } catch (_) { return { x: 50, y: 50 }; }
             }
 
-            async function startBossEventBattle(slot) {
+            async function startBossRaidBattle(startSlot) {
                 const pos = getPlayerPos();
                 const body = {
                     userId: window.CURRENT_USER_ID,
-                    slot,
+                    startSlot,
                     currentMap: getMapParam(),
                     currentX: pos.x,
                     currentY: pos.y
                 };
                 try {
-                    const res = await fetch('/battle/boss-event', {
+                    const res = await fetch('/battle/boss-raid', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body)
@@ -6226,8 +6271,7 @@
                     const json = await res.json().catch(() => ({}));
                     if (!res.ok || (json && json.error)) {
                         const code = json && json.error;
-                        const msg = (code === 'boss_locked') ? 'Derrote os 3 mini-bosses primeiro.'
-                            : (code === 'already_defeated') ? 'Você já derrotou este boss.'
+                        const msg = (code === 'already_defeated') ? 'Você já derrotou este evento.'
                             : (code === 'event_disabled') ? 'Evento desativado.'
                             : 'Não foi possível iniciar a batalha.';
                         if (typeof showToast === 'function') showToast(msg, { bg: '#e74c3c' });
@@ -6264,24 +6308,50 @@
                     titleEl.textContent = data.title || 'EVENTO BOSS';
                     statusEl.textContent = 'Derrote os mini-bosses para liberar o boss.';
 
+                    function resolveTrainerSkinUrl(skin) {
+                        if (!skin) return '';
+                        try {
+                            const s = String(skin || '');
+                            if (s.startsWith('http') || s.startsWith('data:')) return s;
+                            if (/^char\d+$/i.test(s)) return '/uploads/' + s + '.png';
+                            return '/skins/' + s + '.png';
+                        } catch (_) { return ''; }
+                    }
+
+                    const trainerSkinUrl = resolveTrainerSkinUrl(data.trainerSkin || '');
+
                     const rows = [];
                     const minis = Array.isArray(data.miniBosses) ? data.miniBosses : [];
+                    const firstUndefeated = (() => {
+                        const order = ['mini1', 'mini2', 'mini3', 'boss'];
+                        const defeatedBySlot = new Map();
+                        minis.forEach(mm => defeatedBySlot.set(String(mm.slot), !!mm.defeated));
+                        defeatedBySlot.set('boss', !!(data.boss && data.boss.defeated));
+                        for (const s of order) { if (!defeatedBySlot.get(s)) return s; }
+                        return null;
+                    })();
+
                     minis.forEach(m => {
                         const defeated = !!m.defeated;
+                        const isNext = (String(m.slot) === String(firstUndefeated));
                         const div = document.createElement('div');
                         div.className = 'bossEventRow';
+                        const spriteUrl = trainerSkinUrl;
                         div.innerHTML = `
-                            <div class="bossEventMeta">
-                                <div class="bossEventName">${(m.name || 'Mini Boss').toString().toUpperCase()}</div>
-                                <div class="bossEventSub">Lv ${m.level || 1} ${defeated ? '— DERROTADO' : ''}</div>
+                            <div class="bossEventLeft">
+                                <img class="bossEventSprite" src="${spriteUrl}" alt="${(m.name || 'Mini Boss').toString().toUpperCase()}" onerror="this.style.display='none'" />
+                                <div class="bossEventMeta">
+                                    <div class="bossEventName">${(m.name || 'Mini Boss').toString().toUpperCase()}</div>
+                                    <div class="bossEventSub">Lv ${m.level || 1} ${defeated ? '— DERROTADO' : ''}</div>
+                                </div>
                             </div>
                         `;
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'startMenuBtn bossEventBtn';
-                        btn.textContent = defeated ? 'OK' : 'BATALHAR';
-                        btn.disabled = defeated;
-                        btn.onclick = () => startBossEventBattle(m.slot);
+                        btn.textContent = defeated ? 'OK' : (isNext ? 'RAID' : 'BLOQUEADO');
+                        btn.disabled = defeated || !isNext;
+                        btn.onclick = () => startBossRaidBattle(m.slot);
                         div.appendChild(btn);
                         rows.push(div);
                     });
@@ -6291,18 +6361,22 @@
                     bossRow.className = 'bossEventRow';
                     const bossDefeated = !!boss.defeated;
                     const bossUnlocked = !!boss.unlocked;
+                    const bossSpriteUrl = trainerSkinUrl;
                     bossRow.innerHTML = `
-                        <div class="bossEventMeta">
-                            <div class="bossEventName">${(boss.name || 'Boss').toString().toUpperCase()}</div>
-                            <div class="bossEventSub">Lv ${boss.level || 1} ${bossDefeated ? '— DERROTADO' : (!bossUnlocked ? '— BLOQUEADO' : '')}</div>
+                        <div class="bossEventLeft">
+                            <img class="bossEventSprite" src="${bossSpriteUrl}" alt="${(boss.name || 'Boss').toString().toUpperCase()}" onerror="this.style.display='none'" />
+                            <div class="bossEventMeta">
+                                <div class="bossEventName">${(boss.name || 'Boss').toString().toUpperCase()}</div>
+                                <div class="bossEventSub">Lv ${boss.level || 1} ${bossDefeated ? '— DERROTADO' : (!bossUnlocked ? '— BLOQUEADO' : '')}</div>
+                            </div>
                         </div>
                     `;
                     const bossBtn = document.createElement('button');
                     bossBtn.type = 'button';
                     bossBtn.className = 'startMenuBtn startMenuBtn--gold bossEventBtn';
-                    bossBtn.textContent = bossDefeated ? 'OK' : (bossUnlocked ? 'BATALHAR' : 'BLOQUEADO');
+                    bossBtn.textContent = bossDefeated ? 'OK' : (bossUnlocked ? 'RAID' : 'BLOQUEADO');
                     bossBtn.disabled = bossDefeated || !bossUnlocked;
-                    bossBtn.onclick = () => startBossEventBattle('boss');
+                    bossBtn.onclick = () => startBossRaidBattle('boss');
                     bossRow.appendChild(bossBtn);
                     rows.push(bossRow);
 
