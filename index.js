@@ -4461,6 +4461,7 @@ app.post('/api/turn', async (req, res) => {
             const newEntity = userEntityToEntity(newPokeData, base); newEntity.playerName = p1.playerName; newEntity.skin = p1.skin; 
             battle.p1 = newEntity; p1 = battle.p1; await user.save(); 
             events.push({ type: 'MSG', text: `Vai, ${p1.name}!` }); 
+            events.push({ type: 'SWITCH_ANIM', side: 'p1', newSprite: p1.sprite, newHp: p1.hp, maxHp: p1.maxHp, newName: p1.name, newLevel: p1.level, newId: p1.instanceId });
             if (p2.hp > 0 && !isForced) { performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } 
             const userXp = await User.findById(battle.userId);
             const p1PokeData = userXp ? userXp.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;
@@ -4603,6 +4604,7 @@ app.post('/api/turn', async (req, res) => {
                 if (nextNpcPoke) {
                     battle.p2 = nextNpcPoke;
                     events.push({ type: 'MSG', text: `${battle.p2.playerName} vai usar ${nextNpcPoke.name}!` });
+                    events.push({ type: 'SWITCH_ANIM', side: 'p2', newSprite: nextNpcPoke.sprite, newHp: nextNpcPoke.hp, maxHp: nextNpcPoke.maxHp, newName: nextNpcPoke.name, newLevel: nextNpcPoke.level, newId: nextNpcPoke.instanceId });
                     return res.json({ events, switched: true, p2Switched: true, newP1Id: p1.instanceId, p1State: p1, p2State: nextNpcPoke });
                 }
             }

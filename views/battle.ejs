@@ -100,10 +100,10 @@
         transition: opacity 0.5s; 
     }
     
-    .fighter.p2-position { right: 2%; justify-content: flex-end; }
+    .fighter.p2-position { right: 10%; justify-content: flex-end; }
     .fighter.p2-position .trainer { order: 2; margin-left: -20px; z-index: 23; background-position-y: 33.33%; } 
     .fighter.p2-position .sprite { order: 1; z-index: 22; }
-    .fighter.p1-position { left: 2%; justify-content: flex-start; }
+    .fighter.p1-position { left: 10%; justify-content: flex-start; }
     .fighter.p1-position .trainer { order: 1; margin-right: -20px; z-index: 23; background-position-y: 66.66%; }
     .fighter.p1-position .sprite { order: 2; z-index: 22; transform: scaleX(-1); }
 
@@ -812,6 +812,7 @@
                             </button>
                         <% }) %>
                     </div>
+                    <button class="move-btn status" onclick="openSwitchSelector(false)"><strong>🔁 Trocar</strong><small>Gasta o turno</small></button>
                     <button class="move-btn rest-btn status" onclick="sendAction('move', 'rest')">💤 Descansar (+<%= energyConfig.restBonus %> EN)</button>
                 </div>
             <% } else { %>
@@ -1468,7 +1469,7 @@
                         }
                     } catch (e) {}
                 }
-                if (data.forceSwitch) { showSwitchModal(data.switchable); return; }
+                if (data.forceSwitch) { showSwitchModal(data.switchable, true); return; }
                 if(data.captured) { showToast('Capturado!'); setTimeout(() => { window.location.href = returnUrl; }, 1000); return; }
                 else if (data.fled) { showToast("Fugiu!"); window.location.href = returnUrl; } 
                 else if(data.finished) { endGame(data.winnerId, data); } 
@@ -1491,23 +1492,54 @@
             } 
         }
 
-        function showSwitchModal(list) {
+        async function fetchSwitchableTeam() {
+            const res = await fetch('/api/me?userId=' + encodeURIComponent(realUserId));
+            const data = await res.json().catch(() => ({}));
+            const team = Array.isArray(data && data.team) ? data.team : [];
+            return team.filter(p => p && Number(p.hp) > 0 && String(p.instanceId || '') !== String(p1RawId || ''));
+        }
+
+        function showSwitchModal(list, isForced = false) {
             const modal = document.getElementById('switchModal');
             const listDiv = document.getElementById('switchList');
+            const title = document.getElementById('switchTitle');
+            const forfeitBtn = document.querySelector('#switchModal .btn-restart');
             listDiv.innerHTML = '';
+
+            if (title) {
+                title.innerHTML = isForced
+                    ? 'SEU POKÉMON DESMAIOU!<br>Escolha outro ou desista.'
+                    : 'ESCOLHA UM MONSTRO PARA TROCAR<br><span style="font-size:0.7rem;color:#cfd8e3">Você perde este turno.</span>';
+            }
+            if (forfeitBtn) forfeitBtn.style.display = isForced ? 'block' : 'none';
             
             list.forEach(p => {
                 const item = document.createElement('div');
                 item.className = 'switch-item';
                 item.innerHTML = `<img src="${resolveImg(p.sprite)}" class="switch-sprite"> <div><div style="color:#f1c40f;font-weight:bold;">${p.name} <span style="font-size:0.7rem;color:#ccc">Lv.${p.level}</span></div><div style="font-size:0.7rem;">HP: ${p.hp}/${p.maxHp}</div></div>`;
-                item.onclick = () => performSwitch(p.instanceId, true);
+                item.onclick = () => performSwitch(p.instanceId, !!isForced);
                 listDiv.appendChild(item);
             });
             modal.style.display = 'flex';
         }
 
+        async function openSwitchSelector(isForced = false) {
+            try {
+                if (isSpectator || (!isForced && !canAct)) return;
+                const list = await fetchSwitchableTeam();
+                if (!Array.isArray(list) || list.length === 0) {
+                    if (typeof showToast === 'function') showToast('Sem monstros disponíveis para troca.', { bg: '#e74c3c' });
+                    return;
+                }
+                showSwitchModal(list, !!isForced);
+            } catch (_) {
+                if (typeof showToast === 'function') showToast('Erro ao carregar time para troca.', { bg: '#e74c3c' });
+            }
+        }
+
         async function performSwitch(newPokeId, isForced = false) {
             document.getElementById('switchModal').style.display = 'none';
+            if (!isForced) setControlsState(false);
             
             if (battleMode === 'online') {
                 socket.emit('online_action', { 
@@ -1516,7 +1548,7 @@
                     value: newPokeId, 
                     playerId: realUserId 
                 });
-                document.getElementById('statusMsg').innerText = "Trocando..."; 
+                document.getElementById('statusMsg').innerText = "Aguardando oponente..."; 
                 document.getElementById('statusMsg').style.display = "block";
             } else {
                 const res = await fetch('/api/turn', { 
@@ -1526,8 +1558,6 @@
                 }); 
                 const data = await res.json();
                 
-                if (data.switched) {
-                    await wait(500);
                     p1RawId = data.newP1Id; p1Mon = data.p1State.name; p1CurHp = data.p1State.hp; p1MaxHp = data.p1State.maxHp; currentEnergy = data.p1State.energy;
                     setHudNameLevel('p1', p1Mon, data.p1State.level); document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
                     document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
@@ -1542,6 +1572,8 @@
                         mc.appendChild(btn); 
                     });
                     if (data.events) await playEvents(data.events); 
+                    setControlsState(true);
+                } else {
                     setControlsState(true);
                 }
             }
@@ -1640,13 +1672,18 @@
                     setTimeout(() => {
                         const pickMyState = () => {
                             if (!srvData) return null;
-                            const ru = String(realUserId || '');
                             const s1 = srvData.p1State;
                             const s2 = srvData.p2State;
+                            if (battleMode !== 'online' && s1) return s1;
+                            const ru = String(realUserId || '');
                             if (s1 && String(s1.userId || '') === ru) return s1;
                             if (s2 && String(s2.userId || '') === ru) return s2;
                             return null;
                         };
+
+                        const domLevel = Number(document.getElementById('p1-lv') && document.getElementById('p1-lv').textContent);
+                        const domXp = Number(document.getElementById('xp-val-p1') && document.getElementById('xp-val-p1').textContent);
+                        const domXpNext = Number(document.getElementById('xp-max-p1') && document.getElementById('xp-max-p1').textContent);
 
                         const myState = pickMyState();
                         const fallbackXpMax = (() => {
@@ -1655,9 +1692,9 @@
                             return Number.isFinite(n) ? n : 100;
                         })();
 
-                        const lvl = Number((myState && myState.level) || winner.level || 1);
-                        const curXp = Number((myState && myState.xp) || winner.xp || 0);
-                        const xpToNext = Number((myState && myState.xpToNext) || winner.xpToNext || fallbackXpMax || 100);
+                        const lvl = Number((myState && myState.level) || (Number.isFinite(domLevel) ? domLevel : 1));
+                        const curXp = Number((myState && myState.xp) || (Number.isFinite(domXp) ? domXp : 0));
+                        const xpToNext = Number((myState && myState.xpToNext) || (Number.isFinite(domXpNext) ? domXpNext : fallbackXpMax || 100));
 
                         xpContainer.style.display = 'block';
                         levelDisplay.textContent = `${lvl} → ${lvl + 1}`;
@@ -1784,12 +1821,8 @@
             }
 
             if (data.forceSwitch) {
-                if (data.forceSwitch.target === realUserId) {
-                     const res = await fetch('/api/me?userId=' + realUserId);
-                     const meData = await res.json();
-                     const switchables = meData.team.filter(p => p.hp > 0 && p.instanceId !== p1RawId); 
-                     showSwitchModal(switchables);
-                     document.getElementById('switchTitle').innerText = "SEU POKÉMON DESMAIOU!";
+                    if (String(data.forceSwitch.target) === String(realUserId)) {
+                     await openSwitchSelector(true);
                 } else {
                     document.getElementById('statusMsg').innerText = "Oponente trocando...";
                     document.getElementById('statusMsg').style.display = "block";
