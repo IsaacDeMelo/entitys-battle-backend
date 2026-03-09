@@ -3,64 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Cidade - Lobby</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
-    
+    <title>Entrando no Lobby</title>
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { margin: 0; padding: 0; background: #111; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; user-select: none; display: flex; justify-content: center; align-items: flex-start; padding-top: env(safe-area-inset-top); }
-        
-        #gameArea { position: relative; width: 100%; max-width: 420px; height: 100%; max-height: 900px; background-image: url('/uploads/map_bg.png'); image-rendering: pixelated; background-size: cover; background-position: center top; background-repeat: no-repeat; cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,0.8); overflow: hidden; z-index: 1; isolation: isolate; }
-
-        /* --- CONTROLE VIRTUAL (D-PAD) --- */
-        #controlsDock {
-            position: fixed;
-            left: 50%;
-            transform: translateX(-50%);
-            bottom: calc(max(20px, env(safe-area-inset-bottom) + 15px) + 78px);
-            width: 92%;
-            max-width: 420px;
-            z-index: 10001;
-            display: block;
-            height: 140px;
-            pointer-events: none;
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #1f3b5b, #08101c 72%);
+            color: #edf4ff;
+            font-family: 'Rajdhani', sans-serif;
         }
-
-        #controlsDock * { pointer-events: auto; }
-
-        #controlsLeft { position: absolute; left: 0; bottom: 0; }
-        #controlsRight { position: absolute; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 8px; }
-
-        #virtualPadWrap { position: static; pointer-events: auto; display: block; user-select: none; -webkit-user-select: none; touch-action: none; }
-
-        #virtualPad {
-            width: 132px;
-            height: 132px;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            grid-template-rows: 1fr 1fr 1fr;
-            <!DOCTYPE html>
-            <html lang="pt-BR">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-                <title>Redirecionando...</title>
-                <style>
-                    body { margin:0; height:100dvh; display:flex; align-items:center; justify-content:center; background:#000; color:#fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-                </style>
-                <script>
-                    (function () {
-                        const params = new URLSearchParams(window.location.search);
-                        const userId = params.get('userId') || '';
-                        const url = userId
-                            ? `/city?from=lobby&userId=${encodeURIComponent(userId)}`
-                            : '/';
-                        window.location.replace(url);
-                    })();
-                </script>
-            </head>
-            <body>
-                Redirecionando para a cidade...
-            </body>
-            </html>
+        .panel {
+            width: min(92vw, 420px);
+            padding: 24px;
+            border-radius: 18px;
+            border: 1px solid rgba(191, 219, 254, 0.3);
+            background: rgba(6, 12, 24, 0.82);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            text-align: center;
+        }
+        h1 { margin: 0 0 8px; font-size: 1.6rem; }
+        p { margin: 0; color: #d7e6fb; }
+    </style>
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get('userId') || '';
+            const url = userId
+                ? `/city?from=lobby&userId=${encodeURIComponent(userId)}`
+                : '/';
+            window.location.replace(url);
+        })();
+    </script>
+</head>
+<body>
+    <div class="panel">
+        <h1>Entrando no Lobby</h1>
+        <p>Preparando a sala de espera e o ponto de encontro dos jogadores.</p>
+    </div>
+</body>
+</html>

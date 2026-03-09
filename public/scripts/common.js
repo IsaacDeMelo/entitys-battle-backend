@@ -797,9 +797,8 @@ if (typeof socket !== 'undefined') {
 function moveToAndTalkToNPC(npc) {
     if (window.isPlayerMoving || window.isInteracting) return;
 
-    let currentMap = 'lobby';
-    if (window.location.pathname.includes('forest')) currentMap = 'forest';
-    if (window.location.pathname.includes('city')) currentMap = 'city';
+    let currentMap = String(window.currentMapId || (window.mapConfig && window.mapConfig.mapId) || '').trim() || 'city';
+    if (currentMap.includes('?')) currentMap = currentMap.split('?')[0];
     
     const socketId = socket.id; 
     const myPlayer = document.getElementById(`p-${socketId}`);
@@ -937,10 +936,9 @@ async function interactWithNPC(npc) {
         if (Array.isArray(payload.defeatedNPCs)) window.DEFEATED_NPCS = payload.defeatedNPCs.map(d => String(d));
     }
 
-    let currentMap = 'lobby';
+    let currentMap = String(window.currentMapId || (window.mapConfig && window.mapConfig.mapId) || '').trim() || 'city';
     let cx = 50, cy = 50;
-    if (window.location.pathname.includes('forest')) currentMap = 'forest';
-    if (window.location.pathname.includes('city')) currentMap = 'city';
+    if (currentMap.includes('?')) currentMap = currentMap.split('?')[0];
     const pEl = document.getElementById(`p-${socket.id}`);
     if (pEl) {
         cx = parseFloat(pEl.style.left);
@@ -989,6 +987,7 @@ async function interactWithNPC(npc) {
         .npc-shop-card .meta{font-size:0.85rem;color:#9fb3d1;display:flex;gap:8px;align-items:center;}
         .npc-shop-card .meta .pill{padding:2px 8px;border-radius:999px;border:1px solid #24334a;background:#131d30;font-weight:700;font-size:0.75rem;color:#8dd2ff;}
         .npc-shop-card .meta .price{color:#f1c40f;font-weight:800;}
+        .npc-shop-card .hint{font-size:0.8rem;color:#9fb3d1;min-height:18px;}
         .npc-shop-card button{margin-top:auto;background:#2ecc71;border:none;color:#052e16;font-weight:800;border-radius:10px;padding:10px;cursor:pointer;transition:0.15s;font-size:0.95rem;}
         .npc-shop-card button:hover{filter:brightness(1.05);} 
         .npc-shop-card button:disabled{background:#1f2a3d;color:#6b7280;cursor:not-allowed;}
@@ -1029,11 +1028,19 @@ async function interactWithNPC(npc) {
             const itemId = String(raw && (raw.itemId || raw.id) || '').trim();
             const def = catalog.find(c => c.id === itemId);
             const price = Math.max(0, parseInt(raw && raw.price, 10) || 0);
+            const qty = Math.max(1, parseInt(raw && raw.qty, 10) || 1);
+            const purchaseFlag = String(raw && raw.purchaseFlag || '').trim();
+            const oneTimePerUser = !!(raw && (raw.oneTimePerUser === true || raw.oneTimePerUser === 'true'));
+            const alreadyBought = !!(purchaseFlag && window.STORY_FLAGS && window.STORY_FLAGS[purchaseFlag]);
             return {
                 id: itemId,
                 name: (raw && raw.name) || (def && def.name) || itemId || 'Item',
                 type: def && def.type === 'key' ? 'key' : 'consumable',
                 price,
+                qty,
+                purchaseFlag,
+                oneTimePerUser,
+                alreadyBought,
                 icon: (def && def.hasIcon) ? `/api/items/icon/${encodeURIComponent(itemId)}.png?ts=${def.updatedAt || Date.now()}` : null
             };
         }).filter(x => x.id);
@@ -1069,7 +1076,8 @@ async function interactWithNPC(npc) {
             grid.appendChild(empty);
         }
 
-        const buyItem = async (itemId, btn) => {
+        const buyItem = async (item, btn) => {
+            const itemId = item && item.id;
             if (!itemId) return;
             if (btn) btn.disabled = true;
             try {
@@ -1085,13 +1093,34 @@ async function interactWithNPC(npc) {
                     return;
                 }
 
-                // Atualiza client-side com o retorno da API (bag, keyItems, money)
-                if (resp && typeof resp.money === 'number') window.USER_MONEY = resp.money;
-                if (resp && resp.bag && typeof resp.bag === 'object') window.USER_INVENTORY = resp.bag;
-                if (resp && Array.isArray(resp.keyItems)) window.USER_KEY_ITEMS = resp.keyItems;
-                if (resp && resp.storyFlags && typeof resp.storyFlags === 'object') window.STORY_FLAGS = resp.storyFlags;
+                if (typeof window.__syncClientStateFromServer === 'function') {
+                    await window.__syncClientStateFromServer(resp);
+                } else {
+                    if (resp && typeof resp.money === 'number') {
+                        window.USER_MONEY = resp.money;
+                        try { document.body.setAttribute('data-user-money', String(resp.money)); } catch (_) {}
+                    }
+                    if (resp && resp.bag && typeof resp.bag === 'object') {
+                        window.USER_BAG = resp.bag;
+                        window.USER_INVENTORY = resp.bag;
+                    }
+                    if (resp && Array.isArray(resp.keyItems)) window.USER_KEY_ITEMS = resp.keyItems;
+                    if (resp && resp.storyFlags && typeof resp.storyFlags === 'object') window.STORY_FLAGS = resp.storyFlags;
+                }
 
-                showToast('Item comprado!');
+                if (item && item.purchaseFlag) {
+                    window.STORY_FLAGS = window.STORY_FLAGS || {};
+                    window.STORY_FLAGS[item.purchaseFlag] = true;
+                    item.alreadyBought = true;
+                }
+
+                if (btn && item && item.oneTimePerUser) {
+                    btn.disabled = true;
+                    btn.textContent = 'Ja comprado';
+                }
+
+                const qtyAdded = Math.max(1, parseInt(resp && resp.qtyAdded, 10) || (item && item.qty) || 1);
+                showToast(`Item comprado${qtyAdded > 1 ? ` x${qtyAdded}` : ''}!`);
             } catch (_) {
                 showToast('Erro ao comprar.');
                 if (btn) btn.disabled = false;
@@ -1135,10 +1164,18 @@ async function interactWithNPC(npc) {
             meta.appendChild(price);
             card.appendChild(meta);
 
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            const parts = [];
+            if ((parseInt(it.qty, 10) || 1) > 1) parts.push(`lote x${it.qty}`);
+            if (it.oneTimePerUser) parts.push('compra unica');
+            hint.textContent = parts.join(' | ');
+            card.appendChild(hint);
+
             const btn = document.createElement('button');
-            btn.textContent = `Comprar por $${it.price}`;
-            btn.disabled = it.price <= 0;
-            btn.onclick = () => buyItem(it.id, btn);
+            btn.textContent = it.alreadyBought ? 'Ja comprado' : ((parseInt(it.qty, 10) || 1) > 1 ? `Comprar x${it.qty} por $${it.price}` : `Comprar por $${it.price}`);
+            btn.disabled = it.price <= 0 || !!it.alreadyBought;
+            btn.onclick = () => buyItem(it, btn);
             card.appendChild(btn);
 
             grid.appendChild(card);

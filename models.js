@@ -308,11 +308,15 @@ const BossEventSchema = new mongoose.Schema({
     trainerSkin: { type: String, default: 'char2' },
     trainerIsCustomSkin: { type: Boolean, default: false },
 
+
     miniBosses: [{
         slot: { type: String, default: '' }, // 'mini1' | 'mini2' | 'mini3'
         baseId: { type: String, default: '' },
         level: { type: Number, default: 1 },
         name: { type: String, default: '' },
+        // Novo: skin individual para cada mini boss
+        trainerSkin: { type: String, default: 'char2' },
+        trainerIsCustomSkin: { type: Boolean, default: false },
         // Time do treinador (raid). Se vazio, cai no baseId/level acima.
         team: [{
             baseId: { type: String, default: '' },
@@ -334,6 +338,9 @@ const BossEventSchema = new mongoose.Schema({
         baseId: { type: String, default: '' },
         level: { type: Number, default: 1 },
         name: { type: String, default: '' },
+        // Novo: skin individual para o boss final
+        trainerSkin: { type: String, default: 'char2' },
+        trainerIsCustomSkin: { type: Boolean, default: false },
         team: [{
             baseId: { type: String, default: '' },
             level: { type: Number, default: 1 },

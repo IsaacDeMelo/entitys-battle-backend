@@ -599,6 +599,13 @@
                 const xpMax = p.xpToNext || 100;
                 const xpPct = Math.min(100, (p.xp / xpMax) * 100);
                 const isFollowing = CURRENT_FOLLOWING_ID && String(p.instanceId) === String(CURRENT_FOLLOWING_ID);
+                const evo = p.evolution || null;
+                const evoBadge = evo
+                    ? (evo.ready
+                        ? `<span style="margin-left:8px; padding:2px 8px; border-radius:999px; font-size:0.62rem; background:rgba(46,204,113,0.18); color:#b7f7d2; border:1px solid rgba(46,204,113,0.35);">EVOLUCAO PRONTA</span>`
+                        : `<span style="margin-left:8px; padding:2px 8px; border-radius:999px; font-size:0.62rem; background:rgba(241,196,15,0.14); color:#ffe08a; border:1px solid rgba(241,196,15,0.3);">EVO EM ${evo.levelsRemaining} LV</span>`)
+                    : '';
+                const evoHint = evo ? `<div style="font-size:0.68rem; color:#9ca3af; margin-top:4px;">${evo.ready ? `Pronto para virar ${evo.targetName}` : `Proxima evolucao: ${evo.targetName} no Lv.${evo.atLevel}`}</div>` : '';
                 
                 const clickAttr = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
                 const cardClass = isSelectingMode ? 'mon-card leader' : `mon-card ${idx===0?'leader':''}`;
@@ -610,9 +617,11 @@
                         <div style="display:flex; align-items:center;">
                             <span class="mon-name">${p.name}</span>
                             <span class="mon-lvl">Lv.${p.level}</span>
+                            ${evoBadge}
                         </div>
                         <div class="bar-wrapper"><span style="width:20px;">HP</span><div class="bar-track"><div class="bar-fill hp-fill" style="width:${hpPct}%;"></div></div></div>
                         <div class="bar-wrapper"><span style="width:20px;">XP</span><div class="bar-track"><div class="bar-fill xp-fill" style="width:${xpPct}%;"></div></div></div>
+                        ${evoHint}
                     </div>
                     ${!isSelectingMode ? `
                     <div class="mon-actions">
@@ -1092,7 +1101,14 @@
                         if (typeof d.levelUpCrystal === 'number') window.USER_BAG.levelUpCrystal = d.levelUpCrystal;
                     }
                 }
-                showToast('Level Up Crystal usado!');
+                const levelsGained = d && d.progression ? (parseInt(d.progression.levelsGained, 10) || 0) : 0;
+                const evoCount = d && d.progression && Array.isArray(d.progression.evolutions) ? d.progression.evolutions.length : 0;
+                const learnedCount = d && d.progression && Array.isArray(d.progression.learnedMoves) ? d.progression.learnedMoves.length : 0;
+                const parts = [];
+                if (levelsGained > 0) parts.push(`+${levelsGained} nivel` + (levelsGained > 1 ? 's' : ''));
+                if (evoCount > 0) parts.push('evoluiu');
+                if (learnedCount > 0) parts.push(`aprendeu ${learnedCount} golpe` + (learnedCount > 1 ? 's' : ''));
+                showToast(parts.length ? parts.join(' | ') : 'Level Up Crystal usado!');
                 isSelectingMode = false;
                 openEntityTeam();
             } catch (e) {

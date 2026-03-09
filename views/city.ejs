@@ -9,7 +9,6 @@
     
     <style>
         /* --- 1. BASE --- */
-    const __storyBarrierAutoUnlocking = new Set();
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; touch-action: manipulation; }
         body { margin: 0; padding: 0; background: #050505; overflow: hidden; height: 100vh; width: 100vw; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: flex-start; padding-top: env(safe-area-inset-top); user-select: none; }
         
@@ -90,6 +89,44 @@
         #previewCancelBtn:hover { background:#334155; }
         #gameArea.dev-click-capture #previewCancelBtn { display:inline-flex; }
 
+        #areaHud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+        }
+        #areaHudMap, #areaHudZone {
+            display: inline-flex;
+            width: fit-content;
+            max-width: min(72vw, 280px);
+            padding: 7px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(10, 16, 28, 0.72);
+            backdrop-filter: blur(6px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.24);
+            color: #f6f8fb;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #areaHudMap { font-size: 0.86rem; }
+        #areaHudZone {
+            font-size: 0.74rem;
+            color: #b7f0c2;
+            border-color: rgba(46, 204, 113, 0.28);
+            background: rgba(8, 28, 16, 0.68);
+        }
+        #areaHudZone.is-hidden { display: none; }
+
         /* ADMIN */
         #adminToolbar { position: fixed; top: 10px; right: 10px; z-index: 10000; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; border: 1px solid #f1c40f; display: none; flex-direction: column; gap: 8px; color: white; font-size: 0.75rem; max-width: 220px; max-height: calc(100vh - 20px); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); pointer-events: auto; }
 
@@ -145,8 +182,13 @@
         .devConsoleRow button.warn { border-color: #f1c40f; color: #ffeaa7; }
         .devConsoleRow button.danger { border-color: #e74c3c; color: #ffd0cc; }
         #devConsoleLogs { max-height: 180px; overflow: auto; font-family: monospace; font-size: 11px; color: #e5e7eb; }
+        #devEncounterZoneSummary { max-height: 220px; overflow: auto; font-size: 11px; color: #dbe7ff; display: flex; flex-direction: column; gap: 8px; }
         .devConsoleLogItem { padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
         .devConsoleLogMeta { color: #94a3b8; }
+        .devZoneSummaryItem { padding: 8px; border: 1px solid rgba(148,163,184,0.18); border-radius: 8px; background: rgba(255,255,255,0.03); }
+        .devZoneSummaryTitle { font-weight: 800; color: #f8fafc; margin-bottom: 4px; }
+        .devZoneSummaryMeta { color: #93c5fd; margin-bottom: 4px; }
+        .devZoneSummaryEmpty { color: #94a3b8; }
 
         .player.player-remote { pointer-events: auto; cursor: pointer; }
 
@@ -1232,6 +1274,7 @@
                         <button class="devBtn--gray" onclick="openDevPage()">DEV PAGINA</button>
                         <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">📏 TAMANHO</button>
                         <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">💡 ILUMINAÇÃO</button>
+                        <button class="devBtn--blue" onclick="openEncounterZoneInspector()">🧭 ZONAS</button>
                         <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">🗑️ APAGAR</button>
                         <button onclick="undoLast()">↩️ DESFAZER</button>
                         <button class="devBtn--green" onclick="saveMapToServer()">💾 SALVAR MAPA</button>
@@ -1286,6 +1329,13 @@
                     <h4>Logs</h4>
                     <div id="devConsoleLogs"></div>
                 </div>
+                <div class="devConsoleCard">
+                    <h4>Zonas de Encontro</h4>
+                    <div class="devConsoleRow" style="margin-bottom:8px;">
+                        <button type="button" class="ok" onclick="openEncounterZoneInspector()">Atualizar resumo</button>
+                    </div>
+                    <div id="devEncounterZoneSummary" class="devZoneSummaryEmpty">Sem resumo carregado.</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1293,6 +1343,10 @@
 
     <div id="gameViewport">
         <div id="gameArea">
+            <div id="areaHud">
+                <div id="areaHudMap">Mapa</div>
+                <div id="areaHudZone" class="is-hidden">Zona</div>
+            </div>
             <div id="collision-container"></div>
             <div id="grass-container"></div>
             <div id="portal-container"></div>
@@ -2211,6 +2265,8 @@
 
                 // Atualiza variável global do mapa atual
                 currentMapId = mapId;
+                window.currentMapId = currentMapId;
+                updateAreaHud();
 
                 // Atualiza URL sem reload
                 const newUrl = `/city?map=${mapId}&userId=${window.CURRENT_USER_ID}`;
@@ -2950,6 +3006,36 @@
         window.STORY_FLAGS = <%- JSON.stringify(user.storyFlags || {}) %>;
         window.FOLLOWING_ENTITY_ID = <%- JSON.stringify(user.followingEntityId || '') %>;
         const isAdmin = <%= user.isAdmin ? 'true' : 'false' %>;
+
+        // Keep UI state in sync after any server-side action (shop/box/heal/story/etc).
+        // If the Bag overlay is open, it re-renders immediately.
+        window.__syncClientStateFromServer = async function(payload) {
+            const data = payload || {};
+            try {
+                if (data && typeof data.money === 'number') {
+                    document.body.setAttribute('data-user-money', String(data.money));
+                }
+                if (data && data.bag && typeof data.bag === 'object') {
+                    window.USER_BAG = data.bag;
+                }
+                if (data && Array.isArray(data.keyItems)) {
+                    window.USER_KEY_ITEMS = data.keyItems;
+                }
+                if (data && data.storyFlags && typeof data.storyFlags === 'object') {
+                    window.STORY_FLAGS = data.storyFlags;
+                }
+                if (data && typeof data.followingEntityId === 'string') {
+                    window.FOLLOWING_ENTITY_ID = data.followingEntityId;
+                }
+
+                // Refresh Bag if it is currently visible.
+                const bagOverlay = document.getElementById('bagOverlay');
+                const bagOpen = !!(bagOverlay && bagOverlay.style && bagOverlay.style.display && bagOverlay.style.display !== 'none');
+                if (bagOpen && typeof window.openBag === 'function') {
+                    await window.openBag();
+                }
+            } catch (_) {}
+        };
         
         // --- LÓGICA DE SPAWN INICIAL ---
         let queryString = window.location.search.replace(/&amp;/g, '&');
@@ -2968,7 +3054,9 @@
         // Fallback seguro caso mapConfig não esteja disponível por algum motivo
         let currentMapId = (window.mapConfig && window.mapConfig.mapId) ? window.mapConfig.mapId : 'city';
         if(currentMapId.includes('?')) currentMapId = currentMapId.split('?')[0];
+        window.currentMapId = currentMapId;
         let startDir = "<%= typeof startDir === 'string' ? startDir : 'down' %>";
+        updateAreaHud();
 
         // Boot gate: prefetch dados principais antes de liberar o jogo
         window.__ME_CACHE = window.__ME_CACHE || null;
@@ -3041,6 +3129,35 @@
                     }
                 }
             }, FADE_MS);
+        }
+
+        function formatMoney(value) {
+            const amount = Number.isFinite(value) ? value : (parseInt(value, 10) || 0);
+            try {
+                return new Intl.NumberFormat('pt-BR').format(amount);
+            } catch (_) {
+                return String(amount);
+            }
+        }
+
+        function updateAreaHud(zoneData = null) {
+            try {
+                const mapEl = document.getElementById('areaHudMap');
+                const zoneEl = document.getElementById('areaHudZone');
+                const mapName = String((window.mapConfig && (window.mapConfig.name || window.mapConfig.mapId)) || currentMapId || 'Mapa').trim() || 'Mapa';
+                if (mapEl) mapEl.textContent = mapName;
+
+                const zoneLabel = zoneData && String(zoneData.label || zoneData.encounterKey || '').trim();
+                if (zoneEl) {
+                    if (zoneLabel) {
+                        zoneEl.textContent = `Zona: ${zoneLabel}`;
+                        zoneEl.classList.remove('is-hidden');
+                    } else {
+                        zoneEl.textContent = '';
+                        zoneEl.classList.add('is-hidden');
+                    }
+                }
+            } catch (_) {}
         }
 
         // --- SOCKETS ---
@@ -3274,8 +3391,41 @@
             return barrier;
         }
 
+        function configureGrassPatch(grassPatch) {
+            const currentKey = String(grassPatch.encounterKey || '').trim();
+            const currentRate = Number.isFinite(grassPatch.encounterRate) ? grassPatch.encounterRate : 0.08;
+            const currentLabel = String(grassPatch.label || '').trim();
+
+            const keyRaw = prompt('Chave de encontro da grama. Ex: city_garden. Vazio = usar o mapa atual:', currentKey);
+            if (keyRaw === null) return null;
+            const encounterKey = String(keyRaw || '').trim();
+
+            const rateRaw = prompt('Chance de encontro desta grama (0.00 a 1.00):', String(currentRate));
+            if (rateRaw === null) return null;
+            const parsedRate = parseFloat(rateRaw);
+            if (!Number.isFinite(parsedRate) || parsedRate < 0 || parsedRate > 1) {
+                alert('A chance de encontro deve ficar entre 0.00 e 1.00');
+                return null;
+            }
+
+            const labelRaw = prompt('Nome curto da zona (opcional):', currentLabel);
+            if (labelRaw === null) return null;
+
+            if (encounterKey) grassPatch.encounterKey = encounterKey;
+            else delete grassPatch.encounterKey;
+
+            grassPatch.encounterRate = parsedRate;
+
+            const label = String(labelRaw || '').trim();
+            if (label) grassPatch.label = label;
+            else delete grassPatch.label;
+
+            return grassPatch;
+        }
+
         let __playerProfileTarget = null;
         let __pendingChallenge = null;
+        let __pendingWildEncounter = null;
 
         function setPlayerProfileNotice(text) {
             const notice = document.getElementById('playerProfileNotice');
@@ -3385,7 +3535,10 @@
 
                 // ===== Atualiza dados globais do mapa =====
                 currentMapId = targetMapId;
+                window.currentMapId = currentMapId;
                 mapConfig = newMapData;
+                __pendingWildEncounter = null;
+                updateAreaHud();
                 collisionMap = newMapData.collisions || [];
                 grassMap = newMapData.grass || [];
                 interactsMap = newMapData.interacts || [];
@@ -4572,9 +4725,11 @@
              const p = document.getElementById(`p-${window.myId}`); const cx = p ? parseFloat(p.style.left) : 50; const cy = p ? parseFloat(p.style.top) : 50;
              performTransition(() => {
                 let mapParam = currentMapId === 'city' ? 'city' : `city?map=${currentMapId}`;
-                fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: mapParam, currentX: cx, currentY: cy }) })
+                 const pendingEncounter = __pendingWildEncounter || {};
+                 fetch('/battle/wild', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: window.CURRENT_USER_ID, currentMap: mapParam, currentX: cx, currentY: cy, grassZone: pendingEncounter.encounterKey || '' }) })
                     .then(r => r.json()).then(d => { if(d.battleId) window.location.href = '/battle/' + d.battleId; });
              });
+               __pendingWildEncounter = null;
         });
 
         renderMapObjects();
@@ -4734,9 +4889,9 @@
                         body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
                     });
                     const data = await res.json().catch(() => ({}));
-                    if (data.bag) window.USER_BAG = data.bag;
-                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
-                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                    if (typeof window.__syncClientStateFromServer === 'function') {
+                        await window.__syncClientStateFromServer(data);
+                    }
                     const text = (data && data.text) ? data.text : '...';
 
                     // Fallback robusto para starter:
@@ -4876,9 +5031,9 @@
                         body: JSON.stringify({ userId: window.CURRENT_USER_ID, npcId: npc._id, playerX: px, playerY: py })
                     });
                     const data = await res.json().catch(() => ({}));
-                    if (data.bag) window.USER_BAG = data.bag;
-                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
-                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                    if (typeof window.__syncClientStateFromServer === 'function') {
+                        await window.__syncClientStateFromServer(data);
+                    }
 
                     if (kind === 'shop') {
                         const items = (data && data.action && data.action.type === 'shop') ? (data.action.items || []) : [];
@@ -5777,8 +5932,8 @@
             window.__barrierPromptActive = true;
             window.__lastBarrierPromptAt = Date.now();
 
-            nameEl.textContent = itemId || 'Liberar passagem';
-            iconEl.src = itemId ? `/api/items/icon/${encodeURIComponent(itemId)}.png` : '/uploads/placeholder.png';
+            nameEl.textContent = itemId || 'Item';
+            iconEl.src = itemId ? `/api/items/icon/${encodeURIComponent(itemId)}.png` : '';
 
             btnUse.disabled = false;
             btnUse.textContent = 'USAR';
@@ -5801,9 +5956,13 @@
                     const data = await resp.json().catch(() => ({}));
                     if (data && data.success) {
                         if (typeof showToast === 'function') showToast('Barreira removida.');
-                        if (data.bag) window.USER_BAG = data.bag;
-                        if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
-                        if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                        if (typeof window.__syncClientStateFromServer === 'function') {
+                            await window.__syncClientStateFromServer(data);
+                        } else {
+                            if (data.bag) window.USER_BAG = data.bag;
+                            if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
+                            if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                        }
                         try { renderMapObjects && renderMapObjects(); } catch (_) {}
                         closeBarrierPrompt();
                         return;
@@ -5812,11 +5971,11 @@
                     if (data && data.needsItem) {
                         if (typeof showToast === 'function') showToast('Voce nao possui o item necessario.', { bg: '#e74c3c' });
                     } else {
-                        if (typeof showToast === 'function') showToast('Nao foi possivel liberar a passagem.', { bg: '#e74c3c' });
+                        if (typeof showToast === 'function') showToast('Nao foi possivel usar o item.', { bg: '#e74c3c' });
                     }
                 } catch (e) {
                     console.error(e);
-                    if (typeof showToast === 'function') showToast('Erro ao liberar passagem.', { bg: '#e74c3c' });
+                    if (typeof showToast === 'function') showToast('Erro ao usar item.', { bg: '#e74c3c' });
                 } finally {
                     btnUse.disabled = false;
                     btnUse.textContent = 'USAR';
@@ -5856,45 +6015,17 @@
                 ? Object.keys(window.USER_BAG).filter(k => (window.USER_BAG[k] || 0) > 0)
                 : [];
 
+            if (keys.length === 0 && bagItems.length === 0) return false;
+
             const requiredItem = hitBarrier.requiredItemId || hitBarrier.requiredKey || hitBarrier.requiredKeyId || null;
-            if (!requiredItem) {
-                const lockKey = String(flag || '').trim();
-                if (!lockKey || __storyBarrierAutoUnlocking.has(lockKey)) return false;
-                __storyBarrierAutoUnlocking.add(lockKey);
-
-                (async () => {
-                    try {
-                        const resp = await fetch('/api/map/use-key', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ userId: USER_ID, flagId: lockKey, qty: 1 })
-                        });
-                        const data = await resp.json().catch(() => ({}));
-                        if (data && data.success) {
-                            if (data.bag) window.USER_BAG = data.bag;
-                            if (Array.isArray(data.keyItems)) window.USER_KEY_ITEMS = data.keyItems;
-                            if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
-                            try { renderMapObjects && renderMapObjects(); } catch (_) {}
-                        }
-                    } catch (_) {
-                    } finally {
-                        setTimeout(() => {
-                            try { __storyBarrierAutoUnlocking.delete(lockKey); } catch (_) {}
-                        }, 400);
-                    }
-                })();
-
-                return false;
-            }
-
             let useId = null;
             if (requiredItem) {
                 const rid = String(requiredItem).trim();
                 if (keys.includes(rid) || (window.USER_BAG && window.USER_BAG[rid] && (window.USER_BAG[rid] > 0))) {
                     useId = rid;
                 }
-                if (!useId) return false;
             }
+            if (!useId) useId = keys.length > 0 ? keys[0] : bagItems[0];
             openBarrierPrompt(flag, useId);
             return true;
         }
@@ -5943,9 +6074,13 @@
                             });
                             const data = await res.json().catch(() => ({}));
                             if (data && data.success) {
-                                if (data.bag) window.USER_BAG = data.bag;
-                                if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
-                                if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                                if (typeof window.__syncClientStateFromServer === 'function') {
+                                    await window.__syncClientStateFromServer(data);
+                                } else {
+                                    if (data.bag) window.USER_BAG = data.bag;
+                                    if (data.keyItems) window.USER_KEY_ITEMS = data.keyItems;
+                                    if (data.storyFlags) window.STORY_FLAGS = data.storyFlags;
+                                }
                             } else {
                                 if (typeof showToast === 'function') showToast(portal.lockedText || 'Não foi possível usar o item.', { bg: '#e74c3c' });
                                 return;
@@ -6195,9 +6330,20 @@
                     const inRange = (newPx >= hitObj.x - 5 && newPx <= (hitObj.x + hitObj.w) + 5 && newPy >= hitObj.y - 5 && newPy <= (hitObj.y + hitObj.h) + 5);
                     if (inRange) handleObjectInteraction(hitObj); else if(typeof showToast === 'function') showToast("Muito longe...", {bg: '#e74c3c'});
                 }, travelTime);
-            } else {
-                 const steppedOnGrass = grassMap.some(g => safeDest.x >= g.x && safeDest.x <= g.x + g.w && safeDest.y >= g.y && safeDest.y <= g.y + g.h);
-                 if (steppedOnGrass) setTimeout(() => socket.emit('check_encounter', { grassId: 'grass_generic' }), travelTime); 
+              } else {
+                  const hitGrass = grassMap.find(g => safeDest.x >= g.x && safeDest.x <= g.x + g.w && safeDest.y >= g.y && safeDest.y <= g.y + g.h);
+                  if (hitGrass) {
+                          updateAreaHud(hitGrass);
+                    __pendingWildEncounter = {
+                        encounterKey: String(hitGrass.encounterKey || '').trim(),
+                        grassId: String(hitGrass.label || hitGrass.encounterKey || 'grass_generic').trim() || 'grass_generic'
+                    };
+                    const encounterRate = Number.isFinite(hitGrass.encounterRate) ? hitGrass.encounterRate : undefined;
+                    setTimeout(() => socket.emit('check_encounter', { grassId: __pendingWildEncounter.grassId, encounterRate }), travelTime);
+                      } else {
+                          __pendingWildEncounter = null;
+                          updateAreaHud();
+                  }
             }
         }
 
@@ -6507,13 +6653,15 @@
                             return;
                         }
 
-                        // Atualiza estados globais (bag, keyItems, money)
-                        if (resp && typeof resp.money === 'number') {
-                            document.body.setAttribute('data-user-money', String(resp.money));
+                        // Atualiza estados globais (bag, keyItems, money) e re-renderiza a bolsa se estiver aberta
+                        if (typeof window.__syncClientStateFromServer === 'function') {
+                            await window.__syncClientStateFromServer(resp);
+                        } else {
+                            if (resp && typeof resp.money === 'number') document.body.setAttribute('data-user-money', String(resp.money));
+                            if (resp && resp.bag && typeof resp.bag === 'object') window.USER_BAG = resp.bag;
+                            if (resp && Array.isArray(resp.keyItems)) window.USER_KEY_ITEMS = resp.keyItems;
+                            if (resp && resp.storyFlags && typeof resp.storyFlags === 'object') window.STORY_FLAGS = resp.storyFlags;
                         }
-                        if (resp && resp.bag && typeof resp.bag === 'object') window.USER_BAG = resp.bag;
-                        if (resp && Array.isArray(resp.keyItems)) window.USER_KEY_ITEMS = resp.keyItems;
-                        if (resp && resp.storyFlags && typeof resp.storyFlags === 'object') window.STORY_FLAGS = resp.storyFlags;
 
                         if (typeof showToast === 'function') showToast('Item comprado!', { bg: '#2ecc71', color: '#052e16' });
                     } catch (_) {
@@ -6630,7 +6778,16 @@
                         window.USER_BAG.levelUpCrystal = (typeof js.levelUpCrystal === 'number') ? js.levelUpCrystal : window.USER_BAG.levelUpCrystal;
                     }
                 }
-                if (typeof showToast === 'function') showToast('Crystal usado!', { bg: '#2ecc71', color: '#052e16' });
+                if (typeof showToast === 'function') {
+                    const levelsGained = js && js.progression ? (parseInt(js.progression.levelsGained, 10) || 0) : 0;
+                    const evoCount = js && js.progression && Array.isArray(js.progression.evolutions) ? js.progression.evolutions.length : 0;
+                    const learnedCount = js && js.progression && Array.isArray(js.progression.learnedMoves) ? js.progression.learnedMoves.length : 0;
+                    const parts = [];
+                    if (levelsGained > 0) parts.push(`+${levelsGained} nivel` + (levelsGained > 1 ? 's' : ''));
+                    if (evoCount > 0) parts.push('evoluiu');
+                    if (learnedCount > 0) parts.push(`aprendeu ${learnedCount} golpe` + (learnedCount > 1 ? 's' : ''));
+                    showToast(parts.length ? parts.join(' | ') : 'Crystal usado!', { bg: '#2ecc71', color: '#052e16' });
+                }
                 // reabre para atualizar contagem
                 await window.openBag();
             } catch (e) {
@@ -6652,7 +6809,7 @@
             // Atualizar dinheiro
             const userMoneyStr = document.body.getAttribute('data-user-money');
             const userMoney = parseInt(userMoneyStr, 10) || 0;
-            if (moneyEl) moneyEl.textContent = userMoney;
+            if (moneyEl) moneyEl.textContent = formatMoney(userMoney);
 
             if (!ITEM_CATALOG_BAG) {
                 try {
@@ -7295,6 +7452,63 @@
             }
         }
 
+        async function openEncounterZoneInspector() {
+            if (!isAdmin) return;
+            openDevConsole();
+
+            const host = document.getElementById('devEncounterZoneSummary');
+            if (!host) return;
+            host.textContent = 'Carregando zonas...';
+
+            try {
+                const res = await fetch(`/api/dev/encounter-zones/${encodeURIComponent(currentMapId)}?userId=${encodeURIComponent(window.CURRENT_USER_ID)}`);
+                const js = await res.json().catch(() => ({}));
+                if (!res.ok || !js || !js.success || !js.summary) {
+                    host.textContent = (js && js.error) ? js.error : 'Falha ao carregar zonas.';
+                    return;
+                }
+
+                const summary = js.summary;
+                host.innerHTML = '';
+                if (!Array.isArray(summary.zones) || summary.zones.length === 0) {
+                    host.textContent = 'Nenhuma zona configurada.';
+                    return;
+                }
+
+                summary.zones.forEach(zone => {
+                    const card = document.createElement('div');
+                    card.className = 'devZoneSummaryItem';
+
+                    const title = document.createElement('div');
+                    title.className = 'devZoneSummaryTitle';
+                    title.textContent = `${zone.label || zone.encounterKey || 'Zona'}${zone.encounterKey && zone.encounterKey !== currentMapId ? ` [${zone.encounterKey}]` : ''}`;
+
+                    const meta = document.createElement('div');
+                    meta.className = 'devZoneSummaryMeta';
+                    const ratePct = Math.round((Number(zone.encounterRate) || 0) * 100);
+                    meta.textContent = `taxa ${ratePct}% | origem ${zone.source || 'map'} | criaturas ${Array.isArray(zone.entities) ? zone.entities.length : 0}`;
+
+                    const list = document.createElement('div');
+                    list.className = 'devConsoleLogMeta';
+                    if (Array.isArray(zone.entities) && zone.entities.length > 0) {
+                        list.textContent = zone.entities
+                            .slice(0, 8)
+                            .map(entity => `${entity.name} Lv ${entity.minLevel}-${entity.maxLevel}${entity.spawnChance ? ` (${entity.spawnChance})` : ''}`)
+                            .join(' | ');
+                    } else {
+                        list.textContent = 'Nenhuma criatura pronta para esta zona.';
+                    }
+
+                    card.appendChild(title);
+                    card.appendChild(meta);
+                    card.appendChild(list);
+                    host.appendChild(card);
+                });
+            } catch (_) {
+                host.textContent = 'Falha ao carregar zonas.';
+            }
+        }
+
         async function devClearLogs() {
             await fetch('/api/dev/logs/clear', {
                 method: 'POST',
@@ -7625,6 +7839,12 @@
                             return;
                         }
 
+                        if (cls === 'grass-patch' && currentTool === 'grass') {
+                            if (!configureGrassPatch(r)) return;
+                            renderMapObjects();
+                            return;
+                        }
+
                         if(currentTool === 'delete' && confirm('Apagar?')) { arr.splice(i, 1); renderMapObjects(); }
                     }
 
@@ -7632,6 +7852,10 @@
                     if (cls === 'collision-box') {
                         const u = (r && (r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId)) ? String(r.unlockNpcId || r.unlockAfterNpcId || r.removeAfterNpcId) : '';
                         d.title = u ? (`Parede (some ao derrotar NPC: ${u})`) : 'Parede';
+                    } else if (cls === 'grass-patch') {
+                        const zoneLabel = String(r && (r.label || r.encounterKey) || 'Grama').trim();
+                        const zoneRate = (r && Number.isFinite(r.encounterRate)) ? ` | taxa ${(r.encounterRate * 100).toFixed(0)}%` : '';
+                        d.title = `${zoneLabel}${zoneRate}`;
                     }
                 }
                 return d;
@@ -7798,7 +8022,11 @@
                             storyBarriersMap.push(newRect);
                         }
                     }
-                    else if(currentTool === 'grass') grassMap.push(newRect);
+                    else if(currentTool === 'grass') {
+                        if (configureGrassPatch(newRect)) {
+                            grassMap.push(newRect);
+                        }
+                    }
                     else if(currentTool === 'interact') {
                         const type = prompt("Tipo (msg, item, both)?", "msg");
                         const msgsRaw = prompt("Mensagens (separadas por |):", "Olá!");

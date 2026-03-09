@@ -98,7 +98,7 @@
         .mini-btn:hover { background: rgba(255,255,255,0.10); }
         .row-list { display:flex; flex-direction:column; gap:8px; }
         .row-item { display:grid; grid-template-columns: 1fr 90px 46px; gap:10px; align-items:center; }
-        .row-item.shop { grid-template-columns: 1fr 110px 46px; }
+        .row-item.shop { grid-template-columns: 1fr 110px 90px 130px 46px; }
         .row-item input, .row-item textarea { background: #0b1220; color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 9px 10px; font-family: 'Roboto', sans-serif; font-size: 0.95rem; width: 100%; box-sizing: border-box; }
         .row-item textarea { min-height: 50px; resize: vertical; }
         .row-item input:focus, .row-item textarea:focus { border-color: #f1c40f; box-shadow: 0 0 0 2px rgba(241,196,15,0.16); outline: none; }
@@ -292,13 +292,15 @@
                     <h4>📍 SPAWN & EVOLUÇÃO</h4>
                     <div class="form-grid">
                         <div>
-                            <label class="tooltip">Local de Spawn (ID do Mapa)
-                                <span class="tooltiptext">Mapa onde a criatura aparece selvagem (ex: city, forest). Deixe vazio se não spawna</span>
+                            <label class="tooltip">Local de Spawn (Mapa ou Zona)
+                                <span class="tooltiptext">Use o ID do mapa ou a chave da zona de encontro da grama. Ex: city, city_garden, sewer_depths. Deixe vazio se não spawna</span>
                             </label>
-                            <input type="text" name="location" id="pokeLoc" placeholder="ex: city, forest" list="mapSuggestions">
+                            <input type="text" name="location" id="pokeLoc" placeholder="ex: city, city_garden" list="mapSuggestions">
                             <datalist id="mapSuggestions">
                                 <option value="city">Cidade</option>
-                                <option value="forest">Floresta</option>
+                                <option value="city_garden">Zona de jardim</option>
+                                <option value="city_rooftops">Zona de telhados</option>
+                                <option value="sewer_depths">Zona de esgoto</option>
                             </datalist>
                         </div>
                         <div>
@@ -654,11 +656,13 @@
                                 <button type="button" class="mini-btn" onclick="npcShopClear()">limpar</button>
                             </div>
 
+                            <div class="hint" style="margin-bottom:8px; color:#9aa7bd; font-size:0.85rem;">Cada linha pode vender um lote e também ser marcada como compra única por jogador.</div>
+
                             <div id="npcShopRows" class="row-list"></div>
 
                             <details class="advanced" style="margin-top:10px;">
                                 <summary>Avançado (JSON)</summary>
-                                <textarea name="interactShopItemsJson" id="npcInteractShopItemsJson" placeholder='[{"itemId":"pokeball","price":50}]'></textarea>
+                                <textarea name="interactShopItemsJson" id="npcInteractShopItemsJson" placeholder='[{"itemId":"pokeball","price":50,"qty":1,"oneTimePerUser":false}]'></textarea>
                             </details>
 
                             <datalist id="itemIdSuggestions">
@@ -999,6 +1003,31 @@
 
                     <% { const slot = 'mini1'; const data = m1; %>
                         <div class="accordion">
+                                                                <div>
+                                                                    <label>Skin do Treinador (Mini 1)</label>
+                                                                    <% const mini1TrainerIsCustom = !!data.trainerIsCustomSkin; %>
+                                                                    <% const mini1TrainerSkin = (data && data.trainerSkin) ? String(data.trainerSkin) : 'char2'; %>
+                                                                    <select name="mini1TrainerSkinSelect" id="mini1TrainerSkinSelect">
+                                                                        <option value="char2" <%= (!mini1TrainerIsCustom && String(mini1TrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
+                                                                        <option value="" <%= mini1TrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
+                                                                        <% (skins || []).forEach(s => { %>
+                                                                            <option value="<%= s._id %>" <%= (!mini1TrainerIsCustom && String(mini1TrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
+                                                                        <% }) %>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label>Ou Upload Skin Própria</label>
+                                                                    <input type="file" name="mini1TrainerSkinFile" accept="image/*" onchange="previewImage(this, 'mini1TrainerSkinPreview')">
+                                                                    <% const _mini1Skin = mini1TrainerSkin ? String(mini1TrainerSkin) : 'char2'; %>
+                                                                    <% const _mini1Url = (mini1TrainerIsCustom || (_mini1Skin && (_mini1Skin.startsWith('http') || _mini1Skin.startsWith('data:')))) ? _mini1Skin : ((/^char\d+$/i.test(_mini1Skin)) ? ('/uploads/' + _mini1Skin + '.png') : ('/skins/' + _mini1Skin + '.png')); %>
+                                                                    <div id="mini1TrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
+                                                                        <% if (_mini1Url) { %>
+                                                                            <img src="<%= _mini1Url %>" style="height:100%; object-fit:contain;">
+                                                                        <% } else { %>
+                                                                            <span style="font-size:0.7rem; color:#555">Sem imagem</span>
+                                                                        <% } %>
+                                                                    </div>
+                                                                </div>
                             <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
                                 <span>⚔️ MINI 1</span>
                                 <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
@@ -1070,6 +1099,31 @@
 
                     <% { const slot = 'mini2'; const data = m2; %>
                         <div class="accordion">
+                                                                <div>
+                                                                    <label>Skin do Treinador (Mini 2)</label>
+                                                                    <% const mini2TrainerIsCustom = !!data.trainerIsCustomSkin; %>
+                                                                    <% const mini2TrainerSkin = (data && data.trainerSkin) ? String(data.trainerSkin) : 'char2'; %>
+                                                                    <select name="mini2TrainerSkinSelect" id="mini2TrainerSkinSelect">
+                                                                        <option value="char2" <%= (!mini2TrainerIsCustom && String(mini2TrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
+                                                                        <option value="" <%= mini2TrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
+                                                                        <% (skins || []).forEach(s => { %>
+                                                                            <option value="<%= s._id %>" <%= (!mini2TrainerIsCustom && String(mini2TrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
+                                                                        <% }) %>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label>Ou Upload Skin Própria</label>
+                                                                    <input type="file" name="mini2TrainerSkinFile" accept="image/*" onchange="previewImage(this, 'mini2TrainerSkinPreview')">
+                                                                    <% const _mini2Skin = mini2TrainerSkin ? String(mini2TrainerSkin) : 'char2'; %>
+                                                                    <% const _mini2Url = (mini2TrainerIsCustom || (_mini2Skin && (_mini2Skin.startsWith('http') || _mini2Skin.startsWith('data:')))) ? _mini2Skin : ((/^char\d+$/i.test(_mini2Skin)) ? ('/uploads/' + _mini2Skin + '.png') : ('/skins/' + _mini2Skin + '.png')); %>
+                                                                    <div id="mini2TrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
+                                                                        <% if (_mini2Url) { %>
+                                                                            <img src="<%= _mini2Url %>" style="height:100%; object-fit:contain;">
+                                                                        <% } else { %>
+                                                                            <span style="font-size:0.7rem; color:#555">Sem imagem</span>
+                                                                        <% } %>
+                                                                    </div>
+                                                                </div>
                             <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
                                 <span>⚔️ MINI 2</span>
                                 <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
@@ -1141,6 +1195,31 @@
 
                     <% { const slot = 'mini3'; const data = m3; %>
                         <div class="accordion">
+                                                                <div>
+                                                                    <label>Skin do Treinador (Mini 3)</label>
+                                                                    <% const mini3TrainerIsCustom = !!data.trainerIsCustomSkin; %>
+                                                                    <% const mini3TrainerSkin = (data && data.trainerSkin) ? String(data.trainerSkin) : 'char2'; %>
+                                                                    <select name="mini3TrainerSkinSelect" id="mini3TrainerSkinSelect">
+                                                                        <option value="char2" <%= (!mini3TrainerIsCustom && String(mini3TrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
+                                                                        <option value="" <%= mini3TrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
+                                                                        <% (skins || []).forEach(s => { %>
+                                                                            <option value="<%= s._id %>" <%= (!mini3TrainerIsCustom && String(mini3TrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
+                                                                        <% }) %>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label>Ou Upload Skin Própria</label>
+                                                                    <input type="file" name="mini3TrainerSkinFile" accept="image/*" onchange="previewImage(this, 'mini3TrainerSkinPreview')">
+                                                                    <% const _mini3Skin = mini3TrainerSkin ? String(mini3TrainerSkin) : 'char2'; %>
+                                                                    <% const _mini3Url = (mini3TrainerIsCustom || (_mini3Skin && (_mini3Skin.startsWith('http') || _mini3Skin.startsWith('data:')))) ? _mini3Skin : ((/^char\d+$/i.test(_mini3Skin)) ? ('/uploads/' + _mini3Skin + '.png') : ('/skins/' + _mini3Skin + '.png')); %>
+                                                                    <div id="mini3TrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
+                                                                        <% if (_mini3Url) { %>
+                                                                            <img src="<%= _mini3Url %>" style="height:100%; object-fit:contain;">
+                                                                        <% } else { %>
+                                                                            <span style="font-size:0.7rem; color:#555">Sem imagem</span>
+                                                                        <% } %>
+                                                                    </div>
+                                                                </div>
                             <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
                                 <span>⚔️ MINI 3</span>
                                 <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
@@ -1554,7 +1633,7 @@
             document.getElementById('statAtk').value = p.baseStats.attack; document.getElementById('statDef').value = p.baseStats.defense; 
             document.getElementById('statSpd').value = p.baseStats.speed;
             document.getElementById('pokeRate').value = p.catchRate || 0.5; document.getElementById('pokeSpawn').value = p.spawnChance || 10; 
-            document.getElementById('pokeLoc').value = p.spawnLocation || 'none';
+            document.getElementById('pokeLoc').value = p.spawnLocation || '';
             document.getElementById('spawnMin').value = p.minSpawnLevel || 1; document.getElementById('spawnMax').value = p.maxSpawnLevel || 5; 
             document.getElementById('isStarter').checked = !!p.isStarter;
             if(p.evolution) { document.getElementById('evoTarget').value = p.evolution.targetId || ''; document.getElementById('evoLevel').value = p.evolution.level || ''; }
@@ -1586,6 +1665,7 @@
             document.getElementById('npcInteractServiceType').value = '';
             document.getElementById('npcInteractHealDialogue').value = '';
             document.getElementById('npcInteractShopItemsJson').value = '';
+            npcShopLoadFromJson('[]');
             const boxPriceEl = document.getElementById('npcInteractBoxPrice');
             if (boxPriceEl) boxPriceEl.value = 1000;
             const boxJsonEl = document.getElementById('npcInteractBoxRewardsJson');
@@ -1870,6 +1950,31 @@
                 price.value = String(row.price || 0);
                 price.oninput = () => { npcShopRowsState[idx].price = parseInt(price.value, 10) || 0; npcShopSyncJson(); };
 
+                const qty = document.createElement('input');
+                qty.type = 'number';
+                qty.min = '1';
+                qty.step = '1';
+                qty.placeholder = 'lote';
+                qty.value = String(row.qty || 1);
+                qty.oninput = () => { npcShopRowsState[idx].qty = Math.max(1, parseInt(qty.value, 10) || 1); npcShopSyncJson(); };
+
+                const oneTimeWrap = document.createElement('label');
+                oneTimeWrap.style.display = 'flex';
+                oneTimeWrap.style.alignItems = 'center';
+                oneTimeWrap.style.gap = '8px';
+                oneTimeWrap.style.fontSize = '0.85rem';
+                oneTimeWrap.style.color = '#cbd5e1';
+
+                const oneTime = document.createElement('input');
+                oneTime.type = 'checkbox';
+                oneTime.checked = !!row.oneTimePerUser;
+                oneTime.onchange = () => { npcShopRowsState[idx].oneTimePerUser = !!oneTime.checked; npcShopSyncJson(); };
+
+                const oneTimeText = document.createElement('span');
+                oneTimeText.textContent = 'compra unica';
+                oneTimeWrap.appendChild(oneTime);
+                oneTimeWrap.appendChild(oneTimeText);
+
                 const rm = document.createElement('button');
                 rm.type = 'button';
                 rm.className = 'row-remove';
@@ -1878,6 +1983,8 @@
 
                 wrap.appendChild(itemId);
                 wrap.appendChild(price);
+                wrap.appendChild(qty);
+                wrap.appendChild(oneTimeWrap);
                 wrap.appendChild(rm);
                 container.appendChild(wrap);
             });
@@ -1894,7 +2001,12 @@
         function npcShopSyncJson() {
             const out = (npcShopRowsState || [])
                 .filter(x => x && String(x.itemId || '').trim())
-                .map(x => ({ itemId: String(x.itemId || '').trim(), price: Math.max(0, parseInt(x.price, 10) || 0) }))
+                .map(x => ({
+                    itemId: String(x.itemId || '').trim(),
+                    price: Math.max(0, parseInt(x.price, 10) || 0),
+                    qty: Math.max(1, parseInt(x.qty, 10) || 1),
+                    oneTimePerUser: !!x.oneTimePerUser
+                }))
                 .filter(x => x.itemId && x.price > 0);
             document.getElementById('npcInteractShopItemsJson').value = JSON.stringify(out);
         }
@@ -1905,7 +2017,12 @@
                 if (Array.isArray(arr)) {
                     npcShopRowsState = arr
                         .filter(x => x && (x.itemId || x.id))
-                        .map(x => ({ itemId: String(x.itemId || x.id).trim(), price: Math.max(0, parseInt(x.price, 10) || 0) }));
+                        .map(x => ({
+                            itemId: String(x.itemId || x.id).trim(),
+                            price: Math.max(0, parseInt(x.price, 10) || 0),
+                            qty: Math.max(1, parseInt(x.qty || x.amount, 10) || 1),
+                            oneTimePerUser: !!(x.oneTimePerUser === true || x.oneTimePerUser === 'true' || x.unique === true || x.unique === 'true')
+                        }));
                 } else {
                     npcShopRowsState = [];
                 }
@@ -1917,13 +2034,13 @@
         }
 
         function npcShopAddRow() {
-            npcShopRowsState.push({ itemId: '', price: 50 });
+            npcShopRowsState.push({ itemId: '', price: 50, qty: 1, oneTimePerUser: false });
             npcShopRender();
             npcShopSyncJson();
         }
 
         function npcShopAddPreset(itemId, price) {
-            npcShopRowsState.push({ itemId: String(itemId || '').trim(), price: Math.max(0, parseInt(price, 10) || 0) });
+            npcShopRowsState.push({ itemId: String(itemId || '').trim(), price: Math.max(0, parseInt(price, 10) || 0), qty: 1, oneTimePerUser: false });
             npcShopRender();
             npcShopSyncJson();
         }

@@ -3,40 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Floresta</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <title>Entrando na Floresta</title>
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-            <title>Redirecionando...</title>
-            <style>
-                body { margin:0; height:100dvh; display:flex; align-items:center; justify-content:center; background:#000; color:#fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-            </style>
-            <script>
-                (function () {
-                    const params = new URLSearchParams(window.location.search);
-                    const userId = params.get('userId') || '';
-                    const url = userId
-                        ? `/city?from=forest&userId=${encodeURIComponent(userId)}`
-                        : '/';
-                    window.location.replace(url);
-                })();
-            </script>
-        </head>
-        <body>
-            Redirecionando para a cidade...
-        </body>
-        </html>
-            document.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
-            document.addEventListener('pointercancel', (e) => releasePointer(e.pointerId));
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #294d2f, #0b140d 70%);
+            color: #eef7ea;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .panel {
+            width: min(92vw, 420px);
+            padding: 24px;
+            border-radius: 18px;
+            border: 1px solid rgba(187, 247, 208, 0.3);
+            background: rgba(8, 18, 10, 0.78);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            text-align: center;
+        }
+        h1 { margin: 0 0 8px; font-size: 1.6rem; }
+        p { margin: 0; color: #cde5cf; }
+    </style>
+    <script>
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get('userId') || '';
+            const url = userId
+                ? `/city?from=forest&userId=${encodeURIComponent(userId)}`
+                : '/';
+            window.location.replace(url);
         })();
-
-        window.addEventListener('beforeunload', () => { showLoading(); });
     </script>
+</head>
+<body>
+    <div class="panel">
+        <h1>Entrando na Floresta</h1>
+        <p>Preparando encontros, portais e o mapa de exploração.</p>
+    </div>
 </body>
 </html>

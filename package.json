@@ -4,7 +4,8 @@
   "description": "Entity Battle Game - Backend Server",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
+    "audit:data": "node scripts/audit_game_data.js",
     "convert:maps": "node scripts/convert_map_images.js",
     "test:encounter": "node scripts/test_encounter.js",
     "migrate:levels": "node scripts/migrate_levels.js",

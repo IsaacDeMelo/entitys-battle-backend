@@ -9,10 +9,12 @@ const mongoose = require('mongoose');
 const { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog, BossEvent } = require('./models');
 const { processPngBuffer } = require('./lib/chromaKey');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
+const { calculateStats, getLearnedMovesFromPool, pickDeterministicMovesFromPool, normalizeEntityType, validateEntityDefinition, isEntityBattleReady } = require('./lib/gameRules');
 const { MONGO_URI } = require('./config'); 
 
 const SKIN_COUNT = 12; 
-const GLOBAL_GRASS_CHANCE = 0; // Encontros selvagens desativados (substituídos por contratos)
+const BASE_GRASS_CHANCE = 0.08;
+const ENCOUNTER_COOLDOWN_MS = 7000;
 
 // === SISTEMA DE ENERGIA BALANCEADO ===
 const ENERGY_CONFIG = {
@@ -31,6 +33,193 @@ const CONTRACTS = [
 function getContractById(id) {
     const clean = String(id || '').trim();
     return CONTRACTS.find(c => c.id === clean) || null;
+}
+
+function getEncounterChanceForMap(mapId) {
+    const normalizedMapId = String(mapId || '').trim().toLowerCase();
+    if (!normalizedMapId) return 0;
+    return BASE_GRASS_CHANCE;
+}
+
+function buildDefaultMapData(mapId) {
+    const normalizedMapId = String(mapId || 'city').trim() || 'city';
+    const defaults = {
+        mapId: normalizedMapId,
+        name: 'Mapa',
+        bgImage: '/uploads/route_map.png',
+        foregroundImage: '',
+        collisions: [],
+        grass: [],
+        interacts: [],
+        portals: [],
+        storyBarriers: [],
+        objects: [],
+        spawnPoint: null,
+        width: 100,
+        height: 100,
+        darknessLevel: 0,
+        battleBackground: 'battle_bg.png',
+        battleBgPosX: 50,
+        battleBgPosY: 50,
+        battleBgZoom: 100
+    };
+
+    return defaults;
+}
+
+function normalizeMapData(mapId, mapData) {
+    const fallback = buildDefaultMapData(mapId);
+    const merged = {
+        ...fallback,
+        ...(mapData || {})
+    };
+
+    if (!Array.isArray(merged.collisions)) merged.collisions = fallback.collisions;
+    if (!Array.isArray(merged.grass)) merged.grass = fallback.grass;
+    if (!Array.isArray(merged.interacts)) merged.interacts = fallback.interacts;
+    if (!Array.isArray(merged.portals)) merged.portals = fallback.portals;
+    if (!Array.isArray(merged.storyBarriers)) merged.storyBarriers = fallback.storyBarriers;
+    if (!Array.isArray(merged.objects)) merged.objects = fallback.objects;
+    if (!merged.spawnPoint && fallback.spawnPoint) merged.spawnPoint = fallback.spawnPoint;
+    if (!merged.bgImage) merged.bgImage = fallback.bgImage;
+    if (!merged.battleBackground) merged.battleBackground = fallback.battleBackground;
+    if (!Number.isFinite(merged.battleBgPosX)) merged.battleBgPosX = fallback.battleBgPosX;
+    if (!Number.isFinite(merged.battleBgPosY)) merged.battleBgPosY = fallback.battleBgPosY;
+    if (!Number.isFinite(merged.battleBgZoom)) merged.battleBgZoom = fallback.battleBgZoom;
+    if (!Number.isFinite(merged.darknessLevel)) merged.darknessLevel = fallback.darknessLevel;
+    if (!Number.isFinite(merged.width)) merged.width = fallback.width;
+    if (!Number.isFinite(merged.height)) merged.height = fallback.height;
+    merged.name = String(merged.name || fallback.name || merged.mapId || 'Mapa').trim() || 'Mapa';
+    merged.grass = sanitizeGrassList(merged.grass, merged.mapId || mapId);
+
+    return merged;
+}
+
+function normalizeEncounterKey(value) {
+    return String(value || '').trim();
+}
+
+function clampEncounterRate(value, fallback = BASE_GRASS_CHANCE) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0, Math.min(1, n));
+}
+
+function sanitizeGrassPatch(rawPatch, mapId) {
+    if (!rawPatch || typeof rawPatch !== 'object') return null;
+
+    const x = Number(rawPatch.x);
+    const y = Number(rawPatch.y);
+    const w = Number(rawPatch.w);
+    const h = Number(rawPatch.h);
+    if (![x, y, w, h].every(Number.isFinite)) return null;
+    if (w <= 0 || h <= 0) return null;
+
+    const sanitized = {
+        x: Math.max(0, Math.min(100, x)),
+        y: Math.max(0, Math.min(100, y)),
+        w: Math.max(0.5, Math.min(100, w)),
+        h: Math.max(0.5, Math.min(100, h)),
+        encounterRate: clampEncounterRate(rawPatch.encounterRate, getEncounterChanceForMap(mapId))
+    };
+
+    const encounterKey = normalizeEncounterKey(rawPatch.encounterKey);
+    const label = String(rawPatch.label || '').trim();
+    if (encounterKey) sanitized.encounterKey = encounterKey;
+    if (label) sanitized.label = label;
+
+    return sanitized;
+}
+
+function sanitizeGrassList(grassList, mapId) {
+    if (!Array.isArray(grassList)) return [];
+    return grassList
+        .map(patch => sanitizeGrassPatch(patch, mapId))
+        .filter(Boolean);
+}
+
+async function getWildSpawnCandidates(mapName, encounterKey = '') {
+    const normalizedMapName = String(mapName || 'city').trim() || 'city';
+    const normalizedEncounterKey = normalizeEncounterKey(encounterKey);
+
+    if (normalizedEncounterKey) {
+        const byEncounterKey = await BaseEntity.find({ spawnLocation: normalizedEncounterKey }).lean();
+        const byEncounterKeyValid = byEncounterKey.filter(isEntityBattleReady);
+        if (byEncounterKeyValid.length > 0) return byEncounterKeyValid;
+    }
+
+    const exact = await BaseEntity.find({ spawnLocation: normalizedMapName }).lean();
+    const exactValid = exact.filter(isEntityBattleReady);
+    if (exactValid.length > 0) return exactValid;
+
+    const any = await BaseEntity.find({}).sort({ dexOrder: 1, name: 1 }).lean();
+    return any.filter(isEntityBattleReady);
+}
+
+async function buildEncounterZoneSummary(mapId, mapData) {
+    const normalizedMapId = String(mapId || 'city').trim() || 'city';
+    const safeMapData = normalizeMapData(normalizedMapId, mapData);
+    const grassEntries = Array.isArray(safeMapData.grass) ? safeMapData.grass : [];
+    const zones = [];
+    const zoneKeys = new Set([normalizedMapId]);
+
+    grassEntries.forEach((patch, index) => {
+        const encounterKey = normalizeEncounterKey(patch.encounterKey) || normalizedMapId;
+        zoneKeys.add(encounterKey);
+        zones.push({
+            zoneId: `${encounterKey}::${index}`,
+            encounterKey,
+            label: String(patch.label || '').trim() || `Zona ${index + 1}`,
+            encounterRate: clampEncounterRate(patch.encounterRate, getEncounterChanceForMap(normalizedMapId)),
+            patchCount: 1,
+            source: encounterKey === normalizedMapId ? 'map' : 'zone',
+            entities: []
+        });
+    });
+
+    if (zones.length === 0) {
+        zones.push({
+            zoneId: `${normalizedMapId}::default`,
+            encounterKey: normalizedMapId,
+            label: safeMapData.name || normalizedMapId,
+            encounterRate: getEncounterChanceForMap(normalizedMapId),
+            patchCount: 0,
+            source: 'map',
+            entities: []
+        });
+    }
+
+    const spawnLocations = Array.from(zoneKeys);
+    const candidates = await BaseEntity.find({ spawnLocation: { $in: spawnLocations } }).sort({ dexOrder: 1, name: 1 }).lean();
+    const validCandidates = candidates.filter(isEntityBattleReady);
+    const byLocation = new Map();
+
+    validCandidates.forEach(entity => {
+        const key = normalizeEncounterKey(entity.spawnLocation);
+        if (!byLocation.has(key)) byLocation.set(key, []);
+        byLocation.get(key).push(entity);
+    });
+
+    zones.forEach(zone => {
+        const exact = byLocation.get(zone.encounterKey) || [];
+        const fallback = byLocation.get(normalizedMapId) || [];
+        const pool = exact.length > 0 ? exact : fallback;
+        zone.source = exact.length > 0 ? zone.source : 'fallback-map';
+        zone.entities = pool.map(entity => ({
+            id: entity.id,
+            name: entity.name,
+            spawnChance: Math.max(0, parseInt(entity.spawnChance, 10) || 0),
+            minLevel: Math.max(1, parseInt(entity.minSpawnLevel, 10) || 1),
+            maxLevel: Math.max(1, parseInt(entity.maxSpawnLevel, 10) || 1)
+        }));
+    });
+
+    return {
+        mapId: normalizedMapId,
+        mapName: String(safeMapData.name || normalizedMapId).trim() || normalizedMapId,
+        zoneCount: zones.length,
+        zones
+    };
 }
 
 async function getOrCreateDevSettings(userId) {
@@ -119,13 +308,15 @@ async function getStarterOptions() {
         starters = await BaseEntity.find({}).sort({ id: 1 }).limit(3).lean();
     }
 
-    return (starters || []).map(s => ({ 
-        id: s.id, 
-        name: s.name, 
-        sprite: s.sprite || null, 
-        type: s.type || 'beast',
-        baseStats: s.baseStats || { hp: 0, attack: 0, defense: 0, speed: 0 }
-    }));
+    return (starters || [])
+        .filter(isEntityBattleReady)
+        .map(s => ({ 
+            id: s.id, 
+            name: s.name, 
+            sprite: s.sprite || null, 
+            type: normalizeEntityType(s.type) || EntityType.BEAST,
+            baseStats: s.baseStats || { hp: 0, attack: 0, defense: 0, speed: 0 }
+        }));
 }
 
 async function getStarterOptionsForNpc(npc) {
@@ -147,12 +338,12 @@ async function getStarterOptionsForNpc(npc) {
     const options = unique
         .map(id => {
             const d = byId.get(id);
-            if (!d) return null;
+            if (!d || !isEntityBattleReady(d)) return null;
             return { 
                 id: d.id, 
                 name: d.name, 
                 sprite: d.sprite || null,
-                type: d.type || 'beast',
+                type: normalizeEntityType(d.type) || EntityType.BEAST,
                 baseStats: d.baseStats || { hp: 0, attack: 0, defense: 0, speed: 0 }
             };
         })
@@ -432,6 +623,77 @@ function ensureUserInventories(user) {
     }
 }
 
+function getShopPurchaseFlag(npcId, itemId) {
+    return `npc_shop_${String(npcId || '').trim()}_${normalizeItemId(itemId)}`;
+}
+
+function normalizeShopItems(rawItems) {
+    if (!Array.isArray(rawItems)) return [];
+
+    return rawItems
+        .map(entry => {
+            const itemId = normalizeItemId(entry && (entry.itemId || entry.id));
+            const def = getItemDefFromCache(itemId);
+            const rawPrice = Number(entry && entry.price);
+            const price = Math.max(0, Number.isFinite(rawPrice) ? Math.floor(rawPrice) : Math.floor(def && Number.isFinite(def.price) ? def.price : 0));
+            const qty = Math.max(1, parseInt(entry && (entry.qty || entry.amount), 10) || 1);
+            const oneTimePerUser = !!(entry && (entry.oneTimePerUser === true || entry.oneTimePerUser === 'true' || entry.unique === true || entry.unique === 'true')) || !!(def && def.type === 'key');
+
+            if (!itemId || price <= 0) return null;
+            return { itemId, price, qty, oneTimePerUser };
+        })
+        .filter(Boolean);
+}
+
+function decorateShopItemsForClient(shopItems, npcId) {
+    return normalizeShopItems(shopItems).map(entry => {
+        const def = getItemDefFromCache(entry.itemId);
+        return {
+            ...entry,
+            name: def && def.name ? def.name : entry.itemId,
+            type: def && def.type === 'key' ? 'key' : 'consumable',
+            purchaseFlag: entry.oneTimePerUser ? getShopPurchaseFlag(npcId, entry.itemId) : ''
+        };
+    });
+}
+
+async function purchaseCatalogItemForUser({ userId, itemId, qty, totalCost, oneTimePerUser = false, purchaseFlag = '' }) {
+    const normalizedId = normalizeItemId(itemId);
+    const amount = Math.max(1, parseInt(qty, 10) || 1);
+    const cost = Math.max(0, parseInt(totalCost, 10) || 0);
+    const def = getItemDefFromCache(normalizedId);
+
+    if (!normalizedId || !def || cost <= 0) {
+        return { ok: false, error: 'invalid_item' };
+    }
+
+    const query = { _id: userId, money: { $gte: cost } };
+    if (oneTimePerUser && purchaseFlag) query[`storyFlags.${purchaseFlag}`] = { $ne: true };
+    if (def.type === 'key') query.keyItems = { $ne: normalizedId };
+
+    const inc = { money: -cost };
+    if (def.type !== 'key') inc[`bag.${normalizedId}`] = amount;
+
+    const update = { $inc: inc };
+    if (def.type === 'key') update.$addToSet = { keyItems: normalizedId };
+    if (oneTimePerUser && purchaseFlag) update.$set = { [`storyFlags.${purchaseFlag}`]: true };
+
+    const updatedUser = await User.findOneAndUpdate(query, update, { new: true });
+    if (!updatedUser) {
+        const currentUser = await User.findById(userId).lean();
+        const hasMoney = !!(currentUser && (currentUser.money || 0) >= cost);
+        const alreadyPurchased = !!(currentUser && purchaseFlag && readStoryFlag(currentUser.storyFlags, purchaseFlag));
+        const alreadyHasKey = !!(currentUser && Array.isArray(currentUser.keyItems) && currentUser.keyItems.includes(normalizedId));
+
+        if (!hasMoney) return { ok: false, error: 'Saldo insuficiente.' };
+        if (alreadyPurchased || alreadyHasKey) return { ok: false, error: 'Você já comprou este item.' };
+        return { ok: false, error: 'Não foi possível concluir a compra.' };
+    }
+
+    ensureUserInventories(updatedUser);
+    return { ok: true, user: updatedUser, def };
+}
+
 // Seleciona diálogo do NPC baseado em StoryFlags
 // Sistema de diálogos: retorna null quando não deve falar (para diferenciar de string vazia intencional)
 function resolveNpcDialogue(npc, user, key) {
@@ -560,6 +822,183 @@ function removeItemFromUser(user, itemId, qty = 1) {
     return { ok: true, removed: amount, storage: 'bag' };
 }
 
+function shouldRenameOnEvolution(currentNickname, currentBaseName) {
+    const nick = String(currentNickname || '').trim();
+    const base = String(currentBaseName || '').trim();
+    if (!nick) return true;
+    if (!base) return false;
+    return nick.toLowerCase() === base.toLowerCase();
+}
+
+async function applyOwnedEntityProgression(user, entityId, options = {}) {
+    if (!user || !entityId) return { ok: false, error: 'invalid_params' };
+
+    const session = options.session;
+    const entityList = Array.isArray(user.entityTeam) ? user.entityTeam : [];
+    let poke = null;
+    try {
+        poke = user.entityTeam && typeof user.entityTeam.id === 'function'
+            ? user.entityTeam.id(entityId)
+            : null;
+    } catch (_) {
+        poke = null;
+    }
+    if (!poke) poke = entityList.find(entry => entry && String(entry._id) === String(entityId));
+    if (!poke) return { ok: false, error: 'entity_not_found' };
+
+    const xpGain = Math.max(0, parseInt(options.xpGain, 10) || 0);
+    let manualLevels = Math.max(0, parseInt(options.levelGain, 10) || 0);
+    const restoreHpMode = options.restoreHp === true ? 'full' : (options.restoreHp === 'full' ? 'full' : 'keep');
+
+    if (!Array.isArray(poke.moves)) poke.moves = [];
+    if (!Array.isArray(poke.learnedMoves) || poke.learnedMoves.length === 0) poke.learnedMoves = [...poke.moves];
+    if (!Array.isArray(user.dex)) user.dex = [];
+
+    const baseCache = new Map();
+    const loadBase = async (baseId) => {
+        const id = String(baseId || '').trim();
+        if (!id) return null;
+        if (baseCache.has(id)) return baseCache.get(id);
+        const query = BaseEntity.findOne({ id });
+        if (session) query.session(session);
+        const base = await query;
+        baseCache.set(id, base || null);
+        return base || null;
+    };
+
+    let currentBase = await loadBase(poke.baseId);
+    if (!currentBase) return { ok: false, error: 'base_not_found' };
+
+    let carryXp = Math.max(0, parseInt(poke.xp, 10) || 0) + xpGain;
+    const learnedMoves = [];
+    const evolutions = [];
+    let levelsGained = 0;
+    let levelCapReached = false;
+    const visitedEvolutionIds = new Set([String(currentBase.id)]);
+
+    while (poke.level < 100) {
+        const xpNeeded = getXpForNextLevel(poke.level);
+        const canLevelFromXp = carryXp >= xpNeeded;
+        const canLevelFromManual = manualLevels > 0;
+        if (!canLevelFromXp && !canLevelFromManual) break;
+
+        if (canLevelFromManual) {
+            manualLevels -= 1;
+        } else {
+            carryXp -= xpNeeded;
+        }
+
+        poke.level += 1;
+        levelsGained += 1;
+
+        const movePool = Array.isArray(currentBase.movePool) ? currentBase.movePool : [];
+        movePool
+            .filter(move => move && (parseInt(move.level, 10) || 1) === poke.level)
+            .forEach(move => {
+                const moveId = String(move.moveId || '').trim();
+                if (!moveId || !MOVES_LIBRARY[moveId]) return;
+                if (!poke.learnedMoves.includes(moveId)) {
+                    poke.learnedMoves.push(moveId);
+                    learnedMoves.push(moveId);
+                }
+                if (!poke.moves.includes(moveId) && poke.moves.length < 4) {
+                    poke.moves.push(moveId);
+                }
+            });
+
+        while (currentBase && currentBase.evolution && currentBase.evolution.targetId && poke.level >= (parseInt(currentBase.evolution.level, 10) || 1)) {
+            const nextBase = await loadBase(currentBase.evolution.targetId);
+            if (!nextBase) break;
+            if (visitedEvolutionIds.has(String(nextBase.id))) break;
+
+            evolutions.push({
+                fromId: currentBase.id,
+                fromName: currentBase.name,
+                toId: nextBase.id,
+                toName: nextBase.name,
+                level: poke.level
+            });
+
+            const renameToBaseName = shouldRenameOnEvolution(poke.nickname, currentBase.name);
+            poke.baseId = nextBase.id;
+            if (renameToBaseName) poke.nickname = nextBase.name;
+            if (!user.dex.includes(nextBase.id)) user.dex.push(nextBase.id);
+            currentBase = nextBase;
+            visitedEvolutionIds.add(String(nextBase.id));
+        }
+    }
+
+    if (poke.level >= 100) {
+        poke.level = 100;
+        carryXp = 0;
+        levelCapReached = true;
+    }
+
+    poke.xp = Math.max(0, carryXp);
+    poke.stats = calculateStats(currentBase.baseStats, poke.level);
+    if (restoreHpMode === 'full') {
+        poke.currentHp = poke.stats.hp;
+    } else {
+        const prevHp = Math.max(0, parseInt(poke.currentHp, 10) || 0);
+        poke.currentHp = Math.min(poke.stats.hp, prevHp);
+    }
+
+    return {
+        ok: true,
+        entity: poke,
+        base: currentBase,
+        levelsGained,
+        learnedMoves,
+        evolutions,
+        xpToNext: poke.level >= 100 ? 0 : getXpForNextLevel(poke.level),
+        levelCapReached
+    };
+}
+
+function buildProgressionMessages(progression, displayName) {
+    if (!progression || !progression.ok) return [];
+    const messages = [];
+    const safeName = String(displayName || 'Monstro').trim() || 'Monstro';
+
+    if (progression.levelsGained > 0) {
+        if (progression.levelsGained === 1) {
+            messages.push(`${safeName} subiu para o nível ${progression.entity.level}!`);
+        } else {
+            messages.push(`${safeName} subiu ${progression.levelsGained} níveis e agora está no nível ${progression.entity.level}!`);
+        }
+    }
+
+    progression.learnedMoves.forEach(moveId => {
+        const move = MOVES_LIBRARY[moveId];
+        if (move && move.name) messages.push(`Aprendeu ${move.name}!`);
+    });
+
+    progression.evolutions.forEach(evo => {
+        messages.push(`Evoluiu para ${evo.toName}!`);
+    });
+
+    if (progression.levelCapReached) {
+        messages.push(`${safeName} atingiu o nível máximo.`);
+    }
+
+    return messages;
+}
+
+async function getEntityEvolutionPreview(baseId, level) {
+    const base = await BaseEntity.findOne({ id: baseId }).lean();
+    if (!base || !base.evolution || !base.evolution.targetId) return null;
+
+    const atLevel = Math.max(1, parseInt(base.evolution.level, 10) || 1);
+    const nextBase = await BaseEntity.findOne({ id: base.evolution.targetId }).lean();
+    return {
+        ready: Math.max(1, parseInt(level, 10) || 1) >= atLevel,
+        atLevel,
+        targetId: base.evolution.targetId,
+        targetName: nextBase ? nextBase.name : base.evolution.targetId,
+        levelsRemaining: Math.max(0, atLevel - (Math.max(1, parseInt(level, 10) || 1)))
+    };
+}
+
 function pickWeightedEntity(list) {
     let total = 0; list.forEach(e => total += (e.spawnChance || 1));
     let r = Math.random() * total;
@@ -571,83 +1010,13 @@ function pickWeightedEntity(list) {
     return list[0]; 
 }
 
-function calculateStats(base, level) { 
-    const mult = 1 + (level * 0.025); 
-    return { 
-        hp: Math.floor((base.hp * 1.5 * level / 100) + level + 10), 
-        energy: Math.floor(base.energy + (level * 0.1)), 
-        attack: Math.floor(base.attack * mult), 
-        defense: Math.floor(base.defense * mult), 
-        speed: Math.floor(base.speed * mult) 
-    }; 
-}
-
-function buildAutoMovePoolForType(entityType) {
-    const type = (entityType || '').toLowerCase();
-    const levelSlots = [1, 5, 10, 15, 20, 25, 35, 45, 55];
-
-    const entries = Object.entries(MOVES_LIBRARY)
-        .filter(([_, mv]) => (mv.element || '').toLowerCase() === type);
-
-    if (!entries.length) return [{ moveId: 'strike', level: 1 }];
-
-    const attacks = entries
-        .filter(([_, mv]) => mv.type === MoveType.ATTACK)
-        .sort((a, b) => (a[1].power || 0) - (b[1].power || 0));
-
-    const statuses = entries
-        .filter(([_, mv]) => mv.type !== MoveType.ATTACK)
-        .sort((a, b) => (a[1].cost || 0) - (b[1].cost || 0));
-
-    const ordered = [...attacks, ...statuses];
-
-    return ordered.map(([id], idx) => ({
-        moveId: id,
-        level: levelSlots[Math.min(idx, levelSlots.length - 1)]
-    }));
-}
-
-function getLearnedMovesFromPool(movePool, level, entityType = null) {
-    const lvl = Number.isFinite(level) ? level : (parseInt(level, 10) || 1);
-    let pool = Array.isArray(movePool) ? movePool : [];
-
-    if ((!pool || pool.length === 0) && entityType) {
-        pool = buildAutoMovePoolForType(entityType);
-    }
-
-    const available = pool
-        .filter(m => m && m.moveId && (Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1)) <= lvl)
-        .map(m => ({
-            moveId: String(m.moveId).trim(),
-            level: Number.isFinite(m.level) ? m.level : (parseInt(m.level, 10) || 1)
-        }))
-        .filter(m => m.moveId && MOVES_LIBRARY[m.moveId])
-        .sort((a, b) => (a.level - b.level) || a.moveId.localeCompare(b.moveId));
-
-    const unique = [];
-    const seen = new Set();
-    for (const m of available) {
-        if (seen.has(m.moveId)) continue;
-        seen.add(m.moveId);
-        unique.push(m.moveId);
-    }
-
-    return unique.length > 0 ? unique : ['strike'];
-}
-
-function pickDeterministicMovesFromPool(movePool, level, maxMoves = 4, entityType = null) {
-    const learned = getLearnedMovesFromPool(movePool, level, entityType);
-    const picked = learned.length > 0 ? learned.slice(-Math.max(1, maxMoves)) : [];
-    return picked.length > 0 ? picked : ['strike'];
-}
-
 async function createBattleInstance(baseId, level) { 
-    const base = await BaseEntity.findOne({ id: baseId }).lean(); if(!base) return null; 
+    const base = await BaseEntity.findOne({ id: baseId }).lean(); if(!base || !isEntityBattleReady(base)) return null; 
     const stats = calculateStats(base.baseStats, level); 
     let moves = pickDeterministicMovesFromPool(base.movePool, level, 4, base.type);
     return { 
         instanceId: 'wild_' + Date.now(), 
-        baseId: base.id, name: base.name, type: base.type, level: level, 
+        baseId: base.id, name: base.name, type: normalizeEntityType(base.type) || EntityType.BEAST, level: level, 
         maxHp: stats.hp, hp: stats.hp, maxEnergy: ENERGY_CONFIG.maxEnergy, energy: ENERGY_CONFIG.maxEnergy, stats: stats, 
         moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
         sprite: base.sprite, catchRate: base.catchRate || 0.5, xpYield: Math.max(5, Math.floor(level * 25)), 
@@ -683,7 +1052,7 @@ function userEntityToEntity(userEntity, baseData) {
         instanceId,
         baseId: userEntity.baseId,
         name: userEntity.nickname || baseData.name,
-        type: baseData.type,
+        type: normalizeEntityType(baseData.type) || EntityType.BEAST,
         level,
         maxHp: stats.hp,
         hp: currentHp > 0 ? currentHp : 0,
@@ -973,6 +1342,11 @@ app.get('/forest', async (req, res) => {
     return res.redirect('/city?from=forest&userId=' + encodeURIComponent(userId));
 });
 
+app.get('/room', async (req, res) => {
+    const { userId } = req.query;
+    return res.redirect('/city?from=lobby&userId=' + encodeURIComponent(userId || ''));
+});
+
 // --- ROTA CIDADE (ENGINE DE MAPA) ---
 app.get('/city', async (req, res) => {
     const { userId, from, map } = req.query;
@@ -992,35 +1366,7 @@ app.get('/city', async (req, res) => {
 
     // Carrega mapa do DB
     let mapData = await GameMap.findOne({ mapId }).lean();
-    if (!mapData) {
-        mapData = {
-            mapId: mapId,
-            name: 'Mapa',
-            bgImage: '/uploads/route_map.png',
-            foregroundImage: '',
-            collisions: [],
-            grass: [],
-            interacts: [],
-            portals: [],
-            storyBarriers: [],
-            objects: [],
-            spawnPoint: null,
-            width: 100,
-            height: 100,
-            darknessLevel: 0,
-            battleBackground: 'battle_bg.png',
-            battleBgPosX: 50,
-            battleBgPosY: 50,
-            battleBgZoom: 100
-        };
-    } else {
-        // Defaults retrocompatíveis
-        if (!('foregroundImage' in mapData)) mapData.foregroundImage = '';
-        if (!('battleBackground' in mapData)) mapData.battleBackground = 'battle_bg.png';
-        if (!('battleBgPosX' in mapData)) mapData.battleBgPosX = 50;
-        if (!('battleBgPosY' in mapData)) mapData.battleBgPosY = 50;
-        if (!('battleBgZoom' in mapData)) mapData.battleBgZoom = 100;
-    }
+    mapData = normalizeMapData(mapId, mapData);
 
     function asFiniteNumber(n) {
         const v = parseFloat(n);
@@ -1162,25 +1508,27 @@ app.post('/api/map/save', async (req, res) => {
     const user = await User.findById(userId);
     if (!user || !user.isAdmin) return res.status(403).json({ error: 'Sem permissão' });
     try {
+        const normalizedMap = normalizeMapData(mapId, { ...(mapData || {}), mapId });
         await GameMap.findOneAndUpdate(
             { mapId: mapId },
             { $set: { 
-                collisions: mapData.collisions, 
-                grass: mapData.grass, 
-                interacts: mapData.interacts, 
-                portals: mapData.portals, 
-                objects: mapData.objects || [],
-                storyBarriers: mapData.storyBarriers || [],
-                foregroundImage: mapData.foregroundImage || '',
-                bgImage: mapData.bgImage, 
-                width: mapData.width || 100, 
-                height: mapData.height || 100, 
-                spawnPoint: mapData.spawnPoint,
-                darknessLevel: mapData.darknessLevel || 0, 
-                battleBackground: mapData.battleBackground,
-                battleBgPosX: clampPct(mapData.battleBgPosX, 50),
-                battleBgPosY: clampPct(mapData.battleBgPosY, 50),
-                battleBgZoom: clampZoomPct(mapData.battleBgZoom, 100)
+                name: normalizedMap.name,
+                collisions: normalizedMap.collisions, 
+                grass: normalizedMap.grass, 
+                interacts: normalizedMap.interacts, 
+                portals: normalizedMap.portals, 
+                objects: normalizedMap.objects || [],
+                storyBarriers: normalizedMap.storyBarriers || [],
+                foregroundImage: normalizedMap.foregroundImage || '',
+                bgImage: normalizedMap.bgImage, 
+                width: normalizedMap.width || 100, 
+                height: normalizedMap.height || 100, 
+                spawnPoint: normalizedMap.spawnPoint,
+                darknessLevel: normalizedMap.darknessLevel || 0, 
+                battleBackground: normalizedMap.battleBackground,
+                battleBgPosX: clampPct(normalizedMap.battleBgPosX, 50),
+                battleBgPosY: clampPct(normalizedMap.battleBgPosY, 50),
+                battleBgZoom: clampZoomPct(normalizedMap.battleBgZoom, 100)
             }},
             { upsert: true, new: true }
         );
@@ -1189,7 +1537,12 @@ app.post('/api/map/save', async (req, res) => {
 });
 
 app.get('/api/map/:mapId', async (req, res) => {
-    try { const { mapId } = req.params; let map = await GameMap.findOne({ mapId }).lean(); if (!map) return res.json({ bgImage: '/uploads/room_bg.png', width: 100, height: 100 }); res.json(map); } catch (e) { res.status(500).json({ error: e.message }); }
+    try {
+        const { mapId } = req.params;
+        let map = await GameMap.findOne({ mapId }).lean();
+        map = normalizeMapData(mapId, map);
+        res.json(map);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // --- API: BUSCAR MAPA COMPLETO COM NPCS (para transições SPA) ---
@@ -1200,35 +1553,7 @@ app.get('/api/map/:mapId/full', async (req, res) => {
         
         // Carrega mapa
         let mapData = await GameMap.findOne({ mapId }).lean();
-        if (!mapData) {
-            mapData = {
-                mapId: mapId,
-                name: 'Mapa',
-                bgImage: '/uploads/route_map.png',
-                foregroundImage: '',
-                collisions: [],
-                grass: [],
-                interacts: [],
-                portals: [],
-                storyBarriers: [],
-                objects: [],
-                spawnPoint: null,
-                width: 100,
-                height: 100,
-                darknessLevel: 0,
-                battleBackground: 'battle_bg.png',
-                battleBgPosX: 50,
-                battleBgPosY: 50,
-                battleBgZoom: 100
-            };
-        } else {
-            // Defaults retrocompatíveis
-            if (!('foregroundImage' in mapData)) mapData.foregroundImage = '';
-            if (!('battleBackground' in mapData)) mapData.battleBackground = 'battle_bg.png';
-            if (!('battleBgPosX' in mapData)) mapData.battleBgPosX = 50;
-            if (!('battleBgPosY' in mapData)) mapData.battleBgPosY = 50;
-            if (!('battleBgZoom' in mapData)) mapData.battleBgZoom = 100;
-        }
+        mapData = normalizeMapData(mapId, mapData);
         
         // Carrega NPCs do mapa
         const npcsRaw = await NPC.find({ map: mapId }).lean();
@@ -1280,6 +1605,21 @@ app.get('/api/map/:mapId/full', async (req, res) => {
     }
 });
 
+app.get('/api/dev/encounter-zones/:mapId', async (req, res) => {
+    try {
+        const { mapId } = req.params;
+        const { userId } = req.query;
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+
+        const mapData = await GameMap.findOne({ mapId }).lean();
+        const summary = await buildEncounterZoneSummary(mapId, mapData);
+        return res.json({ success: true, summary });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message || 'Erro interno' });
+    }
+});
+
 // API: interagir com um objeto do mapa (garante que itens só sejam obtidos uma vez)
 app.post('/api/map/interact', async (req, res) => {
     try {
@@ -1327,20 +1667,12 @@ app.post('/api/map/interact', async (req, res) => {
 app.post('/api/map/use-key', async (req, res) => {
     try {
         const { userId, flagId, itemId, qty } = req.body;
-        if (!userId || !flagId) return res.status(400).json({ error: 'missing_params' });
+        if (!userId || !flagId || !itemId) return res.status(400).json({ error: 'missing_params' });
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ error: 'user_not_found' });
         ensureUserInventories(user);
 
         const normalizedItem = normalizeItemId(itemId);
-        if (!normalizedItem) {
-            user.storyFlags = user.storyFlags || {};
-            user.storyFlags[flagId] = true;
-            if (typeof user.markModified === 'function') user.markModified('storyFlags');
-            await user.save();
-            return res.json({ success: true, bag: user.bag, keyItems: user.keyItems, storyFlags: user.storyFlags });
-        }
-
         const haveCount = getItemCount(user, normalizedItem);
         if (!haveCount || haveCount <= 0) return res.json({ success: false, needsItem: true, error: 'not_enough_item' });
 
@@ -1572,14 +1904,7 @@ app.post('/api/npc/save', npcUploadApi, async (req, res) => {
             shopItems: (() => {
                 if (!interactShopItemsJson) return [];
                 try {
-                    const arr = JSON.parse(interactShopItemsJson);
-                    if (!Array.isArray(arr)) return [];
-                    return arr
-                        .map(x => ({
-                            itemId: (x && x.itemId) ? String(x.itemId).trim() : '',
-                            price: Math.max(0, parseInt(x && x.price, 10) || 0)
-                        }))
-                        .filter(x => x.itemId && x.price > 0);
+                    return normalizeShopItems(JSON.parse(interactShopItemsJson));
                 } catch (_) {
                     return [];
                 }
@@ -2020,13 +2345,7 @@ app.post('/api/npc/interact', async (req, res) => {
         }
 
         if (serviceType === 'shop') {
-            const items = Array.isArray(interact.shopItems) ? interact.shopItems : [];
-            const cleaned = items
-                .map(x => ({
-                    itemId: x && x.itemId ? String(x.itemId).trim() : '',
-                    price: Math.max(0, parseInt(x && x.price, 10) || 0)
-                }))
-                .filter(x => x.itemId && x.price > 0);
+            const cleaned = decorateShopItemsForClient(interact.shopItems, npc._id);
 
             const dialogueText = resolveNpcDialogue(npc, user, 'dialogue');
             const finalText = dialogueText !== null ? dialogueText : 'O que você quer comprar?';
@@ -2210,6 +2529,7 @@ app.post('/api/starter/choose', async (req, res) => {
 
         const starter = await BaseEntity.findOne({ id: pick }).lean();
         if (!starter) return res.status(404).json({ error: 'Monstro não encontrado.' });
+        if (!isEntityBattleReady(starter)) return res.status(400).json({ error: 'Starter configurado com dados inválidos.' });
 
         const stats = calculateStats(starter.baseStats, 1);
         const learnedMoves = getLearnedMovesFromPool(starter.movePool, 1, starter.type);
@@ -2338,12 +2658,8 @@ app.post('/api/npc/disengage', async (req, res) => {
 app.post('/api/npc/shop/buy', async (req, res) => {
     try {
         const { userId, npcId, itemId, qty } = req.body;
-        const q = Math.max(1, parseInt(qty, 10) || 1);
-        const user = await User.findById(userId);
         const npc = await NPC.findById(npcId);
-        if (!user || !npc) return res.status(404).json({ error: 'NPC ou usuário não encontrado' });
-
-        ensureUserInventories(user);
+        if (!npc) return res.status(404).json({ error: 'NPC não encontrado' });
 
         const interact = npc.interact || {};
         if (!interact.enabled || String(interact.serviceType || '').trim() !== 'shop') {
@@ -2353,20 +2669,26 @@ app.post('/api/npc/shop/buy', async (req, res) => {
         const targetId = normalizeItemId(itemId);
         if (!targetId) return res.status(400).json({ error: 'Item inválido.' });
 
-        const shopItems = Array.isArray(interact.shopItems) ? interact.shopItems : [];
-        const entry = shopItems.find(x => x && String(x.itemId).trim() === targetId);
-        const price = Math.max(0, parseInt(entry && entry.price, 10) || 0);
-        if (!entry || !price) return res.status(400).json({ error: 'Item não vendido por este NPC.' });
+        const shopItems = normalizeShopItems(interact.shopItems);
+        const entry = shopItems.find(x => x && x.itemId === targetId);
+        if (!entry) return res.status(400).json({ error: 'Item não vendido por este NPC.' });
 
-        const cost = price * q;
-        if ((user.money || 0) < cost) return res.status(400).json({ error: 'Saldo insuficiente.' });
-        user.money = (user.money || 0) - cost;
+        const multiplier = Math.max(1, parseInt(qty, 10) || 1);
+        const bundleQty = Math.max(1, parseInt(entry.qty, 10) || 1);
+        const cost = entry.price * multiplier;
+        const totalQty = bundleQty * multiplier;
+        const purchaseFlag = entry.oneTimePerUser ? getShopPurchaseFlag(npc._id, targetId) : '';
+        const purchase = await purchaseCatalogItemForUser({
+            userId,
+            itemId: targetId,
+            qty: totalQty,
+            totalCost: cost,
+            oneTimePerUser: !!entry.oneTimePerUser,
+            purchaseFlag
+        });
+        if (!purchase.ok) return res.status(400).json({ error: purchase.error || 'Não foi possível concluir a compra.' });
 
-        const normalizedId = normalizeItemId(itemId);
-        const addRes = addItemToUser(user, normalizedId, q, { keyItem: false, unique: false });
-        if (!addRes.ok) return res.status(400).json({ error: 'Não foi possível adicionar o item.' });
-
-        await user.save();
+        const user = purchase.user;
         return res.json({
             success: true,
             money: user.money,
@@ -2374,7 +2696,11 @@ app.post('/api/npc/shop/buy', async (req, res) => {
             levelUpCrystal: (user.bag && user.bag.levelUpCrystal) || 0,
             bag: user.bag,
             keyItems: user.keyItems,
-            storyFlags: user.storyFlags
+            storyFlags: user.storyFlags,
+            purchaseFlag,
+            itemId: targetId,
+            qtyAdded: totalQty,
+            spent: cost
         });
     } catch (e) {
         console.error(e);
@@ -3045,14 +3371,7 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             shopItems: (() => {
                 if (!interactShopItemsJson) return [];
                 try {
-                    const arr = JSON.parse(interactShopItemsJson);
-                    if (!Array.isArray(arr)) return [];
-                    return arr
-                        .map(x => ({
-                            itemId: (x && x.itemId) ? String(x.itemId).trim() : '',
-                            price: Math.max(0, parseInt(x && x.price, 10) || 0)
-                        }))
-                        .filter(x => x.itemId && x.price > 0);
+                    return normalizeShopItems(JSON.parse(interactShopItemsJson));
                 } catch (_) {
                     return [];
                 }
@@ -3473,6 +3792,15 @@ app.post('/lab/create', upload.single('sprite'), async (req, res) => {
         dexOrder: dexPos
     };
 
+    const validation = validateEntityDefinition(data);
+    if (!validation.ok) {
+        return res.status(400).send('Erro ao salvar entidade: ' + validation.errors.join(' | '));
+    }
+
+    data.type = validation.normalized.type;
+    data.baseStats = validation.normalized.baseStats;
+    data.movePool = validation.normalized.movePool;
+
     if (!Number.isFinite(dexPos)) delete data.dexOrder;
     if (req.file) data.sprite = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
@@ -3546,10 +3874,15 @@ app.get('/api/me', async (req, res) => {
     ensureUserInventories(user);
 
     const teamWithSprites = [];
+    const baseIds = Array.from(new Set((user.entityTeam || []).map(p => String(p && p.baseId || '').trim()).filter(Boolean)));
+    const baseDocs = await BaseEntity.find({ id: { $in: baseIds } }).lean();
+    const baseById = new Map(baseDocs.map(base => [String(base.id), base]));
+
     for(let p of (user.entityTeam || [])) {
-        const base = await BaseEntity.findOne({ id: p.baseId });
+        const base = baseById.get(String(p.baseId || '').trim()) || null;
         const nextXp = getXpForNextLevel(p.level);
         const allLearned = p.learnedMoves && p.learnedMoves.length > 0 ? p.learnedMoves : p.moves;
+        const evolution = await getEntityEvolutionPreview(p.baseId, p.level);
         teamWithSprites.push({
             instanceId: p._id,
             name: p.nickname,
@@ -3558,6 +3891,7 @@ app.get('/api/me', async (req, res) => {
             maxHp: p.stats.hp,
             xp: p.xp,
             xpToNext: nextXp,
+            evolution,
             sprite: base ? base.sprite : '',
             moves: p.moves,
             learnedMoves: allLearned
@@ -3941,19 +4275,17 @@ app.post('/api/abandon-entity', async (req, res) => { const { userId, entityId }
 app.post('/api/buy-item', async (req, res) => {
     const { userId, itemId, qty } = req.body;
     const q = Math.max(1, parseInt(qty) || 1);
-    const prices = { captureCube: 50, levelUpCrystal: 2000 };
-    const user = await User.findById(userId);
-    if (!user) return res.json({ error: 'User not found' });
-    // Normaliza IDs legados para novos
     const normalizedId = String(itemId || '').trim();
-    if (!prices[normalizedId]) return res.json({ error: 'Item inválido' });
-    const cost = prices[normalizedId] * q;
-    if ((user.money || 0) < cost) return res.json({ error: 'Saldo insuficiente' });
-    user.money = (user.money || 0) - cost;
-    ensureUserInventories(user);
-    const addRes = addItemToUser(user, normalizedId, q, { keyItem: false, unique: false });
-    if (!addRes.ok) return res.status(400).json({ error: 'Falha ao adicionar item' });
-    await user.save();
+    const itemDef = getItemDefFromCache(normalizedId);
+    if (!itemDef || itemDef.type === 'key' || !Number.isFinite(itemDef.price) || itemDef.price <= 0) {
+        return res.json({ error: 'Item inválido' });
+    }
+
+    const cost = itemDef.price * q;
+    const purchase = await purchaseCatalogItemForUser({ userId, itemId: normalizedId, qty: q, totalCost: cost });
+    if (!purchase.ok) return res.status(400).json({ error: purchase.error || 'Falha ao adicionar item' });
+
+    const user = purchase.user;
     res.json({
         success: true,
         money: user.money,
@@ -3973,15 +4305,12 @@ app.post('/api/use-item', async (req, res) => {
 
     if (normalizedId === 'levelUpCrystal') {
         if (!pokemonId) return res.json({ error: 'pokemonId required' });
-        let poke = null;
-        try { poke = user.entityTeam.id(pokemonId); } catch(e) { poke = user.entityTeam.find(p => p._id.toString() === (pokemonId || '')); }
-        if (!poke) return res.json({ error: 'Entity not found' });
         ensureUserInventories(user);
         if ((user.bag.levelUpCrystal || 0) < q) return res.json({ error: 'Not enough LevelUpCrystal' });
 
         // Usar transação para evitar race conditions entre leituras/escritas concorrentes
         const session = await mongoose.startSession();
-        let evolved = false;
+        let progression = null;
         try {
             session.startTransaction();
             const userTx = await User.findById(user._id).session(session);
@@ -3998,46 +4327,14 @@ app.post('/api/use-item', async (req, res) => {
                 return res.json({ error: 'Not enough LevelUpCrystal' });
             }
 
-            // Atualiza nível do pokémon no documento transacional
-            let pokeTx = null;
-            try { pokeTx = userTx.entityTeam.id(pokemonId); } catch(e) { pokeTx = userTx.entityTeam.find(p => p._id.toString() === (pokemonId || '')); }
-            if (!pokeTx) {
+            progression = await applyOwnedEntityProgression(userTx, pokemonId, { levelGain: q, restoreHp: 'full', session });
+            if (!progression.ok) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.json({ error: 'Entity not found (tx)' });
+                return res.json({ error: progression.error === 'entity_not_found' ? 'Entity not found (tx)' : 'Falha na progressão' });
             }
-
-            const oldLevel = pokeTx.level || 1;
-            pokeTx.level = Math.min(100, oldLevel + q);
             userTx.bag.levelUpCrystal = (userTx.bag.levelUpCrystal || 0) - q;
             if (typeof userTx.markModified === 'function') userTx.markModified('bag');
-
-            let base = await BaseEntity.findOne({ id: pokeTx.baseId }).session(session);
-            if (base) {
-                if (base.movePool) {
-                    const newMove = base.movePool.find(m => m.level === pokeTx.level);
-                    if (newMove) {
-                        if (!pokeTx.learnedMoves) pokeTx.learnedMoves = [...pokeTx.moves];
-                        if (!pokeTx.learnedMoves.includes(newMove.moveId)) {
-                            pokeTx.learnedMoves.push(newMove.moveId);
-                            if (pokeTx.moves.length < 4) pokeTx.moves.push(newMove.moveId);
-                        }
-                    }
-                }
-                if (base.evolution && pokeTx.level >= base.evolution.level) {
-                    const nextPoke = await BaseEntity.findOne({ id: base.evolution.targetId }).session(session);
-                    if (nextPoke) {
-                        pokeTx.baseId = nextPoke.id;
-                        pokeTx.nickname = nextPoke.name;
-                        base = nextPoke;
-                        evolved = true;
-                        if (!userTx.dex) userTx.dex = [];
-                        if (!userTx.dex.includes(nextPoke.id)) { userTx.dex.push(nextPoke.id); }
-                    }
-                }
-                pokeTx.stats = calculateStats(base.baseStats, pokeTx.level);
-                pokeTx.currentHp = pokeTx.stats.hp;
-            }
 
             console.log(`[API] /api/use-item levelUpCrystal: (tx) saving user ${userTx._id}, new bag.levelUpCrystal=${userTx.bag.levelUpCrystal}`);
             await userTx.save({ session });
@@ -4056,8 +4353,14 @@ app.post('/api/use-item', async (req, res) => {
             success: true,
             levelUpCrystal: user.bag.levelUpCrystal || 0,
             bag: user.bag,
-            evolved: evolved,
-            entity: { instanceId: poke._id, level: poke.level, hp: poke.currentHp, name: poke.nickname }
+            evolved: !!(progression && Array.isArray(progression.evolutions) && progression.evolutions.length > 0),
+            progression: progression ? {
+                levelsGained: progression.levelsGained,
+                learnedMoves: progression.learnedMoves,
+                evolutions: progression.evolutions,
+                xpToNext: progression.xpToNext
+            } : null,
+            entity: progression ? { instanceId: progression.entity._id, level: progression.entity.level, hp: progression.entity.currentHp, name: progression.entity.nickname } : null
         });
     }
     return res.json({ error: 'Item cannot be used here' });
@@ -4085,7 +4388,7 @@ app.post('/api/inventory/consume', async (req, res) => {
 
 // --- BATTLE ROUTES ---
 app.post('/battle/wild', async (req, res) => { 
-    const { userId, currentMap, currentX, currentY } = req.body; 
+    const { userId, currentMap, currentX, currentY, grassZone } = req.body; 
     const user = await User.findById(userId); 
     if (!user) return res.json({ error: 'User not found' });
     if (!user.entityTeam || user.entityTeam.length === 0) return res.json({ error: 'Você precisa pegar seu monstro inicial com o Professor.', needStarter: true });
@@ -4107,13 +4410,18 @@ app.post('/battle/wild', async (req, res) => {
     const battleBgPosY = (mapDoc && Number.isFinite(mapDoc.battleBgPosY)) ? mapDoc.battleBgPosY : 50;
     const battleBgZoom = (mapDoc && Number.isFinite(mapDoc.battleBgZoom)) ? mapDoc.battleBgZoom : 100;
 
-    const possibleSpawns = await BaseEntity.find({ spawnLocation: mapName }); 
-    if(possibleSpawns.length === 0) return res.json({ error: `Nada selvagem em '${mapName}'.` }); 
+    const encounterKey = normalizeEncounterKey(grassZone);
+    const possibleSpawns = await getWildSpawnCandidates(mapName, encounterKey);
+    if(possibleSpawns.length === 0) return res.json({ error: `Nada selvagem válido em '${mapName}'.` }); 
     
     const wildBase = pickWeightedEntity(possibleSpawns); 
-    const wildLevel = Math.floor(Math.random() * (wildBase.maxSpawnLevel - wildBase.minSpawnLevel + 1)) + wildBase.minSpawnLevel; 
+    const minSpawnLevel = Number.isFinite(wildBase.minSpawnLevel) ? wildBase.minSpawnLevel : 1;
+    const maxSpawnLevel = Number.isFinite(wildBase.maxSpawnLevel) ? Math.max(minSpawnLevel, wildBase.maxSpawnLevel) : minSpawnLevel;
+    const wildLevel = Math.floor(Math.random() * (maxSpawnLevel - minSpawnLevel + 1)) + minSpawnLevel; 
     const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
-    const userBase = await BaseEntity.findOne({ id: userPokeData.baseId }); 
+    if (!wildEntity) return res.status(400).json({ error: 'A entidade selvagem selecionada está inválida.' });
+    const userBase = await BaseEntity.findOne({ id: userPokeData.baseId }).lean(); 
+    if (!userBase || !isEntityBattleReady(userBase)) return res.status(400).json({ error: 'Seu monstro ativo está com dados inválidos.' });
     const userEntity = userEntityToEntity(userPokeData, userBase); 
     userEntity.playerName = user.username; 
     userEntity.skin = user.skin; 
@@ -4130,7 +4438,8 @@ app.post('/battle/wild', async (req, res) => {
     activeBattles[battleId] = { 
         p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: battleBgToUse,
         bgPosX: battleBgPosX, bgPosY: battleBgPosY,
-        mapId: mapName
+        mapId: mapName,
+        encounterKey
     }; 
     res.json({ battleId }); 
 });
@@ -4154,13 +4463,14 @@ app.post('/battle/contract', async (req, res) => {
 
     const leadBase = await BaseEntity.findOne({ id: lead.baseId }).lean();
     if (!leadBase) return res.status(404).json({ error: 'Base do jogador não encontrada' });
+    if (!isEntityBattleReady(leadBase)) return res.status(400).json({ error: 'A base do seu monstro está inválida.' });
     const p1 = userEntityToEntity(lead, leadBase); 
     p1.playerName = user.username; 
     p1.skin = user.skin;
 
     // Escolhe inimigo aleatório do catálogo, com nível escalado
-    const sampled = await BaseEntity.aggregate([{ $sample: { size: 1 } }]);
-    const enemyBase = sampled && sampled[0] ? sampled[0] : null;
+    const sampled = await BaseEntity.aggregate([{ $sample: { size: 8 } }]);
+    const enemyBase = Array.isArray(sampled) ? sampled.find(isEntityBattleReady) : null;
     if (!enemyBase) return res.status(400).json({ error: 'Sem criaturas cadastradas.' });
 
     const enemyLevel = Math.max(1, p1.level + (contract.levelOffset || 0));
@@ -4461,7 +4771,6 @@ app.post('/api/turn', async (req, res) => {
             const newEntity = userEntityToEntity(newPokeData, base); newEntity.playerName = p1.playerName; newEntity.skin = p1.skin; 
             battle.p1 = newEntity; p1 = battle.p1; await user.save(); 
             events.push({ type: 'MSG', text: `Vai, ${p1.name}!` }); 
-            events.push({ type: 'SWITCH_ANIM', side: 'p1', newSprite: p1.sprite, newHp: p1.hp, maxHp: p1.maxHp, newName: p1.name, newLevel: p1.level, newId: p1.instanceId });
             if (p2.hp > 0 && !isForced) { performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } 
             const userXp = await User.findById(battle.userId);
             const p1PokeData = userXp ? userXp.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;
@@ -4574,7 +4883,9 @@ app.post('/api/turn', async (req, res) => {
             }
             
             // Normal Battle - give XP
-            let xpGained = battle.type === 'wild' ? (p2.xpYield || 25) : 30;
+            let xpGained = battle.type === 'wild'
+                ? Math.max(10, parseInt(p2.xpYield, 10) || 25)
+                : Math.max(30, Math.floor(((p2.level || 1) * 12) + ((battle.npcReserve ? battle.npcReserve.length : 1) * 6)));
             // Valores de recompensa expostos para o front-end
             let moneyReward = 0;
             let expReward = 0;
@@ -4584,14 +4895,8 @@ app.post('/api/turn', async (req, res) => {
             if(user) {
                 let poke = user.entityTeam.find(p => p._id.toString() === p1.instanceId);
                 if (poke) { 
-                    poke.xp += xpGained; const xpNext = getXpForNextLevel(poke.level);
-                    if (poke.xp >= xpNext && poke.level < 100) {
-                        poke.level++; poke.xp = 0; events.push({ type: 'MSG', text: `${poke.nickname} subiu para o nível ${poke.level}!` });
-                        const baseData = await BaseEntity.findOne({ id: poke.baseId });
-                        if (baseData.movePool) { const newMove = baseData.movePool.find(m => m.level === poke.level); if(newMove && !poke.learnedMoves.includes(newMove.moveId)) { poke.learnedMoves.push(newMove.moveId); events.push({ type: 'MSG', text: `Aprendeu ${MOVES_LIBRARY[newMove.moveId].name}!` }); if(poke.moves.length < 4) poke.moves.push(newMove.moveId); } }
-                        if (baseData.evolution && poke.level >= baseData.evolution.level) { const nextPoke = await BaseEntity.findOne({ id: baseData.evolution.targetId }); if(nextPoke) { poke.baseId = nextPoke.id; poke.nickname = nextPoke.name; events.push({ type: 'MSG', text: `Evoluiu para ${nextPoke.name}!` }); if (!user.dex) user.dex = []; if (!user.dex.includes(nextPoke.id)) { user.dex.push(nextPoke.id); } } }
-                        const currentBase = await BaseEntity.findOne({ id: poke.baseId }); poke.stats = calculateStats(currentBase.baseStats, poke.level);
-                    }
+                    const progression = await applyOwnedEntityProgression(user, p1.instanceId, { xpGain: xpGained });
+                    buildProgressionMessages(progression, poke.nickname).forEach(text => events.push({ type: 'MSG', text }));
                     poke.currentHp = p1.hp; await user.save(); 
                 }
             }
@@ -4604,7 +4909,6 @@ app.post('/api/turn', async (req, res) => {
                 if (nextNpcPoke) {
                     battle.p2 = nextNpcPoke;
                     events.push({ type: 'MSG', text: `${battle.p2.playerName} vai usar ${nextNpcPoke.name}!` });
-                    events.push({ type: 'SWITCH_ANIM', side: 'p2', newSprite: nextNpcPoke.sprite, newHp: nextNpcPoke.hp, maxHp: nextNpcPoke.maxHp, newName: nextNpcPoke.name, newLevel: nextNpcPoke.level, newId: nextNpcPoke.instanceId });
                     return res.json({ events, switched: true, p2Switched: true, newP1Id: p1.instanceId, p1State: p1, p2State: nextNpcPoke });
                 }
             }
@@ -4897,7 +5201,7 @@ io.on('connection', (socket) => {
                 }
             } catch (_) {}
             
-            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, followingEntityId: followerInfo.followingEntityId || '', followerSprite: followerInfo.sprite || '', followerName: followerInfo.name || '', isSearching: false, _lastPersistAt: 0, _lastUserCheckAt: Date.now() }; 
+            players[socket.id] = { id: socket.id, userId: data.userId, ...data, x: startX, y: startY, direction: startDir, followingEntityId: followerInfo.followingEntityId || '', followerSprite: followerInfo.sprite || '', followerName: followerInfo.name || '', isSearching: false, _lastPersistAt: 0, _lastUserCheckAt: Date.now(), _nextEncounterAt: 0 }; 
             const mapPlayers = Object.values(players).filter(p => p.map === data.map); 
             socket.emit('map_state', mapPlayers); 
             socket.to(data.map).emit('player_joined', players[socket.id]);
@@ -4956,7 +5260,15 @@ io.on('connection', (socket) => {
     socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
     
   socket.on('check_encounter', (data) => { 
-        if (data.grassId && data.grassId.includes('grass') && Math.random() < GLOBAL_GRASS_CHANCE) {
+        const player = players[socket.id];
+        if (!player) return;
+        const now = Date.now();
+        if (player._nextEncounterAt && now < player._nextEncounterAt) return;
+        const baseChance = getEncounterChanceForMap(player && player.map);
+        const requestedChance = (data && Number.isFinite(data.encounterRate)) ? data.encounterRate : null;
+        const encounterChance = requestedChance == null ? baseChance : Math.max(0, Math.min(1, requestedChance));
+        if (encounterChance > 0 && Math.random() < encounterChance) {
+            player._nextEncounterAt = now + ENCOUNTER_COOLDOWN_MS;
             socket.emit('encounter_found'); 
         }
     });
