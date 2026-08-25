@@ -353,14 +353,15 @@ async function getStarterOptionsForNpc(npc) {
 
 
 // --- CONEXÃO BANCO ---
-mongoose.connect(MONGO_URI)
-    .then(async () => {
+const dbReady = mongoose.connect(MONGO_URI)
+    .then(() => {
         console.log('✅ MongoDB Conectado');
-        await fixLegacyUsers();
-        await ensureDefaultItemCatalog();
-        await refreshItemCatalogCache();
-    })
-    .catch(e => console.log('❌ Erro no Mongo:', e));
+        return Promise.all([
+            fixLegacyUsers(),
+            ensureDefaultItemCatalog(),
+            refreshItemCatalogCache()
+        ]);
+    });
 
 async function ensureDefaultItemCatalog() {
     try {
@@ -1010,8 +1011,8 @@ function pickWeightedEntity(list) {
     return list[0]; 
 }
 
-async function createBattleInstance(baseId, level) { 
-    const base = await BaseEntity.findOne({ id: baseId }).lean(); if(!base || !isEntityBattleReady(base)) return null; 
+async function createBattleInstance(baseId, level, knownBase = null) {
+    const base = knownBase || await BaseEntity.findOne({ id: baseId }).lean(); if(!base || !isEntityBattleReady(base)) return null;
     const stats = calculateStats(base.baseStats, level); 
     let moves = pickDeterministicMovesFromPool(base.movePool, level, 4, base.type);
     return { 
@@ -1459,9 +1460,18 @@ app.get('/city', async (req, res) => {
         // best-effort
     }
 
-    const allEntities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 }).lean();
-    const teamData = []; 
-    for(let p of user.entityTeam) { const base = await BaseEntity.findOne({id: p.baseId}); if(base) teamData.push(userEntityToEntity(p, base)); }
+    const baseIds = [...new Set((user.entityTeam || []).map(p => String(p.baseId || '')).filter(Boolean))];
+    const [allEntities, teamBases] = await Promise.all([
+        BaseEntity.find().sort({ dexOrder: 1, name: 1 }).lean(),
+        baseIds.length ? BaseEntity.find({ id: { $in: baseIds } }).lean() : []
+    ]);
+    const baseById = new Map(teamBases.map(base => [String(base.id), base]));
+    const teamData = (user.entityTeam || [])
+        .map(p => {
+            const base = baseById.get(String(p.baseId || ''));
+            return base ? userEntityToEntity(p, base) : null;
+        })
+        .filter(Boolean);
     
     res.render('city', { user, userId: user._id, playerName: user.username, playerSkin: user.skin, isAdmin: user.isAdmin, skinCount: SKIN_COUNT, startX, startY, startDir, entities: allEntities, team: teamData, mapData: mapData }); 
 });
@@ -1557,6 +1567,7 @@ app.get('/api/map/:mapId/full', async (req, res) => {
         
         // Carrega NPCs do mapa
         const npcsRaw = await NPC.find({ map: mapId }).lean();
+        npcCacheByMap[mapId] = npcsRaw;
         const npcs = npcsRaw.map(npc => ({
             id: npc._id.toString(),
             name: npc.name || 'NPC',
@@ -4403,7 +4414,10 @@ app.post('/battle/wild', async (req, res) => {
     }
     
     // BG
-    const mapDoc = await GameMap.findOne({ mapId: mapName }).lean();
+    const [mapDoc, possibleSpawns] = await Promise.all([
+        GameMap.findOne({ mapId: mapName }).lean(),
+        getWildSpawnCandidates(mapName, normalizeEncounterKey(grassZone))
+    ]);
     let battleBgToUse = 'forest_bg.png';
     if (mapDoc && mapDoc.battleBackground) battleBgToUse = mapDoc.battleBackground;
     const battleBgPosX = (mapDoc && Number.isFinite(mapDoc.battleBgPosX)) ? mapDoc.battleBgPosX : 50;
@@ -4411,14 +4425,13 @@ app.post('/battle/wild', async (req, res) => {
     const battleBgZoom = (mapDoc && Number.isFinite(mapDoc.battleBgZoom)) ? mapDoc.battleBgZoom : 100;
 
     const encounterKey = normalizeEncounterKey(grassZone);
-    const possibleSpawns = await getWildSpawnCandidates(mapName, encounterKey);
     if(possibleSpawns.length === 0) return res.json({ error: `Nada selvagem válido em '${mapName}'.` }); 
     
     const wildBase = pickWeightedEntity(possibleSpawns); 
     const minSpawnLevel = Number.isFinite(wildBase.minSpawnLevel) ? wildBase.minSpawnLevel : 1;
     const maxSpawnLevel = Number.isFinite(wildBase.maxSpawnLevel) ? Math.max(minSpawnLevel, wildBase.maxSpawnLevel) : minSpawnLevel;
     const wildLevel = Math.floor(Math.random() * (maxSpawnLevel - minSpawnLevel + 1)) + minSpawnLevel; 
-    const wildEntity = await createBattleInstance(wildBase.id, wildLevel); 
+    const wildEntity = await createBattleInstance(wildBase.id, wildLevel, wildBase);
     if (!wildEntity) return res.status(400).json({ error: 'A entidade selvagem selecionada está inválida.' });
     const userBase = await BaseEntity.findOne({ id: userPokeData.baseId }).lean(); 
     if (!userBase || !isEntityBattleReady(userBase)) return res.status(400).json({ error: 'Seu monstro ativo está com dados inválidos.' });
@@ -5185,9 +5198,11 @@ io.on('connection', (socket) => {
             }
 
             socket.join(data.map); 
-            let mapNpcs = [];
-            try { mapNpcs = await NPC.find({ map: data.map }).lean(); } catch(e) {}
-            npcCacheByMap[data.map] = mapNpcs;
+            let mapNpcs = npcCacheByMap[data.map];
+            if (!mapNpcs) {
+                try { mapNpcs = await NPC.find({ map: data.map }).lean(); } catch(e) { mapNpcs = []; }
+                npcCacheByMap[data.map] = mapNpcs;
+            }
             socket.emit('npcs_list', mapNpcs);
             
             const startX = clampPct(data.x, 50);
@@ -5614,4 +5629,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server ON Port ${PORT}`));
+dbReady
+    .then(() => server.listen(PORT, () => console.log(`Server ON Port ${PORT}`)))
+    .catch(e => console.error('❌ Servidor não iniciado: MongoDB indisponível.', e));
