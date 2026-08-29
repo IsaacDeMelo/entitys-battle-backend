@@ -1,5 +1,7 @@
 // config.js
 // Centraliza configurações como a URI do Mongo para evitar duplicação.
+require('dotenv').config();
+
 const DEFAULT_LOCAL_MONGO_URI = 'mongodb://127.0.0.1:27017/entitys-battle-backend';
 const envMongoUri = typeof process.env.MONGO_URI === 'string' ? process.env.MONGO_URI.trim() : '';
 

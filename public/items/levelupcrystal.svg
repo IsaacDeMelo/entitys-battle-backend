@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9b6cff"/>
+      <stop offset="100%" stop-color="#4a2cba"/>
+    </linearGradient>
+  </defs>
+  <polygon points="16,2 27,12 16,30 5,12" fill="url(#g)" stroke="#2a1a66" stroke-width="1.5"/>
+  <polygon points="16,2 27,12 16,12" fill="#c9b3ff" opacity="0.6"/>
+  <polygon points="5,12 16,12 16,30" fill="#3a1f9e" opacity="0.5"/>
+</svg>

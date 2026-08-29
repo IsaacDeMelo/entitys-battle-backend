@@ -1267,6 +1267,7 @@ app.get('/', async (req, res) => {
     const err = (req.query && req.query.error) ? String(req.query.error) : null;
     res.render('login', { error: err, skinCount: SKIN_COUNT, skins: skins || [] });
 });
+
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username, password });
@@ -1577,6 +1578,9 @@ app.get('/api/map/:mapId/full', async (req, res) => {
             skin: npc.skin || 'char1',
             mapId: npc.mapId,
             type: npc.type || 'decor',
+            npcType: npc.npcType || '',
+            interact: npc.interact || {},
+            team: npc.team || [],
             dialogLines: npc.dialogLines || [],
             battleEntityId: npc.battleEntityId,
             patrolRoute: npc.patrolRoute || [],
@@ -4700,6 +4704,48 @@ app.post('/battle', async (req, res) => {
     res.redirect('/battle/' + battleId);
 });
 
+// Rota de teste: batalha 100% aleatória só pra ver o UI
+app.get('/teste-ui-batalha', async (req, res) => {
+    try {
+        const allBases = await BaseEntity.find({}).lean();
+        if (!allBases || allBases.length < 2) return res.status(500).send('Precisa de pelo menos 2 entidades no banco');
+
+        const allSkins = await PlayerSkin.find({}).lean();
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const level = Math.floor(Math.random() * 20) + 1;
+
+        const [b1Base, b2Base] = [pick(allBases), pick(allBases)].filter(Boolean);
+        const s1 = calculateStats(b1Base.baseStats, level);
+        const s2 = calculateStats(b2Base.baseStats, level);
+        const m1 = pickDeterministicMovesFromPool(b1Base.movePool, level, 4, b1Base.type);
+        const m2 = pickDeterministicMovesFromPool(b2Base.movePool, level, 4, b2Base.type);
+
+        const skin1 = allSkins.length > 0 ? String(pick(allSkins)._id) : 'char1';
+        const skin2 = allSkins.length > 0 ? String(pick(allSkins)._id) : 'char2';
+
+        const p1 = {
+            instanceId: 'test_p1_' + Date.now(),
+            baseId: b1Base.id, name: b1Base.name, type: b1Base.type, level,
+            hp: s1.hp, maxHp: s1.hp, energy: s1.energy || ENERGY_CONFIG.maxEnergy, maxEnergy: ENERGY_CONFIG.maxEnergy,
+            stats: s1, moves: m1.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
+            sprite: b1Base.sprite, playerName: 'Jogador', skin: skin1, status: null, xp: 0, xpToNext: 100
+        };
+        const p2 = {
+            instanceId: 'test_p2_' + Date.now(),
+            baseId: b2Base.id, name: b2Base.name, type: b2Base.type, level,
+            hp: s2.hp, maxHp: s2.hp, energy: s2.energy || ENERGY_CONFIG.maxEnergy, maxEnergy: ENERGY_CONFIG.maxEnergy,
+            stats: s2, moves: m2.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
+            sprite: b2Base.sprite, playerName: 'CPU Teste', skin: skin2, status: null
+        };
+
+        const battleId = 'test_' + Date.now();
+        activeBattles[battleId] = { p1, p2, type: 'local', userId: '000000000000000000000001', turn: 1, mode: 'manual', returnMap: 'teste-ui-batalha' };
+        res.redirect('/battle/' + battleId);
+    } catch (e) {
+        res.status(500).send('Erro: ' + e.message);
+    }
+});
+
 app.get('/battle/:id', async (req, res) => { 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private'); 
     const battle = activeBattles[req.params.id]; 
@@ -4709,7 +4755,7 @@ app.get('/battle/:id', async (req, res) => {
     let canEditBg = false;
     
     // Normal Battle - use user.entityTeam
-    if (battle.userId) { 
+    if (battle.userId && require('mongoose').Types.ObjectId.isValid(battle.userId)) { 
         const user = await User.findById(battle.userId); 
         if (user) { 
             canEditBg = !!user.isAdmin;
@@ -4852,6 +4898,10 @@ app.post('/api/turn', async (req, res) => {
                 if (p2.hp > 0) performEnemyTurn(p2, p1, events);
             } else {
                 const p1Move = p1.moves.find(m => m.id === moveId); 
+                if (!p1Move) {
+                    events.push({ type: 'MSG', text: 'Esse movimento não está equipado.' });
+                    return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp } });
+                }
                 if (p1.stats.speed >= p2.stats.speed) { processAction(p1, p2, p1Move, events); if (p2.hp > 0) performEnemyTurn(p2, p1, events); } 
                 else { performEnemyTurn(p2, p1, events); if (p1.hp > 0) processAction(p1, p2, p1Move, events); } 
             }
@@ -5414,7 +5464,7 @@ io.on('connection', (socket) => {
     socket.on('join_spectator', ({ roomId, name, skin }) => { socket.join(roomId); if (!roomSpectators[roomId]) roomSpectators[roomId] = {}; roomSpectators[roomId][socket.id] = { id: socket.id, name, skin, x: Math.random() * 90, y: Math.random() * 80 }; socket.emit('spectators_update', roomSpectators[roomId]); io.to(roomId).emit('spectator_joined', roomSpectators[roomId][socket.id]); });
     socket.on('spectator_move', ({ roomId, x, y }) => { if (roomSpectators[roomId] && roomSpectators[roomId][socket.id]) { roomSpectators[roomId][socket.id].x = x; roomSpectators[roomId][socket.id].y = y; io.to(roomId).emit('spectator_moved', { id: socket.id, x, y }); } });
     socket.on('request_active_battles', () => { const list = Object.keys(onlineBattles).map(roomId => { const b = onlineBattles[roomId]; return { id: roomId, p1Name: b.p1.playerName, p1Skin: b.p1.skin, p2Name: b.p2.playerName, p2Skin: b.p2.skin, turn: b.turn }; }); socket.emit('active_battles_list', list); });
-    
+
     socket.on('online_action', async ({ roomId, action, value, playerId }) => { 
         const battle = onlineBattles[roomId]; 
         if (!battle || battle.processing) return; 

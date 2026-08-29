@@ -74,9 +74,9 @@
     #bgEditor button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,0.5); }
     #bgEditor .hint { font-size: 0.5rem; color: #94a3b8; line-height: 1.4; margin-top: 6px; }
     
-    .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.95); padding: 6px 10px; border-radius: 8px; border: 2px solid #555; z-index: 30; width: min(180px, 46vw); font-family: 'Press Start 2P', cursive; bottom: 20px; top: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-    .hud-p1 { left: 10px; border-left: 5px solid #3498db; text-align: left; }
-    .hud-p2 { right: 10px; border-right: 5px solid #e74c3c; text-align: right; }
+     .hud-panel { position: absolute; background: rgba(15, 15, 20, 0.85); backdrop-filter: blur(4px); padding: 8px 12px; border-radius: 12px; border: 2px solid #555; z-index: 30; width: min(200px, 48vw); font-family: 'Press Start 2P', cursive; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+     .hud-p2 { bottom: 15px; right: 15px; top: auto; border-bottom-right-radius: 0; border-left: none; border-right: 5px solid #e74c3c; text-align: right; }
+     .hud-p1 { top: 15px; left: 15px; border-top-left-radius: 0; border-right: none; border-left: 5px solid #3498db; text-align: left; }
     .poke-name { display: flex; align-items: baseline; gap: 6px; font-size: 0.55rem; margin-bottom: 5px; color: #fff; text-shadow: 1px 1px 0 #000; text-transform: uppercase; letter-spacing: 0.5px; min-width: 0; }
     .poke-name > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .poke-lv { font-size: 0.45rem; color: #f1c40f; flex: none; white-space: nowrap; }
@@ -174,7 +174,7 @@
     .super-text { color: #f1c40f; font-size: 1rem; margin-top: -30px !important; text-shadow: 2px 2px 0 #c0392b; }
     .status-text { color: #9b59b6; font-size: 1rem; margin-top: -50px !important; text-shadow: 2px 2px 0 #000; }
     .bottom-panel { width: 100%; height: auto; background: #1a1a2e; border-top: 4px solid #3498db; z-index: 50; padding-bottom: env(safe-area-inset-bottom); position: relative; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
-    .controls-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
+    .controls-panel { grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; }
     .battle-log { padding: 15px; overflow-y: auto; font-family: monospace; font-size: 14px; color: #ecf0f1; height: 180px; background: #111; line-height: 1.5; }
     .log-entry { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
     .move-btn { --accent: #9aa6b2; background: #101722; border: 1px solid #2a3645; color: #e5e7eb; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s; padding: 8px 10px 8px 14px; position: relative; overflow: hidden; height: 70px; min-height: 70px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03), 0 3px 0 #0b0f16; }
@@ -277,18 +277,37 @@
     .switch-item { display: flex; align-items: center; gap: 15px; padding: 12px; border: 1px solid #444; background: #222; margin-bottom: 10px; cursor: pointer; border-radius: 8px; transition: 0.2s; text-align: left; }
     .switch-item:hover { background: #333; border-color: #3498db; transform: translateX(5px); }
     .switch-sprite { width: 50px; height: 50px; image-rendering: pixelated; object-fit: contain; }
-    #floatingBagPanel { position: fixed; right: max(15px, calc(50vw - 210px + 15px)); bottom: 220px; width: 280px; background: rgba(15, 20, 30, 0.98); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 15px; z-index: 80; box-shadow: 0 10px 40px rgba(0,0,0,0.8); display: none; color: #ddd; backdrop-filter: blur(10px); }
-    #floatingBagPanel h4 { margin: 0 0 12px 0; font-size: 0.8rem; color: #f1c40f; font-family: 'Press Start 2P'; border-bottom: 1px solid #333; padding-bottom: 8px; }
-    #floatingBagPanel .bag-row { display:flex; gap:10px; align-items:center; margin-bottom: 10px; }
-    #floatingBagPanel .bag-item { flex:1; background: rgba(255,255,255,0.05); padding:10px; border-radius: 8px; font-size:0.9rem; text-align:center; border: 1px solid #333; }
-    #floatingBagPanel .bag-actions { display:flex; gap:8px; margin-top:8px; }
-    #floatingBagPanel .btn-small { flex:1; padding:10px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size: 0.8rem; text-transform: uppercase; }
-    #floatingBagPanel .btn-small.use { background:#e67e22; color:#fff; box-shadow: 0 3px 0 #d35400; }
-    #floatingBagPanel .btn-small.item { background:#f1c40f; color:#111; }
-    #floatingBagPanel .close-x { position:absolute; right:10px; top:10px; background:transparent; border:none; color:#e74c3c; font-weight:900; cursor:pointer; font-size: 1.2rem; }
-    .floating-bag-button { position: fixed; right: max(20px, calc(50vw - 210px + 20px)); bottom: 100px; z-index: 75; width:55px; height:55px; border-radius:50%; background: linear-gradient(135deg, #f39c12, #e67e22); border: 2px solid #fff; display:flex; align-items:center; justify-content:center; font-size: 24px; box-shadow:0 8px 25px rgba(0,0,0,0.6); cursor:pointer; transition: transform 0.2s; }
-    .floating-bag-button:active { transform: scale(0.9); }
-    .floating-hud-money { position: fixed; right: max(20px, calc(50vw - 210px + 20px)); bottom: 165px; z-index: 75; color:#f1c40f; font-family:'Press Start 2P'; font-size:12px; text-align:center; text-shadow: 2px 2px 0 #000; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; }
+     /* === MENU DE AÇÕES / ATAQUES / MOCHILA (em painel) === */
+     .is-hidden { display: none !important; }
+     .battle-move-menu { display: none; }
+     .battle-move-menu.is-visible { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; animation: slideUp 0.2s ease-out; }
+     @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+     .moves-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; grid-column: 1 / -1; }
+     .move-btn-back { grid-column: 1 / -1; height: 38px; background: #161b22; border: 1px solid #2a3645; justify-content: center; font-size: 0.6rem; opacity: 0.85; color: #cfd8e3; }
+     .move-btn-back:active { opacity: 1; }
+     .action-btn { background: linear-gradient(180deg, #1e2530, #161b22); border: 1px solid #2a3645; color: #e5e7eb; border-radius: 8px; height: 70px; font-family: 'Press Start 2P', cursive; font-size: 0.6rem; text-transform: uppercase; cursor: pointer; transition: all 0.12s; box-shadow: 0 3px 0 #0b0f16; display: flex; align-items: center; justify-content: center; letter-spacing: 0.5px; }
+     .action-btn:active { transform: translateY(1px); box-shadow: 0 2px 0 #0b0f16; }
+     .action-btn:disabled { opacity: 0.5; pointer-events: none; }
+     .action-attack { grid-column: 1 / -1; height: 70px; background: linear-gradient(180deg, #e74c3c, #c0392b); border-color: #922; color: #fff; font-size: 0.75rem; letter-spacing: 1px; }
+     .action-btn.btn-bag { background: linear-gradient(180deg, #f39c12, #d35400); border-color: #a04000; color: #fff; }
+     .bag-inner { grid-column: 1 / -1; background: rgba(0,0,0,0.4); border: 1px solid #2a3645; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+      .bag-inner .bag-row { display: flex; gap: 6px; }
+      .bag-inner .bag-item { flex: 1; background: #161b22; padding: 10px 6px; border-radius: 8px; font-size: 0.55rem; text-align: center; border: 1px solid #2a3645; color: #9aa3b2; font-family: 'Press Start 2P', cursive; line-height: 1.6; }
+      .bag-inner .bag-item strong { color: #f1c40f; font-size: 0.8rem; display: block; margin-top: 2px; }
+      .bag-inner .bag-actions { display: flex; gap: 6px; }
+      .bag-item-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .bag-item-card { position: relative; background: linear-gradient(180deg, #1e2530, #141922); border: 1px solid #2a3645; border-radius: 10px; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: border-color 0.12s, transform 0.1s; box-shadow: 0 3px 0 #0b0f16; text-align: center; }
+      .bag-item-card:active { transform: translateY(1px); box-shadow: 0 2px 0 #0b0f16; }
+      .bag-item-card.open { border-color: #f39c12; }
+      .bag-item-card.is-empty { opacity: 0.55; }
+      .bag-item-card .bag-item-icon { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+      .bag-item-card .bag-item-name { font-family: 'Press Start 2P', cursive; font-size: 0.5rem; color: #e5e7eb; line-height: 1.5; }
+      .bag-item-card .bag-item-count { position: absolute; top: 4px; right: 4px; background: #0b0f16; border: 1px solid #2a3645; border-radius: 10px; font-family: 'Press Start 2P', cursive; font-size: 0.45rem; color: #f1c40f; padding: 2px 5px; }
+      .bag-item-card .item-info { grid-column: 1 / -1; display: none; flex-direction: column; gap: 6px; width: 100%; }
+      .bag-item-card.open .item-info { display: flex; }
+      .bag-item-card .item-desc { font-family: 'Press Start 2P', cursive; font-size: 0.45rem; color: #9aa3b2; line-height: 1.6; }
+      .bag-item-card .bag-use-btn { height: 34px; border-radius: 8px; border: 1px solid #922; background: linear-gradient(180deg, #e74c3c, #c0392b); color: #fff; font-family: 'Press Start 2P', cursive; font-size: 0.5rem; text-transform: uppercase; cursor: pointer; }
+      .bag-item-card .bag-use-btn:disabled { opacity: 0.5; pointer-events: none; }
     .deploy-ball { position: absolute; width: 24px; height: 24px; background-image: url('/uploads/catchcube.gif'); background-size: contain; background-repeat: no-repeat; z-index: 100; pointer-events: none; }
     
     /* === SISTEMA DE COMBO & HIT MARKERS === */
@@ -794,26 +813,44 @@
         <div class="bottom-panel">
             <% if (battleMode === 'online' || battleMode === 'manual' || battleMode === 'wild') { %>
                 <div class="controls-panel" id="controlsPanel">
-                    <% if (battleMode === 'wild') { %>
-                        <button class="move-btn" style="background:linear-gradient(180deg, #e67e22, #d35400); border-color:#a04000" onclick="sendAction('catch')">
-                            <strong><img src="/uploads/catchcube.gif" style="width:20px; height:20px; vertical-align:middle; margin-right:5px;"> Capturar</strong>
-                        </button>
-                        <button class="move-btn" style="background:linear-gradient(180deg, #95a5a6, #7f8c8d); border-color:#505a5b" onclick="sendAction('run')"><strong>🏃 Fugir</strong></button>
-                    <% } %>
-                    <div id="moves-container" style="display:contents;">
-                        <% p1.moves.forEach(move => { %>
-                            <button class="move-btn <%= move.category || 'physical' %>" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
-                                <strong class="move-title">
-                                    <span class="move-category-badge <%= move.category || 'physical' %>"><%= (move.category || 'physical').slice(0,3).toUpperCase() %></span>
-                                    <span class="move-type-icon move-type-<%= (move.element || 'beast') %>" title="<%= (move.element || 'beast').toUpperCase() %>"></span>
-                                    <span><%= move.name %></span>
-                                </strong>
-                                <small><%= move.cost %> EN</small>
-                            </button>
-                        <% }) %>
+                    <div id="action-menu" class="battle-move-menu is-visible">
+                        <button class="action-btn action-attack" data-cost="0" onclick="showBattleMoves()">Atacar</button>
+                        <button class="action-btn" data-cost="0" onclick="openSwitchSelector(false)">Equipe</button>
+                        <button class="action-btn" data-cost="0" onclick="openBattleBag()">Mochila</button>
+                        <% if (battleMode === 'wild') { %>
+                            <button class="action-btn" data-cost="0" onclick="sendAction('catch')">Capturar</button>
+                        <% } %>
+                        <button class="action-btn" data-cost="0" onclick="sendAction('run')">Fugir</button>
                     </div>
-                    <button class="move-btn status" onclick="openSwitchSelector(false)"><strong>🔁 Trocar</strong><small>Gasta o turno</small></button>
-                    <button class="move-btn rest-btn status" onclick="sendAction('move', 'rest')">💤 Descansar (+<%= energyConfig.restBonus %> EN)</button>
+                    <div id="moves-view" class="battle-move-menu">
+                        <button type="button" class="move-btn move-btn-back" onclick="showBattleMenu()">
+                            <strong class="move-title"><span>← Voltar</span></strong>
+                        </button>
+                        <div id="moves-container" class="moves-grid">
+                            <% p1.moves.forEach(move => { %>
+                                <button class="move-btn <%= move.category || 'physical' %>" data-cost="<%= move.cost || 0 %>" onclick="sendAction('move', '<%= move.id %>')" id="btn-<%= move.id %>">
+                                    <strong class="move-title">
+                                        <span class="move-category-badge <%= move.category || 'physical' %>"><%= (move.category || 'physical').slice(0,3).toUpperCase() %></span>
+                                        <span class="move-type-icon move-type-<%= (move.element || 'beast') %>"></span>
+                                        <span><%= move.name %></span>
+                                    </strong>
+                                    <small><%= move.cost %> EN</small>
+                                </button>
+                            <% }) %>
+                            <% for (let i = p1.moves.length; i < 4; i++) { %>
+                                <button class="move-btn move-btn-empty" disabled>
+                                    <strong class="move-title"><span>—</span></strong>
+                                    <small>—</small>
+                                </button>
+                            <% } %>
+                        </div>
+                    </div>
+                    <div id="bag-container" class="battle-move-menu">
+                        <button type="button" class="move-btn move-btn-back" onclick="closeBattleBag()">
+                            <strong class="move-title"><span>← Voltar</span></strong>
+                        </button>
+                        <div id="bagContent" class="bag-inner"></div>
+                    </div>
                 </div>
             <% } else { %>
                 <div class="battle-log" id="logBox"></div>
@@ -827,12 +864,6 @@
             <div id="switchList" style="text-align:left;"></div>
             <button class="btn-restart" style="background:linear-gradient(180deg, #e74c3c, #c0392b); margin-top:20px; width:100%; box-shadow:none; border:2px solid #900;" onclick="forfeitBattle()">DESISTIR DA BATALHA</button>
         </div>
-    </div>
-
-    <div id="floatingBagPanel" aria-hidden="true">
-        <button class="close-x" aria-label="Fechar" onclick="closeBattleBag()">✕</button>
-        <h4>MOCHILA</h4>
-        <div id="battleBagContent">Carregando...</div>
     </div>
 
     <script>
@@ -1389,7 +1420,11 @@
                     document.getElementById('statusMsg').innerText = "Aguardando oponente..."; 
                     document.getElementById('statusMsg').style.display = "block"; 
                     socket.emit('online_action', { roomId: battleId, action: 'move', value: moveId, playerId: realUserId }); 
-                } 
+                } else if (type === 'run') {
+                    document.getElementById('statusMsg').innerText = "Desistindo..."; 
+                    document.getElementById('statusMsg').style.display = "block"; 
+                    socket.emit('online_action', { roomId: battleId, action: 'forfeit', value: '', playerId: realUserId }); 
+                }
             } else { 
                 const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
                 const data = await res.json(); 
@@ -1439,6 +1474,7 @@
                         if (data.events) await playEvents(data.events); 
                     }
                     setControlsState(true); 
+                    showBattleMenu();
                     return; 
                 }
                 
@@ -1486,8 +1522,7 @@
                     }
                     if (data.p2State) updateBar(p2RawId, data.p2State.hp, p2MaxHp, 'hp'); 
                     setControlsState(true); 
-                        applyTrainerName('p2', newState.playerName);
-                        applyTrainerSkin('p2', newState.skin);
+                    showBattleMenu();
                 } 
             } 
         }
@@ -1557,7 +1592,7 @@
                     body: JSON.stringify({ battleId, action: 'switch', moveId: newPokeId, isForced }) 
                 }); 
                 const data = await res.json();
-                
+                if (!isForced) {
                     p1RawId = data.newP1Id; p1Mon = data.p1State.name; p1CurHp = data.p1State.hp; p1MaxHp = data.p1State.maxHp; currentEnergy = data.p1State.energy;
                     setHudNameLevel('p1', p1Mon, data.p1State.level); document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
                     document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
@@ -1572,10 +1607,8 @@
                         mc.appendChild(btn); 
                     });
                     if (data.events) await playEvents(data.events); 
-                    setControlsState(true);
-                } else {
-                    setControlsState(true);
                 }
+                setControlsState(true);
             }
         }
 
@@ -1817,6 +1850,7 @@
                     if (data.events) await playEvents(data.events); 
                 }
                 setControlsState(true); 
+                showBattleMenu();
                 return; 
             }
 
@@ -1831,7 +1865,7 @@
             }
 
             if(data.winnerId) endGame(data.winnerId, data); 
-            else if(!isSpectator) setControlsState(true); 
+            else if(!isSpectator) { setControlsState(true); showBattleMenu(); }
         });
         
         socket.on('opponent_ready', () => { if(!isSpectator) { document.getElementById('statusMsg').style.display = "block"; document.getElementById('statusMsg').innerText = "Oponente pronto!"; } });
@@ -1889,15 +1923,90 @@
             } catch(e){}
         }
         
-        let __battleBagOutsideListener = null;
-        function closeBattleBag() { const panel = document.getElementById('floatingBagPanel'); if(panel) panel.style.display = 'none'; if(__battleBagOutsideListener) { document.removeEventListener('click', __battleBagOutsideListener); __battleBagOutsideListener = null; } }
+        function showBattleMoves() {
+            const menu = document.getElementById('action-menu');
+            const moves = document.getElementById('moves-view');
+            const bag = document.getElementById('bag-container');
+            if (menu) menu.classList.add('is-hidden');
+            if (moves) moves.classList.add('is-visible');
+            if (bag) bag.classList.remove('is-visible');
+            updateButtons();
+        }
+
+        function showBattleMenu() {
+            const menu = document.getElementById('action-menu');
+            const moves = document.getElementById('moves-view');
+            const bag = document.getElementById('bag-container');
+            if (menu) menu.classList.remove('is-hidden');
+            if (moves) moves.classList.remove('is-visible');
+            if (bag) bag.classList.remove('is-visible');
+        }
+
+        function closeBattleBag() {
+            const menu = document.getElementById('action-menu');
+            const moves = document.getElementById('moves-view');
+            const bag = document.getElementById('bag-container');
+            if (menu) menu.classList.remove('is-hidden');
+            if (moves) moves.classList.remove('is-hidden');
+            if (bag) bag.classList.remove('is-visible');
+        }
+
+        const BAG_ITEM_META = {
+            captureCube: { type: 'consumable', name: 'Capture Cube', icon: '/items/catchcube.svg', desc: 'Arremesse para tentar capturar uma criatura selvagem.' },
+            levelUpCrystal: { type: 'consumable', name: 'Level Crystal', icon: '/items/levelupcrystal.svg', desc: 'Cristal raro que eleva o nível de uma criatura.' },
+            key_example: { type: 'key', name: 'Chave (exemplo)', icon: '/items/key.svg', desc: 'Item-chave de exemplo.' }
+        };
+
         async function openBattleBag() {
-            const panel = document.getElementById('floatingBagPanel'); if(!panel) return;
-            if(panel.style.display === 'block') { closeBattleBag(); return; }
-            panel.style.display = 'block';
-            const cont = document.getElementById('battleBagContent'); cont.innerHTML = 'Carregando...';
-            try { const res = await fetch('/api/me?userId=<%= realUserId %>'); const data = await res.json(); const money = data.money || 0; const pokeballs = data.pokeballs || 0; const rareCandy = data.rareCandy || 0; const hudMoneyEl = document.getElementById('hud-money'); if(hudMoneyEl) hudMoneyEl.innerText = money; let html = `<div class="bag-row"><div class="bag-item">Catchballs<br><strong>${pokeballs}</strong></div><div class="bag-item">RareCandy<br><strong>${rareCandy}</strong></div></div>`; html += `<div class="bag-actions"><button class="btn-small use" onclick="useCatchballFromBag()">Usar Catchball</button></div>`; cont.innerHTML = html; } catch(e) { cont.innerHTML = 'Erro.'; }
-            setTimeout(() => document.addEventListener('click', (ev) => { const p = document.getElementById('floatingBagPanel'); const b = document.getElementById('floatingBagIcon'); if(p && !p.contains(ev.target) && b && !b.contains(ev.target)) closeBattleBag(); }), 50);
+            const menu = document.getElementById('action-menu');
+            const moves = document.getElementById('moves-view');
+            const bag = document.getElementById('bag-container');
+            const cont = document.getElementById('bagContent');
+            if (!bag || !cont) return;
+            if (menu) menu.classList.add('is-hidden');
+            if (moves) moves.classList.add('is-hidden');
+            bag.classList.add('is-visible');
+            cont.innerHTML = 'Carregando...';
+            try {
+                const res = await fetch('/api/me?userId=<%= realUserId %>');
+                const data = await res.json();
+                const bagCounts = (data.bag && typeof data.bag === 'object') ? data.bag : {};
+                const keyItems = Array.isArray(data.keyItems) ? data.keyItems : [];
+
+                const items = [];
+                for (const [id, meta] of Object.entries(BAG_ITEM_META)) {
+                    if (meta.type === 'key') {
+                        if (keyItems.includes(id)) items.push({ id, count: 1, isKey: true, meta });
+                    } else {
+                        const n = Number(bagCounts[id]) || 0;
+                        if (n > 0) items.push({ id, count: n, isKey: false, meta });
+                    }
+                }
+
+                if (items.length === 0) {
+                    cont.innerHTML = '<div class="bag-item-grid"><div style="grid-column:1/-1;color:#9aa3b2;font-family:\'Press Start 2P\',cursive;font-size:0.5rem;text-align:center;">Mochila vazia.</div></div>';
+                    return;
+                }
+
+                let html = '<div class="bag-item-grid">';
+                for (const it of items) {
+                    const canUse = it.id === 'captureCube' && it.count > 0;
+                    const useBtn = canUse
+                        ? '<button class="bag-use-btn" onclick="event.stopPropagation();useCatchballFromBag()">Usar</button>'
+                        : '';
+                    const badge = (it.count > 1 || it.isKey)
+                        ? '<span class="bag-item-count">' + (it.isKey ? 'KEY' : 'x' + it.count) + '</span>'
+                        : '';
+                    html += '<div class="bag-item-card" onclick="this.classList.toggle(\'open\')">'
+                        + badge
+                        + '<img class="bag-item-icon" src="' + it.meta.icon + '" alt="' + it.meta.name + '" onerror="this.style.visibility=\'hidden\'">'
+                        + '<span class="bag-item-name">' + it.meta.name + '</span>'
+                        + '<div class="item-info"><span class="item-desc">' + it.meta.desc + '</span>' + useBtn + '</div>'
+                        + '</div>';
+                }
+                html += '</div>';
+                cont.innerHTML = html;
+            } catch(e) { cont.innerHTML = 'Erro.'; }
         }
         async function useCatchballFromBag() {
             if (battleMode !== 'wild') { showToast('Apenas em batalhas selvagens.'); return; }

@@ -509,6 +509,10 @@ const rpgStyles = `
 
 function initRPGDialog() {
     if (document.getElementById('rpg-dialog-style')) return;
+    if (!document.body) {
+        document.addEventListener('DOMContentLoaded', initRPGDialog, { once: true });
+        return;
+    }
     const style = document.createElement('style');
     style.id = 'rpg-dialog-style';
     style.innerHTML = rpgStyles;
@@ -889,7 +893,7 @@ async function interactWithNPC(npc) {
             .replace(/'/g, '&#039;');
     }
 
-    async function chooseStarterFlow(n, text, options) {
+    async function chooseStarterFlow(n, text, options, showText = true) {
         const list = Array.isArray(options) ? options.slice(0, 3) : [];
         if (list.length < 3) {
             await showRPGDialog(n.name, n.skin, 'Erro: opções de starter insuficientes.');
@@ -906,7 +910,7 @@ async function interactWithNPC(npc) {
             { text: 'SAIR', value: 'exit', class: 'cancel' }
         ];
 
-        const pick = await showRPGDialog(n.name, n.skin, safeHtmlText, buttons, null, { allowHtml: true });
+        const pick = await showRPGDialog(n.name, n.skin, showText ? safeHtmlText : '', buttons, null, { allowHtml: true });
         if (!pick || pick === 'exit') return;
 
         try {
@@ -1255,7 +1259,7 @@ async function interactWithNPC(npc) {
                 }
 
                 if (data && data.action && data.action.type === 'starter') {
-                    await chooseStarterFlow(npc, txt, data.action.options);
+                    await chooseStarterFlow(npc, txt, data.action.options, false);
                     return;
                 }
 
@@ -1273,7 +1277,7 @@ async function interactWithNPC(npc) {
                             await showRPGDialog(npc.name, npc.skin, 'Você já escolheu o seu monstro inicial.');
                             return;
                         }
-                        await chooseStarterFlow(npc, txt, optData.options);
+                        await chooseStarterFlow(npc, txt, optData.options, false);
                         return;
                     } catch (_) {
                         // ignore
@@ -1353,7 +1357,7 @@ async function interactWithNPC(npc) {
                 }
 
                 if (data && data.action && data.action.type === 'starter') {
-                    await chooseStarterFlow(npc, txt, data.action.options);
+                    await chooseStarterFlow(npc, txt, data.action.options, false);
                     return;
                 }
 
@@ -1370,7 +1374,7 @@ async function interactWithNPC(npc) {
                             await showRPGDialog(npc.name, npc.skin, 'Você já escolheu o seu monstro inicial.');
                             return;
                         }
-                        await chooseStarterFlow(npc, txt, optData.options);
+                        await chooseStarterFlow(npc, txt, optData.options, false);
                         return;
                     } catch (_) {}
                 }
