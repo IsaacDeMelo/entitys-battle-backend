@@ -2852,6 +2852,13 @@
         window.__menuOpen = window.__menuOpen || false;
         window.isInteracting = false;
 
+        function __isPokemonModalBlocked() {
+            if (!window.__menuOpen) return false;
+            const pm = document.getElementById('modalPokemon');
+            if (pm && pm.style.display === 'flex') return false;
+            return true;
+        }
+
         // Cooldown de portal (persiste entre páginas para evitar "voltar pro lugar antigo" ao dar o primeiro passo)
         window.__portalCooldownUntil = 0;
         try {
@@ -4650,7 +4657,7 @@
 
         // --- INTERAÇÕES ---
         window.interactWithNPC = function(npc) {
-            if (window.__menuOpen) return;
+            if (__isPokemonModalBlocked()) return;
             window.isInteracting = true; window.isMoving = false;
 
             function endInteraction() {
@@ -5255,7 +5262,7 @@
         })();
 
         window.moveToAndTalkToNPC = function(npc) {
-            if (window.isMoving || window.isInteracting || window.isTeleporting || window.__menuOpen) return;
+            if (window.isMoving || window.isInteracting || window.isTeleporting || __isPokemonModalBlocked()) return;
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
 
             function getNpcInteractRange(n) {
@@ -5292,7 +5299,7 @@
 
             // Se já está perto, inicia o menu direto.
             if (dist <= interactRange) {
-                if (window.__menuOpen) return;
+                if (__isPokemonModalBlocked()) return;
                 interactWithNPC(npc);
                 return;
             }
@@ -5380,7 +5387,7 @@
             if (!foundKey) {
                 // Se não achou rota, ainda permite falar se já estiver dentro do alcance.
                 if (dist <= interactRange) {
-                    if (window.__menuOpen) return;
+                    if (__isPokemonModalBlocked()) return;
                     interactWithNPC(npc);
                 }
                 return;
@@ -5431,7 +5438,7 @@
                     const py = me ? parseFloat(me.style.top) : currY;
                     const remain = Math.hypot(npcX - px, npcY - py);
                     if (remain <= interactRange) {
-                        if (window.__menuOpen) return;
+                        if (__isPokemonModalBlocked()) return;
                         interactWithNPC(npc);
                     }
                     return;
@@ -5451,7 +5458,7 @@
                     const remain = Math.hypot(npcX - px, npcY - py);
                     if (remain <= interactRange) {
                         window.isMoving = false;
-                        if (window.__menuOpen) return;
+                        if (__isPokemonModalBlocked()) return;
                         interactWithNPC(npc);
                         return;
                     }
@@ -5573,7 +5580,7 @@
                 div.classList.add('player-remote');
                 div.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (window.__devClickCapture || devMode || window.isTeleporting || window.isInteracting || window.__menuOpen) return;
+                    if (window.__devClickCapture || devMode || window.isTeleporting || window.isInteracting || __isPokemonModalBlocked()) return;
                     openPlayerProfile({ id: p.id, userId: p.userId, name: displayName || p.name, skin: p.skin, sprite: p.sprite });
                 });
             }
@@ -6446,7 +6453,7 @@
 
         function handleInput(e, targetElement = null) {
             const target = targetElement || e.target;
-            if (target.closest('#chatBar') || window.isTeleporting || window.isInteracting || window.__virtualPadHolding || window.__menuOpen) return;
+            if (target.closest('#chatBar') || window.isTeleporting || window.isInteracting || window.__virtualPadHolding || __isPokemonModalBlocked()) return;
             if (target.closest('#virtualPadWrap')) return;
             if (target.closest('.npc-entity')) return;
 
@@ -7071,7 +7078,7 @@
 
             function step(dir) {
                 if (!enabled) return;
-                if (window.isTeleporting || window.isInteracting || window.__menuOpen) return;
+                if (window.isTeleporting || window.isInteracting || __isPokemonModalBlocked()) return;
 
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (!myPlayer) return;
@@ -7200,7 +7207,7 @@
             }
 
             function virtualInteract() {
-                if (window.isTeleporting || window.isInteracting || window.__menuOpen) return;
+                if (window.isTeleporting || window.isInteracting || __isPokemonModalBlocked()) return;
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (!myPlayer) return;
                 const myX = parseFloat(myPlayer.style.left);
@@ -7222,7 +7229,7 @@
             }
 
             function virtualInteractMap() {
-                if (window.isTeleporting || window.isInteracting || window.__menuOpen) return;
+                if (window.isTeleporting || window.isInteracting || __isPokemonModalBlocked()) return;
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (!myPlayer) return;
                 const px = parseFloat(myPlayer.style.left);
