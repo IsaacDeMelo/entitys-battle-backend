@@ -46,7 +46,7 @@
             display: none;
             justify-content: center;
             align-items: center;
-            padding: 18px;
+            padding: 0;
             pointer-events: auto;
             animation: fadeIn 0.2s ease-out;
         }
@@ -94,13 +94,16 @@
             background: #1b2b47;
             color: #f9f4de;
             border: 2px solid #f4e9c7;
-            border-radius: 2px;
-            padding: 6px 10px;
+            border-radius: 6px;
+            padding: 10px 14px;
             cursor: pointer;
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.6rem;
-            box-shadow: 0 2px 0 #101a2c;
+            font-size: 0.8rem;
+            box-shadow: 0 3px 0 #101a2c;
             line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .close-icon-btn:active { transform: translateY(2px); box-shadow: none; }
 
@@ -108,6 +111,9 @@
             padding: 16px;
             overflow-y: auto;
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             background:
                 repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px),
                 linear-gradient(180deg, rgba(10,16,32,0.35), rgba(10,16,32,0.6));
@@ -142,26 +148,27 @@
         .btn-big-close:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2436; }
         .btn-big-close::before { content: ''; }
 
-        /* CARDS */
+        /* CARDS - MOBILE OPTIMIZED */
         .mon-card { 
             background: rgba(20, 32, 58, 0.75); border: 2px solid rgba(244, 233, 199, 0.22);
-            border-radius: 8px; padding: 12px; margin-bottom: 12px;
-            display: grid; grid-template-columns: 65px 1fr auto; gap: 15px;
-            align-items: center; position: relative; overflow: hidden;
+            border-radius: 12px; padding: 14px; margin-bottom: 14px;
+            display: flex; flex-direction: column; gap: 12px;
+            position: relative; overflow: hidden;
             transition: transform 0.2s;
         }
+        .mon-card-top { display: flex; gap: 12px; align-items: center; width: 100%; }
         .mon-card:active { transform: scale(0.98); background: rgba(63, 111, 189, 0.18); }
         .mon-card.leader { border-color: var(--accent-gold); box-shadow: inset 0 0 0 2px rgba(243, 201, 105, 0.15); }
         
         .mon-avatar { 
-            width: 65px; height: 65px; background: rgba(0,0,0,0.45); 
+            width: 65px; height: 65px; background: rgba(0,0,0,0.45); flex-shrink: 0;
             border-radius: 8px; display: flex; align-items: center; justify-content: center;
             border: 2px solid rgba(244, 233, 199, 0.22);
         }
         .mon-avatar img { width: 50px; height: 50px; }
         
-        .mon-stats { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-        .mon-name { font-weight: 800; font-size: 1.1rem; color: #fff; }
+        .mon-stats { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: 1; min-width: 0; }
+        .mon-name { font-weight: 800; font-size: 1.1rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .mon-lvl { font-size: 0.75rem; color: var(--accent-gold); background: rgba(251,191,36,0.15); padding: 2px 8px; border-radius: 6px; margin-left: 6px; }
         
         .bar-wrapper { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); font-weight: 700; }
@@ -170,17 +177,273 @@
         .hp-fill { background: linear-gradient(90deg, #22c55e, #10b981); }
         .xp-fill { background: linear-gradient(90deg, #06b6d4, #3b82f6); }
         
-        .mon-actions { display: flex; flex-direction: column; gap: 8px; }
+        .mon-actions { display: flex; flex-direction: row; gap: 10px; width: 100%; margin-top: 4px; }
         .icon-btn { 
-            width: 40px; height: 40px; border-radius: 6px; border: 2px solid rgba(244, 233, 199, 0.2);
+            flex: 1; height: 44px; border-radius: 8px; border: 2px solid rgba(244, 233, 199, 0.2);
             background: rgba(255,255,255,0.06); color: #fff; font-size: 1.2rem;
             display: flex; align-items: center; justify-content: center; cursor: pointer;
-            box-shadow: 0 2px 0 #101a2c;
+            box-shadow: 0 2px 0 #101a2c; transition: all 0.1s;
         }
+        .icon-btn:active { transform: translateY(2px); box-shadow: none; background: rgba(255,255,255,0.1); }
         .icon-btn.following { background: rgba(251, 191, 36, 0.18); border-color: rgba(251, 191, 36, 0.6); color: #fbbf24; }
 
+        /* =========================================
+           EQUIPE (TEAM) - POKÉDEX SCIENTIFIC ANALYSIS
+           ========================================= */
+        #modalPokemon .modal-content,
+        #modalPokedex .modal-content,
+        #modalBag .modal-content,
+        #modalRank .modal-content,
+        #modalPC .modal-content {
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            border-radius: 0;
+            background: linear-gradient(180deg, #101827 0%, #0a0f1d 100%);
+            border: none;
+            box-shadow: none;
+        }
+
+        #modalBag .modal-content,
+        #modalRank .modal-content,
+        #modalPC .modal-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #modalBag .modal-header,
+        #modalRank .modal-header,
+        #modalPC .modal-header,
+        #modalPokedex .dex-topbar,
+        .team-topbar {
+            background: linear-gradient(135deg, #1a1f35 0%, #0d1220 100%);
+            border-bottom: 2px solid #2a3555;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+            padding: 14px 16px;
+            min-height: 68px;
+        }
+
+        #modalBag .modal-header h2,
+        #modalRank .modal-header h2,
+        #modalPC .modal-header h2,
+        #modalPokedex .dex-topbar h2,
+        .team-topbar h2 {
+            color: #e8e8e8;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #modalBag .modal-header .close-icon-btn,
+        #modalRank .modal-header .close-icon-btn,
+        #modalPC .modal-header .close-icon-btn,
+        .team-exit-btn,
+        .dex-exit-btn {
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            letter-spacing: 1px;
+            box-shadow: none;
+        }
+
+        #modalBag .modal-body,
+        #modalRank .modal-body,
+        #modalPC .modal-body {
+            background: linear-gradient(180deg, rgba(10,16,32,0.5), rgba(10,16,32,0.8));
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+            width: 100%;
+        }
+
+        .team-fullscreen { display: flex; flex-direction: column; height: 100%; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .team-topbar {
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+            background: linear-gradient(135deg, #1a1f35 0%, #0d1220 100%);
+            border-bottom: 2px solid #2a3555; flex-shrink: 0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+        .team-topbar h2 { margin: 0; font-family: 'Press Start 2P', monospace; font-size: 0.75rem; color: #e8e8e8; flex: 1; letter-spacing: 2px; }
+        .team-topbar h2::before { content: '◆ '; color: #38bdf8; }
+        .team-exit-btn {
+            background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px; padding: 12px 18px; cursor: pointer; font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem; transition: 0.15s; letter-spacing: 1px;
+        }
+        .team-exit-btn:active { background: rgba(56, 189, 248, 0.25); transform: scale(0.96); }
+        .team-body { display: flex; flex: 1; overflow: hidden; }
+
+        /* LISTA - ESQUERDA */
+        .team-list-panel {
+            width: 40%; max-width: 400px; overflow-y: auto; padding: 12px;
+            display: flex; flex-direction: column; gap: 10px;
+            border-right: 2px solid #1a2240; background: #0c1020;
+        }
+        .team-slot {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(20, 30, 55, 0.7) 100%);
+            border: 2px solid #1e2d4a; border-radius: 14px; padding: 14px;
+            display: flex; gap: 12px; align-items: center; cursor: pointer;
+            transition: all 0.2s; position: relative; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .team-slot::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+            background: transparent; transition: background 0.2s; border-radius: 0 2px 2px 0;
+        }
+        .team-slot:active { transform: scale(0.98) translateY(2px); background: rgba(56, 189, 248, 0.06); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .team-slot.active { border-color: #38bdf8; background: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(30, 58, 138, 0.1) 100%); box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.1), 0 2px 8px rgba(56, 189, 248, 0.2); }
+        .team-slot.active::before { background: linear-gradient(180deg, #38bdf8, #0f6fe8); }
+        .team-slot-avatar {
+            width: 52px; height: 52px; background: rgba(0,0,0,0.5); border-radius: 12px;
+            display: flex; justify-content: center; align-items: center;
+            border: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+        }
+        .team-slot-avatar img { width: 40px; height: 40px; image-rendering: pixelated; }
+        .team-slot-info { flex: 1; min-width: 0; }
+        .team-slot-name {
+            font-weight: 700; font-size: 0.85rem; color: #e2e8f0;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px;
+        }
+        .team-slot-name .lvl { color: #94a3b8; font-size: 0.7rem; margin-left: 6px; }
+        .team-slot-bar-wrap { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+        .team-slot-bar-label { font-size: 0.55rem; font-weight: 700; width: 22px; text-transform: uppercase; }
+        .team-slot-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+        .team-slot-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+        /* DETALHE - DIREITA */
+        .team-detail-panel {
+            flex: 1; background: #0d1220; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .team-det-header {
+            display: flex; gap: 20px; margin-bottom: 20px; align-items: center;
+            padding: 16px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.4) 100%); border-radius: 16px;
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            box-shadow: 0 4px 16px rgba(56, 189, 248, 0.1);
+        }
+        .team-det-avatar {
+            width: 100px; height: 100px; background: radial-gradient(circle, #1a2540 0%, #0f172a 100%);
+            border-radius: 50%; border: 3px solid #2a3a5a; display: flex; justify-content: center;
+            align-items: center; flex-shrink: 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+        }
+        .team-det-avatar img { width: 64px; height: 64px; image-rendering: pixelated; transform: scale(1.4); }
+        .team-det-title h3 {
+            margin: 0 0 8px 0; font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem; color: #f1f5f9; text-transform: uppercase; line-height: 1.4;
+        }
+        .team-det-title .tag {
+            display: inline-block; background: rgba(56, 189, 248, 0.12); color: #7dd3fc;
+            padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.7rem;
+            border: 1px solid rgba(56, 189, 248, 0.2); font-family: 'Press Start 2P', monospace;
+        }
+        .team-det-title .evo-ready {
+            display: block; margin-top: 8px; color: #4ade80; font-size: 0.75rem;
+            font-weight: 700; font-family: 'Press Start 2P', monospace;
+        }
+        .team-det-title .evo-hint {
+            display: block; margin-top: 6px; color: #64748b; font-size: 0.7rem;
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        /* STATS BLOCO */
+        .team-det-stats {
+            background: rgba(15, 23, 42, 0.5); border-radius: 14px; padding: 16px;
+            margin-bottom: 16px; border: 1px solid #1e2d4a;
+        }
+        .team-det-stats h4 {
+            margin: 0 0 12px 0; font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem; color: #64748b; letter-spacing: 2px; text-transform: uppercase;
+        }
+        .team-det-stat-row {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+            font-family: 'Press Start 2P', monospace; font-size: 0.5rem;
+        }
+        .team-det-stat-label { width: 40px; color: #94a3b8; font-weight: 700; }
+        .team-det-stat-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+        .team-det-stat-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .team-det-stat-val { width: 80px; text-align: right; color: #cbd5e1; font-size: 0.45rem; }
+
+        /* GOLPES */
+        .team-det-moves { margin-bottom: 16px; }
+        .team-det-moves h4 {
+            margin: 0 0 10px 0; font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem; color: #64748b; letter-spacing: 2px; text-transform: uppercase;
+        }
+        .team-move-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(20, 30, 55, 0.4) 100%); border: 1px solid #1e2d4a; border-radius: 10px;
+            padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between;
+            align-items: center; transition: all 0.2s;
+        }
+        .team-move-card:hover { border-color: #2a4a6a; background: linear-gradient(135deg, rgba(20, 30, 55, 0.8) 0%, rgba(30, 45, 75, 0.5) 100%); }
+        .team-move-name { color: #e2e8f0; font-weight: 700; font-size: 0.8rem; }
+        .team-move-type {
+            font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+            padding: 3px 8px; border-radius: 6px; letter-spacing: 0.5px;
+        }
+        .team-move-empty {
+            color: #475569; font-size: 0.75rem; font-weight: 600; padding: 16px;
+            text-align: center; border: 1px dashed #1e2d4a; border-radius: 10px;
+        }
+
+        /* AÇÕES */
+        .team-det-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: auto; padding-top: 16px; }
+        .team-action-btn {
+            background: linear-gradient(180deg, rgba(20, 30, 55, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); color: #e2e8f0; border: 2px solid #2a3555;
+            padding: 18px 10px; border-radius: 14px; font-weight: 700; font-size: 0.8rem;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            gap: 8px; cursor: pointer; transition: 0.15s;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .team-action-btn:active { transform: scale(0.96) translateY(2px); background: rgba(56, 189, 248, 0.15); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .team-action-btn .btn-icon { font-size: 1.6rem; }
+        .team-action-btn .btn-label { font-size: 0.65rem; letter-spacing: 0.5px; }
+        .team-action-btn.primary { border-color: rgba(56, 189, 248, 0.4); color: #7dd3fc; background: rgba(56, 189, 248, 0.08); }
+        .team-action-btn.primary:active { background: rgba(56, 189, 248, 0.2); }
+        .team-action-btn.danger { border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; background: rgba(239, 68, 68, 0.06); }
+        .team-action-btn.danger:active { background: rgba(239, 68, 68, 0.15); }
+        .team-action-btn.gold { border-color: rgba(251, 191, 36, 0.4); color: #fde68a; background: rgba(251, 191, 36, 0.08); }
+        .team-action-btn.gold:active { background: rgba(251, 191, 36, 0.2); }
+        .team-action-btn.leader-active { border-color: rgba(251, 191, 36, 0.4); color: #fde68a; background: rgba(251, 191, 36, 0.08); opacity: 0.5; cursor: default; }
+
+        /* GAVETA MOBILE */
+        .close-team-detail-mobile { display: none; }
+        @media (max-width: 768px) {
+            .team-body { flex-direction: column; position: relative; }
+            .team-list-panel { width: 100%; max-width: none; border-right: none; padding-bottom: 80px; }
+            .team-detail-panel {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                z-index: 10; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+                background: #0a0e1a; padding: 16px; padding-top: env(safe-area-inset-top, 16px);
+            }
+            .team-detail-panel.show { transform: translateY(0); }
+            .close-team-detail-mobile {
+                display: flex; align-items: center; justify-content: center; gap: 8px;
+                width: 100%; background: rgba(56, 189, 248, 0.1); color: #38bdf8;
+                border: 1px solid rgba(56, 189, 248, 0.3); padding: 16px; border-radius: 12px;
+                font-family: 'Press Start 2P', monospace; font-size: 0.55rem;
+                margin-bottom: 16px; cursor: pointer; letter-spacing: 1px;
+            }
+            .close-team-detail-mobile:active { background: rgba(56, 189, 248, 0.25); }
+            .team-det-actions { grid-template-columns: 1fr; }
+            .team-det-header { padding: 12px; gap: 14px; }
+            .team-det-avatar { width: 80px; height: 80px; }
+            .team-det-avatar img { width: 50px; height: 50px; transform: scale(1.3); }
+            .team-det-title h3 { font-size: 0.75rem; }
+        }
+
         /* PC SYSTEM */
-        .pc-layout { display: flex; flex-direction: column; gap: 15px; height: 100%; }
+        .pc-layout { display: flex; flex-direction: column; gap: 15px; height: 100%; width: 100%; }
         .pc-box-container {
             background: rgba(10, 16, 32, 0.5); border: 2px solid rgba(244, 233, 199, 0.18); border-radius: 8px;
             padding: 10px; flex: 1; overflow-y: auto; display: flex; flex-direction: column;
@@ -191,13 +454,15 @@
             gap: 10px; padding-bottom: 20px; 
         }
         .pc-slot { 
-            aspect-ratio: 1; background: rgba(255,255,255,0.05); 
+            aspect-ratio: 1; background: linear-gradient(135deg, rgba(20, 30, 55, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%); 
             border-radius: 8px; border: 2px solid rgba(244, 233, 199, 0.18);
             display: flex; align-items: center; justify-content: center; 
-            position: relative; cursor: pointer; transition: 0.1s;
-            box-shadow: 0 2px 0 #101a2c;
+            position: relative; cursor: grab; transition: all 0.15s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
-        .pc-slot:active { background: rgba(255,255,255,0.15); transform: scale(0.95); }
+        .pc-slot[draggable="true"]:active { cursor: grabbing; }
+        .pc-slot:hover { border-color: rgba(244, 233, 199, 0.35); box-shadow: 0 2px 12px rgba(244, 233, 199, 0.2); }
+        .pc-slot:active { background: rgba(56, 189, 248, 0.15); transform: scale(0.95) translateY(2px); border-color: #38bdf8; box-shadow: 0 1px 4px rgba(56, 189, 248, 0.3); }
         .pc-slot img { width: 50px; height: 50px; }
         .pc-slot .lvl-badge { position: absolute; bottom: 2px; right: 2px; background: #000; color: #fbbf24; font-size: 0.6rem; padding: 2px 4px; border-radius: 4px; font-weight: bold; }
 
@@ -205,25 +470,39 @@
             background: rgba(34, 197, 94, 0.08); border: 2px solid rgba(34, 197, 94, 0.25);
             border-radius: 8px; padding: 12px; display: flex; gap: 10px; overflow-x: auto;
             flex-shrink: 0; min-height: 90px; align-items: center;
+            transition: background 0.15s, border-color 0.15s;
         }
+        .pc-team-strip.drag-over {
+            background: rgba(34, 197, 94, 0.25);
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+        .pc-grid.drag-over {
+            background: rgba(244, 233, 199, 0.05);
+            border-color: rgba(244, 233, 199, 0.3);
+        }
+        .pc-slot.dragging { opacity: 0.5; transform: scale(0.9); }
+        .pc-slot.drag-over { background: rgba(56, 189, 248, 0.2); border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.4); }
 
         /* ACTION MENU PC */
         #pcActionMenu {
             position: absolute; bottom: 0; left: 0; width: 100%; 
             background: #162643; border-top: 3px solid var(--accent-primary);
-            border-radius: 10px 10px 0 0; padding: 20px; z-index: 12000;
+            border-radius: 16px 16px 0 0;
+            padding: 20px 20px max(20px, env(safe-area-inset-bottom));
+            z-index: 12000;
             display: none; flex-direction: column; gap: 10px;
             box-shadow: 0 -10px 50px rgba(0,0,0,0.8);
-            animation: slideUp 0.2s;
+            animation: slideUp 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         #pcActionMenu.active { display: flex; }
         .pc-action-title { color: #fff; text-align: center; margin-bottom: 10px; font-size: 1.1rem; }
         .btn-pc-action {
             width: 100%;
+            min-height: 48px;
             background: linear-gradient(180deg, #f9f2d5 0%, #e7d8a5 100%);
             color: #1a2436;
             border: 3px solid #fff2c2;
-            border-radius: 6px;
+            border-radius: 10px;
             padding: 14px 16px;
             cursor: pointer;
             font-family: 'Press Start 2P', monospace;
@@ -246,14 +525,66 @@
         .btn-move-box { }
         .btn-cancel-action { }
 
-        /* POKEDEX */
-        .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; overflow-y: auto; padding: 10px; }
-        .dex-entry { aspect-ratio: 1; background: rgba(255,255,255,0.03); border-radius: 8px; border: 2px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; }
-        .dex-entry.unlocked { background: rgba(63, 111, 189, 0.18); border-color: var(--accent-primary); }
-        .dex-entry.locked img { filter: grayscale(1); opacity: 0.3; }
+        /* POKEDEX - FULLSCREEN */
+        #modalPokedex { z-index: 14000; }
+        .dex-fullscreen { display: flex; flex-direction: column; height: 100%; color: #e2e8f0; }
+        .dex-topbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #111827; border-bottom: 2px solid #1e293b; flex-shrink: 0; }
+        .dex-topbar h2 { margin: 0; font-family: 'Press Start 2P', monospace; font-size: 0.7rem; color: #f87171; flex: 1; }
+        .dex-topbar .dex-counter { font-family: 'Press Start 2P', monospace; font-size: 0.55rem; color: #94a3b8; }
+        .dex-exit-btn { background: #1e293b; color: #e2e8f0; border: 2px solid #334155; border-radius: 6px; padding: 8px 14px; cursor: pointer; font-family: 'Press Start 2P', monospace; font-size: 0.5rem; flex-shrink: 0; }
+        .dex-exit-btn:active { background: #334155; }
+        .dex-search-bar { padding: 10px 16px; background: #0f172a; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
+        .dex-search-bar input { width: 100%; padding: 10px 14px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-family: 'Press Start 2P', monospace; font-size: 0.5rem; outline: none; }
+        .dex-search-bar input:focus { border-color: #f87171; }
+        .dex-body { display: flex; flex: 1; overflow: hidden; }
+        .dex-list-panel { flex: 1; overflow-y: auto; padding: 12px; }
+        .dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+        .dex-entry { aspect-ratio: 1; background: #1e293b; border-radius: 8px; border: 2px solid #334155; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: all 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .dex-entry:hover { border-color: #475569; box-shadow: 0 2px 12px rgba(0,0,0,0.4); }
+        .dex-entry.unlocked { border-color: #3b82f6; background: rgba(59, 130, 246, 0.15); box-shadow: 0 0 12px rgba(59, 130, 246, 0.2); }
+        .dex-entry.locked { opacity: 0.5; }
+        .dex-entry.locked img { filter: grayscale(1) brightness(0.7); }
+        .dex-entry .dex-num { font-family: 'Press Start 2P', monospace; font-size: 0.4rem; color: #64748b; position: absolute; top: 3px; left: 5px; }
+        .dex-detail-panel { width: 45%; max-width: 400px; background: #0f172a; border-left: 2px solid #1e293b; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .dex-detail-empty { display: flex; align-items: center; justify-content: center; height: 100%; color: #475569; font-family: 'Press Start 2P', monospace; font-size: 0.5rem; text-align: center; }
+        #dexDetailContent { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .dex-sprite-frame { width: 120px; height: 120px; background: #1e293b; border-radius: 16px; border: 3px solid #334155; display: flex; justify-content: center; flex-direction: column; align-items: center; margin-bottom: 16px; }
+        .dex-sprite-frame img { image-rendering: pixelated; transform: scale(2); }
+        .dex-mon-name { font-family: 'Press Start 2P', monospace; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 6px; text-align: center; }
+        .dex-mon-type { display: inline-block; padding: 3px 10px; border-radius: 12px; font-family: 'Press Start 2P', monospace; font-size: 0.45rem; text-transform: uppercase; margin-bottom: 16px; font-weight: bold; }
+        .dex-stats-section { width: 100%; margin-bottom: 14px; }
+        .dex-stats-section h4 { font-family: 'Press Start 2P', monospace; font-size: 0.45rem; color: #64748b; margin: 0 0 8px 0; text-transform: uppercase; }
+        .dex-stat-row { display: flex; align-items: center; margin-bottom: 5px; font-family: 'Press Start 2P', monospace; font-size: 0.45rem; }
+        .dex-stat-label { width: 36px; color: #94a3b8; font-weight: bold; }
+        .dex-stat-bar-bg { flex: 1; height: 6px; background: #1e293b; border-radius: 3px; margin: 0 8px; overflow: hidden; }
+        .dex-stat-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .dex-stat-val { width: 28px; text-align: right; color: #e2e8f0; }
+        .dex-moves-section { width: 100%; }
+        .dex-moves-section h4 { font-family: 'Press Start 2P', monospace; font-size: 0.45rem; color: #64748b; margin: 0 0 8px 0; text-transform: uppercase; }
+        .dex-move-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #1e293b; font-family: 'Press Start 2P', monospace; font-size: 0.4rem; }
+        .dex-move-lv { color: #fbbf24; margin-right: 8px; }
+        .dex-move-name { flex: 1; color: #e2e8f0; }
+        .dex-move-elem { color: #64748b; }
+        @media (max-width: 600px) {
+            .dex-body { display: block; position: relative; }
+            .dex-detail-panel { 
+                position: absolute; bottom: 0; left: 0; width: 100%; 
+                height: 85%; max-height: none;
+                border-left: none; border-top: 4px solid #f87171;
+                border-radius: 16px 16px 0 0;
+                transform: translateY(100%); 
+                transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+                box-shadow: 0 -10px 40px rgba(0,0,0,0.9);
+                z-index: 50;
+            }
+            .dex-detail-panel.show-mobile { transform: translateY(0); }
+            .dex-detail-panel .dex-mobile-close { display: block !important; }
+            .dex-grid { gap: 12px; }
+            .dex-entry { aspect-ratio: 1; border-width: 3px; }
+        }
 
         /* RANK */
-        .rank-list { display: flex; flex-direction: column; gap: 8px; }
+        .rank-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
         .rank-row { display: grid; grid-template-columns: 50px 1fr 80px 70px 70px; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(15, 23, 42, 0.6); font-size: 0.85rem; }
         .rank-row.header { background: rgba(63, 111, 189, 0.25); text-transform: uppercase; font-weight: 800; letter-spacing: 0.6px; }
         .rank-num { color: var(--accent-gold); font-weight: 900; }
@@ -263,11 +594,17 @@
         .rank-empty { text-align: center; padding: 20px; color: var(--text-muted); }
         
         /* MENU FLUTUANTE */
-        .float-container { position: fixed; right: 20px; bottom: 100px; z-index: 9999; display: flex; flex-direction: column-reverse; align-items: center; gap: 15px; }
-        .float-btn { width: 60px; height: 60px; border-radius: 10px; background: #162643; border: 2px solid rgba(244, 233, 199, 0.2); color: #fff; font-size: 1.6rem; cursor: pointer; box-shadow: 0 6px 0 #101a2c, 0 10px 30px -5px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .float-btn:active { transform: scale(0.9); }
-        .float-menu-items { display: none; flex-direction: column-reverse; gap: 15px; }
-        .float-menu-items.show { display: flex; animation: slideUp 0.3s; }
+        .float-container { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(100px, env(safe-area-inset-bottom) + 90px); z-index: 10000; display: flex; flex-direction: column-reverse; align-items: center; gap: 14px; }
+        .float-btn { width: 66px; height: 66px; border-radius: 50%; background: #F8F8F8; border: 3px solid #181010; color: #181010; font-family: 'Press Start 2P', monospace; font-size: 0.38rem; cursor: pointer; box-shadow: 3px 3px 0 #181010; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; line-height: 1; transition: all 0.12s; }
+        .float-btn .menu-png { width: 28px; height: 28px; object-fit: contain; display: block; image-rendering: pixelated; flex-shrink: 0; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
+        .float-btn span { display: block; text-align: center; width: 100%; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
+        .float-btn:active { transform: translate(2px,2px) scale(0.95); box-shadow: 1px 1px 0 #181010; }
+        .float-btn:hover { filter: brightness(1.1); }
+        .float-btn.main-toggle { width: 72px; height: 72px; font-size: 1.5rem; background: var(--accent-primary); color: white; border-color: #1a2a46; box-shadow: 0 4px 15px rgba(0,0,0,0.5); animation: pulse-btn 2s infinite; }
+        @keyframes pulse-btn { 0%, 100% { box-shadow: 0 4px 15px rgba(63, 111, 189, 0.5); } 50% { box-shadow: 0 4px 25px rgba(63, 111, 189, 0.8); } }
+        .float-menu-items { display: none; flex-direction: column-reverse; gap: 14px; align-items: center; }
+        .float-menu-items.show { display: flex; animation: slideUp 0.2s; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* DEX DETAILS */
         .dex-details { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111827; z-index: 20; transform: translateX(110%); transition: transform 0.3s; display: flex; flex-direction: column; }
@@ -293,7 +630,8 @@
 
         /* BAG */
         .bag-header-money { text-align:center; padding:15px; font-size:1.1rem; color:var(--accent-gold); border-bottom:2px solid rgba(244, 233, 199, 0.2); margin-bottom:15px; background: rgba(0,0,0,0.2); border-radius: 8px; }
-        .bag-item-row { display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 2px solid var(--border-glass); }
+        .bag-item-row { display: flex; align-items: center; background: linear-gradient(135deg, rgba(20, 30, 55, 0.5) 0%, rgba(15, 23, 42, 0.7) 100%); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 2px solid var(--border-glass); transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .bag-item-row:active { transform: translateY(2px); background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.3); }
         .bag-tabs { display:flex; gap:10px; margin: 10px 0 15px 0; }
         .bag-tab { flex:1; padding: 12px; border-radius: 8px; border: 2px solid var(--border-glass); background: rgba(255,255,255,0.03); color:#fff; font-weight: 800; cursor:pointer; text-transform: uppercase; }
         .bag-tab.active { background: rgba(243, 201, 105, 0.18); border-color: rgba(243, 201, 105, 0.4); color:var(--accent-gold); }
@@ -303,6 +641,8 @@
         /* SKILL EDITOR */
         .skill-item { background:#1f2937; padding:12px; border-radius:8px; border:1px solid transparent; cursor:pointer; transition: 0.2s; }
         .skill-item.active { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        .keyboard-selected { outline: none !important; }
+        .menu-png { image-rendering: pixelated; }
     </style>
 </head>
 <body>
@@ -311,51 +651,55 @@
     <!-- MENU FLUTUANTE -->
     <div class="float-container" id="floatMenu">
         <div id="menuItems" class="float-menu-items">
-            <button class="float-btn" onclick="openBag()" style="color:#fbbf24;">🎒</button>
-            <button class="float-btn" onclick="openPokemon()" style="color:#ef4444;">
-                <img src="/uploads/catchcube.gif" class="pixel-art" style="width:30px;">
-            </button>
-            <button class="float-btn" onclick="openPC()" style="color:#22c55e;">💻</button>
-            <button class="float-btn" onclick="openPokedex()" style="color:#3b82f6;">📱</button>
+            <button class="float-btn" onclick="openBag()"><img class="menu-png" data-menu="bag" src="/uploads/menu_bolsa.png" alt="" style="width:28px;height:28px;image-rendering:pixelated;" onerror="this.style.display='none'"><span style="font-size:0.45rem;">BAG</span></button>
+            <button class="float-btn" onclick="openPokemon()"><img class="menu-png" data-menu="equipe" src="/uploads/menu_equipe.png" alt="" style="width:28px;height:28px;image-rendering:pixelated;" onerror="this.style.display='none'"><span style="font-size:0.45rem;">EQUIPE</span></button>
+            <button class="float-btn" onclick="openPC()"><img class="menu-png" data-menu="pc" src="/uploads/menu_pc.png" alt="" style="width:28px;height:28px;image-rendering:pixelated;" onerror="this.style.display='none'"><span style="font-size:0.45rem;">PC</span></button>
+            <button class="float-btn" onclick="openPokedex()"><img class="menu-png" data-menu="pokedex" src="/uploads/menu_pokedex.png" alt="" style="width:28px;height:28px;image-rendering:pixelated;" onerror="this.style.display='none'"><span style="font-size:0.45rem;">DEX</span></button>
         </div>
         <button class="float-btn main-toggle" onclick="toggleFloatMenu()">☰</button>
     </div>
 
-    <!-- MODAL: MEU TIME -->
+    <!-- MODAL: MEU TIME (FULLSCREEN DETALHADO) -->
     <div class="modal-overlay" id="modalPokemon">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2><span style="color:#ef4444;">●</span> Equipe</h2>
-                <button class="close-icon-btn" onclick="closeModal('modalPokemon')">×</button>
-            </div>
-            <div class="modal-body">
-                <div id="pokemonListContent">Carregando...</div>
-            </div>
-            <div class="modal-footer-close">
-                <button class="btn-big-close" onclick="closeModal('modalPokemon')">FECHAR JANELA</button>
+            <div class="team-fullscreen">
+                <div class="team-topbar">
+                    <h2>EQUIPE</h2>
+                    <button class="team-exit-btn" onclick="closeModal('modalPokemon')">FECHAR</button>
+                </div>
+                <div class="team-body">
+                    <div class="team-list-panel" id="pokemonListContent">
+                        <!-- Cards do time entram aqui via JS -->
+                    </div>
+                    <div class="team-detail-panel" id="pokemonDetailContent">
+                        <!-- Análise detalhada entra aqui via JS -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: POKEDEX -->
+    <!-- MODAL: POKEDEX (FULLSCREEN) -->
     <div class="modal-overlay" id="modalPokedex">
-        <div class="modal-content" style="max-width:800px; height:90vh;">
-            <div class="dex-container" style="display:flex; height:100%; position:relative; overflow:hidden;">
-                <div style="flex:1; display:flex; flex-direction:column; padding:20px; overflow:hidden;">
-                    <div style="padding-bottom:15px;">
-                        <input type="text" id="dexSearch" style="width:100%; padding:15px; background:rgba(0,0,0,0.4); border:1px solid #333; border-radius:12px; color:#fff;" placeholder="🔍 Buscar na Dex..." onkeyup="filterDex()">
+        <div class="modal-content">
+            <div class="dex-fullscreen">
+                <div class="dex-topbar">
+                    <h2>POKéDEX</h2>
+                    <span class="dex-counter" id="dexCounter">0 / 0</span>
+                    <button class="dex-exit-btn" onclick="closePokedex()">SAIR</button>
+                </div>
+                <div class="dex-search-bar">
+                    <input type="text" id="dexSearch" placeholder="Buscar..." oninput="filterDex()">
+                </div>
+                <div class="dex-body">
+                    <div class="dex-list-panel" id="dexListPanel">
+                        <div class="dex-grid" id="dexGrid"></div>
                     </div>
-                    <div id="dexGrid" class="dex-grid"></div>
+                    <div class="dex-detail-panel" id="dexDetailPanel">
+                        <div class="dex-detail-empty" id="dexDetailEmpty">Selecione um Pokemon</div>
+                        <div id="dexDetailContent" style="display:none; width:100%;"></div>
+                    </div>
                 </div>
-                
-                <!-- DEX DETAILS OVERLAY -->
-                <div id="dexDetailsView" class="dex-details">
-                    <button class="back-btn-dex" onclick="closeDexDetails()">⬅ VOLTAR PARA LISTA</button>
-                    <div id="dexContentInner" style="flex:1; overflow-y:auto; padding:20px;"></div>
-                </div>
-            </div>
-            <div class="modal-footer-close">
-                <button class="btn-big-close" onclick="closeModal('modalPokedex')">FECHAR JANELA</button>
             </div>
         </div>
     </div>
@@ -368,10 +712,7 @@
                 <button class="close-icon-btn" onclick="closeModal('modalRank')">×</button>
             </div>
             <div class="modal-body">
-                <div id="rankContent" class="rank-list">Carregando...</div>
-            </div>
-            <div class="modal-footer-close">
-                <button class="btn-big-close" onclick="closeModal('modalRank')">FECHAR JANELA</button>
+                <div id="rankContent" class="rank-list" style="width:100%;">Carregando...</div>
             </div>
         </div>
     </div>
@@ -387,13 +728,13 @@
                 <div class="pc-layout">
                     <!-- BOX AREA -->
                     <div class="pc-box-container">
-                        <div class="pc-header"><span>BOX 01</span> <span>Toque para mover</span></div>
+                        <div class="pc-header"><span>BOX 01</span> <span style="font-size:0.7rem; color:#94a3b8;">Arraste para mover</span></div>
                         <div class="pc-grid" id="pcStorageArea">Carregando...</div>
                     </div>
                     
                     <!-- TEAM AREA -->
                     <div style="flex-shrink:0;">
-                        <div class="pc-header" style="color:#22c55e;"><span>TIME ATUAL (Max 6)</span></div>
+                        <div class="pc-header" style="color:#22c55e;"><span>TIME ATUAL (Max 6)</span> <span style="font-size:0.7rem; color:#94a3b8;">Arraste para mover</span></div>
                         <div class="pc-team-strip" id="pcTeamArea"></div>
                     </div>
                 </div>
@@ -404,9 +745,6 @@
                     <div id="pcActionButtons" style="display:flex; flex-direction:column; gap:10px;"></div>
                     <button class="btn-pc-action btn-cancel-action" onclick="closePCAction()">Cancelar</button>
                 </div>
-            </div>
-            <div class="modal-footer-close">
-                <button class="btn-big-close" onclick="closeModal('modalPC')">FECHAR JANELA</button>
             </div>
         </div>
     </div>
@@ -419,10 +757,7 @@
                 <button class="close-icon-btn" onclick="closeModal('modalBag')">×</button>
             </div>
             <div class="modal-body">
-                <div id="bagItemsContent">Carregando...</div>
-            </div>
-            <div class="modal-footer-close">
-                <button class="btn-big-close" onclick="closeModal('modalBag')">FECHAR JANELA</button>
+                <div id="bagItemsContent" style="width:100%;">Carregando...</div>
             </div>
         </div>
     </div>
@@ -477,12 +812,102 @@
             document.getElementById('toast-container').appendChild(div);
             setTimeout(() => div.remove(), 2500);
         }
-        function toggleFloatMenu() { document.getElementById('menuItems').classList.toggle('show'); }
-        function closeModal(id) { 
-            document.getElementById(id).style.display = 'none';
-            if (id === 'modalPokemon') isSelectingMode = false; 
-            if (id === 'modalPC') closePCAction();
+
+        window.MenuSystem = {
+            state: {
+                menuOpen: false,
+                activeModal: null,
+                lastFocused: null
+            },
+            setMenuOpen(value) {
+                this.state.menuOpen = Boolean(value);
+                window.__menuOpen = this.state.menuOpen;
+                if (!this.state.menuOpen) {
+                    const menu = document.getElementById('menuItems');
+                    if (menu) menu.classList.remove('show');
+                }
+            },
+            openModal(id) {
+                const ids = ['modalPokemon','modalBag','modalPC','modalPokedex','modalRank'];
+                ids.forEach(mid => {
+                    const el = document.getElementById(mid);
+                    if (el) el.style.display = (mid === id) ? 'flex' : 'none';
+                });
+                const target = document.getElementById(id);
+                if (!target) return false;
+                this.state.activeModal = id;
+                this.setMenuOpen(Boolean(id));
+                if (id === 'modalPokemon') isSelectingMode = false;
+                if (id === 'modalPC') closePCAction();
+                return true;
+            },
+            closeModal(id) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+                if (this.state.activeModal === id) this.state.activeModal = null;
+                const anyOpen = ['modalPokemon','modalBag','modalPC','modalPokedex','modalRank'].some(mid => {
+                    const modal = document.getElementById(mid);
+                    return modal && modal.style.display !== 'none';
+                });
+                if (!anyOpen) this.setMenuOpen(false);
+                if (id === 'modalPokemon') isSelectingMode = false;
+                if (id === 'modalPC') closePCAction();
+                document.querySelectorAll('.keyboard-selected').forEach(e => e.classList.remove('keyboard-selected'));
+            }
+        };
+
+        function toggleFloatMenu() {
+            const menu = document.getElementById('menuItems');
+            if (!menu) return;
+            const shouldShow = !menu.classList.contains('show');
+            menu.classList.toggle('show', shouldShow);
+            window.MenuSystem.setMenuOpen(shouldShow);
         }
+        function closeModal(id) {
+            window.MenuSystem.closeModal(id);
+        }
+        function closeAllModals() {
+            ['modalPokemon','modalBag','modalPC','modalPokedex','modalRank'].forEach(id => {
+                window.MenuSystem.closeModal(id);
+            });
+            window.__menuOpen = false;
+            isSelectingMode = false;
+            closePCAction();
+            if (window.__closeStartMenu) window.__closeStartMenu();
+        }
+        window.closeAllModals = closeAllModals;
+        window.closeModal = closeModal;
+        window.closeDexDetails = closeDexDetails;
+        window.closePokedex = closePokedex;
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('menuItems');
+            const toggle = document.querySelector('.main-toggle');
+            const clickedInsideMenu = menu && menu.contains(event.target);
+            const clickedToggle = toggle && toggle.contains(event.target);
+            if (!clickedInsideMenu && !clickedToggle && menu && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                window.MenuSystem.setMenuOpen(false);
+            }
+        });
+
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                const detail = document.getElementById('pokemonDetailContent');
+                if (detail) detail.classList.remove('show');
+            }
+        });
+        // Navegação do menu por setas — A confirma, B volta
+        window.__menuSelIdx = 0;
+        window.__menuUp = function(){};
+        window.__menuDown = function(){};
+        window.__menuConfirm = function(){};
+        window.__menuBack = function(){
+            var cur=['modalPokemon','modalBag','modalPC','modalPokedex','modalRank'].find(id=>{ var e=document.getElementById(id); return e && e.style.display!=='none'; });
+            if(cur==='modalPokedex'){ closePokedex(); }
+            else if(cur){ closeModal(cur); setTimeout(function(){ if(window.__openStartMenu) window.__openStartMenu(); }, 180); }
+            else if(window.__closeStartMenu){ window.__closeStartMenu(); }
+        };
 
         // Catálogo de itens (DB)
         window.ITEM_CATALOG = [];
@@ -519,15 +944,35 @@
             }
         }
 
+        function preloadBagIcons() {
+            if(!window.ITEM_CATALOG || !window.ITEM_CATALOG.length) return Promise.resolve();
+            const urls = new Set();
+            window.ITEM_CATALOG.forEach(it => {
+                if(it.icon) urls.add(it.icon);
+                if(it.iconUrl) urls.add(it.iconUrl);
+                if(it.hasIcon) urls.add(`/api/items/icon/${encodeURIComponent(it.id)}.png`);
+            });
+            return Promise.all([...urls].map(u => new Promise(res => {
+                const img = new Image();
+                img.onload = img.onerror = () => res();
+                img.src = u;
+            })));
+        }
+
         function getItemMeta(id) {
             const key = String(id || '');
             return (window.ITEM_CATALOG_MAP && window.ITEM_CATALOG_MAP.get(key)) || null;
         }
 
         function getItemIconUrl(id) {
+            const raw = String(id || '').toLowerCase().trim();
+            if (!raw) return '';
             const meta = getItemMeta(id);
             if (meta && meta.hasIcon) return `/api/items/icon/${encodeURIComponent(String(id))}.png`;
-            return '';
+            if (meta && meta.icon) return meta.icon;
+            const POKEAPI_MAP = { 'pokeball':'poke-ball','poke-ball':'poke-ball','capturecube':'poke-ball','capture-cube':'poke-ball','capture_cube':'poke-ball','greatball':'great-ball','ultraball':'ultra-ball','masterball':'master-ball','rarecandy':'rare-candy','rare-candy':'rare-candy','levelupcrystal':'rare-candy','level-up-crystal':'rare-candy','escape-rope':'escape-rope','full-restore':'full-restore','max-potion':'max-potion','hyper-potion':'hyper-potion','super-potion':'super-potion','max-revive':'max-revive','full-heal':'full-heal','fire-stone':'fire-stone','thunder-stone':'thunder-stone','water-stone':'water-stone','leaf-stone':'leaf-stone','moon-stone':'moon-stone' };
+            const slug = POKEAPI_MAP[raw] || raw.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${slug}.png`;
         }
 
         // Carrega catálogo uma vez ao abrir a página (melhora dev editor)
@@ -557,30 +1002,69 @@
         })();
 
         // --- EQUIPE / MONSTROS ---
-        async function openEntityTeam() { 
-            document.getElementById('modalPokemon').style.display='flex';
+        async function openEntityTeam() {
+            const modal = document.getElementById('modalPokemon');
+            const listContent = document.getElementById('pokemonListContent');
+            const detContent = document.getElementById('pokemonDetailContent');
+
+            if (!modal || !listContent || !detContent) {
+                showToast('❌ Erro: Modal da equipe não encontrado');
+                return;
+            }
+
+            modal.style.display = 'flex';
+            window.__menuOpen = true;
+            TEAM_SELECTED_IDX = 0;
 
             const cached = getCachedMe();
-            if (cached && Array.isArray(cached.team)) {
+            if (cached && Array.isArray(cached.team) && cached.team.length) {
                 if (cached.allMoves) GLOBAL_MOVES_LIB = cached.allMoves;
                 CURRENT_TEAM_DATA = cached.team;
                 if (typeof cached.followingEntityId === 'string') CURRENT_FOLLOWING_ID = String(cached.followingEntityId || '');
+                await preloadTeamSprites(cached.team);
                 renderPokemonList(cached.team);
             } else {
-                document.getElementById('pokemonListContent').innerHTML = '';
+                CURRENT_TEAM_DATA = [];
+                listContent.innerHTML = '<div style="text-align:center; padding:40px 20px; color:#475569; font-size:0.8rem;">Nenhuma criatura na equipe.</div>';
+                detContent.innerHTML = '';
             }
 
-            try { 
-                const r = await fetch(`/api/me?userId=${USER_ID}`); 
-                const d = await r.json(); 
+            try {
+                const r = await fetch(`/api/me?userId=${USER_ID}`);
+                const d = await r.json();
                 if (d && !d.error) window.__ME_CACHE = d;
-                if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; 
-                CURRENT_TEAM_DATA = d.team; // Salvar time no cache global
-                if (typeof d.followingEntityId === 'string') CURRENT_FOLLOWING_ID = String(d.followingEntityId || '');
-                renderPokemonList(d.team); 
-            } catch(e) { 
-                if (!cached) document.getElementById('pokemonListContent').innerHTML = 'Erro de conexão.'; 
-            } 
+                if (d && d.allMoves) GLOBAL_MOVES_LIB = d.allMoves;
+                if (d && Array.isArray(d.team)) {
+                    CURRENT_TEAM_DATA = d.team;
+                    if (typeof d.followingEntityId === 'string') CURRENT_FOLLOWING_ID = String(d.followingEntityId || '');
+                    await preloadTeamSprites(d.team);
+                    renderPokemonList(d.team);
+                } else if (!CURRENT_TEAM_DATA.length) {
+                    listContent.innerHTML = '<div style="text-align:center; padding:40px 20px; color:#475569; font-size:0.8rem;">Nenhuma criatura na equipe.</div>';
+                    detContent.innerHTML = '';
+                }
+            } catch (e) {
+                console.error('Erro ao abrir equipe:', e);
+                if (!CURRENT_TEAM_DATA.length) {
+                    listContent.innerHTML = '<div style="text-align:center; padding:40px 20px; color:#ef4444; font-size:0.8rem;">Erro ao carregar a equipe.</div>';
+                    detContent.innerHTML = '';
+                }
+                showToast('⚠️ Erro ao carregar equipe');
+            }
+        }
+
+        function preloadTeamSprites(team) {
+            if(!team || !team.length) return Promise.resolve();
+            const urls = new Set();
+            team.forEach(p => {
+                if(p.sprite) urls.add(p.sprite);
+                if(p.icon) urls.add(p.icon);
+            });
+            return Promise.all([...urls].map(u => new Promise(res => {
+                const img = new Image();
+                img.onload = img.onerror = () => res();
+                img.src = u;
+            })));
         }
 
         // Alias legacy: botao "EQUIPE" chama openPokemon
@@ -588,52 +1072,213 @@
             return openEntityTeam();
         }
 
-        function renderPokemonList(team) {
-            const content = document.getElementById('pokemonListContent');
-            if(!team || team.length === 0) { content.innerHTML='<div style="text-align:center; margin-top:50px; color:#555;">Nenhuma criatura.</div>'; return; }
-            let html = '';
-            if(isSelectingMode) html += `<div style="background:rgba(251,191,36,0.2); color:#fbbf24; padding:12px; text-align:center; border-radius:12px; font-weight:bold; margin-bottom:15px; border:1px solid #fbbf24;">SELECIONE PARA USAR O ITEM</div>`;
-            
-            team.forEach((p, idx) => {
-                const hpPct = Math.min(100, (p.hp/p.maxHp)*100);
-                const xpMax = p.xpToNext || 100;
-                const xpPct = Math.min(100, (p.xp / xpMax) * 100);
-                const isFollowing = CURRENT_FOLLOWING_ID && String(p.instanceId) === String(CURRENT_FOLLOWING_ID);
-                const evo = p.evolution || null;
-                const evoBadge = evo
-                    ? (evo.ready
-                        ? `<span style="margin-left:8px; padding:2px 8px; border-radius:999px; font-size:0.62rem; background:rgba(46,204,113,0.18); color:#b7f7d2; border:1px solid rgba(46,204,113,0.35);">EVOLUCAO PRONTA</span>`
-                        : `<span style="margin-left:8px; padding:2px 8px; border-radius:999px; font-size:0.62rem; background:rgba(241,196,15,0.14); color:#ffe08a; border:1px solid rgba(241,196,15,0.3);">EVO EM ${evo.levelsRemaining} LV</span>`)
-                    : '';
-                const evoHint = evo ? `<div style="font-size:0.68rem; color:#9ca3af; margin-top:4px;">${evo.ready ? `Pronto para virar ${evo.targetName}` : `Proxima evolucao: ${evo.targetName} no Lv.${evo.atLevel}`}</div>` : '';
-                
-                const clickAttr = isSelectingMode ? `onclick="applyRareCandy('${p.instanceId}')"` : '';
-                const cardClass = isSelectingMode ? 'mon-card leader' : `mon-card ${idx===0?'leader':''}`;
+        let TEAM_SELECTED_IDX = 0;
 
-                html += `
-                <div class="${cardClass}" ${clickAttr}>
-                    <div class="mon-avatar"><img src="${resolveImg(p.sprite)}" class="pixel-art"></div>
-                    <div class="mon-stats">
-                        <div style="display:flex; align-items:center;">
-                            <span class="mon-name">${p.name}</span>
-                            <span class="mon-lvl">Lv.${p.level}</span>
-                            ${evoBadge}
-                        </div>
-                        <div class="bar-wrapper"><span style="width:20px;">HP</span><div class="bar-track"><div class="bar-fill hp-fill" style="width:${hpPct}%;"></div></div></div>
-                        <div class="bar-wrapper"><span style="width:20px;">XP</span><div class="bar-track"><div class="bar-fill xp-fill" style="width:${xpPct}%;"></div></div></div>
-                        ${evoHint}
-                    </div>
-                    ${!isSelectingMode ? `
-                    <div class="mon-actions">
-                        <div class="icon-btn" onclick="prepareMoveEditor('${p.instanceId}')">⚔️</div>
-                        <div class="icon-btn ${isFollowing ? 'following' : ''}" onclick="toggleFollow('${p.instanceId}')" title="Seguir">🐾</div>
-                        ${idx!==0 ? `<div class="icon-btn" onclick="setLead('${p.instanceId}')">⭐</div>` : ''}
-                        <div class="icon-btn" onclick="abandonPokemon('${p.instanceId}')" style="color:#ef4444; border-color:rgba(239,68,68,0.3);">✕</div>
-                    </div>` : ''}
-                </div>`;
+        function getTypeColorForTeam(type) {
+            var c = {
+                fire:{bg:'#fd7d24',fg:'#fff'},water:{bg:'#4592c4',fg:'#fff'},grass:{bg:'#9bcb5c',fg:'#fff'},
+                electric:{bg:'#eed535',fg:'#1a1a1a'},ice:{bg:'#51c4e7',fg:'#1a1a1a'},fighting:{bg:'#d56723',fg:'#fff'},
+                poison:{bg:'#b763cd',fg:'#fff'},ground:{bg:'#da7c4d',fg:'#fff'},flying:{bg:'#a890f0',fg:'#fff'},
+                psychic:{bg:'#f366b9',fg:'#fff'},bug:{bg:'#abb53d',fg:'#fff'},rock:{bg:'#a38c21',fg:'#fff'},
+                ghost:{bg:'#7b62a3',fg:'#fff'},dragon:{bg:'#7038f8',fg:'#fff'},dark:{bg:'#705848',fg:'#fff'},
+                steel:{bg:'#b8b8d0',fg:'#1a1a1a'},fairy:{bg:'#fdb9e8',fg:'#1a1a1a'},normal:{bg:'#a8a878',fg:'#fff'},
+                beast:{bg:'#636363',fg:'#fff'}
+            };
+            var t = (type || 'normal').toLowerCase();
+            return c[t] || c.normal;
+        }
+
+        function renderEmptyTeamState() {
+            const listContent = document.getElementById('pokemonListContent');
+            const detContent = document.getElementById('pokemonDetailContent');
+            if (!listContent) return;
+
+            listContent.innerHTML = `
+                <div style="text-align:center; padding:40px 20px; color:#94a3b8; font-size:0.8rem; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                    <div style="font-size:2rem;">👻</div>
+                    <div style="font-weight:700; color:#e2e8f0;">Nenhuma criatura na equipe.</div>
+                    <div style="line-height:1.5; max-width:220px;">Capture uma entidade na floresta ou converse com o NPC para começar.</div>
+                </div>
+            `;
+
+            if (detContent) detContent.innerHTML = '';
+            TEAM_SELECTED_IDX = 0;
+        }
+
+        function showTeamDetailMobile() {
+            const panel = document.getElementById('pokemonDetailContent');
+            if (!panel || window.innerWidth > 768) return;
+            panel.classList.add('show');
+        }
+
+        function hideTeamDetailMobile() {
+            const panel = document.getElementById('pokemonDetailContent');
+            if (!panel) return;
+            panel.classList.remove('show');
+        }
+
+        function renderPokemonList(team) {
+            var listContent = document.getElementById('pokemonListContent');
+            var detContent = document.getElementById('pokemonDetailContent');
+
+            if (!listContent || !detContent) return;
+
+            if (!team || team.length === 0) {
+                renderEmptyTeamState();
+                return;
+            }
+
+            if (TEAM_SELECTED_IDX < 0 || TEAM_SELECTED_IDX >= team.length) {
+                TEAM_SELECTED_IDX = 0;
+            }
+
+            var html = '';
+
+            if (isSelectingMode) {
+                html += '<div style="background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); color:#fbbf24; padding:14px; text-align:center; border-radius:10px; font-weight:700; font-size:0.75rem; margin-bottom:12px;">TOQUE PARA USAR O ITEM</div>';
+            }
+
+            team.forEach(function(p, idx) {
+                var hpPct = Math.min(100, Math.max(0, ((Number(p.hp) || 0) / Math.max(1, Number(p.maxHp) || 1)) * 100));
+                var xpMax = Number(p.xpToNext) || 100;
+                var xpPct = Math.min(100, ((Number(p.xp) || 0) / Math.max(1, xpMax)) * 100);
+                var isActive = (idx === TEAM_SELECTED_IDX && !isSelectingMode) ? ' active' : '';
+                var hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#eab308' : '#ef4444';
+
+                html += '<div class="team-slot' + isActive + '" onclick="handleTeamSlotClick(' + idx + ')">';
+                html += '<div class="team-slot-avatar"><img src="' + resolveImg(p.sprite) + '"></div>';
+                html += '<div class="team-slot-info">';
+                html += '<div class="team-slot-name">' + p.name + '<span class="lvl">Lv.' + p.level + '</span></div>';
+                html += '<div class="team-slot-bar-wrap"><span class="team-slot-bar-label" style="color:' + hpColor + ';">HP</span>';
+                html += '<div class="team-slot-bar"><div class="team-slot-bar-fill" style="width:' + hpPct + '%; background:' + hpColor + ';"></div></div></div>';
+                html += '<div class="team-slot-bar-wrap"><span class="team-slot-bar-label" style="color:#38bdf8;">XP</span>';
+                html += '<div class="team-slot-bar"><div class="team-slot-bar-fill" style="width:' + xpPct + '%; background:#38bdf8;"></div></div></div>';
+                html += '</div></div>';
             });
-            if(isSelectingMode) html += `<button onclick="cancelSelection()" class="btn-big-close" style="background:#333;">CANCELAR USO</button>`;
-            content.innerHTML = html;
+
+            if (isSelectingMode) {
+                html += '<button onclick="cancelSelection()" style="width:100%; margin-top:16px; padding:14px; background:rgba(239,68,68,0.15); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); border-radius:10px; font-family:Press Start 2P,monospace; font-size:0.55rem; cursor:pointer;">CANCELAR</button>';
+            }
+
+            listContent.innerHTML = html;
+
+            if (!isSelectingMode && team.length > 0) {
+                selectTeamMember(TEAM_SELECTED_IDX);
+                if (window.innerWidth <= 768) {
+                    showTeamDetailMobile();
+                }
+            } else {
+                detContent.innerHTML = '';
+                hideTeamDetailMobile();
+            }
+        }
+
+        function handleTeamSlotClick(idx) {
+            if(isSelectingMode) {
+                var p = CURRENT_TEAM_DATA[idx];
+                applyRareCandy(p.instanceId);
+            } else {
+                selectTeamMember(idx);
+            }
+        }
+
+        function selectTeamMember(idx) {
+            if (!CURRENT_TEAM_DATA || !CURRENT_TEAM_DATA.length) {
+                const detContent = document.getElementById('pokemonDetailContent');
+                if (detContent) detContent.innerHTML = '';
+                return;
+            }
+
+            if (!Number.isInteger(idx) || idx < 0 || idx >= CURRENT_TEAM_DATA.length) {
+                idx = 0;
+            }
+
+            TEAM_SELECTED_IDX = idx;
+            var p = CURRENT_TEAM_DATA[idx];
+            if (!p) return;
+
+            document.querySelectorAll('.team-slot').forEach(function(el, i) {
+                el.classList.toggle('active', i === idx);
+            });
+
+            var detContent = document.getElementById('pokemonDetailContent');
+            if (!detContent) return;
+
+            var isFollowing = CURRENT_FOLLOWING_ID && String(p.instanceId) === String(CURRENT_FOLLOWING_ID);
+            var isLeader = CURRENT_TEAM_DATA[0] && String(p.instanceId) === String(CURRENT_TEAM_DATA[0].instanceId);
+
+            var evo = p.evolution || null;
+            var evoHtml = '';
+            if (evo) {
+                if (evo.ready) {
+                    evoHtml = '<span class="evo-ready">PRONTO PARA EVOLUIR → ' + (evo.targetName || 'criança').toUpperCase() + '</span>';
+                } else {
+                    evoHtml = '<span class="evo-hint">Evolui para ' + (evo.targetName || 'criança') + ' Lv.' + (evo.atLevel || 0) + '</span>';
+                }
+            } else {
+                evoHtml = '<span class="evo-hint">Sem evolução disponível</span>';
+            }
+
+            var movesHtml = '';
+            if (p.moves && p.moves.length) {
+                p.moves.forEach(function(mid) {
+                    var d = GLOBAL_MOVES_LIB[mid] || {name: mid, element: 'normal'};
+                    var tc = getTypeColorForTeam(d.element);
+                    movesHtml += '<div class="team-move-card">';
+                    movesHtml += '<span class="team-move-name">' + d.name + '</span>';
+                    movesHtml += '<span class="team-move-type" style="background:' + tc.bg + ';color:' + tc.fg + ';">' + d.element + '</span>';
+                    movesHtml += '</div>';
+                });
+            } else {
+                movesHtml = '<div class="team-move-empty">Nenhum golpe equipado</div>';
+            }
+
+            var hpPct = Math.min(100, ((Number(p.hp) || 0) / Math.max(1, Number(p.maxHp) || 1)) * 100);
+            var hpColor = hpPct > 50 ? '#22c55e' : hpPct > 25 ? '#eab308' : '#ef4444';
+            var xpPct = Math.min(100, ((Number(p.xp) || 0) / Math.max(1, Number(p.xpToNext) || 100)) * 100);
+            var atk = Number((p.stats && p.stats.atk) || 0) || 0;
+            var def = Number((p.stats && p.stats.def) || 0) || 0;
+            var spd = Number((p.stats && p.stats.spd) || 0) || 0;
+
+            var html = '';
+            html += '<button class="close-team-detail-mobile" onclick="hideTeamDetailMobile()">▼ VOLTAR</button>';
+
+            html += '<div class="team-det-header">';
+            html += '<div class="team-det-avatar"><img src="' + resolveImg(p.sprite) + '"></div>';
+            html += '<div class="team-det-title">';
+            html += '<h3>' + p.name + '</h3>';
+            html += '<span class="tag">Lv. ' + p.level + '</span>';
+            html += evoHtml;
+            html += '</div></div>';
+
+            html += '<div class="team-det-stats">';
+            html += '<h4>Stats</h4>';
+            html += '<div class="team-det-stat-row"><span class="team-det-stat-label">HP</span><div class="team-det-stat-bar"><div class="team-det-stat-fill" style="width:' + hpPct + '%;background:' + hpColor + ';"></div></div><span class="team-det-stat-val">' + Math.floor(Number(p.hp) || 0) + ' / ' + (p.maxHp || 0) + '</span></div>';
+            html += '<div class="team-det-stat-row"><span class="team-det-stat-label">XP</span><div class="team-det-stat-bar"><div class="team-det-stat-fill" style="width:' + xpPct + '%;background:#38bdf8;"></div></div><span class="team-det-stat-val">' + Math.floor(Number(p.xp) || 0) + ' / ' + (p.xpToNext || 100) + '</span></div>';
+            html += '<div class="team-det-stat-row"><span class="team-det-stat-label">ATK</span><div class="team-det-stat-bar"><div class="team-det-stat-fill" style="width:' + Math.min(100, atk) + '%;background:#f87171;"></div></div><span class="team-det-stat-val">' + atk + '</span></div>';
+            html += '<div class="team-det-stat-row"><span class="team-det-stat-label">DEF</span><div class="team-det-stat-bar"><div class="team-det-stat-fill" style="width:' + Math.min(100, def) + '%;background:#fbbf24;"></div></div><span class="team-det-stat-val">' + def + '</span></div>';
+            html += '<div class="team-det-stat-row"><span class="team-det-stat-label">SPD</span><div class="team-det-stat-bar"><div class="team-det-stat-fill" style="width:' + Math.min(100, spd) + '%;background:#38bdf8;"></div></div><span class="team-det-stat-val">' + spd + '</span></div>';
+            html += '</div>';
+
+            html += '<div class="team-det-moves"><h4>Golpes</h4>' + movesHtml + '</div>';
+
+            html += '<div class="team-det-actions">';
+            html += '<div class="team-action-btn primary" onclick="prepareMoveEditor(\'' + p.instanceId + '\')"><span class="btn-icon">⚔</span><span class="btn-label">EDITAR GOLPES</span></div>';
+            html += '<div class="team-action-btn' + (isFollowing ? ' gold' : '') + '" onclick="toggleFollow(\'' + p.instanceId + '\')"><span class="btn-icon">🐾</span><span class="btn-label">' + (isFollowing ? 'GUARDAR' : 'SEGUIR') + '</span></div>';
+            if (isLeader) {
+                html += '<div class="team-action-btn leader-active"><span class="btn-icon">👑</span><span class="btn-label">LIDER ATUAL</span></div>';
+            } else {
+                html += '<div class="team-action-btn" onclick="setLead(\'' + p.instanceId + '\')"><span class="btn-icon">⭐</span><span class="btn-label">DEFINIR LIDER</span></div>';
+            }
+            html += '<div class="team-action-btn danger" onclick="abandonPokemon(\'' + p.instanceId + '\')"><span class="btn-icon">✕</span><span class="btn-label">LIBERTAR</span></div>';
+            html += '</div>';
+
+            detContent.innerHTML = html;
+            if (window.innerWidth <= 768) {
+                showTeamDetailMobile();
+            } else {
+                detContent.classList.add('show');
+            }
         }
 
         async function toggleFollow(instanceId) {
@@ -658,64 +1303,150 @@
             }
         }
 
-        /* --- POKEDEX --- */
-        async function openPokedex() {
-            document.getElementById('modalPokedex').style.display='flex';
-            if(Object.keys(GLOBAL_MOVES_LIB).length === 0) { try { const r = await fetch(`/api/me?userId=${USER_ID}`); const d = await r.json(); if(d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; } catch(e){} }
+        /* --- POKEDEX FULLSCREEN --- */
+        let DEX_SELECTED_IDX = 0;
+        let DEX_VISIBLE_ENTITIES = [];
+
+        function openPokedex() {
+            window.MenuSystem.openModal('modalPokedex');
             renderDexGrid();
+            updateDexCounter();
+            if (Object.keys(GLOBAL_MOVES_LIB).length === 0) {
+                fetch('/api/me?userId=' + USER_ID).then(r => r.json()).then(d => { if (d.allMoves) GLOBAL_MOVES_LIB = d.allMoves; }).catch(() => {});
+            }
         }
+
+        function closePokedex() {
+            document.getElementById('modalPokedex').style.display = 'none';
+            window.__menuOpen = false;
+            setTimeout(function() { if (window.__openStartMenu) window.__openStartMenu(); }, 100);
+        }
+
+        function updateDexCounter() {
+            const total = DEX_ENTITIES.length;
+            const unlocked = DEX_ENTITIES.filter(p => UNLOCKED_IDS.has(String(p.id || p._id))).length;
+            const el = document.getElementById('dexCounter');
+            if (el) el.textContent = unlocked + ' / ' + total;
+        }
+
         function renderDexGrid() {
-            const grid = document.getElementById('dexGrid'); grid.innerHTML = '';
-            DEX_ENTITIES.forEach((p, index) => {
-                const id = String(p.id||p._id);
+            const grid = document.getElementById('dexGrid');
+            grid.innerHTML = '';
+            DEX_VISIBLE_ENTITIES = [];
+            DEX_ENTITIES.forEach(function(p, index) {
+                const id = String(p.id || p._id);
                 const isUnlocked = UNLOCKED_IDS.has(id);
                 const dexNumber = Number.isFinite(parseInt(p.dexOrder, 10)) ? parseInt(p.dexOrder, 10) : (index + 1);
-                grid.innerHTML += `<div class="dex-entry ${isUnlocked ? 'unlocked' : 'locked'}" onclick="selectDexMonster('${id}')" data-name="${(p.name||'').toLowerCase()}">
-                    <span class="dex-num">#${dexNumber.toString().padStart(3,'0')}</span>
-                    <img src="${resolveImg(p.sprite)}" loading="lazy" class="pixel-art" style="width:40px; height:40px;">
-                </div>`;
+                const sprite = p.sprite || p.icon;
+                const name = isUnlocked ? (p.name || '???') : '???';
+                DEX_VISIBLE_ENTITIES.push(p);
+                grid.innerHTML += '<div class="dex-entry ' + (isUnlocked ? 'unlocked' : 'locked') + '" onclick="selectDexMonster(\'' + id + '\')" data-name="' + (p.name || '').toLowerCase() + '" data-dexidx="' + (DEX_VISIBLE_ENTITIES.length - 1) + '"><span class="dex-num">#' + dexNumber.toString().padStart(3, '0') + '</span><img src="' + resolveImg(sprite) + '" loading="lazy" class="pixel-art" style="width:36px;height:36px;"></div>';
             });
         }
+
+        function selectDexEntry(idx) {
+            var entries = document.querySelectorAll('#dexGrid .dex-entry');
+            if (!entries.length) return;
+            entries.forEach(function(e) { e.classList.remove('keyboard-selected'); });
+            idx = Math.max(0, Math.min(idx, entries.length - 1));
+            DEX_SELECTED_IDX = idx;
+            var id = DEX_VISIBLE_ENTITIES[idx] ? String(DEX_VISIBLE_ENTITIES[idx].id || DEX_VISIBLE_ENTITIES[idx]._id) : null;
+            if (id) selectDexMonster(id);
+        }
+
         function selectDexMonster(idStr) {
-            const m = RAW_ENTITIES.find(x => String(x.id||x._id) === idStr); if(!m) return;
-            const isUnlocked = UNLOCKED_IDS.has(idStr);
-            let movesHtml = '';
-            const pool = (m.movePool || m.learnset || []).sort((a,b)=>a.level-b.level);
-            if(pool.length > 0) {
-                movesHtml = '<div style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.03); border-radius:12px;"><h4 style="margin:0 0 10px 0; color:#888;">GOLPES</h4>';
-                pool.forEach(mv => {
-                    const d = GLOBAL_MOVES_LIB[mv.moveId||mv.move] || {name:mv.moveId||mv.move, element:'normal'};
-                    movesHtml += `<div style="display:flex; justify-content:space-between; font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.05); padding:6px 0;">
-                        <span style="color:var(--accent-gold);">Lv.${mv.level}</span><span>${d.name}</span><span style="color:#aaa; font-size:0.7rem;">${d.element}</span></div>`;
+            var m = RAW_ENTITIES.find(function(x) { return String(x.id || x._id) === idStr; });
+            if (!m) return;
+            var isUnlocked = UNLOCKED_IDS.has(idStr);
+            var bs = m.baseStats || {};
+            var hp = Number(bs.hp) || 0, atk = Number(bs.attack) || 0, def = Number(bs.defense) || 0, spd = Number(bs.speed) || 0;
+            var pct = function(v) { return Math.min(100, (v / 150) * 100); };
+            var statBar = function(l, v, c) {
+                return '<div class="dex-stat-row"><span class="dex-stat-label">' + l + '</span><div class="dex-stat-bar-bg"><div class="dex-stat-bar" style="width:' + pct(v) + '%;background:' + c + ';"></div></div><span class="dex-stat-val">' + v + '</span></div>';
+            };
+            var typeColor = getTypeColor(m.type);
+            var movesHtml = '';
+            var pool = (m.movePool || m.learnset || []).sort(function(a, b) { return a.level - b.level; });
+            if (pool.length > 0) {
+                movesHtml = '<div class="dex-moves-section"><h4>Golpes</h4>';
+                pool.forEach(function(mv) {
+                    var d = GLOBAL_MOVES_LIB[mv.moveId || mv.move] || { name: mv.moveId || mv.move, element: 'normal' };
+                    movesHtml += '<div class="dex-move-row"><span class="dex-move-lv">Lv.' + mv.level + '</span><span class="dex-move-name">' + d.name + '</span><span class="dex-move-elem">' + d.element + '</span></div>';
                 });
                 movesHtml += '</div>';
             }
-            const pct = (v) => Math.min(100, (v/150)*100);
-            const statBar = (l,v,c) => `<div style="display:flex; align-items:center; margin-bottom:5px; font-size:0.8rem;"><span style="width:30px; font-weight:bold; color:#777;">${l}</span><div style="flex:1; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; margin:0 8px;"><div style="width:${pct(v)}%; height:100%; background:${c}; border-radius:3px;"></div></div><span style="width:25px; text-align:right;">${v}</span></div>`;
-            
-            document.getElementById('dexContentInner').innerHTML = `
-                <div style="text-align:center; padding-bottom:20px;">
-                    <div style="width:100px; height:100px; margin:0 auto 15px; background:rgba(0,0,0,0.3); border-radius:20px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.1);"><img src="${resolveImg(m.sprite)}" class="pixel-art" style="transform:scale(1.5); filter:${!isUnlocked?'grayscale(1) brightness(0.5)':''}"></div>
-                    <h1 style="margin:0; font-size:1.6rem; text-transform:uppercase;">${m.name}</h1>
-                    <span style="display:inline-block; margin-top:5px; padding:4px 12px; background:#333; border-radius:20px; font-size:0.7rem; font-weight:bold; text-transform:uppercase;">${m.type}</span>
-                    <div style="margin-top:10px; font-size:0.8rem; color:${isUnlocked?'#10b981':'#64748b'}; font-weight:bold;">${isUnlocked?'● REGISTRADO':'● NÃO CAPTURADO'}</div>
-                </div>
-                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px;">
-                    <h4 style="margin:0 0 10px 0; color:#888;">STATS BASE</h4>
-                    ${statBar('HP', m.baseStats.hp, '#10b981')} ${statBar('ATK', m.baseStats.attack, '#ef4444')}
-                    ${statBar('DEF', m.baseStats.defense, '#fbbf24')} ${statBar('SPD', m.baseStats.speed, '#3b82f6')}
-                </div>
-                ${movesHtml}
-                <div style="height:50px;"></div>
-            `;
-            document.getElementById('dexDetailsView').classList.add('active');
+            var html = '';
+            html += '<button class="dex-mobile-close" onclick="document.getElementById(\'dexDetailPanel\').classList.remove(\'show-mobile\')" style="display:none;width:100%;padding:10px;margin-bottom:12px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;font-family:Press Start 2P,monospace;font-size:0.5rem;cursor:pointer;">▼ FECHAR</button>';
+            html += '<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:16px;width:100%;">';
+            html += '<div class="dex-sprite-frame"><img src="' + resolveImg(m.sprite) + '" class="pixel-art" style="' + (!isUnlocked ? 'filter:grayscale(1) brightness(0.4);' : '') + '"></div>';
+            html += '<div class="dex-mon-name">' + (isUnlocked ? (m.name || '???') : '???') + '</div>';
+            html += '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">';
+            html += '<span class="dex-mon-type" style="background:' + typeColor.bg + ';color:' + typeColor.fg + ';">' + (m.type || '???') + '</span>';
+            if (m.type2) html += '<span class="dex-mon-type" style="background:' + getTypeColor(m.type2).bg + ';color:' + getTypeColor(m.type2).fg + ';">' + m.type2 + '</span>';
+            html += '</div>';
+            html += '<div style="font-family:Press Start 2P,monospace;font-size:0.4rem;color:' + (isUnlocked ? '#10b981' : '#475569') + ';margin-top:8px;">' + (isUnlocked ? 'REGISTRADO' : 'NAO CAPTURADO') + '</div>';
+            html += '</div>';
+            html += '<div class="dex-stats-section"><h4>Stats Base</h4>';
+            html += statBar('HP', hp, '#10b981');
+            html += statBar('ATK', atk, '#ef4444');
+            html += statBar('DEF', def, '#fbbf24');
+            html += statBar('SPD', spd, '#3b82f6');
+            html += '</div>';
+            html += movesHtml;
+            document.getElementById('dexDetailEmpty').style.display = 'none';
+            var content = document.getElementById('dexDetailContent');
+            content.style.display = 'block';
+            content.innerHTML = html;
+            if (window.innerWidth <= 600) {
+                document.getElementById('dexDetailPanel').classList.add('show-mobile');
+            }
         }
-        function closeDexDetails() { document.getElementById('dexDetailsView').classList.remove('active'); }
-        function filterDex() { const v = document.getElementById('dexSearch').value.toLowerCase(); document.querySelectorAll('.dex-entry').forEach(e => e.style.display = e.getAttribute('data-name').includes(v) ? 'flex' : 'none'); }
+
+        function getTypeColor(type) {
+            var colors = {
+                fire: { bg: '#f97316', fg: '#fff' }, water: { bg: '#3b82f6', fg: '#fff' },
+                grass: { bg: '#22c55e', fg: '#fff' }, electric: { bg: '#eab308', fg: '#1a1a1a' },
+                ice: { bg: '#67e8f9', fg: '#1a1a1a' }, fighting: { bg: '#dc2626', fg: '#fff' },
+                poison: { bg: '#a855f7', fg: '#fff' }, ground: { bg: '#d97706', fg: '#fff' },
+                flying: { bg: '#818cf8', fg: '#fff' }, psychic: { bg: '#ec4899', fg: '#fff' },
+                bug: { bg: '#84cc16', fg: '#fff' }, rock: { bg: '#78716c', fg: '#fff' },
+                ghost: { bg: '#6366f1', fg: '#fff' }, dragon: { bg: '#7c3aed', fg: '#fff' },
+                dark: { bg: '#44403c', fg: '#fff' }, steel: { bg: '#94a3b8', fg: '#1a1a1a' },
+                fairy: { bg: '#f472b6', fg: '#fff' }, normal: { bg: '#a1a1aa', fg: '#1a1a1a' }
+            };
+            return colors[(type || '').toLowerCase()] || { bg: '#6b7280', fg: '#fff' };
+        }
+
+        function closeDexDetails() { }
+
+        function filterDex() {
+            var v = document.getElementById('dexSearch').value.toLowerCase();
+            var entries = document.querySelectorAll('#dexGrid .dex-entry');
+            DEX_VISIBLE_ENTITIES = [];
+            var newIdx = 0;
+            entries.forEach(function(e) {
+                var match = e.getAttribute('data-name').includes(v);
+                e.style.display = match ? 'flex' : 'none';
+                if (match) {
+                    var origIdx = parseInt(e.getAttribute('data-dexidx'), 10);
+                    DEX_VISIBLE_ENTITIES.push(DEX_ENTITIES[origIdx]);
+                    e.setAttribute('data-visible-idx', newIdx);
+                    newIdx++;
+                }
+            });
+            DEX_SELECTED_IDX = 0;
+            var first = document.querySelector('#dexGrid .dex-entry[style*="flex"]');
+            if (first) {
+                entries.forEach(function(e) { e.classList.remove('keyboard-selected'); });
+                first.classList.add('keyboard-selected');
+                var id = DEX_VISIBLE_ENTITIES[0] ? String(DEX_VISIBLE_ENTITIES[0].id || DEX_VISIBLE_ENTITIES[0]._id) : null;
+                if (id) selectDexMonster(id);
+            }
+        }
 
         /* --- RANK --- */
         async function openRank() {
-            document.getElementById('modalRank').style.display = 'flex';
+            window.MenuSystem.openModal('modalRank');
             const host = document.getElementById('rankContent');
             if (!host) return;
             host.innerHTML = 'Carregando...';
@@ -760,31 +1491,136 @@
 
         /* --- PC SYSTEM --- */
         async function openPC(forceRefresh = false) { 
-            document.getElementById('modalPC').style.display = 'flex'; 
+            window.MenuSystem.openModal('modalPC');
             closePCAction();
             if (CACHED_PC_DATA && !forceRefresh) { renderPCLayout(CACHED_PC_DATA.team, CACHED_PC_DATA.pc); return; }
             try { 
                 document.getElementById('pcStorageArea').innerHTML = '<div style="padding:20px; text-align:center; color:#aaa;">Carregando...</div>';
                 const r = await fetch(`/api/pc?userId=${USER_ID}`); 
                 const d = await r.json(); 
-                CACHED_PC_DATA = d; renderPCLayout(d.team, d.pc); 
+                CACHED_PC_DATA = d; 
+                await preloadPCSprites(d);
+                renderPCLayout(d.team, d.pc); 
             } catch(e) { console.error(e); }
+        }
+
+        function preloadPCSprites(d) {
+            const urls = new Set();
+            (d.team || []).concat(d.pc || []).forEach(p => {
+                if(p.sprite) urls.add(p.sprite);
+                if(p.icon) urls.add(p.icon);
+            });
+            return Promise.all([...urls].map(u => new Promise(res => {
+                const img = new Image();
+                img.onload = img.onerror = () => res();
+                img.src = u;
+            })));
         }
 
         function renderPCLayout(team, pc) {
             const boxHtml = pc.map(p => `
-                <div class="pc-slot" onclick="openPCAction('${p.instanceId}', '${p.name}', 'pc')">
-                    <img src="${resolveImg(p.sprite)}" class="pixel-art">
+                <div class="pc-slot" draggable="true" data-pokemon-id="${p.instanceId}" data-pokemon-name="${p.name}" data-pokemon-source="pc" onclick="openPCAction('${p.instanceId}', '${p.name}', 'pc')">
+                    <img src="${resolveImg(p.icon || p.sprite)}" class="pixel-art">
                     <div class="lvl-badge">Lv.${p.level}</div>
                 </div>`).join('') + Array(10).fill('<div class="pc-slot" style="opacity:0.2; cursor:default;"></div>').join('');
-            document.getElementById('pcStorageArea').innerHTML = boxHtml;
+            const storageArea = document.getElementById('pcStorageArea');
+            if (storageArea) {
+                storageArea.innerHTML = boxHtml;
+                storageArea.addEventListener('dragover', handlePCDragOver);
+                storageArea.addEventListener('dragleave', handlePCDragLeave);
+                storageArea.addEventListener('drop', handlePCDrop);
+                storageArea.querySelectorAll('[draggable="true"]').forEach(slot => {
+                    slot.addEventListener('dragstart', handlePCDragStart);
+                    slot.addEventListener('dragend', handlePCDragEnd);
+                });
+            }
 
             const teamHtml = team.map(p => `
-                <div class="pc-slot" style="min-width:60px; border-color:#10b981;" onclick="openPCAction('${p.instanceId}', '${p.name}', 'team')">
-                    <img src="${resolveImg(p.sprite)}" class="pixel-art">
+                <div class="pc-slot" style="min-width:60px; border-color:#10b981;" draggable="true" data-pokemon-id="${p.instanceId}" data-pokemon-name="${p.name}" data-pokemon-source="team" onclick="openPCAction('${p.instanceId}', '${p.name}', 'team')">
+                    <img src="${resolveImg(p.icon || p.sprite)}" class="pixel-art">
                     <div class="lvl-badge">Lv.${p.level}</div>
                 </div>`).join('') + (team.length < 6 ? '<div class="pc-slot" style="min-width:60px; border:1px dashed #555; opacity:0.5;"></div>' : '');
-            document.getElementById('pcTeamArea').innerHTML = teamHtml;
+            const teamArea = document.getElementById('pcTeamArea');
+            if (teamArea) {
+                teamArea.innerHTML = teamHtml;
+                teamArea.addEventListener('dragover', handlePCDragOver);
+                teamArea.addEventListener('dragleave', handlePCDragLeave);
+                teamArea.addEventListener('drop', handlePCDrop);
+                teamArea.querySelectorAll('[draggable="true"]').forEach(slot => {
+                    slot.addEventListener('dragstart', handlePCDragStart);
+                    slot.addEventListener('dragend', handlePCDragEnd);
+                });
+            }
+        }
+
+        let pcDragData = null;
+
+        function handlePCDragStart(e) {
+            const slot = e.target.closest('[draggable="true"]');
+            pcDragData = {
+                pokemonId: slot.getAttribute('data-pokemon-id'),
+                pokemonName: slot.getAttribute('data-pokemon-name'),
+                source: slot.getAttribute('data-pokemon-source')
+            };
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', JSON.stringify(pcDragData));
+            slot.classList.add('dragging');
+        }
+
+        function handlePCDragEnd(e) {
+            document.querySelectorAll('.pc-slot').forEach(el => el.classList.remove('dragging'));
+            document.querySelectorAll('#pcStorageArea, #pcTeamArea').forEach(el => el.classList.remove('drag-over'));
+        }
+
+        function handlePCDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handlePCDragLeave(e) {
+            if (e.currentTarget === e.target) {
+                e.currentTarget.classList.remove('drag-over');
+            }
+        }
+
+        async function handlePCDrop(e) {
+            e.preventDefault();
+            const container = e.currentTarget;
+            container.classList.remove('drag-over');
+            
+            if (!pcDragData) return;
+            
+            const targetType = container.id === 'pcTeamArea' ? 'team' : 'pc';
+            if (pcDragData.source === targetType) {
+                showToast('Ja esta nessa area!');
+                return;
+            }
+            
+            showToast('Movendo...');
+            try {
+                const res = await fetch('/api/pc/move', { 
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'}, 
+                    body: JSON.stringify({ 
+                        userId: USER_ID, 
+                        pokemonId: pcDragData.pokemonId, 
+                        from: pcDragData.source, 
+                        to: targetType 
+                    }) 
+                });
+                const data = await res.json();
+                if(data.success) { 
+                    showToast('✓ Movido com sucesso!');
+                    closePCAction();
+                    openPC(true);
+                } else { 
+                    showToast(data.error || 'Erro ao mover.');
+                }
+            } catch(e) { 
+                showToast('Erro de conexao');
+            }
+            pcDragData = null;
         }
 
         let selectedPCData = null;
@@ -800,7 +1636,11 @@
             document.getElementById('pcActionMenu').classList.add('active');
         }
 
-        function closePCAction() { document.getElementById('pcActionMenu').classList.remove('active'); selectedPCData = null; }
+        function closePCAction() { 
+            const menu = document.getElementById('pcActionMenu');
+            if (menu) menu.classList.remove('active'); 
+            selectedPCData = null; 
+        }
 
         async function confirmPCMove(targetContainer) {
             if (!selectedPCData) return;
@@ -813,9 +1653,9 @@
                     body: JSON.stringify({ userId: USER_ID, pokemonId: pokeId, from: source, to: targetContainer }) 
                 });
                 const data = await res.json();
-                if(data.success) { showToast("Sucesso!"); openPC(true); } 
-                else { alert(data.error || "Erro ao mover."); }
-            } catch(e) { alert("Erro de conexão"); }
+                if(data.success) { showToast("✓ Sucesso!"); openPC(true); } 
+                else { showToast(data.error || "Erro ao mover."); }
+            } catch(e) { showToast("Erro de conexao"); }
         }
 
         /* --- MOCHILA (AGORA COM DINHEIRO) --- */
@@ -920,10 +1760,11 @@
         }
 
         async function openBag() { 
-            document.getElementById('modalBag').style.display='flex';
+            window.MenuSystem.openModal('modalBag');
 
             const renderBagFromMe = async (d) => {
                 await loadItemCatalog(true);
+                await preloadBagIcons();
 
                 let html = `<div class="bag-header-money">💰 Dinheiro: <b>$${d.money || 0}</b></div>`;
                 html += `
@@ -940,9 +1781,10 @@
                 const tabKeys = document.getElementById('bagTabKeys');
                 const body = document.getElementById('bagTabBody');
 
-                function itemRow(meta, nome, qtd, actionHtml) {
-                    const icon = (meta && meta.hasIcon) ? `/api/items/icon/${encodeURIComponent(String(meta.id))}.png` : (meta && meta.icon ? meta.icon : '');
-                    const iconHtml = icon ? `<img src="${icon}" class="bag-item-icon pixel-art" />` : `<div class="bag-item-icon" style="display:flex;align-items:center;justify-content:center;background:#111;">?</div>`;
+                function itemRow(meta, nome, qtd, actionHtml, overrideId) {
+                    const itemId = overrideId || (meta ? String(meta.id || '') : '');
+                    const icon = getItemIconUrl(itemId);
+                    const iconHtml = icon ? `<img src="${icon}" class="bag-item-icon pixel-art" onerror="this.style.display='none'" />` : `<div class="bag-item-icon" style="display:flex;align-items:center;justify-content:center;background:#111;">?</div>`;
                     const qtyHtml = (qtd !== null && qtd !== undefined) ? `<div style="color:#aaa; font-size:0.85rem;">x${qtd}</div>` : '';
                     return `
                         <div class="bag-item-row">
@@ -967,16 +1809,16 @@
                               : ((d && d.bag && typeof d.bag === 'object') ? d.bag : {});
 
                     const metaBall = getMeta('pokeball');
-                    parts.push(itemRow(metaBall, (metaBall && metaBall.name) ? metaBall.name : 'CatchCube', d.pokeballs || 0));
+                    parts.push(itemRow(metaBall, (metaBall && metaBall.name) ? metaBall.name : 'CatchCube', d.pokeballs || 0, '', 'pokeball'));
 
                     const metaCandy = getMeta('rareCandy');
                     const btn = `<button onclick="startRareCandySelection()" style="background:var(--accent-primary); border:none; padding:8px 16px; border-radius:8px; color:white; font-weight:bold;">USAR</button>`;
-                    parts.push(itemRow(metaCandy, (metaCandy && metaCandy.name) ? metaCandy.name : 'Rare Candy', d.rareCandy || 0, ((d.rareCandy || 0) > 0 ? btn : '')));
+                    parts.push(itemRow(metaCandy, (metaCandy && metaCandy.name) ? metaCandy.name : 'Rare Candy', d.rareCandy || 0, ((d.rareCandy || 0) > 0 ? btn : ''), 'rare-candy'));
 
                     const metaCrystal = getMeta('levelUpCrystal');
                     const btnCrystal = `<button onclick="startLevelUpCrystalSelection()" style="background:var(--accent-primary); border:none; padding:8px 16px; border-radius:8px; color:white; font-weight:bold;">USAR</button>`;
                     const qtyCrystal = (inv && inv.levelUpCrystal) ? parseInt(inv.levelUpCrystal, 10) || 0 : 0;
-                    parts.push(itemRow(metaCrystal, (metaCrystal && metaCrystal.name) ? metaCrystal.name : 'Level Up Crystal', qtyCrystal, (qtyCrystal > 0 ? btnCrystal : '')));
+                    parts.push(itemRow(metaCrystal, (metaCrystal && metaCrystal.name) ? metaCrystal.name : 'Level Up Crystal', qtyCrystal, (qtyCrystal > 0 ? btnCrystal : ''), 'levelUpCrystal'));
 
                     const keys = Object.keys(inv);
                     keys.sort((a, b) => a.localeCompare(b));
@@ -985,7 +1827,7 @@
                         if (!Number.isFinite(qty) || qty <= 0) return;
                         const meta = getMeta(id);
                         const name = (meta && meta.name) ? meta.name : id;
-                        parts.push(itemRow(meta, name, qty));
+                        parts.push(itemRow(meta, name, qty, '', id));
                     });
 
                     body.innerHTML = parts.length ? parts.join('') : `<div class="bag-empty">Sem itens.</div>`;
@@ -1002,7 +1844,7 @@
                     const parts = keys.map(id => {
                         const meta = getMeta(id);
                         const name = (meta && meta.name) ? meta.name : String(id);
-                        return itemRow(meta, name, null);
+                        return itemRow(meta, name, null, '', id);
                     });
                     body.innerHTML = parts.join('');
                 }
@@ -1138,7 +1980,7 @@
 
         function showMoveEditor(p) {
             currentMonId = p.instanceId;
-            // Se learnedMoves estiver vazio (legado), usa moves como base
+            document.getElementById('pokemonDetailContent').classList.remove('show');
             const pool = (p.learnedMoves && p.learnedMoves.length > 0) ? p.learnedMoves : p.moves;
             const equipped = p.moves;
 
@@ -1185,14 +2027,33 @@
         }
 
         async function setLead(id) { 
-            await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); 
+            await fetch('/api/set-lead', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, entityId:id }) }); 
             openEntityTeam(); 
         }
-        async function abandonPokemon(id) { 
-            if(confirm('Tem certeza? Isso é permanente.')) { 
-                await fetch('/api/abandon-pokemon', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ userId:USER_ID, pokemonId:id }) }); 
-                openEntityTeam(); 
-            } 
+        async function abandonPokemon(id) {
+            if (!id) return;
+            const target = CURRENT_TEAM_DATA && CURRENT_TEAM_DATA.find(p => String(p.instanceId) === String(id));
+            const name = target ? target.name : 'esta criatura';
+            const confirmed = window.confirm('⚠️ Liberar ' + name + '? Esta ação é permanente e não pode ser desfeita.');
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/abandon-pokemon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: USER_ID, pokemonId: id })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data || data.error) {
+                    showToast('❌ Não foi possível liberar a criatura');
+                    return;
+                }
+                showToast('✅ Criatura liberada');
+                openEntityTeam();
+            } catch (e) {
+                console.error('Erro ao liberar criatura:', e);
+                showToast('❌ Erro ao liberar criatura');
+            }
         }
         async function applyRareCandy(pokeId) {
             if(!confirm('Usar Rare Candy?')) return;

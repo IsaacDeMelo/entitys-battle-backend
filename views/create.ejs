@@ -12,6 +12,11 @@
             --beast: #a8a878; --flame: #f08030; --aqua: #6890f0; --forest: #78c850;
             --sky: #a890f0; --earth: #e0c068; --mystic: #f85888; --shadow: #705898;
             --metal: #b8b8d0; --venom: #a040a0;
+            --normal: #a8a878; --fire: #f08030; --water: #6890f0; --grass: #78c850;
+            --electric: #f8d030; --ice: #98d8d8; --fighting: #c03028; --poison: #a040a0;
+            --ground: #e0c068; --flying: #a890f0; --psychic: #f85888; --bug: #a8b820;
+            --rock: #b8a038; --ghost: #705898; --dragon: #7038f8; --dark: #705848;
+            --steel: #b8b8d0; --fairy: #ee99ac;
         }
         * { box-sizing: border-box; }
         body { background: radial-gradient(circle at top, #0f172a 0%, #0b1220 55%, #0a0f1a 100%); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; padding: 20px; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
@@ -70,6 +75,24 @@
         .filter-badge.shadow { background: var(--shadow); color: #fff; }
         .filter-badge.metal { background: var(--metal); color: #2d2d2d; }
         .filter-badge.venom { background: var(--venom); color: #fff; }
+        .filter-badge.normal { background: var(--normal); color: #2d2d2d; }
+        .filter-badge.fire { background: var(--fire); color: #fff; }
+        .filter-badge.water { background: var(--water); color: #fff; }
+        .filter-badge.grass { background: var(--grass); color: #fff; }
+        .filter-badge.electric { background: var(--electric); color: #2d2d2d; }
+        .filter-badge.ice { background: var(--ice); color: #2d2d2d; }
+        .filter-badge.fighting { background: var(--fighting); color: #fff; }
+        .filter-badge.poison { background: var(--poison); color: #fff; }
+        .filter-badge.ground { background: var(--ground); color: #2d2d2d; }
+        .filter-badge.flying { background: var(--flying); color: #fff; }
+        .filter-badge.psychic { background: var(--psychic); color: #fff; }
+        .filter-badge.bug { background: var(--bug); color: #fff; }
+        .filter-badge.rock { background: var(--rock); color: #fff; }
+        .filter-badge.ghost { background: var(--ghost); color: #fff; }
+        .filter-badge.dragon { background: var(--dragon); color: #fff; }
+        .filter-badge.dark { background: var(--dark); color: #fff; }
+        .filter-badge.steel { background: var(--steel); color: #2d2d2d; }
+        .filter-badge.fairy { background: var(--fairy); color: #fff; }
         .move-option { display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 0.85rem; cursor: pointer; user-select: none; border: 1px solid transparent; position: relative; transition: 0.2s; }
         .move-option:hover { background: rgba(255,255,255,0.08); border-color: #444; transform: translateY(-1px); }
         .move-option.checked { background: rgba(52, 152, 219, 0.15); border-color: var(--accent); }
@@ -228,14 +251,7 @@
                 <% }) %>
                 </div>
             </div>
-
-            <div id="list-event" class="list-container">
-                <div class="sidebar-header">EVENTO (GLOBAL)</div>
-                <div style="padding:10px; color:#9aa7bd; font-size:0.9rem; line-height:1.4;">
-                    Configure o evento de boss (3 mini-bosses + 1 boss) para todos os jogadores.
-                </div>
-            </div>
-        </div>
+</div>
 
         <!-- EDITOR AREA -->
         <div class="editor-area">
@@ -244,7 +260,6 @@
                 <button id="btn-tab-npc" class="tab-btn" onclick="switchMode('npc')">NPC</button>
                 <button id="btn-tab-item" class="tab-btn" onclick="switchMode('item')">ITENS</button>
                 <button id="btn-tab-skin" class="tab-btn" onclick="switchMode('skin')">SKINS</button>
-                <button id="btn-tab-event" class="tab-btn" onclick="switchMode('event')">EVENTO</button>
             </div>
 
             <!-- ================= FORM ENTIDADE ================= -->
@@ -937,436 +952,6 @@
                 </form>
             </div>
 
-            <!-- ================= FORM EVENTO (BOSS EVENT) ================= -->
-            <div id="tab-event" class="tab-content hidden">
-                <% const be = (typeof bossEvent !== 'undefined' && bossEvent) ? bossEvent : {}; %>
-                <form id="bossEventForm" action="/lab/boss-event/save" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="userId" value="<%= user._id %>">
-
-                    <h4>👹 EVENTO DE BOSS (GLOBAL)</h4>
-                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
-                        <input type="checkbox" name="enabled" style="width:auto;" <%= be.enabled ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--warning);">Habilitar evento</span>
-                    </label>
-
-                    <div class="form-grid" style="margin-top:14px;">
-                        <div>
-                            <label>Event Key</label>
-                            <input type="text" name="eventKey" value="<%= be.eventKey || 'event1' %>" autocomplete="off">
-                        </div>
-                        <div class="half-width">
-                            <label>Título</label>
-                            <input type="text" name="title" value="<%= be.title || 'Evento Boss' %>" autocomplete="off">
-                        </div>
-                    </div>
-
-                    <div class="form-grid" style="margin-top:14px;">
-                        <div>
-                            <label>Skin do Treinador (Boss)</label>
-                            <% const beTrainerIsCustom = !!be.trainerIsCustomSkin; %>
-                            <% const beTrainerSkin = (be && be.trainerSkin) ? String(be.trainerSkin) : 'char2'; %>
-                            <select name="trainerSkinSelect" id="bossTrainerSkinSelect">
-                                <option value="char2" <%= (!beTrainerIsCustom && String(beTrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
-                                <option value="" <%= beTrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
-                                <% (skins || []).forEach(s => { %>
-                                    <option value="<%= s._id %>" <%= (!beTrainerIsCustom && String(beTrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
-                                <% }) %>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Ou Upload Skin Própria</label>
-                            <input type="file" name="trainerSkinFile" accept="image/*" onchange="previewImage(this, 'bossTrainerSkinPreview')">
-                            <% const _tSkin = beTrainerSkin ? String(beTrainerSkin) : 'char2'; %>
-                            <% const _tUrl = (beTrainerIsCustom || (_tSkin && (_tSkin.startsWith('http') || _tSkin.startsWith('data:')))) ? _tSkin : ((/^char\d+$/i.test(_tSkin)) ? ('/uploads/' + _tSkin + '.png') : ('/skins/' + _tSkin + '.png')); %>
-                            <div id="bossTrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
-                                <% if (_tUrl) { %>
-                                    <img src="<%= _tUrl %>" style="height:100%; object-fit:contain;">
-                                <% } else { %>
-                                    <span style="font-size:0.7rem; color:#555">Sem imagem</span>
-                                <% } %>
-                            </div>
-                        </div>
-                    </div>
-
-                    <datalist id="bossEntitySuggestions">
-                        <% (entities || []).forEach(p => { %>
-                            <option value="<%= p.id %>"><%= p.name %></option>
-                        <% }) %>
-                    </datalist>
-
-                    <% const minis = Array.isArray(be.miniBosses) ? be.miniBosses : []; %>
-                    <% const m1 = minis.find(m => m && m.slot === 'mini1') || {}; %>
-                    <% const m2 = minis.find(m => m && m.slot === 'mini2') || {}; %>
-                    <% const m3 = minis.find(m => m && m.slot === 'mini3') || {}; %>
-                    <% const boss = be.boss || {}; %>
-
-                    <h4>🐲 MINI-BOSSES (3)</h4>
-
-                    <% { const slot = 'mini1'; const data = m1; %>
-                        <div class="accordion">
-                                                                <div>
-                                                                    <label>Skin do Treinador (Mini 1)</label>
-                                                                    <% const mini1TrainerIsCustom = !!data.trainerIsCustomSkin; %>
-                                                                    <% const mini1TrainerSkin = (data && data.trainerSkin) ? String(data.trainerSkin) : 'char2'; %>
-                                                                    <select name="mini1TrainerSkinSelect" id="mini1TrainerSkinSelect">
-                                                                        <option value="char2" <%= (!mini1TrainerIsCustom && String(mini1TrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
-                                                                        <option value="" <%= mini1TrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
-                                                                        <% (skins || []).forEach(s => { %>
-                                                                            <option value="<%= s._id %>" <%= (!mini1TrainerIsCustom && String(mini1TrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
-                                                                        <% }) %>
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label>Ou Upload Skin Própria</label>
-                                                                    <input type="file" name="mini1TrainerSkinFile" accept="image/*" onchange="previewImage(this, 'mini1TrainerSkinPreview')">
-                                                                    <% const _mini1Skin = mini1TrainerSkin ? String(mini1TrainerSkin) : 'char2'; %>
-                                                                    <% const _mini1Url = (mini1TrainerIsCustom || (_mini1Skin && (_mini1Skin.startsWith('http') || _mini1Skin.startsWith('data:')))) ? _mini1Skin : ((/^char\d+$/i.test(_mini1Skin)) ? ('/uploads/' + _mini1Skin + '.png') : ('/skins/' + _mini1Skin + '.png')); %>
-                                                                    <div id="mini1TrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
-                                                                        <% if (_mini1Url) { %>
-                                                                            <img src="<%= _mini1Url %>" style="height:100%; object-fit:contain;">
-                                                                        <% } else { %>
-                                                                            <span style="font-size:0.7rem; color:#555">Sem imagem</span>
-                                                                        <% } %>
-                                                                    </div>
-                                                                </div>
-                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
-                                <span>⚔️ MINI 1</span>
-                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
-                            </div>
-                            <div class="accordion-body">
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Base ID</label>
-                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nome (opcional)</label>
-                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nível</label>
-                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div class="full-width">
-                                        <label>Equipe do Treinador (JSON)</label>
-                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
-                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Recompensa (moedas)</label>
-                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Type</label>
-                                        <select name="<%= slot %>RewardType">
-                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
-                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
-                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label>Reward Value (itemId/baseId)</label>
-                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Reward Qty</label>
-                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Level (se entidade)</label>
-                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div style="display:flex; gap:10px; align-items:center;">
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
-                                        </label>
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <% } %>
-
-                    <% { const slot = 'mini2'; const data = m2; %>
-                        <div class="accordion">
-                                                                <div>
-                                                                    <label>Skin do Treinador (Mini 2)</label>
-                                                                    <% const mini2TrainerIsCustom = !!data.trainerIsCustomSkin; %>
-                                                                    <% const mini2TrainerSkin = (data && data.trainerSkin) ? String(data.trainerSkin) : 'char2'; %>
-                                                                    <select name="mini2TrainerSkinSelect" id="mini2TrainerSkinSelect">
-                                                                        <option value="char2" <%= (!mini2TrainerIsCustom && String(mini2TrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
-                                                                        <option value="" <%= mini2TrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
-                                                                        <% (skins || []).forEach(s => { %>
-                                                                            <option value="<%= s._id %>" <%= (!mini2TrainerIsCustom && String(mini2TrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
-                                                                        <% }) %>
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label>Ou Upload Skin Própria</label>
-                                                                    <input type="file" name="mini2TrainerSkinFile" accept="image/*" onchange="previewImage(this, 'mini2TrainerSkinPreview')">
-                                                                    <% const _mini2Skin = mini2TrainerSkin ? String(mini2TrainerSkin) : 'char2'; %>
-                                                                    <% const _mini2Url = (mini2TrainerIsCustom || (_mini2Skin && (_mini2Skin.startsWith('http') || _mini2Skin.startsWith('data:')))) ? _mini2Skin : ((/^char\d+$/i.test(_mini2Skin)) ? ('/uploads/' + _mini2Skin + '.png') : ('/skins/' + _mini2Skin + '.png')); %>
-                                                                    <div id="mini2TrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
-                                                                        <% if (_mini2Url) { %>
-                                                                            <img src="<%= _mini2Url %>" style="height:100%; object-fit:contain;">
-                                                                        <% } else { %>
-                                                                            <span style="font-size:0.7rem; color:#555">Sem imagem</span>
-                                                                        <% } %>
-                                                                    </div>
-                                                                </div>
-                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
-                                <span>⚔️ MINI 2</span>
-                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
-                            </div>
-                            <div class="accordion-body">
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Base ID</label>
-                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nome (opcional)</label>
-                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nível</label>
-                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div class="full-width">
-                                        <label>Equipe do Treinador (JSON)</label>
-                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
-                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Recompensa (moedas)</label>
-                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Type</label>
-                                        <select name="<%= slot %>RewardType">
-                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
-                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
-                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label>Reward Value (itemId/baseId)</label>
-                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Reward Qty</label>
-                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Level (se entidade)</label>
-                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div style="display:flex; gap:10px; align-items:center;">
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
-                                        </label>
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <% } %>
-
-                    <% { const slot = 'mini3'; const data = m3; %>
-                        <div class="accordion">
-                                                                <div>
-                                                                    <label>Skin do Treinador (Mini 3)</label>
-                                                                    <% const mini3TrainerIsCustom = !!data.trainerIsCustomSkin; %>
-                                                                    <% const mini3TrainerSkin = (data && data.trainerSkin) ? String(data.trainerSkin) : 'char2'; %>
-                                                                    <select name="mini3TrainerSkinSelect" id="mini3TrainerSkinSelect">
-                                                                        <option value="char2" <%= (!mini3TrainerIsCustom && String(mini3TrainerSkin) === 'char2') ? 'selected' : '' %>>Padrão (char2)</option>
-                                                                        <option value="" <%= mini3TrainerIsCustom ? 'selected' : '' %>>-- Personalizada (upload) --</option>
-                                                                        <% (skins || []).forEach(s => { %>
-                                                                            <option value="<%= s._id %>" <%= (!mini3TrainerIsCustom && String(mini3TrainerSkin) === String(s._id)) ? 'selected' : '' %>><%= s.name %></option>
-                                                                        <% }) %>
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label>Ou Upload Skin Própria</label>
-                                                                    <input type="file" name="mini3TrainerSkinFile" accept="image/*" onchange="previewImage(this, 'mini3TrainerSkinPreview')">
-                                                                    <% const _mini3Skin = mini3TrainerSkin ? String(mini3TrainerSkin) : 'char2'; %>
-                                                                    <% const _mini3Url = (mini3TrainerIsCustom || (_mini3Skin && (_mini3Skin.startsWith('http') || _mini3Skin.startsWith('data:')))) ? _mini3Skin : ((/^char\d+$/i.test(_mini3Skin)) ? ('/uploads/' + _mini3Skin + '.png') : ('/skins/' + _mini3Skin + '.png')); %>
-                                                                    <div id="mini3TrainerSkinPreview" style="margin-top:5px; height:60px; border:1px dashed #555; display:flex; justify-content:center; align-items:center; overflow:hidden;">
-                                                                        <% if (_mini3Url) { %>
-                                                                            <img src="<%= _mini3Url %>" style="height:100%; object-fit:contain;">
-                                                                        <% } else { %>
-                                                                            <span style="font-size:0.7rem; color:#555">Sem imagem</span>
-                                                                        <% } %>
-                                                                    </div>
-                                                                </div>
-                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
-                                <span>⚔️ MINI 3</span>
-                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
-                            </div>
-                            <div class="accordion-body">
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Base ID</label>
-                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nome (opcional)</label>
-                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nível</label>
-                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div class="full-width">
-                                        <label>Equipe do Treinador (JSON)</label>
-                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
-                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Recompensa (moedas)</label>
-                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Type</label>
-                                        <select name="<%= slot %>RewardType">
-                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
-                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
-                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label>Reward Value (itemId/baseId)</label>
-                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Reward Qty</label>
-                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Level (se entidade)</label>
-                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div style="display:flex; gap:10px; align-items:center;">
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
-                                        </label>
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <% } %>
-
-                    <h4>👑 BOSS PRINCIPAL</h4>
-                    <% { const slot = 'boss'; const data = boss; %>
-                        <div class="accordion">
-                            <div class="accordion-header" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('active');">
-                                <span>👑 BOSS</span>
-                                <span style="opacity:0.7; font-size:0.85rem;">clique para abrir</span>
-                            </div>
-                            <div class="accordion-body">
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Base ID</label>
-                                        <input type="text" name="<%= slot %>BaseId" value="<%= data.baseId || '' %>" list="bossEntitySuggestions" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nome (opcional)</label>
-                                        <input type="text" name="<%= slot %>Name" value="<%= data.name || '' %>" autocomplete="off">
-                                    </div>
-                                    <div>
-                                        <label>Nível</label>
-                                        <input type="number" name="<%= slot %>Level" value="<%= data.level || 1 %>" min="1" step="1">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div class="full-width">
-                                        <label>Equipe do Treinador (JSON)</label>
-                                        <% const team = Array.isArray(data.team) ? data.team : (data.baseId ? [{ baseId: data.baseId, level: (data.level || 1) }] : []); %>
-                                        <textarea name="<%= slot %>TeamJson" class="code-area" style="height:90px;" placeholder='[{"baseId":"monster1","level":5},{"baseId":"monster2","level":8}]'><%= (team && team.length) ? JSON.stringify(team) : '' %></textarea>
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Recompensa (moedas)</label>
-                                        <input type="number" name="<%= slot %>MoneyReward" value="<%= data.moneyReward || 0 %>" min="0" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Type</label>
-                                        <select name="<%= slot %>RewardType">
-                                            <option value="none" <%= (!data.reward || data.reward.type === 'none') ? 'selected' : '' %>>Nenhuma</option>
-                                            <option value="item" <%= (data.reward && data.reward.type === 'item') ? 'selected' : '' %>>Item</option>
-                                            <option value="entity" <%= (data.reward && data.reward.type === 'entity') ? 'selected' : '' %>>Entidade</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label>Reward Value (itemId/baseId)</label>
-                                        <input type="text" name="<%= slot %>RewardVal" value="<%= (data.reward && data.reward.value) ? data.reward.value : '' %>" autocomplete="off">
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div>
-                                        <label>Reward Qty</label>
-                                        <input type="number" name="<%= slot %>RewardQty" value="<%= (data.reward && data.reward.qty) ? data.reward.qty : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div>
-                                        <label>Reward Level (se entidade)</label>
-                                        <input type="number" name="<%= slot %>RewardLevel" value="<%= (data.reward && data.reward.level) ? data.reward.level : 1 %>" min="1" step="1">
-                                    </div>
-                                    <div style="display:flex; gap:10px; align-items:center;">
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardKeyItem" style="width:auto;" <%= (data.reward && data.reward.keyItem) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Item-chave?</span>
-                                        </label>
-                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333; flex:1;">
-                                            <input type="checkbox" name="<%= slot %>RewardUnique" style="width:auto;" <%= (data.reward && data.reward.unique) ? 'checked' : '' %>> <span style="font-weight:bold; color:var(--accent);">Único?</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <% } %>
-
-                    <div class="btn-row">
-                        <button type="submit" class="btn-save">💾 SALVAR EVENTO</button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
     
     <script>

@@ -43,9 +43,10 @@
         /* Entidades */
         .player { position: absolute; width: 48px; height: 48px; background-size: 400% 400%; image-rendering: pixelated; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); margin-left: -24px; margin-top: -40px; z-index: 10; pointer-events: none; transition: top 0s linear, left 0s linear; }
         .player.kid-scale { transform: scale(0.75); transform-origin: bottom center; }
-        .follower { position: absolute; width: 72px; height: 72px; margin-left: -36px; margin-top: -60px; z-index: 9; pointer-events: none; transition: top 0.18s linear, left 0.18s linear; }
+        .follower { position: absolute; margin-left: -36px; margin-top: -60px; z-index: 9; pointer-events: none; transition: top 0.18s linear, left 0.18s linear; }
         .follower img { width: 72px; height: 72px; image-rendering: pixelated; transform-origin: center; }
-        .follower.flip img { transform: scaleX(-1); }
+        .follower canvas { image-rendering: pixelated; image-rendering: crisp-edges; transform-origin: center bottom; }
+        .follower.flip img, .follower.flip canvas { transform: scaleX(-1); }
         .follower.hop { animation: followerHop 0.36s ease-in-out; }
         @keyframes followerHop {
             0% { transform: translateY(0); }
@@ -304,11 +305,12 @@
             bottom: calc(max(20px, env(safe-area-inset-bottom) + 15px) + 78px);
             width: 92%;
             max-width: 420px;
-            z-index: 10001;
+            z-index: 9000;
             display: block;
             height: 140px;
             pointer-events: none;
         }
+        body.menu-open #controlsDock { z-index: 9000; }
 
         #controlsDock * { pointer-events: auto; }
 
@@ -440,224 +442,91 @@
             background: rgba(11, 18, 32, 0.35);
         }
 
-        /* START (substitui o menu flutuante) */
+        /* =========================================
+           START MENU - ESTILO POKÉMON CLÁSSICO
+           ========================================= */
         #startMenuOverlay {
             position: fixed;
             inset: 0;
-            background:
-                radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 55%),
-                repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px),
-                rgba(0,0,0,0.86);
-            z-index: 12000;
+            background: rgba(0, 0, 0, 0.25);
+            z-index: 13000;
             display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right));
             pointer-events: auto;
         }
         #startMenuWindow {
-            width: min(360px, 90vw);
-            background:
-                linear-gradient(180deg, #314c7a 0%, #203457 100%);
-            border: 4px solid #f4e9c7;
-            border-radius: 6px;
-            box-shadow: 0 0 0 2px #17223a, 0 12px 32px rgba(0,0,0,0.75);
-            overflow: hidden;
+            width: min(220px, 75vw);
+            background: #f8f8f8;
+            border: 4px solid #333333;
+            border-radius: 8px;
+            box-shadow: inset 0 0 0 3px #e0e0e0, 0 10px 25px rgba(0,0,0,0.5);
+            padding: 8px 4px;
+            image-rendering: pixelated;
         }
-        #startMenuHeader {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px;
-            background: linear-gradient(180deg, #3f6fbd 0%, #2c4f8c 100%);
-            border-bottom: 3px solid #1a2a46;
-            color: #ffffff;
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.7rem;
-            letter-spacing: 1px;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
-        }
-        #startMenuClose {
-            background: #1b2b47;
-            color: #f9f4de;
-            border: 2px solid #f4e9c7;
-            border-radius: 2px;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.55rem;
-            box-shadow: 0 2px 0 #101a2c;
-        }
-        #startMenuClose:active { transform: translateY(2px); box-shadow: none; }
         #startMenuBody {
-            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            background:
-                repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px),
-                linear-gradient(180deg, rgba(10,16,32,0.35), rgba(10,16,32,0.6));
+            gap: 2px;
         }
         .startMenuBtn {
-            background: linear-gradient(180deg, #f9f2d5 0%, #e7d8a5 100%);
-            color: #1a2436;
-            border: 3px solid #fff2c2;
-            border-radius: 6px;
-            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: transparent;
+            color: #333333;
+            border: none;
+            padding: 14px 12px 14px 34px;
             cursor: pointer;
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             text-align: left;
             position: relative;
-            box-shadow: 0 4px 0 #1a2436, inset 0 1px 0 rgba(255,255,255,0.85);
-            transition: all 0.1s;
-        }
-        .startMenuBtn:hover { filter: brightness(1.03); border-color: #fff7d6; }
-        .startMenuBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1a2436; }
-        .startMenuBtn::before {
-            content: '■';
-            position: absolute;
-            left: 8px;
-            color: #1a2436;
-            font-size: 0.5rem;
-        }
-        .startMenuBtn--gold {
-            background: linear-gradient(180deg, #ffe48a 0%, #f1b948 100%);
-            border-color: #ffe9a6;
-        }
-
-        /* BOSS EVENT */
-        #bossEventOverlay {
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 55%),
-                repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 6px),
-                rgba(0,0,0,0.86);
-            z-index: 12050;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-            pointer-events: auto;
-        }
-        #bossEventWindow {
-            width: min(520px, 92vw);
-            max-height: 84vh;
-            background: linear-gradient(180deg, #314c7a 0%, #203457 100%);
-            border: 4px solid #f4e9c7;
+            width: 100%;
             border-radius: 6px;
-            box-shadow: 0 0 0 2px #17223a, 0 12px 32px rgba(0,0,0,0.75);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            transition: background 0.1s;
         }
-        #bossEventHeader {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px;
-            background: linear-gradient(180deg, #3f6fbd 0%, #2c4f8c 100%);
-            border-bottom: 3px solid #1a2a46;
-            color: #ffffff;
-            font-family: 'Press Start 2P', monospace;
+        .startMenuBtn::before {
+            content: '▶';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: transparent;
             font-size: 0.65rem;
-            letter-spacing: 1px;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
         }
-        #bossEventClose {
-            background: #1b2b47;
-            color: #f9f4de;
-            border: 2px solid #f4e9c7;
-            border-radius: 2px;
-            padding: 6px 10px;
-            cursor: pointer;
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.55rem;
-            box-shadow: 0 2px 0 #101a2c;
+        .startMenuBtn:hover::before,
+        .startMenuBtn:active::before {
+            color: #d82b2b;
         }
-        #bossEventClose:active { transform: translateY(2px); box-shadow: none; }
-        #bossEventBody {
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow: auto;
-            background:
-                repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 3px),
-                linear-gradient(180deg, rgba(10,16,32,0.35), rgba(10,16,32,0.6));
+        .startMenuBtn:active {
+            background: rgba(0, 0, 0, 0.06);
         }
-        .bossEventRow {
-            background: rgba(0,0,0,0.25);
-            border: 2px solid rgba(244,233,199,0.35);
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .bossEventLeft {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-        }
-        .bossEventSprite {
-            width: 44px;
-            height: 44px;
+        .startMenuBtn .menu-icon {
+            flex-shrink: 0;
+            width: 22px;
+            height: 22px;
             object-fit: contain;
             image-rendering: pixelated;
-            background: rgba(0,0,0,0.25);
-            border: 2px solid rgba(244,233,199,0.28);
-            border-radius: 8px;
-            flex: 0 0 auto;
         }
-        .bossEventMeta {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            color: #f9f4de;
-            min-width: 0;
+        .startMenuBtn span {
+            flex: 1;
+            letter-spacing: 0.5px;
+            line-height: 1.4;
         }
-        .bossEventName {
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.55rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .bossEventSub {
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 900;
-            color: rgba(249,244,222,0.85);
-            font-size: 0.9rem;
-        }
-        .bossEventBtn {
-            width: auto;
-            min-width: 120px;
-        }
+        .cityActionBtn::before { content: none !important; }
+        .cityActionBtn { padding: 8px 14px !important; justify-content: center; text-align: center; }
 
-        /* Variação do botão do menu (sem setinha) — usado em ações (bag/shop) */
-        .cityActionBtn {
-            text-align: center;
-        }
-        .cityActionBtn::before {
-            content: '';
-        }
-        .bagUseBtn {
-            padding: 10px 12px;
-            font-size: 0.55rem;
-            width: auto;
-            box-shadow: 0 3px 0 #1a2940, inset 0 1px 0 rgba(255,255,255,0.8);
-        }
-
-        /* BAG OVERLAY */
+        /* =========================================
+           BOLSA (BAG) - REDESIGN DARK RPG SLEEK
+           ========================================= */
         #bagOverlay {
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.85);
-            z-index: 12100;
+            backdrop-filter: blur(4px);
+            z-index: 13100; /* Acima do menu start */
             display: none;
             align-items: center;
             justify-content: center;
@@ -667,50 +536,50 @@
         #bagWindow {
             width: min(480px, 95vw);
             max-height: 85vh;
-            background: linear-gradient(135deg, #2d4a6e 0%, #1a2940 100%);
-            border: 4px solid #f0f0f0;
+            background: #0b1220; /* Fundo principal super escuro */
+            border: 2px solid #334155;
             border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -2px 0 rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
             display: flex;
             flex-direction: column;
             overflow: hidden;
-        }
-        #bagMoney {
-            text-align: center;
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
-            border-bottom: 3px solid #e67e22;
-            font-family: 'Press Start 2P', monospace;
-            font-size: 0.7rem;
-            color: #2c3e50;
-            text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
-            box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2);
         }
         #bagHeader {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 14px;
-            background: linear-gradient(180deg, #4169a8 0%, #2d5080 100%);
-            border-bottom: 3px solid #1a2940;
-            color: #ffffff;
+            padding: 16px 20px;
+            background: #0f172a;
+            border-bottom: 2px solid #f1c40f; /* Linha de destaque dourada */
+            color: #f1c40f;
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             letter-spacing: 1px;
-            text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
         }
         #bagClose {
-            background: #2d3748;
-            color: #f7fafc;
-            border: 2px solid #4a5568;
-            border-radius: 4px;
-            padding: 6px 10px;
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 8px 12px;
             cursor: pointer;
             font-family: 'Press Start 2P', monospace;
             font-size: 0.55rem;
-            box-shadow: 0 2px 0 #1a202c;
+            transition: all 0.2s;
         }
-        #bagClose:active { transform: translateY(2px); box-shadow: none; }
+        #bagClose:hover { background: #334155; border-color: #f1c40f; color: #f1c40f; }
+        
+        #bagMoney {
+            text-align: right;
+            padding: 10px 20px;
+            background: rgba(241, 196, 15, 0.05);
+            border-bottom: 1px solid #334155;
+            font-family: 'Rajdhani', sans-serif; /* Fica mais limpo para números longos */
+            font-weight: 800;
+            font-size: 0.9rem;
+            color: #f1c40f;
+            letter-spacing: 1px;
+        }
         #bagBody {
             flex: 1;
             overflow-y: auto;
@@ -718,62 +587,70 @@
         }
         #bagEmpty {
             text-align: center;
-            padding: 32px 16px;
-            color: #a0aec0;
+            padding: 40px 16px;
+            color: #64748b;
             font-family: 'Press Start 2P', monospace;
             font-size: 0.6rem;
-            line-height: 1.6;
+            line-height: 1.8;
         }
         #bagList {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .bagItem {
-            background: linear-gradient(180deg, #f8f8f8 0%, #d8d8d8 100%);
-            border: 3px solid #fff;
-            border-radius: 8px;
-            padding: 12px 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 10px 14px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            box-shadow: 0 3px 0 #1a2940, inset 0 1px 0 rgba(255,255,255,0.8);
+            gap: 14px;
+            transition: background 0.2s;
         }
+        .bagItem:hover { background: rgba(255,255,255,0.06); border-color: #475569; }
+        
         .bagItemIcon {
-            width: 40px;
-            height: 40px;
-            background: #fff;
-            border: 2px solid #2d5080;
+            width: 48px;
+            height: 48px;
+            background: #0f172a; /* Caixa escura pro icone */
+            border: 1px solid #475569;
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
             image-rendering: pixelated;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
-        .bagItemIcon img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        .bagItemInfo {
-            flex: 1;
-            min-width: 0;
-        }
+        .bagItemIcon img { width: 80%; height: 80%; object-fit: contain; }
+        
+        .bagItemInfo { flex: 1; min-width: 0; }
         .bagItemName {
-            color: #2a2a2a;
+            color: #f8fafc;
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.6rem;
-            margin-bottom: 4px;
-            text-shadow: none;
+            font-size: 0.65rem;
+            margin-bottom: 6px;
+            line-height: 1.3;
         }
         .bagItemQty {
-            color: #555;
+            color: #94a3b8;
             font-family: 'Rajdhani', sans-serif;
-            font-size: 0.8rem;
-            font-weight: 700;
+            font-size: 0.85rem;
+            font-weight: 800;
         }
+        
+        /* Botão de Usar Item na Bolsa */
+        .bagUseBtn {
+            background: #2ecc71;
+            color: #052e16;
+            border: 1px solid #16a085;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.55rem;
+            cursor: pointer;
+        }
+        .bagUseBtn:hover { background: #27ae60; }
 
         /* STARTER PICKER (full-screen) */
         #starterPickerOverlay {
@@ -1388,38 +1265,41 @@
         </div>
 
         <div id="controlsRight">
-            <button id="virtualPadB" type="button" title="Interagir (mapa)">B</button>
             <button id="virtualPadInteract" type="button" title="Interagir">A</button>
+            <button id="virtualPadB" type="button" title="Interagir (mapa)">B</button>
         </div>
     </div>
 
     <div id="startMenuOverlay" onclick="window.__closeStartMenu && window.__closeStartMenu()">
         <div id="startMenuWindow" onclick="event.stopPropagation()">
-            <div id="startMenuHeader">
-                <div>MENU</div>
-                <button id="startMenuClose" type="button">FECHAR</button>
-            </div>
             <div id="startMenuBody">
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokedex==='function') openPokedex();">     DEX</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">     EQUIPE</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">     BOLSA</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">     PC</button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openRank==='function') openRank();">     RANK</button>
-                <button class="startMenuBtn startMenuBtn--gold" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBossEvent==='function') openBossEvent();">👹 EVENTO BOSS</button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokedex==='function') openPokedex();">
+                    <img class="menu-icon" src="/api/sprites/pokedex.png" alt="">
+                    <span>POKÉDEX</span>
+                </button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">
+                    <img class="menu-icon" src="/api/sprites/pokeball.png" alt="">
+                    <span>EQUIPE</span>
+                </button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">
+                    <img class="menu-icon" src="/api/sprites/bag.png" alt="">
+                    <span>BOLSA</span>
+                </button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">
+                    <img class="menu-icon" src="/api/sprites/pc.png" alt="">
+                    <span>PC</span>
+                </button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openRank==='function') openRank();">
+                    <img class="menu-icon" src="/api/sprites/star.png" alt="">
+                    <span>RANK</span>
+                </button>
+                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu();">
+                    <img class="menu-icon" src="/api/sprites/close.png" alt="">
+                    <span>FECHAR</span>
+                </button>
             </div>
         </div>
     </div>
-
-    <div id="bossEventOverlay" onclick="window.__closeBossEvent && window.__closeBossEvent()">
-        <div id="bossEventWindow" onclick="event.stopPropagation()">
-            <div id="bossEventHeader">
-                <div id="bossEventTitle">EVENTO BOSS</div>
-                <button id="bossEventClose" type="button">FECHAR</button>
-            </div>
-            <div id="bossEventBody">
-                <div id="bossEventStatus" style="color:#f9f4de; opacity:0.9; font-family:'Rajdhani', sans-serif; font-weight:900;"></div>
-                <div id="bossEventList"></div>
-            </div>
         </div>
     </div>
 
@@ -2153,6 +2033,9 @@
         }
 
         async function transitionToMap(mapId, targetX, targetY) {
+            // Fecha todos os modais abertos antes de navegar
+            if (typeof closeAllModals === 'function') closeAllModals();
+
             // Mostra overlay de transição
             const overlay = document.getElementById('transitionOverlay');
             if (overlay) {
@@ -2966,6 +2849,7 @@
 
         window.isMoving = false;
         window.isTeleporting = false;
+        window.__menuOpen = window.__menuOpen || false;
         window.isInteracting = false;
 
         // Cooldown de portal (persiste entre páginas para evitar "voltar pro lugar antigo" ao dar o primeiro passo)
@@ -3189,7 +3073,8 @@
                 y: Number.isFinite(y) ? y : 50,
                 direction,
                 followerSprite: data.followerSprite,
-                followerName: data.followerName
+                followerName: data.followerName,
+                followerDexOrder: data.followerDexOrder || 0
             });
         });
         
@@ -3517,6 +3402,9 @@
             window.isTeleporting = true;
             window.isMoving = false;
             window.__transitionNavigating = false;
+
+            // Fecha todos os modais abertos antes de navegar
+            if (typeof closeAllModals === 'function') closeAllModals();
 
             const overlay = document.getElementById('transitionOverlay');
             if (overlay) overlay.classList.remove('hidden');
@@ -4762,6 +4650,7 @@
 
         // --- INTERAÇÕES ---
         window.interactWithNPC = function(npc) {
+            if (window.__menuOpen) return;
             window.isInteracting = true; window.isMoving = false;
 
             function endInteraction() {
@@ -5366,7 +5255,7 @@
         })();
 
         window.moveToAndTalkToNPC = function(npc) {
-            if (window.isMoving || window.isInteracting || window.isTeleporting) return;
+            if (window.isMoving || window.isInteracting || window.isTeleporting || window.__menuOpen) return;
             const myPlayer = document.getElementById(`p-${window.myId}`); if (!myPlayer) return;
 
             function getNpcInteractRange(n) {
@@ -5403,6 +5292,7 @@
 
             // Se já está perto, inicia o menu direto.
             if (dist <= interactRange) {
+                if (window.__menuOpen) return;
                 interactWithNPC(npc);
                 return;
             }
@@ -5489,7 +5379,10 @@
 
             if (!foundKey) {
                 // Se não achou rota, ainda permite falar se já estiver dentro do alcance.
-                if (dist <= interactRange) interactWithNPC(npc);
+                if (dist <= interactRange) {
+                    if (window.__menuOpen) return;
+                    interactWithNPC(npc);
+                }
                 return;
             }
 
@@ -5537,7 +5430,10 @@
                     const px = me ? parseFloat(me.style.left) : currX;
                     const py = me ? parseFloat(me.style.top) : currY;
                     const remain = Math.hypot(npcX - px, npcY - py);
-                    if (remain <= interactRange) interactWithNPC(npc);
+                    if (remain <= interactRange) {
+                        if (window.__menuOpen) return;
+                        interactWithNPC(npc);
+                    }
                     return;
                 }
 
@@ -5555,6 +5451,7 @@
                     const remain = Math.hypot(npcX - px, npcY - py);
                     if (remain <= interactRange) {
                         window.isMoving = false;
+                        if (window.__menuOpen) return;
                         interactWithNPC(npc);
                         return;
                     }
@@ -5676,7 +5573,7 @@
                 div.classList.add('player-remote');
                 div.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (window.__devClickCapture || devMode || window.isTeleporting || window.isInteracting) return;
+                    if (window.__devClickCapture || devMode || window.isTeleporting || window.isInteracting || window.__menuOpen) return;
                     openPlayerProfile({ id: p.id, userId: p.userId, name: displayName || p.name, skin: p.skin, sprite: p.sprite });
                 });
             }
@@ -5735,6 +5632,191 @@
         let followerEl = null;
         let followerQueue = [];
         let followerTimer = null;
+        let followerAnim = null;
+
+        const SPRITECOLLAB_BASE = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite';
+        const POKEAPI_BASE = 'https://pokeapi.co/api/v2/pokemon';
+        const spriteCache = new Map();
+        const pokeHeightCache = new Map();
+
+        const DIR_TO_ROW = { down: 0, downRight: 1, left: 6, upLeft: 3, up: 4, upRight: 5, right: 2, downLeft: 7 };
+        const DIR_MAP = { down: 'down', left: 'left', up: 'up', right: 'right' };
+
+        function padId(n) { return String(n).padStart(4, '0'); }
+
+        function fetchWithTimeout(url, opts = {}, ms = 5000) {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), ms);
+            return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+        }
+
+        function loadImageWithTimeout(src, ms = 5000) {
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error('timeout')), ms);
+                const i = new Image();
+                i.crossOrigin = 'anonymous';
+                i.onload = () => { clearTimeout(timer); resolve(i); };
+                i.onerror = () => { clearTimeout(timer); reject(new Error('img')); };
+                i.src = src;
+            });
+        }
+
+        async function loadSpriteData(dexOrder) {
+            if (!dexOrder || dexOrder <= 0) return null;
+            if (spriteCache.has(dexOrder)) return spriteCache.get(dexOrder);
+            const id = padId(dexOrder);
+            const base = `${SPRITECOLLAB_BASE}/${id}`;
+            try {
+                const [walkImg, idleImg, xmlRes] = await Promise.all([
+                    loadImageWithTimeout(`${base}/Walk-Anim.png`, 6000),
+                    loadImageWithTimeout(`${base}/Idle-Anim.png`, 6000).catch(() => null),
+                    fetchWithTimeout(`${base}/AnimData.xml`, {}, 6000).then(r => r.ok ? r.text() : Promise.reject('xml'))
+                ]);
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(xmlRes, 'text/xml');
+                const parseAnim = (name) => {
+                    for (const anim of xml.querySelectorAll('Anim')) {
+                        if (anim.querySelector('Name')?.textContent === name) {
+                            return {
+                                fw: parseInt(anim.querySelector('FrameWidth')?.textContent) || 40,
+                                fh: parseInt(anim.querySelector('FrameHeight')?.textContent) || 40,
+                                framesPerDir: anim.querySelectorAll('Duration').length || 6
+                            };
+                        }
+                    }
+                    return null;
+                };
+                const walkMeta = parseAnim('Walk');
+                const idleMeta = parseAnim('Idle');
+                const fw = walkMeta?.fw || 40, fh = walkMeta?.fh || 40;
+                const framesPerDir = walkMeta?.framesPerDir || 6;
+                const walkData = walkImg ? {
+                    img: walkImg, fw: walkMeta?.fw || fw, fh: walkMeta?.fh || fh,
+                    framesPerDir: walkMeta?.framesPerDir || framesPerDir,
+                    cols: Math.floor(walkImg.width / (walkMeta?.fw || fw)),
+                    rows: Math.floor(walkImg.height / (walkMeta?.fh || fh))
+                } : null;
+                const idleData = idleImg ? {
+                    img: idleImg, fw: idleMeta?.fw || fw, fh: idleMeta?.fh || fh,
+                    framesPerDir: idleMeta?.framesPerDir || 6,
+                    cols: Math.floor(idleImg.width / (idleMeta?.fw || fw)),
+                    rows: Math.floor(idleImg.height / (idleMeta?.fh || fh))
+                } : null;
+                const data = { walk: walkData, idle: idleData, fw, fh, framesPerDir };
+                spriteCache.set(dexOrder, data);
+                return data;
+            } catch (_) {
+                spriteCache.set(dexOrder, null);
+                return null;
+            }
+        }
+
+        async function fetchPokeHeight(dexOrder) {
+            if (!dexOrder || dexOrder <= 0) return null;
+            if (pokeHeightCache.has(dexOrder)) return pokeHeightCache.get(dexOrder);
+            try {
+                const res = await fetchWithTimeout(`${POKEAPI_BASE}/${dexOrder}`, {}, 5000);
+                if (!res.ok) return null;
+                const json = await res.json();
+                const heightDm = json.height || 10;
+                pokeHeightCache.set(dexOrder, heightDm);
+                return heightDm;
+            } catch (_) {
+                pokeHeightCache.set(dexOrder, null);
+                return null;
+            }
+        }
+
+        function calcFollowerSize(heightDm) {
+            if (!heightDm) return 40;
+            const min = 36, max = 56;
+            const size = Math.round(min + (heightDm / 25) * (max - min));
+            return Math.max(min, Math.min(max, size));
+        }
+
+        function createFollowerCanvas(spriteData, dir, size) {
+            size = size || 44;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            drawFollowerFrame(canvas, spriteData, 0, dir);
+            return canvas;
+        }
+
+        function drawFollowerFrame(canvas, spriteData, frameIdx, dir) {
+            if (!spriteData || !canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.imageSmoothingEnabled = false;
+            const row = DIR_TO_ROW[dir] ?? 0;
+            const col = frameIdx % spriteData.cols;
+            const sx = col * spriteData.fw;
+            const sy = row * spriteData.fh;
+            const scale = Math.min(canvas.width / spriteData.fw, canvas.height / spriteData.fh);
+            const dw = spriteData.fw * scale;
+            const dh = spriteData.fh * scale;
+            const dx = (canvas.width - dw) / 2;
+            const dy = (canvas.height - dh) / 2;
+            ctx.drawImage(spriteData.img, sx, sy, spriteData.fw, spriteData.fh, dx, dy, dw, dh);
+        }
+
+        class FollowerAnimator {
+            constructor(el) {
+                this.el = el;
+                this.walkData = null;
+                this.idleData = null;
+                this.currentFrame = 0;
+                this.currentDir = 'down';
+                this.isPlaying = false;
+                this.interval = null;
+                this.speed = 180;
+                this.canvasSize = 44;
+            }
+            setSprites(walkData, idleData) {
+                this.walkData = walkData;
+                this.idleData = idleData || walkData;
+                this.currentFrame = 0;
+                this.render(true);
+            }
+            play(dir) {
+                const data = this.walkData;
+                if (!data) return;
+                this.currentDir = dir || this.currentDir;
+                if (this.isPlaying) return;
+                this.isPlaying = true;
+                this.currentFrame = 0;
+                this.interval = setInterval(() => {
+                    this.currentFrame = (this.currentFrame + 1) % this.walkData.framesPerDir;
+                    this.render(false);
+                }, this.speed);
+            }
+            stop() {
+                this.isPlaying = false;
+                if (this.interval) { clearInterval(this.interval); this.interval = null; }
+                this.currentFrame = 0;
+                this.render(false);
+            }
+            setDir(dir) {
+                if (this.currentDir === dir) return;
+                this.currentDir = dir;
+                if (!this.isPlaying) this.render(false);
+            }
+            render(forceResize) {
+                const canvas = this.el.querySelector('canvas');
+                if (!canvas) return;
+                const data = this.isPlaying ? this.walkData : this.idleData;
+                if (!data) return;
+                if (forceResize) {
+                    canvas.width = this.canvasSize;
+                    canvas.height = this.canvasSize;
+                    canvas.style.width = this.canvasSize + 'px';
+                    canvas.style.height = this.canvasSize + 'px';
+                }
+                drawFollowerFrame(canvas, data, this.currentFrame, this.currentDir);
+            }
+        }
 
         function setFollowingEntityId(id) {
             window.FOLLOWING_ENTITY_ID = id || '';
@@ -5751,27 +5833,70 @@
         }
 
         function removeFollower() {
+            if (followerAnim) { followerAnim.stop(); followerAnim = null; }
             if (followerEl) followerEl.remove();
             followerEl = null;
             followerQueue = [];
             if (followerTimer) { clearInterval(followerTimer); followerTimer = null; }
         }
 
-        function ensureFollowerElement(data) {
-            if (!data || !data.sprite) return false;
+        async function ensureFollowerElement(data) {
+            if (!data) return false;
+            const dexOrder = data.dexOrder || 0;
+            const [spriteData, heightDm] = await Promise.all([
+                dexOrder ? loadSpriteData(dexOrder) : Promise.resolve(null),
+                dexOrder ? fetchPokeHeight(dexOrder) : Promise.resolve(null)
+            ]);
+            const canvasSize = calcFollowerSize(heightDm);
+
+            function positionFollower(el, sz) {
+                el.style.marginLeft = -Math.round(sz / 2) + 'px';
+                el.style.marginTop = -Math.round(sz * 0.8) + 'px';
+            }
+
             if (!followerEl) {
                 followerEl = document.createElement('div');
                 followerEl.id = 'follower';
                 followerEl.className = 'follower';
-                const img = document.createElement('img');
-                img.src = resolveImg(data.sprite);
-                img.alt = data.name || 'Seguidor';
-                followerEl.appendChild(img);
+                if (spriteData && spriteData.walk) {
+                    const canvas = createFollowerCanvas(spriteData.walk, 'down', canvasSize);
+                    followerEl.appendChild(canvas);
+                    followerAnim = new FollowerAnimator(followerEl);
+                    followerAnim.canvasSize = canvasSize;
+                    followerAnim.setSprites(spriteData.walk, spriteData.idle);
+                    positionFollower(followerEl, canvasSize);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = resolveImg(data.icon || data.sprite);
+                    img.alt = data.name || 'Seguidor';
+                    followerEl.appendChild(img);
+                    positionFollower(followerEl, 72);
+                }
                 gameArea.appendChild(followerEl);
             } else {
-                const img = followerEl.querySelector('img');
-                const nextSrc = resolveImg(data.sprite);
-                if (img && img.src !== nextSrc) img.src = nextSrc;
+                if (spriteData && spriteData.walk) {
+                    let canvas = followerEl.querySelector('canvas');
+                    if (!canvas) {
+                        const oldImg = followerEl.querySelector('img');
+                        if (oldImg) oldImg.remove();
+                        canvas = createFollowerCanvas(spriteData.walk, 'down', canvasSize);
+                        followerEl.appendChild(canvas);
+                        followerAnim = new FollowerAnimator(followerEl);
+                    }
+                    followerAnim.canvasSize = canvasSize;
+                    followerAnim.setSprites(spriteData.walk, spriteData.idle);
+                    positionFollower(followerEl, canvasSize);
+                } else {
+                    const oldCanvas = followerEl.querySelector('canvas');
+                    if (oldCanvas) oldCanvas.remove();
+                    let img = followerEl.querySelector('img');
+                    if (!img) {
+                        img = document.createElement('img');
+                        followerEl.appendChild(img);
+                    }
+                    img.src = resolveImg(data.icon || data.sprite);
+                    positionFollower(followerEl, 72);
+                }
             }
             return true;
         }
@@ -5779,29 +5904,33 @@
         function setupFollower() {
             const data = getFollowerData();
             if (!data) { removeFollower(); return; }
-            if (!ensureFollowerElement(data)) { removeFollower(); return; }
-            const me = document.getElementById(`p-${window.myId}`);
-            if (me) {
-                const x = parseFloat(me.style.left) || 50;
-                const y = parseFloat(me.style.top) || 50;
-                updateFollowerPosition({ x, y, dir: me.getAttribute('data-dir') || 'down' }, true);
-            }
-            if (!followerTimer) startFollowerLoop();
+            ensureFollowerElement(data).then(ok => {
+                if (!ok) { removeFollower(); return; }
+                const me = document.getElementById(`p-${window.myId}`);
+                if (me) {
+                    const x = parseFloat(me.style.left) || 50;
+                    const y = parseFloat(me.style.top) || 50;
+                    updateFollowerPosition({ x, y, dir: me.getAttribute('data-dir') || 'down' }, true);
+                }
+                if (!followerTimer) startFollowerLoop();
+            }).catch(() => { removeFollower(); });
         }
 
         function applyFollowerOffset(pos) {
             let x = pos.x;
             let y = pos.y;
             const dir = pos.dir || 'down';
-            const offset = 6;
-            if (dir === 'up') y = y + offset;
-            else if (dir === 'down') y = y - offset;
-            else if (dir === 'left') x = x + offset;
-            else if (dir === 'right') x = x - offset;
+            if (dir === 'up') { y = y + 6; }
+            else if (dir === 'down') { y = y - 3; }
+            else if (dir === 'left') { x = x + 8; y = y + 2; }
+            else if (dir === 'right') { x = x - 8; y = y + 2; }
             x = Math.max(0, Math.min(100, x));
             y = Math.max(0, Math.min(100, y));
             return { x, y, dir };
         }
+
+        let followerMoving = false;
+        let followerMoveTimeout = null;
 
         function updateFollowerPosition(pos, immediate = false) {
             if (!followerEl) return;
@@ -5810,8 +5939,21 @@
             followerEl.style.left = next.x + '%';
             followerEl.style.top = next.y + '%';
             followerEl.style.zIndex = Math.floor(next.y) - 1;
-            if (next.dir === 'right') followerEl.classList.add('flip');
-            else if (next.dir === 'left') followerEl.classList.remove('flip');
+
+            if (followerAnim && followerAnim.walkData) {
+                followerEl.classList.remove('flip');
+                followerAnim.setDir(next.dir);
+                if (!followerAnim.isPlaying) followerAnim.play(next.dir);
+                followerMoving = true;
+                if (followerMoveTimeout) clearTimeout(followerMoveTimeout);
+                followerMoveTimeout = setTimeout(() => {
+                    if (followerAnim) followerAnim.stop();
+                    followerMoving = false;
+                }, 250);
+            } else {
+                if (next.dir === 'right') followerEl.classList.add('flip');
+                else if (next.dir === 'left') followerEl.classList.remove('flip');
+            }
 
             followerEl.classList.remove('hop');
             void followerEl.offsetWidth;
@@ -5838,32 +5980,88 @@
 
         const remoteFollowers = new Map();
 
-        function ensureRemoteFollower(playerId, sprite, name) {
-            if (!playerId || !sprite) return null;
+        async function ensureRemoteFollower(playerId, sprite, name, dexOrder) {
+            if (!playerId) return null;
+            const hasSpritecollab = dexOrder && dexOrder > 0;
             let entry = remoteFollowers.get(playerId);
+
+            function positionFollower(el, sz) {
+                el.style.marginLeft = -Math.round(sz / 2) + 'px';
+                el.style.marginTop = -Math.round(sz * 0.8) + 'px';
+            }
+
             if (!entry) {
                 const el = document.createElement('div');
                 el.className = 'follower';
                 el.dataset.ownerId = playerId;
-                const img = document.createElement('img');
-                img.src = resolveImg(sprite);
-                img.alt = name || 'Seguidor';
-                el.appendChild(img);
+                let anim = null;
+                let canvasSize = 44;
+
+                if (hasSpritecollab) {
+                    const [spriteData, heightDm] = await Promise.all([
+                        loadSpriteData(dexOrder),
+                        fetchPokeHeight(dexOrder)
+                    ]);
+                    canvasSize = calcFollowerSize(heightDm);
+                    if (spriteData && spriteData.walk) {
+                        const canvas = createFollowerCanvas(spriteData.walk, 'down', canvasSize);
+                        el.appendChild(canvas);
+                        anim = new FollowerAnimator(el);
+                        anim.canvasSize = canvasSize;
+                        anim.setSprites(spriteData.walk, spriteData.idle);
+                        positionFollower(el, canvasSize);
+                    }
+                }
+                if (!el.querySelector('canvas')) {
+                    if (sprite) {
+                        const img = document.createElement('img');
+                        img.src = resolveImg(sprite);
+                        img.alt = name || 'Seguidor';
+                        el.appendChild(img);
+                        positionFollower(el, 72);
+                    }
+                }
                 gameArea.appendChild(el);
-                entry = { el, sprite };
+                entry = { el, sprite, anim, dexOrder, canvasSize };
                 remoteFollowers.set(playerId, entry);
             } else {
-                const img = entry.el.querySelector('img');
-                const nextSrc = resolveImg(sprite);
-                if (img && img.src !== nextSrc) img.src = nextSrc;
-                entry.sprite = sprite;
+                if (hasSpritecollab && hasSpritecollab !== entry.dexOrder) {
+                    const [spriteData, heightDm] = await Promise.all([
+                        loadSpriteData(dexOrder),
+                        fetchPokeHeight(dexOrder)
+                    ]);
+                    entry.canvasSize = calcFollowerSize(heightDm);
+                    if (spriteData && spriteData.walk) {
+                        const oldImg = entry.el.querySelector('img');
+                        if (oldImg) oldImg.remove();
+                        let canvas = entry.el.querySelector('canvas');
+                        if (!canvas) {
+                            canvas = createFollowerCanvas(spriteData.walk, 'down', entry.canvasSize);
+                            entry.el.appendChild(canvas);
+                        }
+                        if (!entry.anim) {
+                            entry.anim = new FollowerAnimator(entry.el);
+                        }
+                        entry.anim.canvasSize = entry.canvasSize;
+                        entry.anim.setSprites(spriteData.walk, spriteData.idle);
+                        entry.dexOrder = dexOrder;
+                        positionFollower(entry.el, entry.canvasSize);
+                    }
+                } else if (!hasSpritecollab && sprite && sprite !== entry.sprite) {
+                    const img = entry.el.querySelector('img');
+                    if (img) img.src = resolveImg(sprite);
+                    entry.sprite = sprite;
+                }
             }
             return entry;
         }
 
         function removeRemoteFollower(playerId) {
             const entry = remoteFollowers.get(playerId);
-            if (entry && entry.el) entry.el.remove();
+            if (entry) {
+                if (entry.anim) entry.anim.stop();
+                if (entry.el) entry.el.remove();
+            }
             remoteFollowers.delete(playerId);
         }
 
@@ -5875,14 +6073,25 @@
             entry.el.style.left = next.x + '%';
             entry.el.style.top = next.y + '%';
             entry.el.style.zIndex = Math.floor(next.y) - 1;
-            if (next.dir === 'right') entry.el.classList.add('flip');
-            else if (next.dir === 'left') entry.el.classList.remove('flip');
+
+            if (entry.anim && entry.anim.walkData) {
+                entry.el.classList.remove('flip');
+                entry.anim.setDir(next.dir);
+                if (!entry.anim.isPlaying) entry.anim.play(next.dir);
+                if (entry._moveTimeout) clearTimeout(entry._moveTimeout);
+                entry._moveTimeout = setTimeout(() => {
+                    if (entry.anim) entry.anim.stop();
+                }, 250);
+            } else {
+                if (next.dir === 'right') entry.el.classList.add('flip');
+                else if (next.dir === 'left') entry.el.classList.remove('flip');
+            }
         }
 
         function syncRemoteFollower(p) {
             if (!p || !p.id || p.id === window.myId) return;
-            if (!p.followerSprite) { removeRemoteFollower(p.id); return; }
-            ensureRemoteFollower(p.id, p.followerSprite, p.followerName);
+            if (!p.followerSprite && !p.followerDexOrder) { removeRemoteFollower(p.id); return; }
+            ensureRemoteFollower(p.id, p.followerSprite, p.followerName, p.followerDexOrder).catch(() => {});
             updateRemoteFollowerPosition(p.id, { x: p.x, y: p.y, dir: p.direction || 'down' }, true);
         }
 
@@ -6237,7 +6446,7 @@
 
         function handleInput(e, targetElement = null) {
             const target = targetElement || e.target;
-            if (target.closest('#chatBar') || window.isTeleporting || window.isInteracting || window.__virtualPadHolding) return;
+            if (target.closest('#chatBar') || window.isTeleporting || window.isInteracting || window.__virtualPadHolding || window.__menuOpen) return;
             if (target.closest('#virtualPadWrap')) return;
             if (target.closest('.npc-entity')) return;
 
@@ -6355,183 +6564,13 @@
         (function setupStartMenu() {
             const startBtn = document.getElementById('startBtn');
             const overlay = document.getElementById('startMenuOverlay');
-            const closeBtn = document.getElementById('startMenuClose');
             if (!startBtn || !overlay) return;
-
-            function open() { overlay.style.display = 'flex'; }
-            function close() { overlay.style.display = 'none'; }
+            function open() { overlay.style.display = 'flex'; window.__menuOpen = true; document.body.classList.add('menu-open'); }
+            function close() { overlay.style.display = 'none'; window.__menuOpen = false; document.body.classList.remove('menu-open'); }
             window.__closeStartMenu = close;
-
-            startBtn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
-            if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && overlay.style.display !== 'none') close();
-            });
-        })();
-
-        // BOSS EVENT (overlay)
-        (function setupBossEvent() {
-            const overlay = document.getElementById('bossEventOverlay');
-            const closeBtn = document.getElementById('bossEventClose');
-            const titleEl = document.getElementById('bossEventTitle');
-            const statusEl = document.getElementById('bossEventStatus');
-            const listEl = document.getElementById('bossEventList');
-            if (!overlay || !titleEl || !statusEl || !listEl) return;
-
-            function close() { overlay.style.display = 'none'; }
-            window.__closeBossEvent = close;
-            if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && overlay.style.display !== 'none') close();
-            });
-
-            function getMapParam() {
-                try {
-                    return (window.currentMapId && window.currentMapId !== 'city') ? `city?map=${window.currentMapId}` : 'city';
-                } catch (_) { return 'city'; }
-            }
-
-            function getPlayerPos() {
-                try {
-                    const el = document.getElementById(`p-${window.myId}`);
-                    if (!el) return { x: 50, y: 50 };
-                    return { x: parseFloat(el.style.left) || 50, y: parseFloat(el.style.top) || 50 };
-                } catch (_) { return { x: 50, y: 50 }; }
-            }
-
-            async function startBossRaidBattle(startSlot) {
-                const pos = getPlayerPos();
-                const body = {
-                    userId: window.CURRENT_USER_ID,
-                    startSlot,
-                    currentMap: getMapParam(),
-                    currentX: pos.x,
-                    currentY: pos.y
-                };
-                try {
-                    const res = await fetch('/battle/boss-raid', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-                    const json = await res.json().catch(() => ({}));
-                    if (!res.ok || (json && json.error)) {
-                        const code = json && json.error;
-                        const msg = (code === 'already_defeated') ? 'Você já derrotou este evento.'
-                            : (code === 'event_disabled') ? 'Evento desativado.'
-                            : 'Não foi possível iniciar a batalha.';
-                        if (typeof showToast === 'function') showToast(msg, { bg: '#e74c3c' });
-                        return;
-                    }
-                    if (json && json.battleId) {
-                        window.location.href = '/battle/' + json.battleId;
-                    }
-                } catch (_) {
-                    if (typeof showToast === 'function') showToast('Erro ao iniciar batalha.', { bg: '#e74c3c' });
-                }
-            }
-
-            window.openBossEvent = async function() {
-                overlay.style.display = 'flex';
-                titleEl.textContent = 'EVENTO BOSS';
-                statusEl.textContent = 'Carregando...';
-                listEl.innerHTML = '';
-
-                try {
-                    const url = `/api/boss-event?userId=${encodeURIComponent(window.CURRENT_USER_ID || '')}`;
-                    const res = await fetch(url);
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok || !data) {
-                        statusEl.textContent = 'Não foi possível carregar o evento.';
-                        return;
-                    }
-
-                    if (!data.enabled) {
-                        statusEl.textContent = 'Nenhum evento ativo no momento.';
-                        return;
-                    }
-
-                    titleEl.textContent = data.title || 'EVENTO BOSS';
-                    statusEl.textContent = 'Derrote os mini-bosses para liberar o boss.';
-
-                    function resolveTrainerSkinUrl(skin) {
-                        if (!skin) return '';
-                        try {
-                            const s = String(skin || '');
-                            if (s.startsWith('http') || s.startsWith('data:')) return s;
-                            if (/^char\d+$/i.test(s)) return '/uploads/' + s + '.png';
-                            return '/skins/' + s + '.png';
-                        } catch (_) { return ''; }
-                    }
-
-                    const trainerSkinUrl = resolveTrainerSkinUrl(data.trainerSkin || '');
-
-                    const rows = [];
-                    const minis = Array.isArray(data.miniBosses) ? data.miniBosses : [];
-                    const firstUndefeated = (() => {
-                        const order = ['mini1', 'mini2', 'mini3', 'boss'];
-                        const defeatedBySlot = new Map();
-                        minis.forEach(mm => defeatedBySlot.set(String(mm.slot), !!mm.defeated));
-                        defeatedBySlot.set('boss', !!(data.boss && data.boss.defeated));
-                        for (const s of order) { if (!defeatedBySlot.get(s)) return s; }
-                        return null;
-                    })();
-
-                    minis.forEach(m => {
-                        const defeated = !!m.defeated;
-                        const isNext = (String(m.slot) === String(firstUndefeated));
-                        const div = document.createElement('div');
-                        div.className = 'bossEventRow';
-                        const spriteUrl = trainerSkinUrl;
-                        div.innerHTML = `
-                            <div class="bossEventLeft">
-                                <img class="bossEventSprite" src="${spriteUrl}" alt="${(m.name || 'Mini Boss').toString().toUpperCase()}" onerror="this.style.display='none'" />
-                                <div class="bossEventMeta">
-                                    <div class="bossEventName">${(m.name || 'Mini Boss').toString().toUpperCase()}</div>
-                                    <div class="bossEventSub">Lv ${m.level || 1} ${defeated ? '— DERROTADO' : ''}</div>
-                                </div>
-                            </div>
-                        `;
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'startMenuBtn bossEventBtn';
-                        btn.textContent = defeated ? 'OK' : (isNext ? 'RAID' : 'BLOQUEADO');
-                        btn.disabled = defeated || !isNext;
-                        btn.onclick = () => startBossRaidBattle(m.slot);
-                        div.appendChild(btn);
-                        rows.push(div);
-                    });
-
-                    const boss = data.boss || {};
-                    const bossRow = document.createElement('div');
-                    bossRow.className = 'bossEventRow';
-                    const bossDefeated = !!boss.defeated;
-                    const bossUnlocked = !!boss.unlocked;
-                    const bossSpriteUrl = trainerSkinUrl;
-                    bossRow.innerHTML = `
-                        <div class="bossEventLeft">
-                            <img class="bossEventSprite" src="${bossSpriteUrl}" alt="${(boss.name || 'Boss').toString().toUpperCase()}" onerror="this.style.display='none'" />
-                            <div class="bossEventMeta">
-                                <div class="bossEventName">${(boss.name || 'Boss').toString().toUpperCase()}</div>
-                                <div class="bossEventSub">Lv ${boss.level || 1} ${bossDefeated ? '— DERROTADO' : (!bossUnlocked ? '— BLOQUEADO' : '')}</div>
-                            </div>
-                        </div>
-                    `;
-                    const bossBtn = document.createElement('button');
-                    bossBtn.type = 'button';
-                    bossBtn.className = 'startMenuBtn startMenuBtn--gold bossEventBtn';
-                    bossBtn.textContent = bossDefeated ? 'OK' : (bossUnlocked ? 'RAID' : 'BLOQUEADO');
-                    bossBtn.disabled = bossDefeated || !bossUnlocked;
-                    bossBtn.onclick = () => startBossRaidBattle('boss');
-                    bossRow.appendChild(bossBtn);
-                    rows.push(bossRow);
-
-                    listEl.innerHTML = '';
-                    rows.forEach(r => listEl.appendChild(r));
-                } catch (_) {
-                    statusEl.textContent = 'Erro ao carregar o evento.';
-                }
-            };
+            window.__openStartMenu = open;
+            startBtn.addEventListener('click', (e) => { e.stopPropagation(); if (overlay.style.display !== 'none') close(); else open(); });
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
         })();
 
         // SHOP MODAL (global) — usado quando /api/npc/interact retorna action.type === 'shop'
@@ -6834,10 +6873,13 @@
                     const meta = getMeta(id);
                     const name = (meta && meta.name) ? meta.name : String(id);
                     const icon = (() => {
-                        if (meta && meta.hasIcon) return `/api/items/icon/${encodeURIComponent(id)}.png`;
                         if (meta && meta.iconUrl) return meta.iconUrl;
                         if (meta && meta.icon) return meta.icon;
-                        return '/uploads/placeholder.png';
+                        if (meta && meta.hasIcon) return `/api/items/icon/${encodeURIComponent(id)}.png`;
+                        const raw = String(id||'').toLowerCase();
+                        const MAP = { 'pokeball':'poke-ball','capturecube':'poke-ball','capture_cube':'poke-ball','rarecandy':'rare-candy','rare-candy':'rare-candy','levelupcrystal':'rare-candy' };
+                        const slug = MAP[raw] || raw.replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+                        return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${slug}.png`;
                     })();
                     items.push({ id, name, icon, qty: n });
                 }
@@ -6848,7 +6890,7 @@
                 const n = parseInt(qty, 10);
                 if (Number.isFinite(n) && n > 0 && id !== 'captureCube' && id !== 'rareCandy') {
                     const metaOld = getMeta(id) || { name: id, hasIcon: false };
-                    const iconOld = metaOld.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (metaOld.icon || '/uploads/placeholder.png');
+                    const iconOld = metaOld.iconUrl || metaOld.icon || (metaOld.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (()=>{ const raw=String(id||'').toLowerCase(); const MAP={'pokeball':'poke-ball','capturecube':'poke-ball'}; const slug=MAP[raw]||raw.replace(/[^a-z0-9]+/g,'-'); return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${slug}.png`; })());
                     items.push({ id, name: metaOld.name || id, icon: iconOld, qty: n });
                 }
             }
@@ -6856,7 +6898,7 @@
             for (const id of keys) {
                 if (!items.find(it => it.id === id)) {
                     const metaKey = getMeta(id) || { name: id, hasIcon: false };
-                    const iconKey = metaKey.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (metaKey.icon || '/uploads/placeholder.png');
+                    const iconKey = metaKey.iconUrl || metaKey.icon || (metaKey.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (()=>{ const raw=String(id||'').toLowerCase(); const MAP={'pokeball':'poke-ball'}; const slug=MAP[raw]||raw.replace(/[^a-z0-9]+/g,'-'); return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${slug}.png`; })());
                     items.push({ id, name: metaKey.name || id, icon: iconKey, qty: 1 });
                 }
             }
@@ -7029,7 +7071,7 @@
 
             function step(dir) {
                 if (!enabled) return;
-                if (window.isTeleporting || window.isInteracting) return;
+                if (window.isTeleporting || window.isInteracting || window.__menuOpen) return;
 
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (!myPlayer) return;
@@ -7158,7 +7200,7 @@
             }
 
             function virtualInteract() {
-                if (window.isTeleporting || window.isInteracting) return;
+                if (window.isTeleporting || window.isInteracting || window.__menuOpen) return;
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (!myPlayer) return;
                 const myX = parseFloat(myPlayer.style.left);
@@ -7180,7 +7222,7 @@
             }
 
             function virtualInteractMap() {
-                if (window.isTeleporting || window.isInteracting) return;
+                if (window.isTeleporting || window.isInteracting || window.__menuOpen) return;
                 const myPlayer = document.getElementById(`p-${window.myId}`);
                 if (!myPlayer) return;
                 const px = parseFloat(myPlayer.style.left);
@@ -7228,10 +7270,18 @@
                 }
             }
 
-            // Botão A (interagir)
+            // Botão A — quando menu aberto, A confirma (não interage no mapa)
             if (interactBtn) {
                 let lastInteractAt = 0;
                 interactBtn.addEventListener('pointerdown', (e) => {
+                    if (window.__menuOpen) {
+                        e.preventDefault(); e.stopPropagation();
+                        const startOpen = document.getElementById('startMenuOverlay') && document.getElementById('startMenuOverlay').style.display !== 'none';
+                        if (startOpen && window.__startMenuConfirm) window.__startMenuConfirm();
+                        else if (window.__menuConfirm) window.__menuConfirm();
+                        else if (window.__startMenuConfirm) window.__startMenuConfirm();
+                        return;
+                    }
                     e.preventDefault();
                     e.stopPropagation();
                     const now = Date.now();
@@ -7241,6 +7291,7 @@
                 });
                 // Click pode disparar atrasado em mobile; deixa como fallback, mas protegido.
                 interactBtn.addEventListener('click', (e) => {
+                    if (window.__menuOpen) { e.preventDefault(); e.stopPropagation(); return; }
                     e.preventDefault();
                     e.stopPropagation();
                     const now = Date.now();
@@ -7250,10 +7301,18 @@
                 });
             }
 
-            // Botão B (interagir com objetos do mapa)
+            // Botão B — quando menu aberto, B volta/fecha (não interage no mapa)
             if (bBtn) {
                 let lastBAt = 0;
                 bBtn.addEventListener('pointerdown', (e) => {
+                    if (window.__menuOpen) {
+                        e.preventDefault(); e.stopPropagation();
+                        var startOpen = document.getElementById('startMenuOverlay') && document.getElementById('startMenuOverlay').style.display !== 'none';
+                        if (startOpen && window.__startMenuBack) { window.__startMenuBack(); return; }
+                        if (window.__menuBack) { window.__menuBack(); return; }
+                        if (window.__closeStartMenu) { window.__closeStartMenu(); return; }
+                        return;
+                    }
                     e.preventDefault();
                     e.stopPropagation();
                     const now = Date.now();
@@ -7262,6 +7321,7 @@
                     virtualInteractMap();
                 });
                 bBtn.addEventListener('click', (e) => {
+                    if (window.__menuOpen) { e.preventDefault(); e.stopPropagation(); return; }
                     e.preventDefault();
                     e.stopPropagation();
                     const now = Date.now();
@@ -7271,9 +7331,23 @@
                 });
             }
 
-            // Botões do D-pad
+            // Botões do D-pad — quando menu aberto, navegam no menu (não movem)
             wrap.querySelectorAll('[data-vdir]').forEach(btn => {
                 btn.addEventListener('pointerdown', (e) => {
+                    if (window.__menuOpen) {
+                        e.preventDefault(); e.stopPropagation();
+                        const dir = btn.getAttribute('data-vdir');
+                        const startOpen = document.getElementById('startMenuOverlay') && document.getElementById('startMenuOverlay').style.display !== 'none';
+                        if (dir === 'up' || dir === 'left') {
+                            if (startOpen && window.__startMenuUp) window.__startMenuUp();
+                            else if (window.__menuUp) window.__menuUp();
+                        } else if (dir === 'down' || dir === 'right') {
+                            if (startOpen && window.__startMenuDown) window.__startMenuDown();
+                            else if (window.__menuDown) window.__menuDown();
+                        }
+                        if (btn.setPointerCapture) try{ btn.setPointerCapture(e.pointerId); }catch(_){}
+                        return;
+                    }
                     e.preventDefault();
                     e.stopPropagation();
                     btn.setPointerCapture(e.pointerId);

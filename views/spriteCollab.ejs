@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpriteCollab Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1a1f35 100%);
+            color: #e2e8f0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #38bdf8;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        h2 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.8rem;
+            margin: 16px 0 12px 0;
+            color: #fbbf24;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #cbd5e1;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(56, 189, 248, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        button {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.6rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .viewer-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .canvas-container {
+            background: rgba(10, 16, 32, 0.9);
+            border: 3px solid rgba(56, 189, 248, 0.4);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #spriteCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            border: 2px solid rgba(244, 233, 199, 0.2);
+            border-radius: 8px;
+        }
+
+        .controls-panel {
+            background: rgba(10, 16, 32, 0.9);
+            border: 2px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .control-row label {
+            margin: 0;
+            min-width: 80px;
+            font-size: 0.8rem;
+        }
+
+        .control-row input {
+            flex: 1;
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .control-buttons button {
+            padding: 8px 12px;
+            font-size: 0.5rem;
+        }
+
+        .info-box {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .error-box {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            line-height: 1.5;
+        }
+
+        .frame-info {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            color: #38bdf8;
+            text-align: center;
+            padding: 12px;
+            background: rgba(56, 189, 248, 0.1);
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- LEFT PANEL: Controls -->
+        <div class="panel">
+            <h1>🎨 SpriteCollab Viewer</h1>
+
+            <div class="form-group">
+                <label for="pokemonNum">Pokémon ID (1-1025)</label>
+                <input type="number" id="pokemonNum" min="1" max="1025" value="1" placeholder="Ex: 1">
+            </div>
+
+            <div class="form-group">
+                <label for="pokemonName">Nome (opcional)</label>
+                <input type="text" id="pokemonName" placeholder="Ex: Bulbasaur" readonly>
+            </div>
+
+            <h2>Pose / Animação</h2>
+            <div class="form-group">
+                <label for="poseSelect">Pose</label>
+                <select id="poseSelect" onchange="atualizarDirecao()">
+                    <optgroup label="Básicas">
+                        <option value="Idle">Idle</option>
+                        <option value="Walk">Walk</option>
+                    </optgroup>
+                    <optgroup label="Combate">
+                        <option value="Attack">Attack</option>
+                        <option value="Charge">Charge</option>
+                        <option value="Double">Double</option>
+                        <option value="Swing">Swing</option>
+                        <option value="Shoot">Shoot</option>
+                        <option value="Pain">Pain</option>
+                        <option value="Hurt">Hurt</option>
+                        <option value="Faint">Faint</option>
+                        <option value="HitGround">HitGround</option>
+                    </optgroup>
+                    <optgroup label="Movimento">
+                        <option value="Hop">Hop</option>
+                        <option value="LeapForth">LeapForth</option>
+                        <option value="Trip">Trip</option>
+                        <option value="Tumble">Tumble</option>
+                        <option value="TumbleBack">TumbleBack</option>
+                        <option value="LostBalance">LostBalance</option>
+                        <option value="Rotate">Rotate</option>
+                        <option value="Pull">Pull</option>
+                    </optgroup>
+                    <optgroup label="Outras">
+                        <option value="Float">Float</option>
+                        <option value="Eat">Eat</option>
+                        <option value="Sleep">Sleep</option>
+                        <option value="EventSleep">EventSleep</option>
+                        <option value="Wake">Wake</option>
+                        <option value="Shake">Shake</option>
+                        <option value="DeepBreath">DeepBreath</option>
+                        <option value="Nod">Nod</option>
+                        <option value="Sit">Sit</option>
+                        <option value="Pose">Pose</option>
+                        <option value="LookUp">LookUp</option>
+                        <option value="Sink">Sink</option>
+                        <option value="Laying">Laying</option>
+                        <option value="Head">Head</option>
+                        <option value="Cringe">Cringe</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="form-group" id="directionGroup" style="display: none;">
+                <label for="directionSelect">Direção</label>
+                <select id="directionSelect" onchange="carregarSprite()">
+                    <option value="0">↓ S</option>
+                    <option value="1">↘ SE</option>
+                    <option value="2">← W</option>
+                    <option value="3">↗ NE</option>
+                    <option value="4">↑ N</option>
+                    <option value="5">↖ NW</option>
+                    <option value="6">→ E</option>
+                    <option value="7">↙ SW</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button onclick="carregarSprite()">▶ Carregar</button>
+                <button onclick="proximaPose()">→ Próx Pose</button>
+            </div>
+
+            <div class="button-group" style="margin-top: 8px;">
+                <button onclick="copiarUrl()">📋 Copiar URL</button>
+                <button onclick="abrirXml()">📄 Ver XML</button>
+            </div>
+
+            <h2>Animação</h2>
+            <div class="control-row">
+                <label for="animSpeed">Velocidade</label>
+                <input type="range" id="animSpeed" min="50" max="500" value="150" step="10">
+            </div>
+
+            <div class="control-buttons">
+                <button onclick="iniciarAnimacao()">▶ Play</button>
+                <button onclick="pararAnimacao()">⏹ Stop</button>
+            </div>
+
+            <h2>Frame</h2>
+            <div class="control-row">
+                <label for="frameSlider">Frame</label>
+                <input type="range" id="frameSlider" min="0" max="7" value="0" step="1">
+            </div>
+
+            <div class="frame-info">
+                <div id="frameInfo">Frame: 0/8</div>
+            </div>
+
+            <div class="info-box" id="infoBox">
+                ℹ️ SpriteCollab: spritesheets com frames em grid. Tamanho do frame vem do AnimData.xml (ex: Walk=40x40, Attack=64x72).
+            </div>
+
+            <div id="errorBox" class="error-box" style="display: none;"></div>
+        </div>
+
+        <!-- RIGHT PANEL: Viewer -->
+        <div class="viewer-panel">
+            <h1>Visualizador</h1>
+            
+            <div class="canvas-container">
+                <canvas id="spriteCanvas" width="320" height="320"></canvas>
+            </div>
+
+            <div class="controls-panel">
+                <div class="frame-info">
+                    <div id="urlInfo">URL do Sprite:</div>
+                    <div id="urlDisplay" style="word-break: break-all; font-size: 0.5rem; margin-top: 8px; color: #94a3b8;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('spriteCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let spriteImage = null;
+        let currentFrame = 0;
+        let isAnimating = false;
+        let animationInterval = null;
+        let spriteWidth = 48;
+        let spriteHeight = 48;
+        let totalFrames = 1;
+        let cols = 1;
+        let currentDirection = 0;
+        let rowsPerDirection = 1;
+
+
+        // Pokémon Gen 1-3 (até 386) para teste
+        const pokedexNames = {
+            1: 'Bulbasaur', 2: 'Ivysaur', 3: 'Venusaur',
+            4: 'Charmander', 5: 'Charmeleon', 6: 'Charizard',
+            7: 'Squirtle', 8: 'Wartortle', 9: 'Blastoise',
+            10: 'Caterpie', 11: 'Metapod', 12: 'Butterfree',
+            13: 'Weedle', 14: 'Kakuna', 15: 'Beedrill',
+            16: 'Pidgey', 17: 'Pidgeotto', 18: 'Pidgeot',
+            19: 'Rattata', 20: 'Raticate',
+            21: 'Spearow', 22: 'Fearow',
+            23: 'Ekans', 24: 'Arbok',
+            25: 'Pikachu', 26: 'Raichu',
+            27: 'Sandshrew', 28: 'Sandslash',
+            29: 'Nidoran♀', 30: 'Nidorina', 31: 'Nidoqueen',
+            32: 'Nidoran♂', 33: 'Nidorino', 34: 'Nidoking',
+            35: 'Clefairy', 36: 'Clefable',
+            37: 'Vulpix', 38: 'Ninetales',
+            39: 'Jigglypuff', 40: 'Wigglytuff',
+            41: 'Zubat', 42: 'Golbat',
+            43: 'Oddish', 44: 'Gloom', 45: 'Vileplume',
+            46: 'Paras', 47: 'Parasect',
+            48: 'Venonat', 49: 'Venomoth',
+            50: 'Diglett', 51: 'Dugtrio',
+            52: 'Meowth', 53: 'Persian',
+            54: 'Psyduck', 55: 'Golduck',
+            56: 'Mankey', 57: 'Primeape',
+            58: 'Growlithe', 59: 'Arcanine',
+            60: 'Poliwag', 61: 'Poliwhirl', 62: 'Poliwrath',
+            63: 'Abra', 64: 'Kadabra', 65: 'Alakazam',
+            66: 'Machop', 67: 'Machoke', 68: 'Machamp',
+            69: 'Bellsprout', 70: 'Weepinbell', 71: 'Victreebel',
+            72: 'Tentacool', 73: 'Tentacruel',
+            74: 'Geodude', 75: 'Graveler', 76: 'Golem',
+            77: 'Ponyta', 78: 'Rapidash',
+            79: 'Slowpoke', 80: 'Slowbro',
+            81: 'Magnemite', 82: 'Magneton',
+            83: 'Farfetch\'d', 84: 'Doduo', 85: 'Dodrio',
+            86: 'Seel', 87: 'Dewgong',
+            88: 'Grimer', 89: 'Muk',
+            90: 'Shellder', 91: 'Cloyster',
+            92: 'Gastly', 93: 'Haunter', 94: 'Gengar',
+            95: 'Onix', 96: 'Drowzee', 97: 'Hypno',
+            98: 'Krabby', 99: 'Kingler',
+            100: 'Voltorb', 101: 'Electrode',
+            102: 'Exeggcute', 103: 'Exeggutor',
+            104: 'Cubone', 105: 'Marowak',
+            106: 'Hitmonlee', 107: 'Hitmonchan',
+            108: 'Lickitung', 109: 'Koffing', 110: 'Weezing',
+            111: 'Rhyhorn', 112: 'Rhydon',
+            113: 'Chansey', 114: 'Tangela',
+            115: 'Kangaskhan', 116: 'Horsea', 117: 'Seadra',
+            118: 'Goldeen', 119: 'Seaking',
+            120: 'Staryu', 121: 'Starmie',
+            122: 'Mr. Mime', 123: 'Scyther', 124: 'Jynx',
+            125: 'Electabuzz', 126: 'Magmar',
+            127: 'Pinsir', 128: 'Tauros',
+            129: 'Magikarp', 130: 'Gyarados',
+            131: 'Lapras', 132: 'Ditto', 133: 'Eevee',
+            134: 'Vaporeon', 135: 'Jolteon', 136: 'Flareon',
+            137: 'Porygon', 138: 'Omanyte', 139: 'Omastar',
+            140: 'Kabuto', 141: 'Kabutops',
+            142: 'Aerodactyl', 143: 'Snorlax',
+            144: 'Articuno', 145: 'Zapdos', 146: 'Moltres',
+            147: 'Dratini', 148: 'Dragonair', 149: 'Dragonite',
+            150: 'Mewtwo', 151: 'Mew',
+            152: 'Chikorita', 153: 'Bayleef', 154: 'Meganium',
+            155: 'Cyndaquil', 156: 'Quilava', 157: 'Typhlosion',
+            158: 'Totodile', 159: 'Croconaw', 160: 'Feraligatr',
+            161: 'Sentret', 162: 'Furret', 163: 'Hoothoot', 164: 'Noctowl',
+            165: 'Ledyba', 166: 'Ledian', 167: 'Spinarak', 168: 'Ariados',
+            169: 'Crobat', 170: 'Chinchou', 171: 'Lanturn',
+            172: 'Pichu', 173: 'Cleffa', 174: 'Igglybuff',
+            175: 'Togepi', 176: 'Togetic', 177: 'Natu', 178: 'Xatu',
+            179: 'Mareep', 180: 'Flaaffy', 181: 'Ampharos',
+            182: 'Bellossom', 183: 'Marill', 184: 'Azumarill',
+            185: 'Sudowoodo', 186: 'Politoed', 187: 'Hoppip', 188: 'Skiploom', 189: 'Jumpluff',
+            190: 'Aipom', 191: 'Sunkern', 192: 'Sunflora',
+            193: 'Yanma', 194: 'Wooper', 195: 'Quagsire',
+            196: 'Espeon', 197: 'Umbreon', 198: 'Murkrow', 199: 'Slowking',
+            200: 'Misdreavus', 201: 'Unown', 202: 'Wobbuffet', 203: 'Girafarig',
+            204: 'Pineco', 205: 'Forretress', 206: 'Dunsparce', 207: 'Gligar',
+            208: 'Steelix', 209: 'Snubbull', 210: 'Granbull',
+            211: 'Qwilfish', 212: 'Scizor', 213: 'Shuckle', 214: 'Heracross',
+            215: 'Sneasel', 216: 'Teddiursa', 217: 'Ursaring',
+            218: 'Slugma', 219: 'Magcargo', 220: 'Swinub', 221: 'Piloswine',
+            222: 'Corsola', 223: 'Remoraid', 224: 'Octillery', 225: 'Delibird',
+            226: 'Mantine', 227: 'Skarmory', 228: 'Houndour', 229: 'Houndoom',
+            230: 'Kingdra', 231: 'Phanpy', 232: 'Donphan',
+            233: 'Porygon2', 234: 'Stantler', 235: 'Smeargle', 236: 'Tyrogue',
+            237: 'Hitmontop', 238: 'Smoochum', 239: 'Elekid', 240: 'Magby',
+            241: 'Miltank', 242: 'Blissey',
+            243: 'Raikou', 244: 'Entei', 245: 'Suicune',
+            246: 'Larvitar', 247: 'Pupitar', 248: 'Tyranitar',
+            249: 'Lugia', 250: 'Ho-Oh', 251: 'Celebi',
+            252: 'Treecko', 253: 'Grovyle', 254: 'Sceptile',
+            255: 'Torchic', 256: 'Combusken', 257: 'Blaziken',
+            258: 'Mudkip', 259: 'Marshtomp', 260: 'Swampert',
+            261: 'Poochyena', 262: 'Mightyena', 263: 'Zigzagoon', 264: 'Linoone',
+            265: 'Wurmple', 266: 'Silcoon', 267: 'Beautifly', 268: 'Cascoon', 269: 'Dustox',
+            270: 'Lotad', 271: 'Lombre', 272: 'Ludicolo',
+            273: 'Seedot', 274: 'Nuzleaf', 275: 'Shiftry',
+            276: 'Taillow', 277: 'Swellow', 278: 'Wingull', 279: 'Pelipper',
+            280: 'Ralts', 281: 'Kirlia', 282: 'Gardevoir',
+            283: 'Surskit', 284: 'Masquerain', 285: 'Shroomish', 286: 'Breloom',
+            287: 'Slakoth', 288: 'Vigoroth', 289: 'Slaking',
+            290: 'Nincada', 291: 'Ninjask', 292: 'Shedinja',
+            293: 'Whismur', 294: 'Loudred', 295: 'Exploud',
+            296: 'Makuhita', 297: 'Hariyama', 298: 'Azurill', 299: 'Nosepass',
+            300: 'Skitty', 301: 'Delcatty', 302: 'Sableye', 303: 'Mawile',
+            304: 'Aron', 305: 'Lairon', 306: 'Aggron',
+            307: 'Meditite', 308: 'Medicham', 309: 'Electrike', 310: 'Manectric',
+            311: 'Plusle', 312: 'Minun', 313: 'Volbeat', 314: 'Illumise',
+            315: 'Roselia', 316: 'Gulpin', 317: 'Swalot',
+            318: 'Carvanha', 319: 'Sharpedo', 320: 'Wailmer', 321: 'Wailord',
+            322: 'Numel', 323: 'Camerupt', 324: 'Torkoal',
+            325: 'Spoink', 326: 'Grumpig', 327: 'Spinda', 328: 'Trapinch', 329: 'Vibrava', 330: 'Flygon',
+            331: 'Cacnea', 332: 'Cacturne', 333: 'Swablu', 334: 'Altaria',
+            335: 'Zangoose', 336: 'Seviper', 337: 'Lunatone', 338: 'Solrock',
+            339: 'Barboach', 340: 'Whiscash', 341: 'Corphish', 342: 'Crawdaunt',
+            343: 'Baltoy', 344: 'Claydol', 345: 'Lileep', 346: 'Cradily',
+            347: 'Anorith', 348: 'Armaldo', 349: 'Feebas', 350: 'Milotic',
+            351: 'Castform', 352: 'Kecleon', 353: 'Shuppet', 354: 'Banette',
+            355: 'Duskull', 356: 'Dusclops', 357: 'Tropius', 358: 'Chimecho',
+            359: 'Absol', 360: 'Wynaut', 361: 'Snorunt', 362: 'Glalie',
+            363: 'Spheal', 364: 'Sealeo', 365: 'Walrein',
+            366: 'Clamperl', 367: 'Huntail', 368: 'Gorebyss',
+            369: 'Relicanth', 370: 'Luvdisc', 371: 'Bagon', 372: 'Shelgon', 373: 'Salamence',
+            374: 'Beldum', 375: 'Metang', 376: 'Metagross',
+            377: 'Regirock', 378: 'Regice', 379: 'Registeel',
+            380: 'Latias', 381: 'Latios', 382: 'Kyogre', 383: 'Groudon', 384: 'Rayquaza',
+            385: 'Jirachi', 386: 'Deoxys'
+        };
+
+        function formatPokemonId(num) {
+            return String(num).padStart(4, '0');
+        }
+
+function obterUrlSprite() {
+            const pokemonId = formatPokemonId(document.getElementById('pokemonNum').value);
+            const pose = document.getElementById('poseSelect').value;
+            const url = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/${pokemonId}/${pose}-Anim.png`;
+            return url;
+        }
+
+        function atualizarNomePokemon() {
+            const numPokemon = parseInt(document.getElementById('pokemonNum').value);
+            const nome = pokedexNames[numPokemon] || '???';
+            document.getElementById('pokemonName').value = nome;
+        }
+
+        function mostrarErro(mensagem) {
+            const errorBox = document.getElementById('errorBox');
+            errorBox.textContent = '❌ ' + mensagem;
+            errorBox.style.display = 'block';
+        }
+
+        function limparErro() {
+            document.getElementById('errorBox').style.display = 'none';
+        }
+
+        const POSES_COM_DIRECAO = ['Idle'];
+
+        function atualizarDirecao() {
+            const pose = document.getElementById('poseSelect').value;
+            const dirGroup = document.getElementById('directionGroup');
+            if (POSES_COM_DIRECAO.includes(pose)) {
+                dirGroup.style.display = 'block';
+            } else {
+                dirGroup.style.display = 'none';
+            }
+            carregarSprite();
+        }
+
+        async function carregarSprite() {
+            limparErro();
+            const url = obterUrlSprite();
+            
+            document.getElementById('urlDisplay').textContent = url;
+
+            const pokemonId = formatPokemonId(document.getElementById('pokemonNum').value);
+            const pose = document.getElementById('poseSelect').value;
+
+            totalFrames = 1;
+            spriteWidth = 48;
+            spriteHeight = 48;
+            let framesPerDir = 0;
+            try {
+                const xmlUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/${pokemonId}/AnimData.xml`;
+                const res = await fetch(xmlUrl);
+                if (res.ok) {
+                    const text = await res.text();
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(text, 'text/xml');
+                    const anims = xml.querySelectorAll('Anim');
+                    for (const anim of anims) {
+                        const name = anim.querySelector('Name')?.textContent;
+                        if (name === pose) {
+                            spriteWidth = parseInt(anim.querySelector('FrameWidth')?.textContent) || 48;
+                            spriteHeight = parseInt(anim.querySelector('FrameHeight')?.textContent) || 48;
+                            framesPerDir = anim.querySelectorAll('Duration').length || 0;
+                            break;
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            spriteImage = new Image();
+            spriteImage.crossOrigin = 'anonymous';
+            
+            spriteImage.onload = () => {
+                console.log('✓ Spritesheet:', url, spriteImage.width + 'x' + spriteImage.height);
+                
+                const iw = spriteImage.width;
+                const ih = spriteImage.height;
+                
+                cols = Math.floor(iw / spriteWidth);
+                const rows = Math.floor(ih / spriteHeight);
+                const isDir = POSES_COM_DIRECAO.includes(pose);
+
+                if (isDir) {
+                    rowsPerDirection = Math.floor(rows / 8);
+                    totalFrames = framesPerDir || Math.floor(cols * rowsPerDirection);
+                    currentDirection = parseInt(document.getElementById('directionSelect').value) || 0;
+                } else {
+                    rowsPerDirection = 1;
+                    totalFrames = cols * rows;
+                }
+
+                document.getElementById('frameSlider').max = totalFrames - 1;
+                document.getElementById('frameSlider').value = 0;
+                currentFrame = 0;
+                desenharFrame();
+                pararAnimacao();
+            };
+            
+            spriteImage.onerror = () => {
+                mostrarErro(`Não consegui carregar: ${pose}-Anim.png para #${pokemonId}`);
+            };
+            
+            spriteImage.src = url;
+        }
+
+        function desenharFrame() {
+            if (!spriteImage) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calcular posição do frame atual no grid
+            const col = currentFrame % cols;
+            const localRow = Math.floor(currentFrame / cols);
+            const isDir = POSES_COM_DIRECAO.includes(document.getElementById('poseSelect').value);
+            const row = isDir ? (currentDirection * rowsPerDirection + localRow) : localRow;
+            
+            // Fonte: posição do frame na spritesheet
+            const srcX = col * spriteWidth;
+            const srcY = row * spriteHeight;
+            const srcW = spriteWidth;
+            const srcH = spriteHeight;
+            
+            // Destino: centralizado no canvas, escalado mantendo aspect ratio
+            const maxDrawW = canvas.width * 0.9;
+            const maxDrawH = canvas.height * 0.9;
+            const scale = Math.min(maxDrawW / srcW, maxDrawH / srcH);
+            
+            const drawW = srcW * scale;
+            const drawH = srcH * scale;
+            const drawX = (canvas.width - drawW) / 2;
+            const drawY = (canvas.height - drawH) / 2;
+            
+            ctx.imageSmoothingEnabled = false;
+            // Desenhar APENAS o frame atual
+            ctx.drawImage(spriteImage, srcX, srcY, srcW, srcH, drawX, drawY, drawW, drawH);
+            
+            // Grid overlay (opcional, para debug) - desenhar grid da spritesheet inteira em miniatura
+            const miniScale = 0.15;
+            const miniW = spriteImage.width * miniScale;
+            const miniH = spriteImage.height * miniScale;
+            const miniX = canvas.width - miniW - 10;
+            const miniY = 10;
+            
+            ctx.drawImage(spriteImage, miniX, miniY, miniW, miniH);
+            
+            // Highlight do frame atual na miniatura
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2 / miniScale;
+            ctx.strokeRect(
+                miniX + srcX * miniScale,
+                miniY + srcY * miniScale,
+                srcW * miniScale,
+                srcH * miniScale
+            );
+            
+            document.getElementById('frameInfo').textContent =
+                `${spriteImage.width}x${spriteImage.height}px | ${totalFrames} frames | frame: ${spriteWidth}x${spriteHeight} | pos: ${col},${row}`;
+            document.getElementById('frameSlider').value = currentFrame;
+        }
+
+        function proximaPose() {
+            const poseSelect = document.getElementById('poseSelect');
+            const poses = Array.from(poseSelect.options).map(o => o.value);
+            const currentIndex = poses.indexOf(poseSelect.value);
+            const nextIndex = (currentIndex + 1) % poses.length;
+            poseSelect.value = poses[nextIndex];
+            carregarSprite();
+        }
+
+        function iniciarAnimacao() {
+            if (isAnimating || !spriteImage) return;
+            
+            isAnimating = true;
+            const speed = parseInt(document.getElementById('animSpeed').value);
+            
+            animationInterval = setInterval(() => {
+                currentFrame = (currentFrame + 1) % totalFrames;
+                desenharFrame();
+            }, speed);
+        }
+
+        function pararAnimacao() {
+            isAnimating = false;
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+        }
+
+        function copiarUrl() {
+            const url = obterUrlSprite();
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL copiada: ' + url);
+            });
+        }
+
+        function abrirXml() {
+            const pokemonId = formatPokemonId(document.getElementById('pokemonNum').value);
+            const xmlUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite/${pokemonId}/AnimData.xml`;
+            window.open(xmlUrl, '_blank');
+        }
+
+        // Event listeners
+        document.getElementById('pokemonNum').addEventListener('change', atualizarNomePokemon);
+        document.getElementById('pokemonNum').addEventListener('input', atualizarNomePokemon);
+        document.getElementById('frameSlider').addEventListener('input', (e) => {
+            currentFrame = parseInt(e.target.value);
+            desenharFrame();
+        });
+        document.getElementById('animSpeed').addEventListener('input', () => {
+            if (isAnimating) {
+                pararAnimacao();
+                iniciarAnimacao();
+            }
+        });
+
+        // Carregar sprite inicial
+        setTimeout(() => {
+            atualizarNomePokemon();
+            atualizarDirecao();
+        }, 500);
+    </script>
+</body>
+</html>

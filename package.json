@@ -12,12 +12,14 @@
     "chroma:key": "node scripts/chroma_key_png.js",
     "inspect:movepools": "node scripts/inspect_move_pools.js",
     "migrate:movepools-by-type": "node scripts/migrate_movepools_by_type.js",
-    "migrate:movepools-any": "node scripts/migrate_movepools_any.js"
+    "migrate:movepools-any": "node scripts/migrate_movepools_any.js",
+    "import:pokemon": "node scripts/import_pokemon_gen1.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "body-parser": "^2.2.1",
+    "cloudinary": "^2.11.0",
     "dotenv": "^17.4.2",
     "ejs": "^3.1.10",
     "express": "^5.2.1",

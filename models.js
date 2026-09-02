@@ -18,7 +18,8 @@ const EntitySchema = new mongoose.Schema({
     catchRate: Number,
     spawnChance: Number,
     isStarter: Boolean,
-    sprite: String, // Base64 ou URL
+    sprite: String, // Base64 ou URL (96x96 - batalha)
+    icon: String,   // URL 32x32 - PC/equipe/mundo
     dexOrder: Number,
     evolution: {
         targetId: String,
@@ -294,71 +295,7 @@ const DevLogSchema = new mongoose.Schema({
     createdAt: { type: Number, default: () => Date.now() }
 });
 
-// --- BOSS EVENT (global configurable event) ---
-const BossEventSchema = new mongoose.Schema({
-    key: { type: String, default: 'global', unique: true, index: true },
-    enabled: { type: Boolean, default: false },
 
-    // Troque este valor para “resetar” o progresso por jogador (flags)
-    eventKey: { type: String, default: 'event1' },
-    title: { type: String, default: 'Evento Boss' },
-
-    // Skin do treinador (boss) na batalha: pode ser 'char2', um id de /skins/:id.png,
-    // ou um data-url (quando trainerIsCustomSkin=true)
-    trainerSkin: { type: String, default: 'char2' },
-    trainerIsCustomSkin: { type: Boolean, default: false },
-
-
-    miniBosses: [{
-        slot: { type: String, default: '' }, // 'mini1' | 'mini2' | 'mini3'
-        baseId: { type: String, default: '' },
-        level: { type: Number, default: 1 },
-        name: { type: String, default: '' },
-        // Novo: skin individual para cada mini boss
-        trainerSkin: { type: String, default: 'char2' },
-        trainerIsCustomSkin: { type: Boolean, default: false },
-        // Time do treinador (raid). Se vazio, cai no baseId/level acima.
-        team: [{
-            baseId: { type: String, default: '' },
-            level: { type: Number, default: 1 },
-            name: { type: String, default: '' }
-        }],
-        moneyReward: { type: Number, default: 0 },
-        reward: {
-            type: { type: String, default: 'none' },
-            value: { type: String, default: '' },
-            qty: { type: Number, default: 1 },
-            level: { type: Number, default: 1 },
-            keyItem: { type: Boolean, default: false },
-            unique: { type: Boolean, default: false }
-        }
-    }],
-
-    boss: {
-        baseId: { type: String, default: '' },
-        level: { type: Number, default: 1 },
-        name: { type: String, default: '' },
-        // Novo: skin individual para o boss final
-        trainerSkin: { type: String, default: 'char2' },
-        trainerIsCustomSkin: { type: Boolean, default: false },
-        team: [{
-            baseId: { type: String, default: '' },
-            level: { type: Number, default: 1 },
-            name: { type: String, default: '' }
-        }],
-        moneyReward: { type: Number, default: 0 },
-        reward: {
-            type: { type: String, default: 'none' },
-            value: { type: String, default: '' },
-            qty: { type: Number, default: 1 },
-            level: { type: Number, default: 1 },
-            keyItem: { type: Boolean, default: false },
-            unique: { type: Boolean, default: false }
-        }
-    },
-
-    updatedAt: { type: Number, default: () => Date.now() }
-});
 
 const BaseEntity = mongoose.model('BaseEntity', EntitySchema);
 const User = mongoose.model('User', UserSchema);
@@ -368,6 +305,5 @@ const ItemDefinition = mongoose.model('ItemDefinition', ItemDefinitionSchema);
 const PlayerSkin = mongoose.model('PlayerSkin', PlayerSkinSchema);
 const DevSettings = mongoose.model('DevSettings', DevSettingsSchema);
 const DevLog = mongoose.model('DevLog', DevLogSchema);
-const BossEvent = mongoose.model('BossEvent', BossEventSchema);
 
-module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog, BossEvent };
+module.exports = { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog };
