@@ -86,7 +86,7 @@
         </div>
         <div style="display:flex; align-items:center;">
             <!-- Botão opcional para ver as imagens se precisar -->
-            <button class="btn-toggle-img" onclick="toggleImages()">👁️ Alternar Imagens</button>
+            <button class="btn-toggle-img" onclick="toggleImages()">IMG Alternar Imagens</button>
             <span id="status-msg"></span>
             <button class="btn-save" onclick="saveData()">SALVAR ALTERAÇÕES (SYNC)</button>
         </div>
@@ -248,15 +248,15 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    showStatus(`✅ Sucesso! ${data.count} Pokémons processados.`, false);
+                    showStatus(`OK Sucesso! ${data.count} Pokémons processados.`, false);
                     // Opcional: Recarregar a página ou apenas re-formatar
                     // Se recarregar, perde o undo/redo do navegador, então talvez melhor só manter
                     // setTimeout(() => { window.location.reload(); }, 1500); 
                 } else {
-                    showStatus("❌ Erro: " + data.error, true);
+                    showStatus("[X] Erro: " + data.error, true);
                 }
             } catch (e) {
-                showStatus("❌ Erro de conexão", true);
+                showStatus("[X] Erro de conexão", true);
                 console.error(e);
             }
         }

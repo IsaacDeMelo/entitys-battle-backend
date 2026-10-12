@@ -54,3 +54,12 @@ test('xp cresce de forma monotônica', () => {
     assert.ok(getXpForNextLevel(2) > getXpForNextLevel(1));
     assert.ok(getXpForNextLevel(10) > getXpForNextLevel(5));
 });
+test('normalizeItemId dobra aliases legados para o canônico', () => {
+    const { normalizeItemId } = require('../lib/gameRules');
+    assert.equal(normalizeItemId('captureCube'), 'pokeball');
+    assert.equal(normalizeItemId('levelUpCrystal'), 'rare-candy');
+    assert.equal(normalizeItemId('rareCandy'), 'rare-candy');
+    assert.equal(normalizeItemId('pokeball'), 'pokeball');
+    assert.equal(normalizeItemId('rare-candy'), 'rare-candy');
+    assert.equal(normalizeItemId('potion'), 'potion');
+});

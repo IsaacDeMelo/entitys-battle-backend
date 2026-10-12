@@ -217,7 +217,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎨 Visualizador de Spritesheets - SpriteCollab</h1>
+        <h1> Visualizador de Spritesheets - SpriteCollab</h1>
 
         <div id="alertContainer"></div>
 
@@ -269,8 +269,8 @@
                 </div>
 
                 <div style="margin-top: 15px;">
-                    <button onclick="downloadSpritesheet()" style="width: 100%; margin-bottom: 10px;">⬇️ Baixar Spritesheet</button>
-                    <button onclick="copySpritesheetUrl()" style="width: 100%; background: #666;">📋 Copiar URL</button>
+                    <button onclick="downloadSpritesheet()" style="width: 100%; margin-bottom: 10px;">DL Baixar Spritesheet</button>
+                    <button onclick="copySpritesheetUrl()" style="width: 100%; background: #666;"> Copiar URL</button>
                 </div>
             </div>
         </div>
@@ -343,7 +343,7 @@
             }
 
             if (!loaded) {
-                container.innerHTML = '<div style="color: #ff6b6b; padding: 20px;">❌ Spritesheet não encontrado. Verifique o Pokémon e a forma.</div>';
+                container.innerHTML = '<div style="color: #ff6b6b; padding: 20px;">[X] Spritesheet não encontrado. Verifique o Pokémon e a forma.</div>';
                 showAlert('Spritesheet não encontrado para este Pokémon', 'error');
             }
         }
@@ -361,11 +361,11 @@
                 document.getElementById('infoPokemon').textContent = `Pokémon #${pokemonNum}`;
                 document.getElementById('infoUrl').textContent = url;
                 generatePosesList(img.width, img.height);
-                showAlert(`✓ Spritesheet carregado (${img.width}x${img.height}px)`, 'success');
+                showAlert(`OK Spritesheet carregado (${img.width}x${img.height}px)`, 'success');
             };
 
             img.onerror = () => {
-                container.innerHTML = '<div style="color: #ff6b6b; padding: 20px;">❌ Erro ao carregar a imagem</div>';
+                container.innerHTML = '<div style="color: #ff6b6b; padding: 20px;">[X] Erro ao carregar a imagem</div>';
                 showAlert('Erro ao carregar o spritesheet', 'error');
             };
         }
@@ -421,7 +421,7 @@
 
             const extractedUrl = canvas.toDataURL('image/png');
             console.log(`Pose [${index}] extraída:`, extractedUrl);
-            showAlert(`✓ Pose [${index}] extraída com sucesso!`, 'success');
+            showAlert(`OK Pose [${index}] extraída com sucesso!`, 'success');
         }
 
         function downloadSpritesheet() {
@@ -443,7 +443,7 @@
                 return;
             }
             navigator.clipboard.writeText(url).then(() => {
-                showAlert('✓ URL copiada para a área de transferência!', 'success');
+                showAlert('OK URL copiada para a área de transferência!', 'success');
             });
         }
 

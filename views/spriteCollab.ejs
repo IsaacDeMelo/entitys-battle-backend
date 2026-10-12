@@ -215,7 +215,7 @@
     <div class="container">
         <!-- LEFT PANEL: Controls -->
         <div class="panel">
-            <h1>🎨 SpriteCollab Viewer</h1>
+            <h1> SpriteCollab Viewer</h1>
 
             <div class="form-group">
                 <label for="pokemonNum">Pokémon ID (1-1025)</label>
@@ -296,8 +296,8 @@
             </div>
 
             <div class="button-group" style="margin-top: 8px;">
-                <button onclick="copiarUrl()">📋 Copiar URL</button>
-                <button onclick="abrirXml()">📄 Ver XML</button>
+                <button onclick="copiarUrl()"> Copiar URL</button>
+                <button onclick="abrirXml()"> Ver XML</button>
             </div>
 
             <h2>Animação</h2>
@@ -322,7 +322,7 @@
             </div>
 
             <div class="info-box" id="infoBox">
-                ℹ️ SpriteCollab: spritesheets com frames em grid. Tamanho do frame vem do AnimData.xml (ex: Walk=40x40, Attack=64x72).
+                » SpriteCollab: spritesheets com frames em grid. Tamanho do frame vem do AnimData.xml (ex: Walk=40x40, Attack=64x72).
             </div>
 
             <div id="errorBox" class="error-box" style="display: none;"></div>
@@ -374,8 +374,8 @@
             23: 'Ekans', 24: 'Arbok',
             25: 'Pikachu', 26: 'Raichu',
             27: 'Sandshrew', 28: 'Sandslash',
-            29: 'Nidoran♀', 30: 'Nidorina', 31: 'Nidoqueen',
-            32: 'Nidoran♂', 33: 'Nidorino', 34: 'Nidoking',
+            29: 'NidoranF', 30: 'Nidorina', 31: 'Nidoqueen',
+            32: 'NidoranM', 33: 'Nidorino', 34: 'Nidoking',
             35: 'Clefairy', 36: 'Clefable',
             37: 'Vulpix', 38: 'Ninetales',
             39: 'Jigglypuff', 40: 'Wigglytuff',
@@ -513,7 +513,7 @@ function obterUrlSprite() {
 
         function mostrarErro(mensagem) {
             const errorBox = document.getElementById('errorBox');
-            errorBox.textContent = '❌ ' + mensagem;
+            errorBox.textContent = '[X] ' + mensagem;
             errorBox.style.display = 'block';
         }
 
@@ -571,7 +571,7 @@ function obterUrlSprite() {
             spriteImage.crossOrigin = 'anonymous';
             
             spriteImage.onload = () => {
-                console.log('✓ Spritesheet:', url, spriteImage.width + 'x' + spriteImage.height);
+                console.log('OK Spritesheet:', url, spriteImage.width + 'x' + spriteImage.height);
                 
                 const iw = spriteImage.width;
                 const ih = spriteImage.height;

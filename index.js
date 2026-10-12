@@ -6,12 +6,15 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 
+// Config primeiro: carrega .env antes de qualquer lib que lê process.env (ex: cloudinary).
+const { MONGO_URI } = require('./config'); 
+
 const { BaseEntity, User, NPC, GameMap, ItemDefinition, PlayerSkin, DevSettings, DevLog } = require('./models');
 const { processPngBuffer } = require('./lib/chromaKey');
 const { EntityType, MoveType, TypeChart, MOVES_LIBRARY, getXpForNextLevel, getTypeEffectiveness } = require('./gameData');
-const { calculateStats, getLearnedMovesFromPool, pickDeterministicMovesFromPool, normalizeEntityType, validateEntityDefinition, isEntityBattleReady } = require('./lib/gameRules');
+const { calculateStats, getLearnedMovesFromPool, pickDeterministicMovesFromPool, normalizeEntityType, normalizeItemId: normalizeItemIdRules, validateEntityDefinition, isEntityBattleReady } = require('./lib/gameRules');
+const { applyStatusDamage: applyStatusDamageEngine, processAction: processActionEngine, performEnemyTurn: performEnemyTurnEngine, calculateCaptureChance } = require('./lib/battleEngine');
 const { uploadBuffer, uploadBase64 } = require('./lib/cloudinary');
-const { MONGO_URI } = require('./config'); 
 
 const SKIN_COUNT = 12; 
 const BASE_GRASS_CHANCE = 0.08;
@@ -324,7 +327,7 @@ async function getStarterOptionsForNpc(npc) {
 // --- CONEXÃO BANCO ---
 const dbReady = mongoose.connect(MONGO_URI)
     .then(() => {
-        console.log('✅ MongoDB Conectado');
+        console.log('[OK] MongoDB Conectado');
         return Promise.all([
             fixLegacyUsers(),
             ensureDefaultItemCatalog(),
@@ -370,8 +373,9 @@ async function ensureDefaultItemCatalog() {
             { id: 'thunder-stone', name: 'Thunder Stone', type: 'consumable', price: 2100 },
             { id: 'water-stone', name: 'Water Stone', type: 'consumable', price: 2100 },
             { id: 'leaf-stone', name: 'Leaf Stone', type: 'consumable', price: 2100 },
-            { id: 'moon-stone', name: 'Moon Stone', type: 'consumable', price: 0 },
-            { id: 'levelUpCrystal', name: 'Level Up Crystal', type: 'consumable', price: 0 }
+            { id: 'moon-stone', name: 'Moon Stone', type: 'consumable', price: 0 }
+            // NOTA: sem entrada legada 'levelUpCrystal' — o canônico é 'rare-candy'.
+            // Quem ainda tem levelUpCrystal na bag é migrado em fixLegacyUsers (soma + unset).
         ];
         for (const it of defaults) {
             const existing = await ItemDefinition.findOne({ id: it.id });
@@ -399,16 +403,20 @@ async function fixLegacyUsers() {
                 const newFormat = u.defeatedNPCs.map(id => ({ npcId: id, defeatedAt: 0 }));
                 await mongoose.connection.db.collection('users').updateOne({ _id: u._id }, { $set: { defeatedNPCs: newFormat } });
             }
-            // Migrar bag: captureCube -> pokeball, levelUpCrystal -> rare-candy
+            // Migração one-shot e idempotente: captureCube -> pokeball, levelUpCrystal -> rare-candy.
+            // SOMA (não sobrescreve) caso o usuário já tenha o canônico, e remove a chave legada.
+            // Só toca usuários que ainda têm chave legada — após a primeira passada, não faz mais nada.
             if (u.bag && typeof u.bag === 'object') {
                 const $set = {};
                 const $unset = {};
+                const legacyCube = Number(u.bag.captureCube);
                 if (u.bag.captureCube !== undefined) {
-                    $set['bag.pokeball'] = u.bag.captureCube;
+                    $set['bag.pokeball'] = Math.max(0, (Number(u.bag.pokeball) || 0) + (Number.isFinite(legacyCube) ? legacyCube : 0));
                     $unset['bag.captureCube'] = '';
                 }
+                const legacyCrystal = Number(u.bag.levelUpCrystal);
                 if (u.bag.levelUpCrystal !== undefined) {
-                    $set['bag.rare-candy'] = u.bag.levelUpCrystal;
+                    $set['bag.rare-candy'] = Math.max(0, (Number(u.bag['rare-candy']) || 0) + (Number.isFinite(legacyCrystal) ? legacyCrystal : 0));
                     $unset['bag.levelUpCrystal'] = '';
                 }
                 if (Object.keys($set).length > 0 || Object.keys($unset).length > 0) {
@@ -416,7 +424,6 @@ async function fixLegacyUsers() {
                     if (Object.keys($set).length > 0) ops.$set = $set;
                     if (Object.keys($unset).length > 0) ops.$unset = $unset;
                     await mongoose.connection.db.collection('users').updateOne({ _id: u._id }, ops);
-                    console.log(`[MIGRAÇÃO] User ${u._id}: captureCube→pokeball, levelUpCrystal→rare-candy`);
                 }
             }
         }
@@ -425,11 +432,28 @@ async function fixLegacyUsers() {
 
 const app = express();
 const server = http.createServer(app);
+app.disable('x-powered-by');
 
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8, 
+    maxHttpBufferSize: 1e6, 
     cors: { origin: "*" }
 });
+
+// Rate-limit simples em memória p/ login (evita brute-force sem dep nova).
+const loginAttempts = new Map();
+function loginRateLimited(ip) {
+    const now = Date.now();
+    const arr = (loginAttempts.get(ip) || []).filter((t) => now - t < 60 * 1000);
+    arr.push(now);
+    loginAttempts.set(ip, arr);
+    return arr.length > 20;
+}
+function sanitizeUsername(u) {
+    const s = String(u || '').trim();
+    if (!s || s.length < 3 || s.length > 24) return '';
+    if (/[$.{}\[\]]/.test(s)) return '';
+    return s;
+}
 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
@@ -446,6 +470,22 @@ const players = {};
 let matchmakingQueue = []; // Declarado globalmente
 const playerChallenges = {};
 const roomSpectators = {}; 
+// TTL anti-vazamento: batalhas sem atividade expiram (evita memória infinita + restart fantasma).
+const BATTLE_TTL_MS = 30 * 60 * 1000;
+function touchBattle(battle) { if (battle) battle.updatedAt = Date.now(); }
+setInterval(() => {
+    try {
+        const now = Date.now();
+        for (const id of Object.keys(activeBattles)) {
+            const b = activeBattles[id];
+            if (!b || !b.updatedAt || (now - b.updatedAt) > BATTLE_TTL_MS) delete activeBattles[id];
+        }
+        for (const id of Object.keys(onlineBattles)) {
+            const b = onlineBattles[id];
+            if (!b || !b.updatedAt || (now - b.updatedAt) > BATTLE_TTL_MS) delete onlineBattles[id];
+        }
+    } catch (_) {}
+}, 60 * 1000).unref?.();
 
 // Cache da lista de NPCs por mapa (para sockets/patrol sem query constante)
 const npcCacheByMap = {};
@@ -459,7 +499,7 @@ const chromaUpload = multer({ storage: storage, limits: { fileSize: 30 * 1024 * 
 const skinUpload = multer({
     storage,
     limits: {
-        fileSize: 1024 * 1024 // 1MB
+        fileSize: 3 * 1024 * 1024 // 3MB (spritesheets passam de 1MB)
     }
 });
 
@@ -524,7 +564,7 @@ async function createDirectOnlineBattle(p1SocketId, p2SocketId) {
     if (!p1Entity || !p2Entity) return { success: false, error: 'Time inválido.' };
 
     const roomId = `room_${Date.now()}`;
-    onlineBattles[roomId] = { p1: p1Entity, p2: p2Entity, turn: 1, bet: 0, mode: 'challenge' };
+    onlineBattles[roomId] = { updatedAt: Date.now(), p1: p1Entity, p2: p2Entity, turn: 1, bet: 0, mode: 'challenge' };
     return { success: true, roomId, p1: p1Entity, p2: p2Entity };
 }
 
@@ -629,8 +669,11 @@ function parsePngDimensions(buf) {
 // --- FUNÇÕES AUXILIARES ---
 
 // --- INVENTÁRIO / ITENS-CHAVE (retrocompatível) ---
+// IDs canônicos: 'pokeball', 'rare-candy'. Aliases legados dobrados p/ o canônico
+// (captureCube, levelUpCrystal, rareCandy) para que nada nasça nem opere com ID velho.
+// Tabela viva em lib/gameRules (testada); aqui só delega.
 function normalizeItemId(itemId) {
-    return String(itemId || '').trim();
+    return normalizeItemIdRules(itemId);
 }
 
 function ensureUserInventories(user) {
@@ -721,9 +764,11 @@ async function purchaseCatalogItemForUser({ userId, itemId, qty, totalCost, oneT
 
 // Seleciona diálogo do NPC baseado em StoryFlags
 // Sistema de diálogos: retorna null quando não deve falar (para diferenciar de string vazia intencional)
+// Logs só com DEBUG_NPC=1 (antes poluía produção a cada fala).
 function resolveNpcDialogue(npc, user, key) {
+    const dbg = (...a) => { if (process.env.DEBUG_NPC === '1') console.log(...a); };
     if (!npc || !user) {
-        console.log(`[resolveNpcDialogue] NPC ou User null`);
+        dbg(`[resolveNpcDialogue] NPC ou User null`);
         return null;
     }
     
@@ -731,27 +776,16 @@ function resolveNpcDialogue(npc, user, key) {
         const conditionals = Array.isArray(npc.conditionalDialogues) ? npc.conditionalDialogues : [];
         const hasConditionals = conditionals.length > 0;
         
-        console.log(`[resolveNpcDialogue] NPC: ${npc.name}, Key: ${key}`);
-        console.log(`[resolveNpcDialogue] Has conditionals: ${hasConditionals}, Count: ${conditionals.length}`);
+        dbg(`[resolveNpcDialogue] NPC: ${npc.name}, Key: ${key}`);
         
         // Se não há condicionais configuradas, usa a fala padrão do NPC
         if (!hasConditionals) {
             const defaultText = npc[key] || '';
-            console.log(`[resolveNpcDialogue] Sem condicionais. Retorna padrão: "${defaultText.substring(0, 50)}"`);
             return defaultText;
         }
         
         // Há condicionais: verificar se alguma flag está ativa
         const flags = user.storyFlags || {};
-        console.log(`[resolveNpcDialogue] User flags:`, JSON.stringify(flags));
-        
-        // Debug cada condicional
-        conditionals.forEach((c, i) => {
-            if (c && c.flagId) {
-                const isActive = readStoryFlag(flags, c.flagId);
-                console.log(`[resolveNpcDialogue] Conditional ${i}: flagId="${c.flagId}", active=${isActive}, dialogue="${(c.dialogue || '').substring(0, 30)}"`);
-            }
-        });
         
         const activeConditionals = conditionals
             .filter(c => c && c.flagId && readStoryFlag(flags, c.flagId))
@@ -763,15 +797,13 @@ function resolveNpcDialogue(npc, user, key) {
         if (activeConditionals.length > 0) {
             const matched = activeConditionals.find(c => c[key]);
             if (matched && matched[key]) {
-                console.log(`[resolveNpcDialogue] Flag "${matched.flagId}" ativa! Retorna: "${matched[key].substring(0, 50)}"`);
+                dbg(`[resolveNpcDialogue] Flag "${matched.flagId}" ativa`);
                 return matched[key];
             }
-            console.log(`[resolveNpcDialogue] Flag ativa mas sem texto para key "${key}"`);
         }
         
         // Há condicionais MAS nenhuma flag ativa: usa o diálogo padrão do NPC como fallback
         const defaultText = npc[key] || '';
-        console.log(`[resolveNpcDialogue] Nenhuma flag ativa. Usa diálogo padrão: "${defaultText.substring(0, 50)}"`);
         return defaultText;
         
     } catch (e) {
@@ -1117,174 +1149,15 @@ async function buildFollowerInfo(user) {
 }
 
 function applyStatusDamage(entity, events) {
-    if (!entity.status || entity.hp <= 0) return;
-    if (entity.status.type === 'poison') {
-        const dmg = Math.max(1, Math.floor(entity.maxHp / 8)); entity.hp -= dmg; if (entity.hp < 0) entity.hp = 0; entity.status.turns--;
-        events.push({ type: 'STATUS_DAMAGE', targetId: entity.instanceId || 'wild', damage: dmg, newHp: entity.hp, status: 'poison', text: `${entity.name} sofreu pelo veneno!` });
-        if (entity.status.turns <= 0) { entity.status = null; events.push({ type: 'STATUS_END', targetId: entity.instanceId || 'wild', text: `O veneno de ${entity.name} passou.` }); }
-    }
+    return applyStatusDamageEngine(entity, events);
 }
 
 function processAction(attacker, defender, move, logArray) {
-    if(!move) { logArray.push({ type: 'MSG', text: `${attacker.name} hesitou!` }); return; }
-    
-    const cost = move.cost || 0;
-    
-    // VALIDAÇÃO: Checar energia ANTES de descontar
-    if (attacker.energy < cost) { 
-        logArray.push({ 
-            type: 'MSG', 
-            text: `${attacker.name} não tem energia suficiente! Precisa ${cost}, tem ${attacker.energy}.` 
-        }); 
-        return; 
-    }
-    
-    // Descontar energia
-    attacker.energy -= cost; 
-    
-    logArray.push({ type: 'USE_MOVE', actorId: attacker.instanceId || 'wild', moveName: move.name, moveIcon: move.icon, moveElement: move.element || 'beast', moveCategory: move.category || 'physical', moveType: move.type, cost: cost, newEnergy: attacker.energy });
-    
-    if(move.type === 'heal') { 
-        const oldHp = attacker.hp; 
-        const healAmount = move.power + Math.floor(attacker.maxHp * 0.1); 
-        attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount); 
-        
-        // REST também restaura energia extra (novo sistema!)
-        if (move.id === 'rest') {
-            const energyBonus = ENERGY_CONFIG.restBonus;
-            attacker.energy = Math.min(attacker.maxEnergy, attacker.energy + energyBonus);
-            logArray.push({ 
-                type: 'HEAL', 
-                actorId: attacker.instanceId || 'wild', 
-                amount: attacker.hp - oldHp, 
-                newHp: attacker.hp,
-                energyRestored: energyBonus,
-                newEnergy: attacker.energy
-            }); 
-        } else {
-            logArray.push({ type: 'HEAL', actorId: attacker.instanceId || 'wild', amount: attacker.hp - oldHp, newHp: attacker.hp }); 
-        }
-        
-        // Quebra combo (decisão tática: atacar ou curar)
-        if (attacker.combo) attacker.combo = 0;
-    } 
-    else if (move.type === 'defend') { 
-        // Sistema de defesa: reduz dano recebido no próximo turno
-        attacker.defending = true;
-        logArray.push({ type: 'MSG', text: `${attacker.name} se protegeu!` }); 
-        // Quebra combo (decisão tática: atacar ou defender)
-        if (attacker.combo) attacker.combo = 0;
-    } 
-    else { 
-        // --- SISTEMA DE COMBATE APRIMORADO ---
-        
-        // 1. EVASÃO: Chance de esquivar baseada em velocidade
-        const evasionChance = Math.min(0.15, defender.stats.speed / 1000); // Máx 15%
-        if (Math.random() < evasionChance) {
-            logArray.push({ type: 'MSG', text: `${defender.name} esquivou!` });
-            // Quebra o combo do atacante
-            if (attacker.combo) attacker.combo = 0;
-            return;
-        }
-        
-        // 2. DEFESA REDUZ DANO
-        const defenseMultiplier = defender.defending ? 0.5 : 1.0;
-        defender.defending = false; // Remove estado de defesa após ser atacado
-        
-        // Cálculo de dano melhorado
-        const multiplier = getTypeEffectiveness(move.element, defender.type);
-        const level = attacker.level || 1; 
-        const atk = attacker.stats.attack; 
-        const def = defender.stats.defense;
-        const random = (Math.floor(Math.random() * 16) + 85) / 100;
-        
-        let damage = Math.floor((((level * 0.2 + 1.5) * move.power * (atk / def)) / 65 + 2) * multiplier * random);
-        
-        // Aplicar defesa
-        damage = Math.floor(damage * defenseMultiplier);
-        
-        if (damage < 1) damage = 1; 
-        
-        defender.hp -= damage; 
-        if (defender.hp < 0) defender.hp = 0;
-        
-        logArray.push({ 
-            type: 'ATTACK_HIT', 
-            attackerId: attacker.instanceId || 'wild', 
-            targetId: defender.instanceId || 'wild', 
-            damage, 
-            newHp: defender.hp, 
-            isEffective: multiplier > 1, 
-            isNotEffective: multiplier < 1 && multiplier > 0, 
-            isBlocked: multiplier === 0
-        }); 
-        
-        // 5. EFEITOS ESPECIAIS: Chance de aplicar status baseado no elemento
-        if (!defender.status && defender.hp > 0) {
-            let statusChance = 0;
-            let statusType = null;
-            
-            // Cada elemento tem chance de causar status diferente
-            if (move.element === 'venom') {
-                statusChance = 0.30; // 30% de envenenar
-                statusType = 'poison';
-            } else if (move.element === 'flame') {
-                statusChance = 0.15; // 15% de queimar
-                statusType = 'burn';
-            } else if (move.element === 'aqua') {
-                statusChance = 0.10; // 10% de congelar
-                statusType = 'frozen';
-            } else if (move.element === 'sky') {
-                statusChance = 0.20; // 20% de paralisia
-                statusType = 'paralyzed';
-            }
-            
-            if (statusType && Math.random() < statusChance) {
-                defender.status = { type: statusType, turns: 3 };
-                const statusMsg = {
-                    poison: `${defender.name} foi envenenado!`,
-                    burn: `${defender.name} foi queimado!`,
-                    frozen: `${defender.name} foi congelado!`,
-                    paralyzed: `${defender.name} foi paralisado!`
-                };
-                logArray.push({ 
-                    type: 'STATUS_APPLIED', 
-                    targetId: defender.instanceId || 'wild', 
-                    status: statusType, 
-                    text: statusMsg[statusType] || `${defender.name} foi afetado!`
-                });
-            }
-        }
-        
-    }
+    return processActionEngine(attacker, defender, move, logArray, Math.random, ENERGY_CONFIG);
 }
-
+    
 function performEnemyTurn(attacker, defender, events) {
-    try {
-        const movesArr = Array.isArray(attacker && attacker.moves) ? attacker.moves : [];
-
-        // Fallback seguro para evitar travar batalhas quando um NPC/monstro não tem movePool válido.
-        const fallbackMoveId = (MOVES_LIBRARY && MOVES_LIBRARY.rapid_punch) ? 'rapid_punch'
-            : (MOVES_LIBRARY && MOVES_LIBRARY.wing_slice) ? 'wing_slice'
-            : (MOVES_LIBRARY && MOVES_LIBRARY.rest) ? 'rest'
-            : (MOVES_LIBRARY ? Object.keys(MOVES_LIBRARY)[0] : null);
-        const fallbackMove = (fallbackMoveId && MOVES_LIBRARY && MOVES_LIBRARY[fallbackMoveId])
-            ? { ...MOVES_LIBRARY[fallbackMoveId], id: fallbackMoveId }
-            : null;
-
-        const picked = movesArr.length
-            ? movesArr[Math.floor(Math.random() * movesArr.length)]
-            : fallbackMove;
-
-        if (!picked) {
-            if (events) events.push({ type: 'MSG', text: `${attacker && attacker.name ? attacker.name : 'Inimigo'} ficou sem ataques!` });
-            return;
-        }
-        processAction(attacker, defender, picked, events);
-    } catch (e) {
-        console.error('performEnemyTurn error:', e);
-        if (events) events.push({ type: 'MSG', text: 'O inimigo hesitou...' });
-    }
+    return performEnemyTurnEngine(attacker, defender, events, Math.random, ENERGY_CONFIG);
 }
 
 // --- ROTAS GERAIS ---
@@ -1295,7 +1168,13 @@ app.get('/', async (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    if (loginRateLimited(req.ip)) return res.status(429).render('login', { error: 'Muitas tentativas. Aguarde 1 minuto.', skinCount: SKIN_COUNT, skins: [] });
+    const username = sanitizeUsername(req.body && req.body.username);
+    const password = String((req.body && req.body.password) || '');
+    if (!username || !password) {
+        const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+        return res.render('login', { error: 'Credenciais inválidas', skinCount: SKIN_COUNT, skins: skins || [] });
+    }
     const user = await User.findOne({ username, password });
     if (user) {
         const okSkin = await ensureUserHasValidSkin(user);
@@ -1311,7 +1190,17 @@ app.post('/login', async (req, res) => {
     }
 });
 app.post('/register', async (req, res) => {
-    const { username, password, skin } = req.body;
+    const username = sanitizeUsername(req.body && req.body.username);
+    const password = String((req.body && req.body.password) || '');
+    const skin = req.body && req.body.skin;
+    if (!username) {
+        const skins0 = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+        return res.render('login', { error: 'Usuário inválido (3-24 letras/números, sem $ . { }).', skinCount: SKIN_COUNT, skins: skins0 || [] });
+    }
+    if (!password || password.length < 4) {
+        const skins0 = await PlayerSkin.find({}).sort({ name: 1 }).lean();
+        return res.render('login', { error: 'Senha muito curta (mínimo 4).', skinCount: SKIN_COUNT, skins: skins0 || [] });
+    }
     try {
         const available = await PlayerSkin.find({}).sort({ name: 1 }).lean();
         if (!available || available.length === 0) {
@@ -1343,6 +1232,11 @@ app.get('/skins/:id.png', async (req, res) => {
         if (!id) return res.status(404).end();
         const skin = await PlayerSkin.findById(id).lean();
         if (!skin || !skin.pngBase64) return res.status(404).end();
+        // ETag por updatedAt: edição de sprite invalida o cache (antes o navegador
+        // segurava a imagem velha por 1h e parecia que "não salvou").
+        const etag = `"skin-${id}-${skin.updatedAt || 0}"`;
+        if (req.headers['if-none-match'] === etag) return res.status(304).end();
+        res.setHeader('ETag', etag);
         const val = String(skin.pngBase64);
         if (val.startsWith('http')) {
             res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -2788,6 +2682,21 @@ app.get('/admin/dev', async (req, res) => {
     res.render('dev', { userId: user._id, username: user.username, settings });
 });
 
+// --- LAB (painel admin): respostas JSON para fetch (sem reload) + redirect como fallback ---
+function labWantsJSON(req) {
+    const a = String((req.headers && req.headers.accept) || '');
+    return req.xhr || a.includes('application/json');
+}
+function labFail(req, res, userId, status, msg) {
+    if (labWantsJSON(req)) return res.status(status).json({ success: false, error: msg });
+    return res.redirect('/lab?userId=' + encodeURIComponent(userId || '') + '&error=' + encodeURIComponent(msg));
+}
+function labDone(req, res, userId, payload, msg) {
+    if (labWantsJSON(req)) return res.json({ success: true, message: msg || 'Salvo!', ...(payload || {}) });
+    const qs = '&success=' + encodeURIComponent(msg || 'Salvo!');
+    return res.redirect('/lab?userId=' + encodeURIComponent(userId || '') + qs);
+}
+
 app.get('/lab', async (req, res) => {
     const { userId } = req.query;
     const user = await User.findById(userId);
@@ -2795,25 +2704,56 @@ app.get('/lab', async (req, res) => {
     const entities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 }).lean();
     const npcs = await NPC.find().lean();
     const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
-    res.render('create', { types: EntityType, moves: MOVES_LIBRARY, entities, npcs, skins: skins || [], user });
+    res.render('create', {
+        types: EntityType, moves: MOVES_LIBRARY, entities, npcs, skins: skins || [], user,
+        error: String(req.query.error || ''), success: String(req.query.success || ''),
+    });
+});
+
+// Lista leve p/ atualizar a sidebar do LAB sem reload (skins sem base64).
+app.get('/lab/list', async (req, res) => {
+    try {
+        const { userId, type } = req.query;
+        const user = await User.findById(userId);
+        if (!user || !user.isAdmin) return res.status(403).json({ success: false, error: 'Sem permissão' });
+        if (type === 'skins') {
+            const skins = await PlayerSkin.find({}, { pngBase64: 0 }).sort({ name: 1 }).lean();
+            return res.json({ success: true, items: skins });
+        }
+        if (type === 'entities') {
+            const entities = await BaseEntity.find().sort({ dexOrder: 1, name: 1 }).lean();
+            return res.json({ success: true, items: entities });
+        }
+        if (type === 'npcs') {
+            const npcs = await NPC.find().lean();
+            return res.json({ success: true, items: npcs });
+        }
+        return res.status(400).json({ success: false, error: 'Tipo inválido (skins|entities|npcs)' });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: 'Falha ao listar' });
+    }
 });
 
 app.post('/lab/skins/create', skinUpload.single('skinFile'), async (req, res) => {
     try {
         const { userId, name, skinId } = req.body;
         const user = await User.findById(userId);
-        if (!user || !user.isAdmin) return res.redirect('/');
+        if (!user || !user.isAdmin) {
+            if (labWantsJSON(req)) return res.status(403).json({ success: false, error: 'Sem permissão' });
+            return res.redirect('/');
+        }
 
         const cleanName = String(name || '').trim();
-        if (!cleanName) return res.status(400).send('Nome inválido');
+        if (!cleanName) return labFail(req, res, userId, 400, 'Nome da skin inválido.');
         const id = String(skinId || '').trim();
+        let savedId = id || null;
 
         if (id) {
             const existing = await PlayerSkin.findById(id);
-            if (!existing) return res.status(404).send('Skin não encontrada');
+            if (!existing) return labFail(req, res, userId, 404, 'Skin não encontrada.');
             existing.name = cleanName;
             if (req.file && req.file.buffer) {
-                if (!isPngBuffer(req.file.buffer)) return res.status(415).send('Arquivo deve ser PNG');
+                if (!isPngBuffer(req.file.buffer)) return labFail(req, res, userId, 415, 'Arquivo deve ser PNG.');
                 try {
                     existing.pngBase64 = await uploadBuffer(req.file.buffer, 'skins', `skin_${id}`, req.file.mimetype);
                 } catch(e) {
@@ -2823,9 +2763,10 @@ app.post('/lab/skins/create', skinUpload.single('skinFile'), async (req, res) =>
             }
             existing.updatedAt = Date.now();
             await existing.save();
+            savedId = String(existing._id);
         } else {
-            if (!req.file || !req.file.buffer) return res.status(400).send('Arquivo PNG obrigatório');
-            if (!isPngBuffer(req.file.buffer)) return res.status(415).send('Arquivo deve ser PNG');
+            if (!req.file || !req.file.buffer) return labFail(req, res, userId, 400, 'Selecione um arquivo PNG.');
+            if (!isPngBuffer(req.file.buffer)) return labFail(req, res, userId, 415, 'Arquivo deve ser PNG (não JPG/WebP).');
             let pngBase64 = null;
             try {
                 pngBase64 = await uploadBuffer(req.file.buffer, 'skins', `skin_${Date.now()}`, req.file.mimetype);
@@ -2833,11 +2774,13 @@ app.post('/lab/skins/create', skinUpload.single('skinFile'), async (req, res) =>
                 console.error('Cloudinary upload failed:', e.message);
                 pngBase64 = req.file.buffer.toString('base64');
             }
-            await PlayerSkin.create({ name: cleanName, pngBase64, createdAt: Date.now(), updatedAt: Date.now() });
+            const created = await PlayerSkin.create({ name: cleanName, pngBase64, createdAt: Date.now(), updatedAt: Date.now() });
+            savedId = String(created._id);
         }
-        return res.redirect('/lab?userId=' + userId);
+        return labDone(req, res, userId, { id: savedId }, 'Skin salva!');
     } catch (e) {
-        return res.status(400).send('Erro ao salvar skin (nome duplicado?)');
+        const msg = (e && e.code === 11000) ? 'Já existe skin com esse nome.' : 'Erro ao salvar skin.';
+        return labFail(req, res, req.body && req.body.userId, 400, msg);
     }
 });
 
@@ -2845,11 +2788,14 @@ app.post('/lab/skins/delete', async (req, res) => {
     try {
         const { userId, id } = req.body;
         const user = await User.findById(userId);
-        if (!user || !user.isAdmin) return res.redirect('/');
+        if (!user || !user.isAdmin) {
+            if (labWantsJSON(req)) return res.status(403).json({ success: false, error: 'Sem permissão' });
+            return res.redirect('/');
+        }
         await PlayerSkin.deleteOne({ _id: id });
-        return res.redirect('/lab?userId=' + userId);
+        return labDone(req, res, userId, { id }, 'Skin excluída.');
     } catch (e) {
-        return res.status(500).send('Erro ao excluir skin');
+        return labFail(req, res, req.body && req.body.userId, 500, 'Erro ao excluir skin.');
     }
 });
 const npcUpload = upload.fields([{ name: 'npcSkinFile', maxCount: 1 }, { name: 'battleBgFile', maxCount: 1 }]);
@@ -3152,8 +3098,13 @@ app.post('/lab/create-npc', npcUpload, async (req, res) => {
             battleBackground: finalBattleBg
         }; 
         if (npcId) { if (!req.files['npcSkinFile'] && skinSelect && !skinSelect.startsWith('data:')) { npcData.skin = skinSelect; npcData.isCustomSkin = false; } await NPC.findByIdAndUpdate(npcId, npcData); } else { await new NPC(npcData).save(); } 
+        if (labWantsJSON(req)) {
+            const saved = npcId ? await NPC.findById(npcId).lean() : await NPC.findOne({ name: npcData.name, map: npcData.map }).sort({ _id: -1 }).lean();
+            try { delete npcCacheByMap[npcData.map]; } catch (_) {}
+            return res.json({ success: true, message: 'NPC salvo!', npc: saved });
+        }
         res.redirect('/lab?userId=' + userId); 
-    } catch (e) { console.error(e); res.send("Erro: " + e.message); } 
+    } catch (e) { console.error(e); if (labWantsJSON(req)) return res.status(500).json({ success: false, error: 'Erro: ' + e.message }); res.send("Erro: " + e.message); } 
 });
 
 // --- CACHE & PATROL DE NPCs (MOVIMENTO AUTOMÁTICO) ---
@@ -3388,7 +3339,9 @@ app.post('/lab/create', upload.single('sprite'), async (req, res) => {
 
     const validation = validateEntityDefinition(data);
     if (!validation.ok) {
-        return res.status(400).send('Erro ao salvar entidade: ' + validation.errors.join(' | '));
+        const msg = 'Erro ao salvar entidade: ' + validation.errors.join(' | ');
+        if (labWantsJSON(req)) return res.status(400).json({ success: false, error: msg });
+        return res.status(400).send(msg);
     }
 
     data.type = validation.normalized.type;
@@ -3407,19 +3360,53 @@ app.post('/lab/create', upload.single('sprite'), async (req, res) => {
 
     if (existingId) {
         const clean = String(existingId).trim();
-        const updated = await BaseEntity.findOneAndUpdate({ id: clean }, data);
-        if (!updated && mongoose.isValidObjectId(clean)) {
-            await BaseEntity.findByIdAndUpdate(clean, data);
+        const updated = await BaseEntity.findOneAndUpdate({ id: clean }, data, { new: true });
+        let saved = updated;
+        if (!saved && mongoose.isValidObjectId(clean)) {
+            saved = await BaseEntity.findByIdAndUpdate(clean, data, { new: true });
         }
+        if (labWantsJSON(req)) return res.json({ success: true, message: 'Entidade salva!', entity: saved });
     } else {
         data.id = Date.now().toString();
-        await new BaseEntity(data).save();
+        const created = await new BaseEntity(data).save();
+        if (labWantsJSON(req)) return res.json({ success: true, message: 'Entidade criada!', entity: created });
     }
 
     res.redirect(req.header('Referer') || '/');
 });
-app.post('/lab/delete', async (req, res) => { try { const { id } = req.body; if (id) await BaseEntity.deleteOne({ id }); res.redirect(req.get('referer')); } catch (e) { res.send('Erro ao excluir: ' + e.message); } });
-app.post('/lab/delete-npc', async (req, res) => { try { const { id } = req.body; if(id) await NPC.findByIdAndDelete(id); res.redirect(req.get('referer')); } catch(e) { res.send("Erro"); } });
+app.post('/lab/delete', async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (id) await BaseEntity.deleteOne({ id });
+        if (labWantsJSON(req)) return res.json({ success: true, message: 'Entidade excluída.', id });
+        res.redirect(req.get('referer'));
+    } catch (e) {
+        if (labWantsJSON(req)) return res.status(500).json({ success: false, error: 'Erro ao excluir: ' + e.message });
+        res.send('Erro ao excluir: ' + e.message);
+    }
+});
+app.post('/lab/delete-npc', async (req, res) => {
+    try {
+        const { id } = req.body;
+        if (id) await NPC.findByIdAndDelete(id);
+        if (labWantsJSON(req)) return res.json({ success: true, message: 'NPC excluído.', id });
+        res.redirect(req.get('referer'));
+    } catch (e) {
+        if (labWantsJSON(req)) return res.status(500).json({ success: false, error: 'Erro ao excluir NPC.' });
+        res.send("Erro");
+    }
+});
+// Erros de upload (multer) nas rotas do LAB: JSON p/ fetch ou volta com ?error= (antes caía em 500 seco).
+// Declarado APÓS as rotas para capturar os erros delas.
+app.use('/lab', (err, req, res, next) => {
+    if (!err) return next();
+    const msg = (err && err.code === 'LIMIT_FILE_SIZE')
+        ? 'Arquivo grande demais (máx 3MB para skins).'
+        : 'Falha no upload: ' + ((err && err.message) || 'erro desconhecido');
+    if (labWantsJSON(req)) return res.status(400).json({ success: false, error: msg });
+    const userId = (req.body && req.body.userId) || (req.query && req.query.userId) || '';
+    return res.redirect('/lab?userId=' + encodeURIComponent(userId) + '&error=' + encodeURIComponent(msg));
+});
 app.get('/api/pc', async (req, res) => {
     const { userId } = req.query;
     const user = await User.findById(userId);
@@ -3521,6 +3508,9 @@ app.get('/api/me', async (req, res) => {
     res.json({
         team: teamWithSprites,
         allMoves: MOVES_LIBRARY,
+        username: user.username,
+        skin: user.skin || '',
+        dex: Array.isArray(user.dex) ? user.dex : [],
         money: user.money || 0,
         pokeballs: (user.bag && user.bag.pokeball) || user.pokeballs || 0,
         rareCandy: (user.bag && user.bag['rare-candy']) || user.rareCandy || 0,
@@ -3986,13 +3976,18 @@ app.post('/api/use-item', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.json({ error: 'User not found' });
 
-    // Aceita IDs legados e novos; usa sempre o bag
-    const normalizedId = String(itemId || '').trim();
+    // Canônico: 'rare-candy'. Aliases legados ('levelUpCrystal', 'rareCandy') dobrados via normalizeItemId.
+    const normalizedId = normalizeItemId(itemId);
 
-    if (normalizedId === 'levelUpCrystal') {
+    if (normalizedId === 'rare-candy') {
         if (!pokemonId) return res.json({ error: 'pokemonId required' });
         ensureUserInventories(user);
-        if ((user.bag.levelUpCrystal || 0) < q) return res.json({ error: 'Not enough LevelUpCrystal' });
+        // Migra saldo legado para o canônico em memória antes de conferir (sem recriar legado).
+        if (user.bag.levelUpCrystal) {
+            user.bag['rare-candy'] = (user.bag['rare-candy'] || 0) + (user.bag.levelUpCrystal || 0);
+            delete user.bag.levelUpCrystal;
+        }
+        if ((user.bag['rare-candy'] || 0) < q) return res.json({ error: 'Not enough Rare Candy' });
 
         // Usar transação para evitar race conditions entre leituras/escritas concorrentes
         const session = await mongoose.startSession();
@@ -4005,12 +4000,16 @@ app.post('/api/use-item', async (req, res) => {
                 session.endSession();
                 return res.status(404).json({ error: 'User not found (tx)' });
             }
-            // Re-checar inventário dentro da transação
+            // Re-checar inventário dentro da transação (canônico; dobra legado p/ dentro)
             ensureUserInventories(userTx);
-            if ((userTx.bag.levelUpCrystal || 0) < q) {
+            if (userTx.bag.levelUpCrystal) {
+                userTx.bag['rare-candy'] = (userTx.bag['rare-candy'] || 0) + (userTx.bag.levelUpCrystal || 0);
+                delete userTx.bag.levelUpCrystal;
+            }
+            if ((userTx.bag['rare-candy'] || 0) < q) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.json({ error: 'Not enough LevelUpCrystal' });
+                return res.json({ error: 'Not enough Rare Candy' });
             }
 
             progression = await applyOwnedEntityProgression(userTx, pokemonId, { levelGain: q, restoreHp: 'full', session });
@@ -4019,14 +4018,13 @@ app.post('/api/use-item', async (req, res) => {
                 session.endSession();
                 return res.json({ error: progression.error === 'entity_not_found' ? 'Entity not found (tx)' : 'Falha na progressão' });
             }
-            userTx.bag.levelUpCrystal = (userTx.bag.levelUpCrystal || 0) - q;
+            userTx.bag['rare-candy'] = (userTx.bag['rare-candy'] || 0) - q;
+            if (userTx.bag.levelUpCrystal !== undefined) delete userTx.bag.levelUpCrystal;
             if (typeof userTx.markModified === 'function') userTx.markModified('bag');
 
-            console.log(`[API] /api/use-item levelUpCrystal: (tx) saving user ${userTx._id}, new bag.levelUpCrystal=${userTx.bag.levelUpCrystal}`);
             await userTx.save({ session });
             await session.commitTransaction();
             session.endSession();
-            console.log(`[API] /api/use-item levelUpCrystal: (tx) saved user ${userTx._id}`);
             // Atualizar a referência local 'user' para retornar dados atuais
             Object.assign(user, userTx.toObject());
         } catch (saveErr) {
@@ -4037,7 +4035,6 @@ app.post('/api/use-item', async (req, res) => {
         }
         return res.json({
             success: true,
-            levelUpCrystal: user.bag.levelUpCrystal || 0,
             'rare-candy': user.bag['rare-candy'] || 0,
             bag: user.bag,
             evolved: !!(progression && Array.isArray(progression.evolutions) && progression.evolutions.length > 0),
@@ -4156,7 +4153,7 @@ app.post('/battle/wild', async (req, res) => {
         returnMapUrl = `city?map=${mapName}`;
     }
 
-    activeBattles[battleId] = { 
+    activeBattles[battleId] = { updatedAt: Date.now(), 
         p1: userEntity, p2: wildEntity, type: 'wild', userId: user._id, turn: 1, returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: battleBgToUse,
         bgPosX: battleBgPosX, bgPosY: battleBgPosY,
         mapId: mapName,
@@ -4219,7 +4216,7 @@ app.post('/battle/contract', async (req, res) => {
     const battleId = `contract_${contract.id}_${Date.now()}`;
     let returnMapUrl = currentMap || 'city';
 
-    activeBattles[battleId] = { 
+    activeBattles[battleId] = { updatedAt: Date.now(), 
         p1, p2, type: 'contract', userId: user._id, turn: 1, mode: 'manual', returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50,
         contractReward: contract.rewardMoney || 0,
         mapId: returnMapUrl
@@ -4321,7 +4318,7 @@ app.post('/battle/npc', async (req, res) => {
     let returnMapUrl = currentMap;
     if (mapName !== 'city' && mapName !== 'forest' && !currentMap.includes('map=')) { returnMapUrl = `city?map=${mapName}`; }
 
-    activeBattles[battleId] = { 
+    activeBattles[battleId] = { updatedAt: Date.now(), 
         p1: p1Entity, p2: npcTeamInstances[0], npcReserve: npcTeamInstances, type: 'local', userId: user._id, turn: 1, npcId: npc._id,
         returnMap: returnMapUrl, returnX: currentX || 50, returnY: currentY || 50, customBackground: finalBg,
         bgPosX: battleBgPosX, bgPosY: battleBgPosY, bgZoom: battleBgZoom,
@@ -4404,7 +4401,7 @@ app.post('/battle', async (req, res) => {
     };
 
     const battleId = 'local_' + Date.now();
-    activeBattles[battleId] = { p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' };
+    activeBattles[battleId] = { updatedAt: Date.now(), p1, p2, type: 'local', userId, turn: 1, mode: 'manual', returnMap: 'city' };
     res.redirect('/battle/' + battleId);
 });
 
@@ -4443,7 +4440,7 @@ app.get('/teste-ui-batalha', async (req, res) => {
         };
 
         const battleId = 'test_' + Date.now();
-        activeBattles[battleId] = { p1, p2, type: 'local', userId: '000000000000000000000001', turn: 1, mode: 'manual', returnMap: 'teste-ui-batalha' };
+        activeBattles[battleId] = { updatedAt: Date.now(), p1, p2, type: 'local', userId: '000000000000000000000001', turn: 1, mode: 'manual', returnMap: 'teste-ui-batalha' };
         res.redirect('/battle/' + battleId);
     } catch (e) {
         res.status(500).send('Erro: ' + e.message);
@@ -4520,6 +4517,7 @@ app.get('/battle/:id', async (req, res) => {
 // --- LÓGICA DE TURNO ---
 app.post('/api/turn', async (req, res) => {
     const { battleId, action, moveId, isForced } = req.body; const battle = activeBattles[battleId]; if(!battle) { return res.json({ finished: true }); }
+    touchBattle(battle);
     try {
         let p1 = battle.p1; const p2 = battle.p2; const events = []; let threwCaptureCube = false;
         let npcDefeatedId = null;
@@ -4550,23 +4548,9 @@ app.post('/api/turn', async (req, res) => {
                 if((user.bag.pokeball || 0) <= 0) { events.push({ type: 'MSG', text: 'Sem Poké Bolas!' }); return res.json({ events }); } 
                 user.bag.pokeball--; threwCaptureCube = true; 
                 
-                // --- SISTEMA DE CAPTURA SIMPLIFICADO ---
-                
-                // Fatores simples e claros:
-                // 1. HP baixo (0-100% linear)
-                const hpPercent = p2.hp / p2.maxHp;
-                const hpBonus = 1 - hpPercent;
-                
-                // 2. Status dobra chances (recompensa estratégia)
-                const statusMultiplier = p2.status ? 2.0 : 1.0;
-                
-                // 3. Raridade base
-                const baseChance = (p2.catchRate || 0.3);
-                
-                // Fórmula transparente
-                let captureChance = baseChance * (0.3 + (hpBonus * 0.7)) * statusMultiplier;
-                captureChance = Math.max(0.05, Math.min(0.98, captureChance));
-                
+                // Fórmula única (lib/battleEngine): HP baixo + status 2x + raridade base.
+                const captureChance = calculateCaptureChance({ hp: p2.hp, maxHp: p2.maxHp, catchRate: p2.catchRate, hasStatus: !!p2.status });
+                const hpPercent = p2.maxHp > 0 ? p2.hp / p2.maxHp : 1;
                 const captured = Math.random() < captureChance;
                 const chancePercent = Math.floor(captureChance * 100);
                 
@@ -4575,10 +4559,13 @@ app.post('/api/turn', async (req, res) => {
                 events.push({ type: 'MSG', text: `Chance de captura: ${chancePercent}%` });
                 
                 if (captured) { 
-                                        events.push({ type: 'MSG', text: '✓ Capturado com sucesso!' });
+                                        events.push({ type: 'MSG', text: '[OK] Capturado com sucesso!' });
                     const activeP1Index = user.entityTeam.findIndex(p => p._id.toString() === p1.instanceId); 
                     if (activeP1Index !== -1) user.entityTeam[activeP1Index].currentHp = p1.hp; 
-                    const newStats = calculateStats(p2.stats, p2.level); 
+                    // CORREÇÃO: usa baseStats do catálogo, não stats já calculados do selvagem.
+                    const wildBase = await BaseEntity.findOne({ id: p2.baseId }).lean();
+                    const baseStatsForCapture = (wildBase && wildBase.baseStats) ? wildBase.baseStats : p2.stats;
+                    const newStats = calculateStats(baseStatsForCapture, p2.level); 
                     const newPokeObj = { baseId: p2.baseId, nickname: p2.name, level: p2.level, currentHp: newStats.hp, stats: newStats, moves: p2.moves.map(m => m.id), learnedMoves: p2.moves.map(m => m.id) }; 
                     let sentToPC = false; 
                     if (!user.pc) user.pc = []; 
@@ -4591,26 +4578,22 @@ app.post('/api/turn', async (req, res) => {
                 } else { 
                     user.markModified('bag');
                     await user.save(); 
-                    events.push({ type: 'MSG', text: `✗ ${p2.name} escapou! Estava com ${Math.floor(hpPercent*100)}% HP.` });
+                    events.push({ type: 'MSG', text: `[X] ${p2.name} escapou! Estava com ${Math.floor(hpPercent*100)}% HP.` });
                     performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); 
                 } 
             } catch (e) { events.push({ type: 'MSG', text: 'Erro.' }); return res.json({ events }); } 
         } 
         else if (action === 'run') { if (Math.random() > 0.4) { delete activeBattles[battleId]; return res.json({ events: [{type:'MSG', text:'Fugiu!'}], finished: true, fled: true }); } else { events.push({ type: 'MSG', text: `Falha ao fugir!` }); performEnemyTurn(p2, p1, events); applyStatusDamage(p1, events); applyStatusDamage(p2, events); } } 
         else if (action === 'move') { 
-            if (moveId === 'rest') {
-                p1.energy = Math.min(p1.maxEnergy, p1.energy + 5);
-                events.push({ type: 'REST', actorId: p1.instanceId, newEnergy: p1.energy });
-                if (p2.hp > 0) performEnemyTurn(p2, p1, events);
-            } else {
-                const p1Move = p1.moves.find(m => m.id === moveId); 
-                if (!p1Move) {
-                    events.push({ type: 'MSG', text: 'Esse movimento não está equipado.' });
-                    return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp } });
-                }
+            // CAMINHO ÚNICO: rest passa pelo processAction (cura + ENERGY_CONFIG.restBonus).
+            // Remove duplicação do +5 que divergia do motor.
+            const p1Move = p1.moves.find(m => m.id === moveId); 
+            if (!p1Move) {
+                events.push({ type: 'MSG', text: 'Esse movimento não está equipado.' });
+                return res.json({ events, p1State: { hp: p1.hp, energy: p1.energy }, p2State: { hp: p2.hp } });
+            }
                 if (p1.stats.speed >= p2.stats.speed) { processAction(p1, p2, p1Move, events); if (p2.hp > 0) performEnemyTurn(p2, p1, events); } 
                 else { performEnemyTurn(p2, p1, events); if (p1.hp > 0) processAction(p1, p2, p1Move, events); } 
-            }
             if (p1.hp > 0) applyStatusDamage(p1, events); if (p2.hp > 0) applyStatusDamage(p2, events); 
         }
         
@@ -5017,7 +5000,7 @@ io.on('connection', (socket) => {
                     if(players[p1.socket.id]) { players[p1.socket.id].isSearching = false; io.emit('player_updated', players[p1.socket.id]); } 
                     if(players[p2.socket.id]) { players[p2.socket.id].isSearching = false; io.emit('player_updated', players[p2.socket.id]); } 
                     const roomId = `room_${Date.now()}`; const betAmount = Math.min(p1.bet || 0, p2.bet || 0); 
-                    onlineBattles[roomId] = { p1: p1.entity, p2: p2.entity, turn: 1, bet: betAmount }; 
+                    onlineBattles[roomId] = { updatedAt: Date.now(), p1: p1.entity, p2: p2.entity, turn: 1, bet: betAmount }; 
                     p1.socket.emit('match_found', { roomId, me: p1.entity, opponent: p2.entity, bet: betAmount }); 
                     p2.socket.emit('match_found', { roomId, me: p2.entity, opponent: p1.entity, bet: betAmount }); 
                 } 
@@ -5245,4 +5228,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 9000;
 dbReady
     .then(() => server.listen(PORT, () => console.log(`Server ON Port ${PORT}`)))
-    .catch(e => console.error('❌ Servidor não iniciado: MongoDB indisponível.', e));
+    .catch(e => console.error('[ERRO] Servidor não iniciado: MongoDB indisponível.', e));

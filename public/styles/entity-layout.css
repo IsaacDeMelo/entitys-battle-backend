@@ -1,0 +1,117 @@
+/* entity-layout.css — Sistema padronizado Mobile + PC
+ * Mobile-first (<=768px): viewport 420px, coluna única, toque grande.
+ * PC (>768px): arena central + painel lateral, grade multi-coluna, hover.
+ * Fonte única de verdade para exibição de cada pokemon/entidade.
+ */
+:root {
+  --ent-bg: #0f172a;
+  --ent-card: #16213a;
+  --ent-border: #2a3a5a;
+  --ent-accent: #38bdf8;
+  --ent-gold: #f1c40f;
+  --ent-text: #f1f5f9;
+  --ent-muted: #94a3b8;
+  --ent-placeholder: '/uploads/placeholder.png';
+  --ent-shell-max-mobile: 480px;
+  --ent-shell-max-pc: 1100px;
+  --ent-radius: 12px;
+}
+
+/* ===== SHELL RESPONSIVO ===== */
+.ent-shell {
+  width: 100%;
+  max-width: var(--ent-shell-max-mobile);
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--ent-bg);
+  color: var(--ent-text);
+  display: flex;
+  flex-direction: column;
+}
+.ent-main { flex: 1; width: 100%; padding: 12px; }
+.ent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+/* ===== CARD PADRÃO DE ENTIDADE =====
+ * Uso: team, PC, dex, starter, batalha-switch, NPC preview, LAB.
+ * Regra: thumb usa icon||sprite||placeholder; detalhe/batalha usa sprite||icon||placeholder.
+ */
+.ent-card {
+  background: var(--ent-card);
+  border: 2px solid var(--ent-border);
+  border-radius: var(--ent-radius);
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+.ent-sprite {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ent-sprite img,
+.ent-sprite canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+/* Tamanhos por contexto — MESMO no mobile e no PC, só o grid muda */
+.ent-sprite--thumb { width: 48px; height: 48px; }
+.ent-sprite--thumb img { width: 40px; height: 40px; }
+.ent-sprite--dex { width: 64px; height: 64px; }
+.ent-sprite--dex img { width: 44px; height: 44px; }
+.ent-sprite--detail { width: 96px; height: 96px; }
+.ent-sprite--detail img { width: 80px; height: 80px; }
+.ent-sprite--battle { width: 110px; height: 110px; background: transparent; }
+.ent-sprite--battle img { width: 100%; height: 100%; }
+.ent-sprite--starter { width: 110px; height: 110px; }
+.ent-sprite--starter img { width: 96px; height: 96px; }
+.ent-sprite--follower { width: 52px; height: 52px; background: transparent; }
+.ent-sprite--follower img,
+.ent-sprite--follower canvas { width: 100%; height: 100%; }
+.ent-info { flex: 1; min-width: 0; }
+.ent-name {
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ent-sub { color: var(--ent-muted); font-size: 0.75rem; }
+.ent-locked { filter: grayscale(1) brightness(0.45); }
+
+/* Barras padrão */
+.ent-bar { height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; }
+.ent-bar > i { display: block; height: 100%; border-radius: 3px; }
+
+/* ===== PC / DESKTOP ===== */
+@media (min-width: 769px) {
+  .ent-shell { max-width: var(--ent-shell-max-pc); }
+  .ent-main {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 16px;
+    padding: 20px;
+    align-items: start;
+  }
+  .ent-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .ent-card { padding: 14px; }
+  .ent-sprite--battle { width: 160px; height: 160px; }
+  .ent-sprite--detail { width: 120px; height: 120px; }
+  .ent-sprite--detail img { width: 100px; height: 100px; }
+  /* Hover só faz sentido no PC */
+  .ent-card.clickable:hover { border-color: var(--ent-accent); transform: translateY(-1px); }
+}
+/* Reduz movimento para quem prefere */
+@media (prefers-reduced-motion: reduce) {
+  .ent-card, .ent-sprite img { animation: none !important; transition: none !important; }
+}

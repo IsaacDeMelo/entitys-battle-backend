@@ -397,10 +397,10 @@
                         <div id="charPreview" class="character-sprite"></div>
                     </div>
                     <div style="flex: 1;">
-                        <select id="skinSelect" name="skin" onchange="updateSkinPreview(this.value)">
+                        <select id="skinSelect" name="skin" onchange="updateSkinPreview(this.value, this.selectedOptions[0] && this.selectedOptions[0].dataset.v)">
                             <% if (skins && skins.length > 0) { %>
                                 <% skins.forEach(s => { %>
-                                    <option value="<%= s._id %>"><%= s.name %></option>
+                                    <option value="<%= s._id %>" data-v="<%= s.updatedAt || 0 %>"><%= s.name %></option>
                                 <% }) %>
                             <% } else { %>
                                 <option value="" disabled selected>Nenhuma skin disponível</option>
@@ -411,14 +411,14 @@
             </div>
 
             <div class="info-text">
-                💡 Você receberá seu monstro inicial de um NPC especial dentro do jogo
+                » Você receberá seu monstro inicial de um NPC especial dentro do jogo
             </div>
 
             <button type="submit" class="btn-primary btn-secondary">Criar Conta</button>
         </form>
 
         <% if(typeof error !== 'undefined' && error) { %>
-            <div class="error-msg">⚠️ <%= error %></div>
+            <div class="error-msg">! <%= error %></div>
         <% } %>
     </div>
 
@@ -431,20 +431,20 @@
             document.getElementById('tabRegister').classList.toggle('active', mode === 'register');
         }
 
-        function updateSkinPreview(skinName) {
+        function updateSkinPreview(skinName, v) {
             const previewEl = document.getElementById('charPreview');
             const s = String(skinName || '').trim();
             if (!s) {
                 previewEl.style.backgroundImage = 'none';
                 return;
             }
-            previewEl.style.backgroundImage = `url('/skins/${encodeURIComponent(s)}.png')`;
+            previewEl.style.backgroundImage = `url('/skins/${encodeURIComponent(s)}.png?v=${encodeURIComponent(v || 0)}')`;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             const select = document.getElementById('skinSelect');
             if (select && select.value) {
-                updateSkinPreview(select.value);
+                updateSkinPreview(select.value, select.selectedOptions[0] && select.selectedOptions[0].dataset.v);
             }
 
             const registerForm = document.getElementById('formRegister');

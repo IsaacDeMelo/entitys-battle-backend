@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laboratório - Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/entity-layout.css">
+    <link rel="stylesheet" href="/styles/hud-theme.css">
     <style>
         :root { 
             --bg: #0b1220; --panel: #121a2a; --panel-soft: rgba(255,255,255,0.03); --accent: #3b82f6; --text: #e2e8f0; 
@@ -166,7 +169,12 @@
         }
     </style>
 </head>
-<body>
+<body class="lab-theme">
+<div id="labToast"></div>
+<script>
+    // Flash vindo de redirect (?error/?success) — fallback quando não foi fetch.
+    window.__LAB_FLASH = { error: <%- JSON.stringify(typeof error !== 'undefined' ? error : '') %>, success: <%- JSON.stringify(typeof success !== 'undefined' ? success : '') %> };
+</script>
     <header>
         <div>
             <h1>LABORATÓRIO</h1>
@@ -177,7 +185,7 @@
                 <span class="meta-pill">SKINS: <%= (skins || []).length %></span>
             </div>
         </div>
-        <a href="/city?userId=<%= user._id %>" class="back-btn">⬅️ VOLTAR AO JOGO</a>
+        <a href="/city?userId=<%= user._id %>" class="back-btn">« VOLTAR AO JOGO</a>
     </header>
 
     <div class="main-layout">
@@ -185,7 +193,7 @@
         <div class="sidebar">
             <div id="list-poke" class="list-container active">
                 <div class="sidebar-header">ENTIDADES (<%= entities.length %>)</div>
-                <input type="text" class="search-box" id="search-poke" placeholder="🔍 Buscar entidade..." onkeyup="filterList('poke', this.value)">
+                <input type="text" class="search-box" id="search-poke" placeholder="» Buscar entidade..." onkeyup="filterList('poke', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearPokeForm()"><span>+</span> NOVA ENTIDADE</button>
                 </div>
@@ -203,7 +211,7 @@
             </div>
             <div id="list-npc" class="list-container">
                 <div class="sidebar-header">NPCS (<%= npcs.length %>)</div>
-                <input type="text" class="search-box" id="search-npc" placeholder="🔍 Buscar NPC..." onkeyup="filterList('npc', this.value)">
+                <input type="text" class="search-box" id="search-npc" placeholder="» Buscar NPC..." onkeyup="filterList('npc', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearNpcForm()"><span>+</span> NOVO NPC</button>
                 </div>
@@ -226,7 +234,7 @@
 
             <div id="list-item" class="list-container">
                 <div class="sidebar-header">ITENS (<span id="itemCount">0</span>)</div>
-                <input type="text" class="search-box" id="search-item" placeholder="🔍 Buscar item..." onkeyup="filterList('item', this.value)">
+                <input type="text" class="search-box" id="search-item" placeholder="» Buscar item..." onkeyup="filterList('item', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearItemForm(); switchMode('item');"><span>+</span> NOVO ITEM</button>
                 </div>
@@ -235,14 +243,14 @@
 
             <div id="list-skin" class="list-container">
                 <div class="sidebar-header">SKINS (<%= (skins || []).length %>)</div>
-                <input type="text" class="search-box" id="search-skin" placeholder="🔍 Buscar skin..." onkeyup="filterList('skin', this.value)">
+                <input type="text" class="search-box" id="search-skin" placeholder="» Buscar skin..." onkeyup="filterList('skin', this.value)">
                 <div style="padding:10px;">
                     <button class="btn-new" onclick="clearSkinForm()"><span>+</span> NOVA SKIN</button>
                 </div>
                 <div id="skin-list-items">
                 <% (skins || []).forEach(s => { %>
-                    <div class="list-item" data-name="<%= s.name.toLowerCase() %>" onclick="loadSkin(<%= JSON.stringify(s) %>)">
-                        <img class="skin-thumb" src="/skins/<%= s._id %>.png" onerror="this.style.display='none'">
+                    <div class="list-item" data-name="<%= s.name.toLowerCase() %>" onclick="loadSkin(<%= JSON.stringify({ _id: s._id, name: s.name, updatedAt: s.updatedAt }) %>)">
+                        <img class="skin-thumb" src="/skins/<%= s._id %>.png?v=<%= s.updatedAt || 0 %>" onerror="this.style.display='none'">
                         <div class="item-info">
                             <div class="item-name"><%= s.name %></div>
                             <div class="item-sub">ID: <%= s._id %></div>
@@ -304,7 +312,7 @@
                         </div>
                     </div>
                     
-                    <h4>📍 SPAWN & EVOLUÇÃO</h4>
+                    <h4>SPAWN & EVOLUÇÃO</h4>
                     <div class="form-grid">
                         <div>
                             <label class="tooltip">Local de Spawn (Mapa ou Zona)
@@ -344,7 +352,7 @@
                         </div>
                     </div>
 
-                    <h4>📊 STATUS BASE</h4>
+                    <h4>STATUS BASE</h4>
                     <div class="form-grid" style="grid-template-columns: repeat(5, 1fr);">
                         <div><label class="required-field">HP</label><input type="number" name="hp" id="statHp" required value="40" oninput="updateStatsPreview()"></div>
                         <div><label class="required-field">EN (Mana)</label><input type="number" name="energy" id="statEn" required value="100" oninput="updateStatsPreview()"></div>
@@ -354,7 +362,7 @@
                     </div>
 
                     <div class="stats-preview">
-                        <h4>📈 Preview: Stats no Nível <input type="number" id="preview-level" value="50" min="1" max="100" oninput="updateStatsPreview()" style="width: 60px; display: inline; padding: 4px; text-align: center; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: var(--accent);"></h4>
+                        <h4>Preview: Stats no Nível <input type="number" id="preview-level" value="50" min="1" max="100" oninput="updateStatsPreview()" style="width: 60px; display: inline; padding: 4px; text-align: center; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: var(--accent);"></h4>
                         <div class="stats-grid" id="stats-preview-grid">
                             <div class="stat-box">
                                 <div class="stat-label">HP</div>
@@ -377,12 +385,12 @@
                                 <div class="stat-value" id="preview-spd">-</div>
                             </div>
                         </div>
-                        <p style="margin-top: 10px; font-size: 0.85rem; color: #94a3b8; text-align: center;">💡 Esses valores são aproximados baseados na fórmula do jogo</p>
+                        <p style="margin-top: 10px; font-size: 0.85rem; color: #94a3b8; text-align: center;">» Esses valores são aproximados baseados na fórmula do jogo</p>
                     </div>
 
-                    <h4>⚔️ MOVEPOOL (Ataques)</h4>
+                    <h4>MOVEPOOL (Ataques)</h4>
                     <div class="move-filter">
-                        <input type="text" id="move-search" placeholder="🔍 Buscar ataque..." onkeyup="filterMoves()" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #fff;">
+                        <input type="text" id="move-search" placeholder="» Buscar ataque..." onkeyup="filterMoves()" style="padding: 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #fff;">
                         <span class="filter-badge all active" onclick="filterMovesByType('all')">TODOS</span>
                         <span class="filter-badge beast" onclick="filterMovesByType('beast')">BEAST</span>
                         <span class="filter-badge flame" onclick="filterMovesByType('flame')">FLAME</span>
@@ -405,7 +413,7 @@
                                         <span class="move-type-badge <%= m.element %>" style="background: var(--<%= m.element %>); color: <%= ['beast','forest','earth','metal'].includes(m.element) ? '#2d2d2d' : '#fff' %>;"> <%= m.element.substring(0,3).toUpperCase() %> </span>
                                         <div class="move-info">
                                             <span class="move-name"><%= m.name %></span>
-                                            <span class="move-details">💪 <%= m.power || 0 %> | ⚡ <%= m.cost || 0 %> | <%= m.type === 'attack' ? '⚔️' : m.type === 'heal' ? '❤️' : '🛡️' %></span>
+                                            <span class="move-details">POW <%= m.power || 0 %> | EN <%= m.cost || 0 %> | <%= m.type === 'attack' ? 'ATK' : m.type === 'heal' ? 'HP' : 'DEF' %></span>
                                         </div>
                                         <input type="number" class="move-lvl-input" id="lvl_<%= moveKey %>" value="1" title="Nível para aprender" min="1" max="100">
                                     </div>
@@ -431,8 +439,8 @@
                     </label>
                     
                     <div class="btn-row">
-                        <button type="submit" class="btn-save">💾 SALVAR ENTIDADE</button>
-                        <button type="button" class="btn-delete" onclick="deleteItem('deleteForm')">🗑️ EXCLUIR</button>
+                        <button type="submit" class="btn-save">» SALVAR ENTIDADE</button>
+                        <button type="button" class="btn-delete" onclick="deleteItem('deleteForm')">X EXCLUIR</button>
                     </div>
                 </form>
                 <form id="deleteForm" action="/lab/delete" method="POST" style="display:none;"><input type="hidden" name="id" id="deleteId"></form>
@@ -519,9 +527,9 @@
                         </div>
                     </div>
                     
-                    <h4>💬 DIÁLOGOS PADRÃO</h4>
+                    <h4>DIÁLOGOS PADRÃO</h4>
                     <div style="margin-bottom:15px; padding:10px; background:#162032; border-radius:6px; border-left: 4px solid #3498db;">
-                        <small style="color:#3498db;"><strong>ℹ️ Como funciona:</strong> Estes textos são usados quando <strong>nenhuma flag condicional está ativa</strong>. Se você configurar diálogos condicionais abaixo, o NPC falará coisas diferentes dependendo das flags do jogador!</small>
+                        <small style="color:#3498db;"><strong>» Como funciona:</strong> Estes textos são usados quando <strong>nenhuma flag condicional está ativa</strong>. Se você configurar diálogos condicionais abaixo, o NPC falará coisas diferentes dependendo das flags do jogador!</small>
                     </div>
                     <div class="form-grid">
                         <div class="full-width">
@@ -540,7 +548,7 @@
                         </div>
                     </div>
 
-                    <h4 style="margin-top:20px;">💬 DIÁLOGOS CONDICIONAIS (POR FLAG)</h4>
+                    <h4 style="margin-top:20px;">DIÁLOGOS CONDICIONAIS (POR FLAG)</h4>
                     <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
                         <input type="checkbox" id="npcCondToggle" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">Habilitar diálogos condicionais</span>
                     </label>
@@ -548,7 +556,7 @@
                     <div id="conditionalFields" class="toggle-block" style="display:none;">
                         <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
                             <div class="full-width" style="grid-column: span 3; padding:12px; background:#1a2942; border-radius:8px; border-left: 4px solid #2ecc71;">
-                                <strong style="color:#2ecc71;">✅ Como usar:</strong>
+                                <strong style="color:#2ecc71;">» Como usar:</strong>
                                 <ul style="margin:8px 0 0 0; padding-left:20px; color:#9aa7bd; font-size:0.9rem; line-height:1.6;">
                                     <li><strong>Com flag ativa:</strong> O NPC usa o texto da condicional</li>
                                     <li><strong>Sem flag ativa:</strong> O NPC usa o texto padrão acima</li>
@@ -562,7 +570,7 @@
                             </div>
                             <div id="npcCondRows" class="row-list" style="grid-column: span 3;"></div>
                             <details class="advanced" style="grid-column: span 3; border-color: #2ecc71;">
-                                <summary style="color: #2ecc71;">📖 Ver Exemplo Prático</summary>
+                                <summary style="color: #2ecc71;">Ver Exemplo Prático</summary>
                                 <div style="padding: 12px; background: #0a1628; border-radius: 6px; color: #9aa7bd; font-size: 0.9rem; line-height: 1.6;">
                                     <strong style="color: #2ecc71;">Exemplo: Guarda de Cidade</strong><br><br>
                                     <strong>Diálogo Padrão (acima):</strong> "Alto lá! Você precisa de uma licença para passar."<br><br>
@@ -582,7 +590,7 @@
                         </div>
                     </div>
 
-                    <h4 style="margin-top:20px;">🎒 EQUIPE DE ENTIDADES</h4>
+                    <h4 style="margin-top:20px;">EQUIPE DE ENTIDADES</h4>
                     <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                         <button type="button" class="mini-btn" onclick="npcTeamAddRow()">+ adicionar monstro</button>
                         <button type="button" class="mini-btn" onclick="npcTeamClear()">limpar</button>
@@ -603,10 +611,10 @@
                         <% }) %>
                     </select>
 
-                    <h4 style="margin-top:20px;">🎁 ITEM DE RECOMPENSA (Opcional)</h4>
+                    <h4 style="margin-top:20px;">ITEM DE RECOMPENSA (Opcional)</h4>
                     <div class="form-grid">
                         <div><label>Cooldown (Minutos)</label><input type="number" name="cooldownMinutes" id="npcCooldown" value="0" title="0 = Único, >0 = Repetível"></div>
-                        <div><label>ID do Item/Entidade</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: captureCube, levelUpCrystal" autocomplete="off"></div>
+                        <div><label>ID do Item/Entidade</label><input type="text" name="rewardVal" id="npcRewVal" placeholder="ex: pokeball, rare-candy" autocomplete="off"></div>
                         <div><label>Quantidade</label><input type="number" name="rewardQty" id="npcRewQty" value="1"></div>
                         <input type="hidden" name="rewardType" id="npcRewType" value="item">
                     </div>
@@ -623,7 +631,7 @@
                         </label>
                     </div>
 
-                    <h4 style="margin-top:20px;">🧩 INTERAÇÃO (Quest / Itens)</h4>
+                    <h4 style="margin-top:20px;">INTERAÇÃO (Quest / Itens)</h4>
                     <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
                         <input type="checkbox" name="interactEnabled" id="npcInteractEnabled" style="width:auto;"> <span style="font-weight:bold; color:var(--warning);">Habilitar interação (além/sem batalha)</span>
                     </label>
@@ -667,7 +675,7 @@
                             <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                                 <button type="button" class="mini-btn" onclick="npcShopAddRow()">+ adicionar item</button>
                                 <button type="button" class="mini-btn" onclick="npcShopAddPreset('pokeball', 50)">+ CatchCube</button>
-                                <button type="button" class="mini-btn" onclick="npcShopAddPreset('rareCandy', 2000)">+ Rare Candy</button>
+                                <button type="button" class="mini-btn" onclick="npcShopAddPreset('rare-candy', 2000)">+ Rare Candy</button>
                                 <button type="button" class="mini-btn" onclick="npcShopClear()">limpar</button>
                             </div>
 
@@ -682,7 +690,7 @@
 
                             <datalist id="itemIdSuggestions">
                                 <option value="pokeball"></option>
-                                <option value="rareCandy"></option>
+                                <option value="rare-candy"></option>
                             </datalist>
                         </div>
                     </div>
@@ -746,7 +754,7 @@
                     <div class="form-grid">
                         <div>
                             <label>Dá Item (ID)</label>
-                            <input type="text" name="interactGivesItemId" id="npcInteractGivesId" placeholder="ex: rareCandy, key_gate" autocomplete="off">
+                            <input type="text" name="interactGivesItemId" id="npcInteractGivesId" placeholder="ex: rare-candy, key_gate" autocomplete="off">
                         </div>
                         <div>
                             <label>Dá Quantidade</label>
@@ -809,7 +817,7 @@
 
                         </div>
 
-                    <h4 style="margin-top:20px;">🚶 MOVIMENTO (Patrulha)</h4>
+                    <h4 style="margin-top:20px;">MOVIMENTO (Patrulha)</h4>
                     <label style="display:flex; align-items:center; gap:10px; cursor:pointer; background:#162032; padding:10px; border-radius:6px; border:1px solid #333;">
                         <input type="checkbox" name="patrolEnabled" id="npcPatrolEnabled" style="width:auto;"> <span style="font-weight:bold; color:var(--accent);">NPC anda automaticamente?</span>
                     </label>
@@ -873,8 +881,8 @@
                     </div>
 
                     <div class="btn-row">
-                        <button type="submit" class="btn-save">💾 SALVAR NPC</button>
-                        <button type="button" class="btn-delete" onclick="deleteItem('deleteNpcForm')">🗑️ EXCLUIR</button>
+                        <button type="submit" class="btn-save">» SALVAR NPC</button>
+                        <button type="button" class="btn-delete" onclick="deleteItem('deleteNpcForm')">X EXCLUIR</button>
                     </div>
                 </form>
                 <form id="deleteNpcForm" action="/lab/delete-npc" method="POST" style="display:none;"><input type="hidden" name="id" id="deleteNpcId"></form>
@@ -886,7 +894,7 @@
                     <div class="form-grid">
                         <div>
                             <label>ID (único)</label>
-                            <input type="text" id="itemId" required autocomplete="off" placeholder="ex: captureCube">
+                            <input type="text" id="itemId" required autocomplete="off" placeholder="ex: pokeball">
                         </div>
                         <div class="half-width">
                             <label>Nome</label>
@@ -917,8 +925,8 @@
                     </div>
 
                     <div class="btn-row">
-                        <button type="submit" class="btn-save">💾 SALVAR ITEM</button>
-                        <button type="button" class="btn-delete" onclick="deleteCatalogItem()">🗑️ EXCLUIR</button>
+                        <button type="submit" class="btn-save">» SALVAR ITEM</button>
+                        <button type="button" class="btn-delete" onclick="deleteCatalogItem()">X EXCLUIR</button>
                     </div>
                 </form>
             </div>
@@ -942,8 +950,8 @@
                     </div>
 
                     <div class="btn-row">
-                        <button type="submit" class="btn-save">💾 SALVAR SKIN</button>
-                        <button type="button" class="btn-delete" onclick="deleteSkin()">🗑️ EXCLUIR</button>
+                        <button type="submit" class="btn-save">» SALVAR SKIN</button>
+                        <button type="button" class="btn-delete" onclick="deleteSkin()">X EXCLUIR</button>
                     </div>
                 </form>
                 <form id="deleteSkinForm" action="/lab/skins/delete" method="POST" style="display:none;">
@@ -1313,7 +1321,7 @@
             document.getElementById('deleteSkinId').value = s._id;
             document.getElementById('skinName').value = s.name || '';
             const prev = document.getElementById('skinImgPreview');
-            if (prev) prev.innerHTML = `<img src="/skins/${encodeURIComponent(s._id)}.png" style="height:100%; object-fit:contain;">`;
+            if (prev) prev.innerHTML = `<img src="/skins/${encodeURIComponent(s._id)}.png?v=${Date.now()}" style="height:100%; object-fit:contain;">`;
 
             // Para evitar sobrescrever uma skin existente via /create (que só cria),
             // removemos o required do arquivo quando estamos apenas visualizando.
@@ -1323,10 +1331,14 @@
 
         function deleteSkin() {
             const id = document.getElementById('deleteSkinId').value;
-            if (!id) return alert('Selecione uma skin na lista primeiro para excluir.');
-            if (confirm('Tem certeza que deseja excluir esta skin?')) {
-                document.getElementById('deleteSkinForm').submit();
-            }
+            if (!id) { labToast('Selecione uma skin na lista primeiro para excluir.', true); return; }
+            if (!confirm('Tem certeza que deseja excluir esta skin?')) return;
+            labFetch('/lab/skins/delete', { userId: LAB_USER_ID, id }).then(async (json) => {
+                if (!json.success) { labToast(json.error || 'Erro ao excluir skin.', true); return; }
+                labToast(json.message || 'Skin excluída.');
+                clearSkinForm();
+                await refreshLabList('skins');
+            }).catch(() => labToast('Erro de rede ao excluir skin.', true));
         }
         
         function loadNpc(n) {
@@ -1411,14 +1423,18 @@
             }
         }
         
-        function deleteItem(formId) { 
-            const idInput = document.getElementById(formId === 'deleteForm' ? 'existingId' : 'npcId'); 
-            if(!idInput.value) return alert('Selecione um item na lista primeiro para excluir.'); 
-            if(confirm('Tem certeza absoluta que deseja excluir este item? Essa ação não pode ser desfeita.')) { 
-                if(formId === 'deleteForm') document.getElementById('deleteId').value = idInput.value; 
-                if(formId === 'deleteNpcForm') document.getElementById('deleteNpcId').value = idInput.value; 
-                document.getElementById(formId).submit(); 
-            } 
+        function deleteItem(formId) {
+            const idInput = document.getElementById(formId === 'deleteForm' ? 'existingId' : 'npcId');
+            if (!idInput.value) { labToast('Selecione um item na lista primeiro para excluir.', true); return; }
+            if (!confirm('Tem certeza absoluta que deseja excluir este item? Essa ação não pode ser desfeita.')) return;
+            const url = formId === 'deleteForm' ? '/lab/delete' : '/lab/delete-npc';
+            const listType = formId === 'deleteForm' ? 'entities' : 'npcs';
+            labFetch(url, { userId: LAB_USER_ID, id: idInput.value }).then(async (json) => {
+                if (!json.success) { labToast(json.error || 'Erro ao excluir.', true); return; }
+                labToast(json.message || 'Excluído!');
+                if (formId === 'deleteForm') clearPokeForm(); else clearNpcForm();
+                await refreshLabList(listType);
+            }).catch(() => labToast('Erro de rede ao excluir.', true));
         }
 
         // ======== EDITOR VISUAL: TEAM ========
@@ -1787,7 +1803,7 @@
 
                 const dialogue = document.createElement('textarea');
                 dialogue.className = 'full';
-                dialogue.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pré-vitória/cooldown)';
+                dialogue.placeholder = 'Fala quando tem a flag (deixe vazio se quer APENAS as falas pré-vitória/cooldown)';
                 dialogue.value = row.dialogue || '';
                 dialogue.style.minHeight = '150px';
                 dialogue.style.width = '100%';
@@ -1795,7 +1811,7 @@
 
                 const win = document.createElement('textarea');
                 win.className = 'full';
-                win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
+                win.placeholder = 'Fala pós-vitória (quando tem a flag E ganhou o combate)';
                 win.value = row.winDialogue || '';
                 win.style.minHeight = '150px';
                 win.style.width = '100%';
@@ -1974,7 +1990,7 @@
                 if (!noResults) {
                     noResults = document.createElement('div');
                     noResults.className = 'no-results';
-                    noResults.textContent = '🔍 Nenhum resultado encontrado';
+                    noResults.textContent = 'Nenhum resultado encontrado';
                     container.appendChild(noResults);
                 }
             } else if (noResults) {
@@ -2022,7 +2038,7 @@
                     noResults = document.createElement('div');
                     noResults.className = 'no-results';
                     noResults.style.gridColumn = '1 / -1';
-                    noResults.textContent = '🔍 Nenhum ataque encontrado';
+                    noResults.textContent = 'Nenhum ataque encontrado';
                     wrapper.appendChild(noResults);
                 }
             } else if (noResults) {
@@ -2093,6 +2109,151 @@
             updateStatsPreview();
             syncMovePanels();
         }, 100);
+
+        // ======== LAB KIT: sem reload (toast + fetch + listas) ========
+        function labToast(msg, isErr) {
+            const box = document.getElementById('labToast');
+            if (!box) { alert(msg); return; }
+            const div = document.createElement('div');
+            div.className = 'lab-toast-msg' + (isErr ? ' err' : '');
+            div.textContent = msg;
+            box.appendChild(div);
+            setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 300); }, 3200);
+        }
+        function labFetch(url, bodyObj) {
+            // Sem arquivos: JSON (as rotas de delete não usam multer).
+            return fetch(url, { method: 'POST', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj || {}) })
+                .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok || !j.success) return { success: false, error: (j && j.error) || ('HTTP ' + r.status) }; return j; });
+        }
+        function labFetchForm(form) {
+            return fetch(form.action, { method: 'POST', headers: { 'Accept': 'application/json' }, body: new FormData(form) })
+                .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok || !j.success) return { success: false, error: (j && j.error) || ('HTTP ' + r.status) }; return j; });
+        }
+        function escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function resolveLabSprite(p) {
+            const s = String((p && p.sprite) || '');
+            if (!s) return '';
+            return (s.startsWith('http') || s.startsWith('data:') || s.startsWith('/')) ? s : '/uploads/' + s;
+        }
+        const LAB_DATA = { entities: [], npcs: [], skins: [] };
+        function labLoad(kind, i) {
+            const it = LAB_DATA[kind] && LAB_DATA[kind][i];
+            if (!it) return;
+            if (kind === 'entities') loadEntity(it);
+            else if (kind === 'npcs') loadNpc(it);
+            else if (kind === 'skins') loadSkin(it);
+        }
+        async function refreshLabList(type) {
+            try {
+                const r = await fetch(`/lab/list?userId=${encodeURIComponent(LAB_USER_ID)}&type=${encodeURIComponent(type)}`, { headers: { 'Accept': 'application/json' } });
+                const j = await r.json().catch(() => ({}));
+                if (!j.success) { labToast((j && j.error) || 'Falha ao atualizar lista.', true); return; }
+                LAB_DATA[type] = j.items || [];
+                if (type === 'skins') renderSkinList(LAB_DATA.skins);
+                else if (type === 'entities') renderEntityList(LAB_DATA.entities);
+                else if (type === 'npcs') renderNpcList(LAB_DATA.npcs);
+            } catch (_) { labToast('Erro de rede ao atualizar lista.', true); }
+        }
+        function renderSkinList(skins) {
+            const box = document.getElementById('skin-list-items');
+            const head = document.querySelector('#list-skin .sidebar-header');
+            if (head) head.textContent = `SKINS (${skins.length})`;
+            if (!box) return;
+            box.innerHTML = skins.map((s, i) => `
+                <div class="list-item" data-name="${escHtml((s.name || '').toLowerCase())}" onclick="labLoad('skins', ${i})">
+                    <img class="skin-thumb" src="/skins/${encodeURIComponent(s._id)}.png?v=${encodeURIComponent(s.updatedAt || 0)}" onerror="this.style.display='none'" loading="lazy">
+                    <div class="item-info"><div class="item-name">${escHtml(s.name)}</div><div class="item-sub">ID: ${escHtml(s._id)}</div></div>
+                </div>`).join('');
+        }
+        function renderEntityList(list) {
+            const box = document.getElementById('poke-list-items');
+            const head = document.querySelector('#list-poke .sidebar-header');
+            if (head) head.textContent = `ENTIDADES (${list.length})`;
+            if (!box) return;
+            box.innerHTML = list.map((p, i) => {
+                const src = resolveLabSprite(p);
+                return `
+                <div class="list-item" data-name="${escHtml((p.name || '').toLowerCase())}" data-type="${escHtml(p.type || '')}" onclick="labLoad('entities', ${i})">
+                    ${src ? `<img src="${escHtml(src)}" onerror="this.style.display='none'" loading="lazy">` : ''}
+                    <div class="item-info"><div class="item-name">${escHtml(p.name)}</div><div class="item-sub">Tipo: ${escHtml(p.type || '?')} | Spawn: ${escHtml(p.spawnLocation || 'Nenhum')}</div></div>
+                </div>`;
+            }).join('');
+        }
+        function renderNpcList(list) {
+            const box = document.getElementById('npc-list-items');
+            const head = document.querySelector('#list-npc .sidebar-header');
+            if (head) head.textContent = `NPCS (${list.length})`;
+            if (!box) return;
+            box.innerHTML = list.map((n, i) => {
+                const thumb = n.isCustomSkin
+                    ? `<div class="npc-thumb" style="background-image: url('${escHtml(n.skin || '')}')"></div>`
+                    : `<div class="npc-thumb" style="background-image: url('/uploads/${escHtml(n.skin || 'char1')}.png')"></div>`;
+                return `
+                <div class="list-item" data-name="${escHtml((n.name || '').toLowerCase())}" data-map="${escHtml(n.map || '')}" onclick="labLoad('npcs', ${i})">
+                    ${thumb}
+                    <div class="item-info"><div class="item-name">${escHtml(n.name)}</div><div class="item-sub">${escHtml(n.map || '?')} (X:${escHtml(n.x)}, Y:${escHtml(n.y)})</div></div>
+                </div>`;
+            }).join('');
+        }
+        function setSaving(form, on) {
+            const btn = form && form.querySelector('button[type="submit"]');
+            if (!btn) return;
+            if (on) { btn.dataset.label = btn.innerHTML; btn.disabled = true; btn.innerHTML = '⏳ SALVANDO...'; }
+            else { btn.disabled = false; if (btn.dataset.label) btn.innerHTML = btn.dataset.label; }
+        }
+        // Intercepta os 3 forms (entidade/NPC/skin): salva via fetch, sem reload.
+        (function hookLabForms() {
+            const poke = document.getElementById('pokeForm');
+            if (poke) poke.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                try { if (typeof prepareMoves === 'function') prepareMoves(); } catch (_) {}
+                setSaving(poke, true);
+                try {
+                    const j = await labFetchForm(poke);
+                    if (!j.success) { labToast(j.error || 'Erro ao salvar entidade.', true); return; }
+                    labToast(j.message || 'Entidade salva!');
+                    await refreshLabList('entities');
+                    if (j.entity) loadEntity(j.entity);
+                } catch (_) { labToast('Erro de rede ao salvar entidade.', true); }
+                finally { setSaving(poke, false); }
+            });
+            const npc = document.getElementById('npcForm');
+            if (npc) npc.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                setSaving(npc, true);
+                try {
+                    const j = await labFetchForm(npc);
+                    if (!j.success) { labToast(j.error || 'Erro ao salvar NPC.', true); return; }
+                    labToast(j.message || 'NPC salvo!');
+                    await refreshLabList('npcs');
+                    if (j.npc) loadNpc(j.npc);
+                } catch (_) { labToast('Erro de rede ao salvar NPC.', true); }
+                finally { setSaving(npc, false); }
+            });
+            const skin = document.getElementById('skinForm');
+            if (skin) skin.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                setSaving(skin, true);
+                try {
+                    const j = await labFetchForm(skin);
+                    if (!j.success) { labToast(j.error || 'Erro ao salvar skin.', true); return; }
+                    labToast(j.message || 'Skin salva!');
+                    await refreshLabList('skins');
+                    const found = (LAB_DATA.skins || []).find((s) => String(s._id) === String(j.id));
+                    if (found) loadSkin(found);
+                    else clearSkinForm();
+                } catch (_) { labToast('Erro de rede ao salvar skin.', true); }
+                finally { setSaving(skin, false); }
+            });
+            // Exibe flash de redirect antigo (?error/?success), se houver.
+            try {
+                const f = window.__LAB_FLASH || {};
+                if (f.error) labToast(f.error, true);
+                else if (f.success) labToast(f.success);
+            } catch (_) {}
+        })();
     </script>
 </body>
 </html>

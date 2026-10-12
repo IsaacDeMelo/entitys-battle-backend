@@ -8,6 +8,20 @@
     
     <script src="/socket.io/socket.io.js"></script>
     <script src="/scripts/common.js"></script>
+    <script src="/scripts/pokemon-display.js"></script>
+    <link rel="stylesheet" href="/styles/entity-layout.css">
+    <link rel="stylesheet" href="/styles/hud-theme.css">
+    <style>
+      /* MODELO PADRONIZADO PC — batalha: arena + painel lado a lado */
+      @media (min-width: 769px) {
+        body { flex-direction: row; justify-content: center; gap: 16px; padding: 16px; }
+        .arena { max-width: 640px; height: min(72vh, 640px); border-radius: 12px; flex: none; }
+        .bottom-panel, #bleachers, #chat-container { max-width: 320px; }
+        #battleLayout { display: flex; gap: 16px; align-items: flex-start; }
+      }
+      /* Sprites de batalha sempre contain+pixelated (padrão único) */
+      .sprite img { object-fit: contain; image-rendering: pixelated; }
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
    <style>
     :root { --bg-color: #202020; --hp-high: #4fd05c; --hp-mid: #f6b93b; --hp-low: #e55039; }
@@ -800,22 +814,22 @@
                  data-skin="<%= p2.skin || 'char1' %>" 
                   style="<% const p2Skin = (p2 && p2.skin) ? String(p2.skin) : 'char1'; const p2Url = (p2.isCustomSkin || (p2Skin && (p2Skin.startsWith('http') || p2Skin.startsWith('data:')))) ? p2Skin : ((/^char\d+$/i.test(p2Skin)) ? ('/uploads/' + p2Skin + '.png') : ('/skins/' + p2Skin + '.png')); %>background-image: url('<%= p2Url %>');<%= battleMode === 'wild' ? 'opacity:0;' : '' %>">
             </div>
-            <div class="sprite" id="sprite-p2">
-                <img src="<%= (p2.sprite.startsWith('http') || p2.sprite.startsWith('data:')) ? p2.sprite : '/uploads/' + p2.sprite %>">
+            <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p2">
+                <img src="<%= (()=>{ const s=String((p2&&p2.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="inimigo" onerror="this.onerror=null;this.src='/uploads/placeholder.png'">
             </div>
         </div>
 
         <div class="fighter p1-position" id="fighter-p1">
             <div class="command-bubble" id="bubble-p1"></div>
             <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>" style="<% const p1Skin = (p1 && p1.skin) ? String(p1.skin) : 'char1'; const p1Url = (p1.isCustomSkin || (p1Skin && (p1Skin.startsWith('http') || p1Skin.startsWith('data:')))) ? p1Skin : ((/^char\d+$/i.test(p1Skin)) ? ('/uploads/' + p1Skin + '.png') : ('/skins/' + p1Skin + '.png')); %>background-image: url('<%= p1Url %>');"></div>
-            <div class="sprite" id="sprite-p1">
-                <img src="<%= (p1.sprite.startsWith('http') || p1.sprite.startsWith('data:')) ? p1.sprite : '/uploads/' + p1.sprite %>">
+            <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p1">
+                <img src="<%= (()=>{ const s=String((p1&&p1.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="aliado" onerror="this.onerror=null;this.src='/uploads/placeholder.png'">
             </div>
         </div>
 
         <% if(battleMode === 'wild') { %>
             <div id="floatingBagBtn">
-                <div id="floatingBagIcon" class="floating-bag-button" onclick="openBattleBag()">🎒</div>
+                <div id="floatingBagIcon" class="floating-bag-button" onclick="openBattleBag()">BAG</div>
                 <div id="hud-money" class="floating-hud-money">0</div>
             </div>
         <% } %>
@@ -826,7 +840,7 @@
                 
                 <div class="battle-comparison">
                     <div class="fighter-result winner" id="winner-box">
-                        <div class="fighter-crown">👑</div>
+                        <div class="fighter-crown"></div>
                         <div class="fighter-avatar">
                                     <div id="win-trainer" class="trainer victory-trainer" data-skin=""></div>
                         </div>
@@ -847,14 +861,14 @@
                     <div class="rewards-title">RECOMPENSAS</div>
                     <div class="rewards-grid">
                         <div class="reward-item">
-                            <div class="reward-icon">💰</div>
+                            <div class="reward-icon">$</div>
                             <div class="reward-text">
                                 <div class="reward-label">Créditos</div>
                                 <div class="reward-value" id="reward-money">+0</div>
                             </div>
                         </div>
                         <div class="reward-item">
-                            <div class="reward-icon">⚡</div>
+                            <div class="reward-icon">EN</div>
                             <div class="reward-text">
                                 <div class="reward-label">Experiência</div>
                                 <div class="reward-value" id="reward-exp">+0</div>
@@ -972,7 +986,15 @@
         let currentEnergy = parseInt("<%= p1.energy %>");
         let canAct = true; 
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-        function resolveImg(src) { return (src.startsWith('http') || src.startsWith('data:')) ? src : '/uploads/' + src; }
+        function resolveImg(src) {
+            try {
+                if (window.PokemonDisplay) return window.PokemonDisplay.resolveSrc(src) || window.PokemonDisplay.PLACEHOLDER;
+            } catch (_) {}
+            if (src === undefined || src === null) return '/uploads/placeholder.png';
+            const s = String(src).trim();
+            if (!s) return '/uploads/placeholder.png';
+            return (s.startsWith('http') || s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('/')) ? s : '/uploads/' + s;
+        }
 
         function resolveSkinUrl(skin) {
             if (!skin) return '';
@@ -1302,7 +1324,7 @@
                     
                     if (evt.isEffective) {
                         hitMarker.classList.add('super-effective');
-                        hitMarker.innerText += ' ⚡';
+                        hitMarker.innerText += ' !!';
                     } else if (evt.isNotEffective) {
                         hitMarker.classList.add('not-effective');
                     }
@@ -1354,7 +1376,7 @@
                         updateBar(p1RawId, evt.p1Energy, <%= energyConfig.maxEnergy %>, 'en');
                         const txt = document.createElement('div'); 
                         txt.className = 'floating-text heal-text'; 
-                        txt.innerText = `⚡+${evt.restored} EN`; 
+                        txt.innerText = `+${evt.restored} EN`; 
                         txt.style.color = "#3498db";
                         document.getElementById('fighter-p1').appendChild(txt); 
                         setTimeout(() => txt.remove(), 1200);
@@ -1450,7 +1472,7 @@
                         const ballVisualX = startX + finalTX;
                         const ballVisualY = startY + finalTY;
                         for(let i=0; i<3; i++) { 
-                            const s = document.createElement('div'); s.className = 'capture-star'; s.innerText = '★'; 
+                            const s = document.createElement('div'); s.className = 'capture-star'; s.innerText = ''; 
                             s.style.left = (ballVisualX + 10 + (i*15 - 15)) + 'px'; s.style.top = (ballVisualY - 20) + 'px'; 
                             document.body.appendChild(s); 
                             setTimeout(() => s.remove(), 1000); 
@@ -2044,7 +2066,7 @@
             pokeball: { type: 'consumable', name: 'Poké Ball', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png', desc: 'Arremesse para tentar capturar uma criatura selvagem.' },
             'great-ball': { type: 'consumable', name: 'Great Ball', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png', desc: 'Uma Poké Ball melhor que a normal.' },
             'ultra-ball': { type: 'consumable', name: 'Ultra Ball', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png', desc: 'Uma Poké Ball de alta performance.' },
-            levelUpCrystal: { type: 'consumable', name: 'Level Crystal', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png', desc: 'Cristal raro que eleva o nível de uma criatura.' },
+            'rare-candy': { type: 'consumable', name: 'Rare Candy', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png', desc: 'Doce raro que eleva o nível de uma criatura.' },
             key_example: { type: 'key', name: 'Chave (exemplo)', icon: '', desc: 'Item-chave de exemplo.' }
         };
 

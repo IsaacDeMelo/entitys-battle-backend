@@ -1,0 +1,272 @@
+/* hud-theme.css — Tema HUD único: dialeto retrô do menu em todo o jogo.
+ * Tokens vindos de views/partials/menu.ejs (o "legalzinho"):
+ *  creme #f4e9c7, anel #17223a, azul #314c7a→#203457,
+ *  header #3f6fbd→#2c4f8c, dourado #f1c40f, botão #1b2b47.
+ * Especificidade alta (body ...) para vencer os <style> inline das views.
+ */
+:root {
+  --hud-cream: #f4e9c7;
+  --hud-ink: #17223a;
+  --hud-blue1: #314c7a;
+  --hud-blue2: #203457;
+  --hud-head1: #3f6fbd;
+  --hud-head2: #2c4f8c;
+  --hud-gold: #f1c40f;
+  --hud-btn: #1b2b47;
+  --hud-btn-shadow: #101a2c;
+  --hud-text: #f9f4de;
+  --hud-font-display: 'Press Start 2P', monospace;
+}
+
+/* ===== CITY: barra de chat (era pill moderna #1a1a2e/#3498db) ===== */
+body #chatBar {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 3px solid var(--hud-cream);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 10px 20px rgba(0,0,0,0.6);
+  padding: 6px 6px 6px 12px;
+}
+body #chatInput { color: var(--hud-text); font-family: 'Roboto', sans-serif; }
+body #chatInput::placeholder { color: #a8b7d4; }
+body #chatSend {
+  background: var(--hud-btn);
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  width: 44px; height: 40px;
+}
+body #chatSend:active { transform: translateY(2px); box-shadow: none; }
+
+/* ===== CITY: tags de mapa/zona ===== */
+body #areaHudMap, body #areaHudZone {
+  background: linear-gradient(180deg, var(--hud-head1) 0%, var(--hud-head2) 100%);
+  border: 2px solid var(--hud-cream);
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 8px 18px rgba(0,0,0,0.4);
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+  border-radius: 6px;
+  font-family: var(--hud-font-display);
+}
+
+/* ===== CITY: janela da mochila (era dark #0b1220 + cinza) ===== */
+body #bagWindow {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 4px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 20px 60px rgba(0,0,0,0.8);
+}
+body #bagHeader {
+  background: linear-gradient(180deg, var(--hud-head1) 0%, var(--hud-head2) 100%);
+  border-bottom: 3px solid var(--hud-ink);
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.7);
+}
+body #bagClose {
+  background: var(--hud-btn);
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+}
+body #bagClose:active { transform: translateY(2px); box-shadow: none; }
+body #bagMoney {
+  background: rgba(0,0,0,0.25);
+  border-bottom: 1px solid rgba(244,233,199,0.25);
+  color: var(--hud-gold);
+}
+
+/* ===== CITY: menu START (era claro estilo Pokémon clássico; agora retrô escuro) ===== */
+body #startMenuWindow {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 4px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 10px 25px rgba(0,0,0,0.5);
+}
+body .startMenuBtn { color: var(--hud-text); text-shadow: 1px 1px 0 rgba(0,0,0,0.7); }
+body .startMenuBtn:hover::before, body .startMenuBtn:active::before { color: var(--hud-gold); }
+body .startMenuBtn:active { background: rgba(0,0,0,0.25); }
+body .cityActionBtn {
+  background: var(--hud-btn);
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  color: var(--hud-text);
+}
+body .cityActionBtn:active { transform: translateY(2px); box-shadow: none; }
+
+/* ===== BATTLE: painéis de HP (era cinza #555) ===== */
+body .hud-panel {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 3px solid var(--hud-cream);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 4px 10px rgba(0,0,0,0.5);
+}
+body .hud-p1 { border-left: 5px solid var(--hud-gold); }
+body .hud-p2 { border-right: 5px solid #e74c3c; }
+body .poke-name { text-shadow: 2px 2px 0 rgba(0,0,0,0.7); }
+
+/* ===== BATTLE: painel inferior (era #1a1a2e + topo azul) ===== */
+body .bottom-panel {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border-top: 4px solid var(--hud-cream);
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 -5px 20px rgba(0,0,0,0.5);
+}
+body .battle-log {
+  background: rgba(0,0,0,0.35);
+  border: 2px solid rgba(244,233,199,0.25);
+  border-radius: 6px;
+  color: var(--hud-text);
+}
+
+/* ===== BATTLE: botões de ação e golpes ===== */
+body .action-btn {
+  background: linear-gradient(180deg, #2c4f8c 0%, var(--hud-btn) 100%);
+  border: 2px solid var(--hud-cream);
+  border-radius: 8px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+}
+body .action-btn:active { transform: translateY(2px); box-shadow: none; }
+body .action-attack {
+  background: linear-gradient(180deg, #e74c3c, #a93226);
+  border: 2px solid var(--hud-cream);
+}
+body .action-btn.btn-bag {
+  background: linear-gradient(180deg, #f39c12, #b9770e);
+  border: 2px solid var(--hud-cream);
+}
+body .move-btn {
+  background: linear-gradient(180deg, #2c4f8c 0%, #1a2a46 100%);
+  border: 2px solid rgba(244,233,199,0.65);
+  border-radius: 8px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+}
+body .move-btn strong { text-shadow: 1px 1px 0 rgba(0,0,0,0.7); }
+body .move-btn:active { transform: translateY(2px); box-shadow: none; }
+body .move-btn-back {
+  background: var(--hud-btn);
+  border: 2px solid rgba(244,233,199,0.5);
+  border-radius: 8px;
+}
+body .rest-btn { background: linear-gradient(180deg, #1f6f43 0%, #14532d 100%); border-color: var(--hud-cream); }
+
+/* ===== BATTLE: mochila interna e cards ===== */
+body .bag-inner {
+  background: rgba(0,0,0,0.35);
+  border: 2px solid rgba(244,233,199,0.25);
+  border-radius: 8px;
+}
+body .bag-item-card {
+  background: linear-gradient(180deg, #2c4f8c 0%, #1a2a46 100%);
+  border: 2px solid rgba(244,233,199,0.5);
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+}
+body .bag-item-card.open { border-color: var(--hud-gold); }
+body .bag-item-card .bag-use-btn {
+  background: linear-gradient(180deg, #e74c3c, #a93226);
+  border: 2px solid var(--hud-cream);
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+}
+
+/* ===== BATTLE: modal de troca e vitória ===== */
+body .switch-box {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 4px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 12px 50px rgba(0,0,0,0.9);
+}
+body .switch-header {
+  background: linear-gradient(180deg, var(--hud-head1) 0%, var(--hud-head2) 100%);
+  border-bottom: 3px solid var(--hud-ink);
+}
+body .switch-card {
+  background: rgba(0,0,0,0.3);
+  border: 2px solid rgba(244,233,199,0.3);
+}
+body .switch-card:hover { border-color: var(--hud-cream); }
+body .victory-container {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 4px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 20px 50px rgba(0,0,0,0.55);
+}
+body .victory-title { text-shadow: 2px 2px 0 rgba(0,0,0,0.7); color: #fff; }
+body .btn-restart {
+  background: var(--hud-btn);
+  border: 2px solid var(--hud-cream);
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+}
+body .btn-restart:active { transform: translateY(2px); box-shadow: none; }
+
+/* ===== Toast unificado ===== */
+body #toastContainer .toast, body .toast {
+  border: 2px solid var(--hud-cream);
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 5px 15px rgba(0,0,0,0.5);
+}
+
+/* ===== LAB: mesma língua do menu (era dark genérico) ===== */
+body.lab-theme { font-family: 'Rajdhani', sans-serif; }
+body.lab-theme .tab-btn {
+  font-family: var(--hud-font-display);
+  background: var(--hud-btn);
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  color: var(--hud-text);
+}
+body.lab-theme .tab-btn.active {
+  background: linear-gradient(180deg, var(--hud-head1) 0%, var(--hud-head2) 100%);
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+}
+body.lab-theme .btn-save {
+  font-family: var(--hud-font-display);
+  font-size: 0.6rem;
+  background: linear-gradient(180deg, #1f6f43 0%, #14532d 100%);
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  color: #fff;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+}
+body.lab-theme .btn-save:active { transform: translateY(2px); box-shadow: none; }
+body.lab-theme .btn-save:disabled { opacity: 0.6; }
+body.lab-theme .btn-delete {
+  font-family: var(--hud-font-display);
+  font-size: 0.6rem;
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+}
+body.lab-theme .btn-new {
+  border: 2px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--hud-btn-shadow);
+  font-family: var(--hud-font-display);
+  font-size: 0.55rem;
+}
+body.lab-theme .sidebar-header {
+  font-family: var(--hud-font-display);
+  background: linear-gradient(180deg, var(--hud-head1) 0%, var(--hud-head2) 100%);
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+}
+body.lab-theme #labToast {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 99999; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none; width: min(480px, 92vw);
+}
+body.lab-theme .lab-toast-msg {
+  background: linear-gradient(180deg, var(--hud-blue1) 0%, var(--hud-blue2) 100%);
+  border: 3px solid var(--hud-cream);
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--hud-ink), 0 8px 20px rgba(0,0,0,0.6);
+  color: var(--hud-text);
+  font-family: var(--hud-font-display);
+  font-size: 0.6rem;
+  padding: 12px 16px;
+  text-align: center;
+  animation: labToastIn 0.2s ease-out;
+}
+body.lab-theme .lab-toast-msg.err { border-color: #e74c3c; }
+@keyframes labToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; } }

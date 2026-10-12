@@ -6,6 +6,15 @@
     <title>Mundo Aberto RPG</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/entity-layout.css">
+    <link rel="stylesheet" href="/styles/hud-theme.css">
+    <!-- O mapa mantém a proporção compacta da versão FireRed; os painéis continuam responsivos. -->
+    <style>
+      @media (min-width: 769px) {
+        #gameViewport { max-width: 420px; max-height: 900px; border-radius: 0; }
+        #chatBar { max-width: 450px; }
+      }
+    </style>
     
     <style>
         /* --- 1. BASE --- */
@@ -100,7 +109,7 @@
             gap: 4px;
             pointer-events: none;
         }
-        #areaHudMap, #areaHudZone {
+        #areaHudZone {
             display: inline-flex;
             width: fit-content;
             max-width: min(72vw, 280px);
@@ -119,7 +128,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        #areaHudMap { font-size: 0.86rem; }
         #areaHudZone {
             font-size: 0.74rem;
             color: #b7f0c2;
@@ -442,34 +450,7 @@
             background: rgba(11, 18, 32, 0.35);
         }
 
-        /* =========================================
-           START MENU - ESTILO POKÉMON CLÁSSICO
-           ========================================= */
-        #startMenuOverlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.25);
-            z-index: 13000;
-            display: none;
-            align-items: flex-start;
-            justify-content: flex-end;
-            padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right));
-            pointer-events: auto;
-        }
-        #startMenuWindow {
-            width: min(220px, 75vw);
-            background: #f8f8f8;
-            border: 4px solid #333333;
-            border-radius: 8px;
-            box-shadow: inset 0 0 0 3px #e0e0e0, 0 10px 25px rgba(0,0,0,0.5);
-            padding: 8px 4px;
-            image-rendering: pixelated;
-        }
-        #startMenuBody {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
+        /* Botões de ação da cidade (loja, mochila) — idioma do aparelho */
         .startMenuBtn {
             display: flex;
             align-items: center;
@@ -993,11 +974,11 @@
         .dev-collision { background: rgba(231, 76, 60, 0.4) !important; border: 1px dashed #e74c3c; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-grass { background: rgba(46, 204, 113, 0.4) !important; border: 1px dashed #2ecc71; z-index: 20; pointer-events: auto !important; cursor: pointer; }
         .dev-portal { background: rgba(52, 152, 219, 0.4) !important; border: 1px dashed #3498db; z-index: 20; pointer-events: auto !important; cursor: pointer; }
-        .dev-portal::after { content: '🚪'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+        .dev-portal::after { content: '»'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
         .dev-interact { background: rgba(155, 89, 182, 0.4) !important; border: 1px dashed #8e44ad; z-index: 21; pointer-events: auto !important; cursor: help; }
         .dev-interact::after { content: '?'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-weight:bold; }
         .dev-storyBarrier { background: rgba(230, 126, 34, 0.4) !important; border: 1px dashed #e67e22; z-index: 20; pointer-events: auto !important; cursor: pointer; }
-        .dev-storyBarrier::after { content: '🚫'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+        .dev-storyBarrier::after { content: 'X'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
         .dev-storyBarrier--yellow { background: rgba(250, 223, 81, 0.45) !important; border: 1px dashed #f1c40f; }
         .storyBarrier--yellow { background: rgba(250, 223, 81, 0.25) !important; border: 1px dashed #f1c40f; z-index: 20; }
         .storyBarrier--orange { background: rgba(230, 126, 34, 0.25) !important; border: 1px dashed #e67e22; z-index: 20; }
@@ -1034,7 +1015,7 @@
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
     </style>
 </head>
-<body data-user-bag="<%= JSON.stringify(user.bag || { captureCube: 5, levelUpCrystal: 0 }) %>" data-user-money="<%= user.money || 0 %>">
+<body data-user-bag="<%= JSON.stringify(user.bag || { pokeball: 5, 'rare-candy': 0 }) %>" data-user-money="<%= user.money || 0 %>">
     <%- include('partials/menu') %>
 
     <style>
@@ -1116,8 +1097,8 @@
                 <div class="devGroupBody" id="devGroupBody-images">
                     <div class="devSection">
                         <button id="btnToolBg" class="devBtn--yellow" onclick="document.getElementById('uploadMapBg').click()">🖼️ FUNDO MAPA</button>
-                        <button id="btnToolForeground" class="devBtn--orange" onclick="document.getElementById('uploadForeground').click()">🌳 FOREGROUND</button>
-                        <button id="btnToolBattleBg" class="devBtn--danger" onclick="document.getElementById('uploadBattleBg').click()">⚔️ FUNDO BATALHA</button>
+                        <button id="btnToolForeground" class="devBtn--orange" onclick="document.getElementById('uploadForeground').click()">FOREGROUND</button>
+                        <button id="btnToolBattleBg" class="devBtn--danger" onclick="document.getElementById('uploadBattleBg').click()">FUNDO BATALHA</button>
                         <button id="btnToolChroma" onclick="openChromaTool()">🎨 REMOVER FUNDO</button>
                     </div>
 
@@ -1133,7 +1114,7 @@
                             <input id="battleBgPosYRange" type="range" min="0" max="100" step="1" style="flex:1;" />
                             <input id="battleBgPosYNum" type="number" min="0" max="100" step="1" style="width:64px;" />
                         </label>
-                        <div style="font-size:0.62rem; color:#aaa;">Dica: use X/Y pra escolher o recorte (cover). Depois clique em 💾 SALVAR MAPA.</div>
+                        <div style="font-size:0.62rem; color:#aaa;">Dica: use X/Y pra escolher o recorte (cover). Depois clique em SALVAR MAPA.</div>
                     </div>
                 </div>
             </div>
@@ -1149,11 +1130,11 @@
                     <div class="devSection">
                         <button class="devBtn--blue" onclick="openDevConsole()">DEV CONSOLE</button>
                         <button class="devBtn--gray" onclick="openDevPage()">DEV PAGINA</button>
-                        <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">📏 TAMANHO</button>
-                        <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">💡 ILUMINAÇÃO</button>
-                        <button class="devBtn--blue" onclick="openEncounterZoneInspector()">🧭 ZONAS</button>
-                        <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">🗑️ APAGAR</button>
-                        <button onclick="undoLast()">↩️ DESFAZER</button>
+                        <button id="btnToolSize" class="devBtn--yellow" onclick="changeSize()">TAMANHO</button>
+                        <button id="btnToolLight" class="devBtn--light" onclick="changeLight()">ILUMINAÇÃO</button>
+                        <button class="devBtn--blue" onclick="openEncounterZoneInspector()">🔎 ZONAS</button>
+                        <button id="btnToolDelete" class="devBtn--danger" onclick="selectTool('delete')">❌ APAGAR</button>
+                        <button onclick="undoLast()">« DESFAZER</button>
                         <button class="devBtn--green" onclick="saveMapToServer()">💾 SALVAR MAPA</button>
                     </div>
                 </div>
@@ -1221,7 +1202,6 @@
     <div id="gameViewport">
         <div id="gameArea">
             <div id="areaHud">
-                <div id="areaHudMap">Mapa</div>
                 <div id="areaHudZone" class="is-hidden">Zona</div>
             </div>
             <div id="collision-container"></div>
@@ -1240,7 +1220,7 @@
                 </div>
             </div>
         </div>
-        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">💬</button></div>
+        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">»</button></div>
     </div>
 
     <div id="controlsDock">
@@ -1270,37 +1250,6 @@
         </div>
     </div>
 
-    <div id="startMenuOverlay" onclick="window.__closeStartMenu && window.__closeStartMenu()">
-        <div id="startMenuWindow" onclick="event.stopPropagation()">
-            <div id="startMenuBody">
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokedex==='function') openPokedex();">
-                    <img class="menu-icon" src="/api/sprites/pokedex.png" alt="">
-                    <span>POKÉDEX</span>
-                </button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPokemon==='function') openPokemon();">
-                    <img class="menu-icon" src="/api/sprites/pokeball.png" alt="">
-                    <span>EQUIPE</span>
-                </button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openBag==='function') openBag();">
-                    <img class="menu-icon" src="/api/sprites/bag.png" alt="">
-                    <span>BOLSA</span>
-                </button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openPC==='function') openPC();">
-                    <img class="menu-icon" src="/api/sprites/pc.png" alt="">
-                    <span>PC</span>
-                </button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu(); if (typeof openRank==='function') openRank();">
-                    <img class="menu-icon" src="/api/sprites/star.png" alt="">
-                    <span>RANK</span>
-                </button>
-                <button class="startMenuBtn" type="button" onclick="window.__closeStartMenu && window.__closeStartMenu();">
-                    <img class="menu-icon" src="/api/sprites/close.png" alt="">
-                    <span>FECHAR</span>
-                </button>
-            </div>
-        </div>
-    </div>
-        </div>
     </div>
 
     <div id="playerProfileOverlay" onclick="closePlayerProfile()">
@@ -1359,7 +1308,7 @@
                 <div>BOLSA</div>
                 <button id="bagClose" type="button">FECHAR</button>
             </div>
-            <div id="bagMoney">💰 <span id="bagMoneyValue">0</span> MOEDAS</div>
+            <div id="bagMoney">$ <span id="bagMoneyValue">0</span> MOEDAS</div>
             <div id="bagBody">
                 <div id="bagEmpty" style="display:none;">Sua bolsa está vazia.</div>
                 <div id="bagList"></div>
@@ -1370,13 +1319,13 @@
     <div id="starterPickerOverlay" onclick="window.__closeStarterPicker && window.__closeStarterPicker()">
         <div id="starterPickerWindow" onclick="event.stopPropagation()">
             <div id="starterPickerHeader">
-                <div id="starterPickerTitle">⚔️ ESCOLHA SEU INICIAL ⚔️</div>
+                <div id="starterPickerTitle">— ESCOLHA SEU INICIAL —</div>
                 <button id="starterPickerClose" type="button">FECHAR</button>
             </div>
             <div id="starterPickerBody">
-                <div id="starterPickerHint">🎮 Escolha com sabedoria! Esta criatura será sua companheira nesta jornada épica!</div>
+                <div id="starterPickerHint">Escolha com sabedoria! Esta criatura será sua companheira nesta jornada épica!</div>
                 <div id="starterPickerGrid"></div>
-                <div id="starterPickerFooter">💡 Cada tipo possui vantagens e fraquezas contra outros tipos!</div>
+                <div id="starterPickerFooter">» Cada tipo possui vantagens e fraquezas contra outros tipos!</div>
             </div>
         </div>
     </div>
@@ -1429,13 +1378,13 @@
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Tipo (padronizado)</label>
                             <select id="npcEdType" onchange="npcTypeUiSync(true)">
-                                <option value="decor">🎨 Decorativo (sem ações)</option>
-                                <option value="quest">📜 Quest (itens/flag)</option>
-                                <option value="trainer">⚔️ Treinador (batalha)</option>
-                                <option value="starter">🎁 Inicial</option>
-                                <option value="heal">💚 Curandeiro</option>
-                                <option value="shop">🛒 Loja</option>
-                                <option value="box">🎲 Box / Gacha</option>
+                                <option value="decor">Decorativo (sem ações)</option>
+                                <option value="quest">Quest (itens/flag)</option>
+                                <option value="trainer">Treinador (batalha)</option>
+                                <option value="starter">Inicial</option>
+                                <option value="heal">Curandeiro</option>
+                                <option value="shop">Loja</option>
+                                <option value="box">Box / Gacha</option>
                             </select>
                             <div class="npcHint" style="margin-top:6px;">Escolha um tipo para organizar o editor e preencher defaults.</div>
                         </div>
@@ -1503,11 +1452,11 @@
                     
                     <!-- Sistema de Abas -->
                     <div class="npc-tabs">
-                        <button class="npc-tab active" onclick="switchNpcTab('geral')" data-tab="geral">📝 Geral</button>
-                        <button class="npc-tab" onclick="switchNpcTab('dialogos')" data-tab="dialogos" id="tabDialogos">💬 Diálogos</button>
-                        <button class="npc-tab" onclick="switchNpcTab('battle')" data-tab="battle" id="tabBattle">⚔️ Batalha</button>
-                        <button class="npc-tab" onclick="switchNpcTab('interact')" data-tab="interact" id="tabInteract">🔧 Interação</button>
-                        <button class="npc-tab" onclick="switchNpcTab('patrol')" data-tab="patrol" id="tabPatrol">🚶 Patrulha</button>
+                        <button class="npc-tab active" onclick="switchNpcTab('geral')" data-tab="geral">Geral</button>
+                        <button class="npc-tab" onclick="switchNpcTab('dialogos')" data-tab="dialogos" id="tabDialogos">Diálogos</button>
+                        <button class="npc-tab" onclick="switchNpcTab('battle')" data-tab="battle" id="tabBattle">Batalha</button>
+                        <button class="npc-tab" onclick="switchNpcTab('interact')" data-tab="interact" id="tabInteract">Interação</button>
+                        <button class="npc-tab" onclick="switchNpcTab('patrol')" data-tab="patrol" id="tabPatrol">Patrulha</button>
                     </div>
                     
                     <div class="npc-tab-content active" data-content="geral">
@@ -1521,7 +1470,7 @@
                             <div class="npcBlockDesc">Usados quando NENHUMA flag condicional está ativa</div>
                         </div>
                         <div class="npcHint" style="color: #3498db; border-left: 4px solid #3498db; margin: 10px 0;">
-                            ℹ️ <strong>Como funciona:</strong> Estes textos são usados quando <strong>nenhuma flag condicional está ativa</strong>. Configure flags condicionais abaixo para textos alternativos!
+                            » <strong>Como funciona:</strong> Estes textos são usados quando <strong>nenhuma flag condicional está ativa</strong>. Configure flags condicionais abaixo para textos alternativos!
                         </div>
 
                         <div class="npcFieldGrid">
@@ -1541,7 +1490,7 @@
                         <div class="npcField" style="grid-column: 1 / -1;">
                             <label>Diálogos Condicionais (Por StoryFlags)</label>
                             <div class="npcHint" style="color: #2ecc71; border-left: 4px solid #2ecc71;">
-                                ✅ <strong>Como usar:</strong> Quando uma flag estiver ativa no jogador, o NPC usa o texto da condicional. Sem flag ativa = usa o texto padrão acima. Maior prioridade vence se múltiplas flags estão ativas.
+                                » <strong>Como usar:</strong> Quando uma flag estiver ativa no jogador, o NPC usa o texto da condicional. Sem flag ativa = usa o texto padrão acima. Maior prioridade vence se múltiplas flags estão ativas.
                             </div>
                             <div id="npcEdConditionalRows" class="npcInlineHelp" style="display:flex; flex-direction:column; gap:8px; padding:10px;"></div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
@@ -1675,7 +1624,7 @@
 
                         <div class="npcField" id="npcEdInteractGivesIdBox">
                             <label>Dá item (ID)</label>
-                            <input id="npcEdInteractGivesId" type="text" placeholder="ex: rareCandy" list="itemCatalogDatalist" />
+                            <input id="npcEdInteractGivesId" type="text" placeholder="ex: rare-candy" list="itemCatalogDatalist" />
                         </div>
                         <div class="npcField" id="npcEdInteractGivesQtyBox">
                             <label>Dá quantidade</label>
@@ -1755,7 +1704,7 @@
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
                                 <button type="button" class="npcBtn" onclick="npcEdShopAddRow()">+ adicionar item</button>
                                 <button type="button" class="npcBtn" onclick="npcEdShopAddPreset('pokeball', 50)">+ CatchCube</button>
-                                <button type="button" class="npcBtn" onclick="npcEdShopAddPreset('rareCandy', 2000)">+ Rare Candy</button>
+                                <button type="button" class="npcBtn" onclick="npcEdShopAddPreset('rare-candy', 2000)">+ Rare Candy</button>
                                 <button type="button" class="npcBtn" onclick="npcEdShopClear()">limpar</button>
                             </div>
                             <div id="npcEdShopRows" class="npcHint" style="display:flex; flex-direction:column; gap:8px;"></div>
@@ -1808,7 +1757,7 @@
                             <label>Definir movimento por clique</label>
                             <div class="npcHint">Clique no mapa para escolher o DESTINO final. O editor calcula dx/dy automaticamente a partir do X/Y do NPC.</div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:6px;">
-                                <button type="button" class="npcBtn" onclick="npcInteractMovePickByClick()">📍 escolher destino no mapa</button>
+                                <button type="button" class="npcBtn" onclick="npcInteractMovePickByClick()">escolher destino no mapa</button>
                             </div>
                         </div>
                         <div class="npcField">
@@ -1896,9 +1845,9 @@
                             <label>Path (waypoints)</label>
                             <div class="npcHint">Defina a rota clicando no mapa (recomendado). Requer pelo menos 2 pontos.</div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0;">
-                                <button type="button" class="npcBtn" onclick="npcPathAddByClick()">📍 adicionar ponto clicando</button>
+                                <button type="button" class="npcBtn" onclick="npcPathAddByClick()">adicionar ponto clicando</button>
                                 <button type="button" class="npcBtn" onclick="npcPathAddFromInputs()">+ adicionar ponto</button>
-                                <button type="button" class="npcBtn" onclick="npcPathAddFromPortalExit()">🚪 ponto na saída de portal</button>
+                                <button type="button" class="npcBtn" onclick="npcPathAddFromPortalExit()">ponto na saída de portal</button>
                                 <button type="button" class="npcBtn" onclick="npcPathAddFromNpcPos()">+ do NPC</button>
                                 <button type="button" class="npcBtn" onclick="npcPathClear()">limpar</button>
                                 <label class="npcHint" style="display:flex; align-items:center; gap:6px;">
@@ -2254,6 +2203,7 @@
     </script>
 
     <script src="/scripts/common.js"></script>
+    <script src="/scripts/pokemon-display.js"></script>
 
     <script>
         // Lista completa de monstros (puxada do servidor)
@@ -2303,9 +2253,20 @@
         }
 
         // ===== Helpers p/ editor visual (Team/Shop) =====
+        // PADRÃO ÚNICO v2: nunca retorna '/uploads/' vazio; usa PokemonDisplay.
         function resolveImg(src) {
-            const s = String(src || '');
-            return (s.startsWith('http') || s.startsWith('data:')) ? s : ('/uploads/' + s);
+            try {
+                if (window.PokemonDisplay) return window.PokemonDisplay.resolveSrc(src) || window.PokemonDisplay.PLACEHOLDER;
+            } catch (_) {}
+            const s = String(src || '').trim();
+            if (!s) return '/uploads/placeholder.png';
+            return (s.startsWith('http') || s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('/')) ? s : ('/uploads/' + s);
+        }
+        function resolveEnt(entity, context) {
+            try {
+                if (window.PokemonDisplay) return window.PokemonDisplay.resolvePokemonImage(entity, context);
+            } catch (_) {}
+            return resolveImg((entity && (entity.icon || entity.sprite)) || '');
         }
 
         const NPC_EDITOR_POKEDEX = Array.isArray(window.allMonsters)
@@ -2763,7 +2724,7 @@
 
                 const dia = document.createElement('textarea');
                 dia.className = 'full';
-                dia.placeholder = '📌 Fala quando tem a flag (deixe vazio se quer APENAS as falas pós-vitória/cooldown)';
+                dia.placeholder = 'Fala quando tem a flag (deixe vazio se quer APENAS as falas pós-vitória/cooldown)';
                 dia.style.minHeight = '150px';
                 dia.style.width = '100%';
                 dia.value = row.dialogue || '';
@@ -2771,7 +2732,7 @@
 
                 const win = document.createElement('textarea');
                 win.className = 'full';
-                win.placeholder = '✨ Fala pós-vitória (quando tem a flag E ganhou o combate)';
+                win.placeholder = 'Fala pós-vitória (quando tem a flag E ganhou o combate)';
                 win.style.minHeight = '150px';
                 win.style.width = '100%';
                 win.value = row.winDialogue || '';
@@ -2892,7 +2853,7 @@
         const mySkin = "<%= playerSkin %>";
         window.CURRENT_USER_ID = "<%= user._id %>"; 
         window.DEFEATED_NPCS = <%- JSON.stringify(user.defeatedNPCs || []) %>;
-        window.USER_BAG = <%- JSON.stringify(user.bag || { captureCube: 5, levelUpCrystal: 0 }) %>;
+        window.USER_BAG = <%- JSON.stringify(user.bag || { pokeball: 5, 'rare-candy': 0 }) %>;
         window.USER_KEY_ITEMS = <%- JSON.stringify(user.keyItems || []) %>;
         window.STORY_FLAGS = <%- JSON.stringify(user.storyFlags || {}) %>;
         window.FOLLOWING_ENTITY_ID = <%- JSON.stringify(user.followingEntityId || '') %>;
@@ -3033,11 +2994,7 @@
 
         function updateAreaHud(zoneData = null) {
             try {
-                const mapEl = document.getElementById('areaHudMap');
                 const zoneEl = document.getElementById('areaHudZone');
-                const mapName = String((window.mapConfig && (window.mapConfig.name || window.mapConfig.mapId)) || currentMapId || 'Mapa').trim() || 'Mapa';
-                if (mapEl) mapEl.textContent = mapName;
-
                 const zoneLabel = zoneData && String(zoneData.label || zoneData.encounterKey || '').trim();
                 if (zoneEl) {
                     if (zoneLabel) {
@@ -3807,7 +3764,7 @@
                 // Preset simples de loja (pode editar depois)
                 const presetItems = JSON.stringify([
                     { itemId: 'pokeball', price: 50 },
-                    { itemId: 'rareCandy', price: 2000 }
+                    { itemId: 'rare-candy', price: 2000 }
                 ]);
                 document.getElementById('npcEdInteractShopItemsJson').value = presetItems;
                 if (typeof npcEdShopLoadFromJson === 'function') npcEdShopLoadFromJson(presetItems);
@@ -3887,13 +3844,13 @@
 
         // Configuração de tipos de NPC com cores e ícones
         const npcTypeConfig = {
-            decor: { icon: '🎨', text: 'DECORATIVO', color: '#95a5a6', bg: 'rgba(149, 165, 166, 0.2)' },
-            quest: { icon: '📜', text: 'QUEST GIVER', color: '#3498db', bg: 'rgba(52, 152, 219, 0.2)' },
-            trainer: { icon: '⚔️', text: 'TREINADOR', color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.2)' },
-            starter: { icon: '🎁', text: 'INICIAL', color: '#9b59b6', bg: 'rgba(155, 89, 182, 0.2)' },
-            heal: { icon: '💚', text: 'CURANDEIRO', color: '#2ecc71', bg: 'rgba(46, 204, 113, 0.2)' },
-            shop: { icon: '🛒', text: 'LOJA', color: '#f39c12', bg: 'rgba(243, 156, 18, 0.2)' },
-            box: { icon: '🎲', text: 'BOX / GACHA', color: '#16a085', bg: 'rgba(22, 160, 133, 0.2)' }
+            decor: { icon: 'DE', text: 'DECORATIVO', color: '#95a5a6', bg: 'rgba(149, 165, 166, 0.2)' },
+            quest: { icon: 'QS', text: 'QUEST GIVER', color: '#3498db', bg: 'rgba(52, 152, 219, 0.2)' },
+            trainer: { icon: 'TR', text: 'TREINADOR', color: '#e74c3c', bg: 'rgba(231, 76, 60, 0.2)' },
+            starter: { icon: 'ST', text: 'INICIAL', color: '#9b59b6', bg: 'rgba(155, 89, 182, 0.2)' },
+            heal: { icon: 'HL', text: 'CURANDEIRO', color: '#2ecc71', bg: 'rgba(46, 204, 113, 0.2)' },
+            shop: { icon: 'SH', text: 'LOJA', color: '#f39c12', bg: 'rgba(243, 156, 18, 0.2)' },
+            box: { icon: 'BX', text: 'BOX / GACHA', color: '#16a085', bg: 'rgba(22, 160, 133, 0.2)' }
         };
         
         function updateNpcTypeBadge(type) {
@@ -5183,10 +5140,16 @@
                     spriteContainer.className = 'starterSpriteContainer';
                     
                     const img = document.createElement('img');
-                    img.className = 'starterSprite';
+                    img.className = 'starterSprite ent-sprite ent-sprite--starter';
                     img.alt = name;
-                    if (sprite) img.src = sprite;
-                    else img.style.display = 'none';
+                    img.loading = 'lazy';
+                    img.style.objectFit = 'contain';
+                    img.style.imageRendering = 'pixelated';
+                    // PADRÃO ÚNICO: resolve via PokemonDisplay (http/data:/uploads/placeholder).
+                    try {
+                        img.src = (window.PokemonDisplay ? window.PokemonDisplay.resolvePokemonImage(o, 'starter') : null) || '/uploads/placeholder.png';
+                    } catch (_) { img.src = sprite || '/uploads/placeholder.png'; }
+                    img.onerror = function () { if (img.src.indexOf('placeholder.png') === -1) img.src = '/uploads/placeholder.png'; };
                     
                     spriteContainer.appendChild(img);
 
@@ -5205,17 +5168,17 @@
                     statsContainer.className = 'starterStats';
                     
                     const stats = [
-                        { label: 'HP', value: baseStats.hp || 0, icon: '❤️' },
-                        { label: 'ATK', value: baseStats.attack || 0, icon: '⚔️' },
-                        { label: 'DEF', value: baseStats.defense || 0, icon: '🛡️' },
-                        { label: 'SPD', value: baseStats.speed || 0, icon: '⚡' }
+                        { label: 'HP', value: baseStats.hp || 0, icon: '' },
+                        { label: 'ATK', value: baseStats.attack || 0, icon: '' },
+                        { label: 'DEF', value: baseStats.defense || 0, icon: '' },
+                        { label: 'SPD', value: baseStats.speed || 0, icon: '' }
                     ];
                     
                     stats.forEach(stat => {
                         const statDiv = document.createElement('div');
                         statDiv.className = 'starterStat';
                         statDiv.innerHTML = `
-                            <span class="starterStatLabel">${stat.icon} ${stat.label}</span>
+                            <span class="starterStatLabel">${stat.label}</span>
                             <span class="starterStatValue">${stat.value}</span>
                         `;
                         statsContainer.appendChild(statDiv);
@@ -5567,7 +5530,7 @@
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
             if (p.name && p.name.toLowerCase().includes('(kid)')) { div.classList.add('kid-scale'); }
-            if (p.sprite) { const img = document.createElement('img'); img.src = p.sprite; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; div.appendChild(img); div.style.backgroundImage='none'; }
+            if (p.sprite) { const img = document.createElement('img'); img.src = resolveImg(p.sprite); img.alt = displayName || 'jogador'; img.loading = 'lazy'; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; img.style.imageRendering='pixelated'; img.onerror = function(){ this.onerror=null; const url=getSkinUrl(p.skin); if(url) { this.remove(); div.style.backgroundImage=`url('${url}')`; } }; div.appendChild(img); div.style.backgroundImage='none'; }
             else {
                 const url = getSkinUrl(p.skin);
                 div.style.backgroundImage = url ? `url('${url}')` : 'none';
@@ -5864,7 +5827,7 @@
             if (!followerEl) {
                 followerEl = document.createElement('div');
                 followerEl.id = 'follower';
-                followerEl.className = 'follower';
+                followerEl.className = 'follower ent-sprite ent-sprite--follower';
                 if (spriteData && spriteData.walk) {
                     const canvas = createFollowerCanvas(spriteData.walk, 'down', canvasSize);
                     followerEl.appendChild(canvas);
@@ -5874,10 +5837,14 @@
                     positionFollower(followerEl, canvasSize);
                 } else {
                     const img = document.createElement('img');
-                    img.src = resolveImg(data.icon || data.sprite);
+                    img.src = resolveEnt(data, 'follower');
                     img.alt = data.name || 'Seguidor';
+                    img.loading = 'lazy';
+                    img.style.objectFit = 'contain';
+                    img.style.imageRendering = 'pixelated';
+                    img.onerror = function () { if (img.src.indexOf('placeholder.png') === -1) img.src = '/uploads/placeholder.png'; };
                     followerEl.appendChild(img);
-                    positionFollower(followerEl, 72);
+                    positionFollower(followerEl, 52);
                 }
                 gameArea.appendChild(followerEl);
             } else {
@@ -5901,8 +5868,10 @@
                         img = document.createElement('img');
                         followerEl.appendChild(img);
                     }
-                    img.src = resolveImg(data.icon || data.sprite);
-                    positionFollower(followerEl, 72);
+                    img.src = resolveEnt(data, 'follower');
+                    img.style.objectFit = 'contain';
+                    img.style.imageRendering = 'pixelated';
+                    positionFollower(followerEl, 52);
                 }
             }
             return true;
@@ -6024,15 +5993,22 @@
                         const img = document.createElement('img');
                         img.src = resolveImg(sprite);
                         img.alt = name || 'Seguidor';
+                        img.loading = 'lazy';
+                        img.style.objectFit = 'contain';
+                        img.style.imageRendering = 'pixelated';
+                        img.style.width = '52px';
+                        img.style.height = '52px';
+                        img.onerror = function () { if (img.src.indexOf('placeholder.png') === -1) img.src = '/uploads/placeholder.png'; };
                         el.appendChild(img);
-                        positionFollower(el, 72);
+                        positionFollower(el, 52);
                     }
                 }
                 gameArea.appendChild(el);
                 entry = { el, sprite, anim, dexOrder, canvasSize };
                 remoteFollowers.set(playerId, entry);
             } else {
-                if (hasSpritecollab && hasSpritecollab !== entry.dexOrder) {
+                // CORREÇÃO: compara dexOrder (número) com entry.dexOrder, não boolean.
+                if (hasSpritecollab && dexOrder !== entry.dexOrder) {
                     const [spriteData, heightDm] = await Promise.all([
                         loadSpriteData(dexOrder),
                         fetchPokeHeight(dexOrder)
@@ -6335,7 +6311,8 @@
         }
 
         // --- CONTROLES ---
-        gameViewport.addEventListener('mousedown', (e) => {
+        gameViewport.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'mouse' && e.button === 2) return;
             // Captura de clique (usado pelo editor de NPC: rota e mover após item)
             if (window.__devClickCapture && typeof window.__devClickCapture.onPick === 'function') {
                 // Botão direito cancela
@@ -6567,17 +6544,24 @@
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
 
-        // START (menu)
+        // START (menu): entrada única — abre o radial no personagem.
+        // START: menus removidos — botão avisa e não faz nada (ver DOCUMENTATION.md).
+        // Mantidos os aliases __openStartMenu/__closeStartMenu para não quebrar chamadores.
         (function setupStartMenu() {
             const startBtn = document.getElementById('startBtn');
-            const overlay = document.getElementById('startMenuOverlay');
-            if (!startBtn || !overlay) return;
-            function open() { overlay.style.display = 'flex'; window.__menuOpen = true; document.body.classList.add('menu-open'); }
-            function close() { overlay.style.display = 'none'; window.__menuOpen = false; document.body.classList.remove('menu-open'); }
-            window.__closeStartMenu = close;
-            window.__openStartMenu = open;
-            startBtn.addEventListener('click', (e) => { e.stopPropagation(); if (overlay.style.display !== 'none') close(); else open(); });
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+            function stubNotice() {
+                try {
+                    if (typeof showToast === 'function') showToast('Menu em reconstrução.');
+                    else alert('Menu em reconstrução.');
+                } catch (_) {}
+            }
+            window.__closeStartMenu = function () {
+                window.__menuOpen = false;
+                document.body.classList.remove('menu-open');
+            };
+            window.__openStartMenu = stubNotice;
+            if (!startBtn) return;
+            startBtn.addEventListener('click', (e) => { e.stopPropagation(); stubNotice(); });
         })();
 
         // SHOP MODAL (global) — usado quando /api/npc/interact retorna action.type === 'shop'
@@ -6775,8 +6759,9 @@
                 const bagOverlay = document.getElementById('bagOverlay');
                 const userId = window.CURRENT_USER_ID;
                 const bag = window.USER_BAG || {};
-                if (!bag.levelUpCrystal || (parseInt(bag.levelUpCrystal, 10) || 0) <= 0) {
-                    if (typeof showToast === 'function') showToast('Você não tem Crystal.', { bg: '#e74c3c' });
+                const candyQty = (parseInt(bag['rare-candy'], 10) || 0) + (parseInt(bag.levelUpCrystal, 10) || 0);
+                if (candyQty <= 0) {
+                    if (typeof showToast === 'function') showToast('Você não tem Rare Candy.', { bg: '#e74c3c' });
                     return;
                 }
 
@@ -6799,7 +6784,7 @@
                 }));
                 buttons.push({ text: 'CANCELAR', value: 'cancel', class: 'cancel' });
 
-                const choice = await showRPGDialog('MOCHILA', null, 'Escolha um monstro para usar o Crystal:', buttons);
+                const choice = await showRPGDialog('MOCHILA', null, 'Escolha um monstro para usar o Rare Candy:', buttons);
                 if (!choice || choice === 'cancel') {
                     try { await window.openBag(); } catch (_) {}
                     return;
@@ -6808,7 +6793,7 @@
                 const res = await fetch('/api/use-item', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, itemId: 'levelUpCrystal', pokemonId: String(choice), qty: 1 })
+                    body: JSON.stringify({ userId, itemId: 'rare-candy', pokemonId: String(choice), qty: 1 })
                 });
                 const js = await res.json().catch(() => ({}));
                 if (!js || js.error) {
@@ -6821,7 +6806,7 @@
                         window.USER_BAG = js.bag;
                     } else {
                         if (!window.USER_BAG) window.USER_BAG = {};
-                        window.USER_BAG.levelUpCrystal = (typeof js.levelUpCrystal === 'number') ? js.levelUpCrystal : window.USER_BAG.levelUpCrystal;
+                        if (typeof js['rare-candy'] === 'number') window.USER_BAG['rare-candy'] = js['rare-candy'];
                     }
                 }
                 if (typeof showToast === 'function') {
@@ -6849,7 +6834,7 @@
             const moneyEl = document.getElementById('bagMoneyValue');
             if (!overlay || !listEl || !emptyEl) return;
 
-            const bag = window.USER_BAG || { captureCube: 5, levelUpCrystal: 0 };
+            const bag = window.USER_BAG || { pokeball: 5, 'rare-candy': 0 };
             const keys = window.USER_KEY_ITEMS || [];
 
             // Atualizar dinheiro
@@ -6895,7 +6880,7 @@
             // Itens consumíveis antigos (inventory legado)
             for (const [id, qty] of Object.entries({})) {
                 const n = parseInt(qty, 10);
-                if (Number.isFinite(n) && n > 0 && id !== 'captureCube' && id !== 'rareCandy') {
+                if (Number.isFinite(n) && n > 0 && id !== 'pokeball' && id !== 'rare-candy') {
                     const metaOld = getMeta(id) || { name: id, hasIcon: false };
                     const iconOld = metaOld.iconUrl || metaOld.icon || (metaOld.hasIcon ? `/api/items/icon/${encodeURIComponent(id)}.png` : (()=>{ const raw=String(id||'').toLowerCase(); const MAP={'pokeball':'poke-ball','capturecube':'poke-ball'}; const slug=MAP[raw]||raw.replace(/[^a-z0-9]+/g,'-'); return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/${slug}.png`; })());
                     items.push({ id, name: metaOld.name || id, icon: iconOld, qty: n });
@@ -6947,8 +6932,8 @@
                     div.appendChild(iconDiv);
                     div.appendChild(infoDiv);
 
-                    // Ações por item
-                    if (it.id === 'levelUpCrystal' && (parseInt(it.qty, 10) || 0) > 0) {
+                    // Ações por item (canônico 'rare-candy'; aceita legado 'levelUpCrystal' na leitura)
+                    if ((it.id === 'rare-candy' || it.id === 'levelUpCrystal') && (parseInt(it.qty, 10) || 0) > 0) {
                         const actions = document.createElement('div');
                         actions.style.marginLeft = 'auto';
                         const btn = document.createElement('button');
@@ -7283,10 +7268,7 @@
                 interactBtn.addEventListener('pointerdown', (e) => {
                     if (window.__menuOpen) {
                         e.preventDefault(); e.stopPropagation();
-                        const startOpen = document.getElementById('startMenuOverlay') && document.getElementById('startMenuOverlay').style.display !== 'none';
-                        if (startOpen && window.__startMenuConfirm) window.__startMenuConfirm();
-                        else if (window.__menuConfirm) window.__menuConfirm();
-                        else if (window.__startMenuConfirm) window.__startMenuConfirm();
+                        if (window.__menuConfirm) window.__menuConfirm();
                         return;
                     }
                     e.preventDefault();
@@ -7314,8 +7296,6 @@
                 bBtn.addEventListener('pointerdown', (e) => {
                     if (window.__menuOpen) {
                         e.preventDefault(); e.stopPropagation();
-                        var startOpen = document.getElementById('startMenuOverlay') && document.getElementById('startMenuOverlay').style.display !== 'none';
-                        if (startOpen && window.__startMenuBack) { window.__startMenuBack(); return; }
                         if (window.__menuBack) { window.__menuBack(); return; }
                         if (window.__closeStartMenu) { window.__closeStartMenu(); return; }
                         return;
@@ -7344,13 +7324,10 @@
                     if (window.__menuOpen) {
                         e.preventDefault(); e.stopPropagation();
                         const dir = btn.getAttribute('data-vdir');
-                        const startOpen = document.getElementById('startMenuOverlay') && document.getElementById('startMenuOverlay').style.display !== 'none';
                         if (dir === 'up' || dir === 'left') {
-                            if (startOpen && window.__startMenuUp) window.__startMenuUp();
-                            else if (window.__menuUp) window.__menuUp();
+                            if (window.__menuUp) window.__menuUp();
                         } else if (dir === 'down' || dir === 'right') {
-                            if (startOpen && window.__startMenuDown) window.__startMenuDown();
-                            else if (window.__menuDown) window.__menuDown();
+                            if (window.__menuDown) window.__menuDown();
                         }
                         if (btn.setPointerCapture) try{ btn.setPointerCapture(e.pointerId); }catch(_){}
                         return;
@@ -7382,7 +7359,7 @@
             const btn = document.getElementById('btnDevPanel');
             if (!btn) return;
             btn.style.display = devMode ? 'block' : 'none';
-            btn.innerText = devPanelOpen ? '📦 ESCONDER FERRAMENTAS' : '📦 MOSTRAR FERRAMENTAS';
+            btn.innerText = devPanelOpen ? '[BOX] ESCONDER FERRAMENTAS' : '[BOX] MOSTRAR FERRAMENTAS';
         }
 
         function setDevToolsVisible(visible) {
@@ -7403,7 +7380,7 @@
         function toggleDevMode() {
             devMode = !devMode;
             setDevToolsVisible(devMode && devPanelOpen);
-            document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO";
+            document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "[DEV] ATIVAR EDIÇÃO";
             syncDevPanelButton();
             renderMapObjects();
             syncPlayUiVisibility();
@@ -7421,7 +7398,7 @@
                 devPanelOpen = !!settings.panelOpen;
                 sessionStorage.setItem('devPanelOpen', devPanelOpen ? '1' : '0');
                 setDevToolsVisible(devMode && devPanelOpen);
-                document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "🛠️ ATIVAR EDIÇÃO";
+                document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "[DEV] ATIVAR EDIÇÃO";
                 syncDevPanelButton();
                 renderMapObjects();
                 syncPlayUiVisibility();
@@ -7638,7 +7615,9 @@
             pendingPortalData = null;
             // Só limpa/ativa botões de ferramenta (não os headers das seções)
             document.querySelectorAll('#devTools button[id^="btnTool"]').forEach(b => b.classList.remove('active'));
-            const target = document.getElementById('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1));
+            const buttonIds = { collision: 'btnToolCol' };
+            const targetId = buttonIds[tool] || ('btnTool' + tool.charAt(0).toUpperCase() + tool.slice(1));
+            const target = document.getElementById(targetId);
             if (target) target.classList.add('active');
             syncPlayUiVisibility();
         }
@@ -7759,7 +7738,7 @@
             }
         }
 
-        function saveMapToServer() {
+        async function saveMapToServer() {
             mapConfig.collisions = collisionMap;
             mapConfig.grass = grassMap;
             mapConfig.interacts = interactsMap;
@@ -7767,14 +7746,19 @@
             mapConfig.storyBarriers = storyBarriersMap;
             mapConfig.objects = objectsMap;
 
-            fetch('/api/map/save', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ userId: window.CURRENT_USER_ID, mapId: currentMapId, mapData: mapConfig })
-            }).then(r => r.json()).then(d => {
+            try {
+                const response = await fetch('/api/map/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: window.CURRENT_USER_ID, mapId: currentMapId, mapData: mapConfig })
+                });
+                const d = await response.json();
                 if(d.success) showToast("Mapa salvo com sucesso!", {bg:'#2ecc71'});
                 else alert("Erro ao salvar: " + d.error);
-            });
+            } catch (error) {
+                console.error('Erro ao salvar mapa:', error);
+                alert('Erro ao salvar mapa. Verifique a conexão e tente novamente.');
+            }
         }
 
         function undoLast() {
@@ -8061,9 +8045,14 @@
         }
 
         // --- DESENHO DE RETANGULOS (DEV) ---
-        gameArea.addEventListener('mousedown', (e) => { 
+        gameArea.addEventListener('pointerdown', (e) => {
             if(!devMode || !currentTool || currentTool === 'delete' || currentTool === 'bg' || currentTool === 'size' || currentTool === 'moveNpc' || currentTool === 'spawn' || currentTool === 'light' || pendingPortalData) return; 
-            e.stopPropagation(); isDrawing = true; 
+            e.preventDefault();
+            e.stopPropagation();
+            isDrawing = true;
+            if (gameArea.setPointerCapture && e.pointerId !== undefined) {
+                try { gameArea.setPointerCapture(e.pointerId); } catch (_) {}
+            }
             const rect = gameArea.getBoundingClientRect(); 
             startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; 
             tempBox = document.createElement('div'); tempBox.className = 'drawing-box'; 
@@ -8077,8 +8066,9 @@
             document.getElementById('dev-layer').appendChild(tempBox); 
         });
 
-        gameArea.addEventListener('mousemove', (e) => { 
+        gameArea.addEventListener('pointermove', (e) => {
             if(!isDrawing || !tempBox) return; 
+            e.preventDefault();
             const rect = gameArea.getBoundingClientRect(); 
             const curX = ((e.clientX - rect.left)/rect.width)*100; const curY = ((e.clientY - rect.top)/rect.height)*100; 
             const w = Math.abs(curX - startPoint.x); const h = Math.abs(curY - startPoint.y); 
@@ -8086,8 +8076,12 @@
             tempBox.style.left = Math.min(curX, startPoint.x)+'%'; tempBox.style.top = Math.min(curY, startPoint.y)+'%'; 
         });
 
-        gameArea.addEventListener('mouseup', async (e) => { 
+        gameArea.addEventListener('pointerup', async (e) => {
             if(!isDrawing) return; isDrawing = false; 
+            e.preventDefault();
+            if (gameArea.releasePointerCapture && e.pointerId !== undefined) {
+                try { gameArea.releasePointerCapture(e.pointerId); } catch (_) {}
+            }
             if(tempBox) { 
                 const newRect = { x: parseFloat(parseFloat(tempBox.style.left).toFixed(1)), y: parseFloat(parseFloat(tempBox.style.top).toFixed(1)), w: parseFloat(parseFloat(tempBox.style.width).toFixed(1)), h: parseFloat(parseFloat(tempBox.style.height).toFixed(1)) }; 
                 if(newRect.w > 1 && newRect.h > 1) { 
@@ -8167,6 +8161,14 @@
                 tempBox.remove(); tempBox = null; 
                 if(!pendingPortalData) renderMapObjects(); 
             } 
+        });
+
+        gameArea.addEventListener('pointercancel', () => {
+            isDrawing = false;
+            if (tempBox) {
+                tempBox.remove();
+                tempBox = null;
+            }
         });
     </script>
 </body>

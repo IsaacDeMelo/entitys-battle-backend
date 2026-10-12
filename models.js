@@ -35,9 +35,9 @@ const UserSchema = new mongoose.Schema({
     skin: { type: String, default: 'char1' },
     money: { type: Number, default: 1000 },
 
-    // Mochila: todos os itens em um único objeto
-    // Exemplo: { captureCube: 5, levelUpCrystal: 2, healPotion: 10 }
-    bag: { type: Object, default: { captureCube: 5, levelUpCrystal: 0 } },
+    // Mochila: todos os itens em um único objeto (IDs canônicos)
+    // Exemplo: { pokeball: 5, 'rare-candy': 2, potion: 10 }
+    bag: { type: Object, default: { pokeball: 5, 'rare-candy': 0 } },
     
     // Itens-chave (únicos, usados para gates de história/portas)
     keyItems: { type: [String], default: [] },
