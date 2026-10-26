@@ -9,6 +9,10 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="/scripts/common.js"></script>
     <script src="/scripts/pokemon-display.js"></script>
+    <script src="/scripts/battle-assets.js" defer></script>
+    <script src="/scripts/pokemon-sizes.js"></script>
+    <script src="/scripts/spritecollab.js"></script>
+    <script src="/scripts/battle-sprites.js" defer></script>
     <link rel="stylesheet" href="/styles/entity-layout.css">
     <link rel="stylesheet" href="/styles/hud-theme.css">
     <style>
@@ -20,7 +24,7 @@
         #battleLayout { display: flex; gap: 16px; align-items: flex-start; }
       }
       /* Sprites de batalha sempre contain+pixelated (padrão único) */
-      .sprite img { object-fit: contain; image-rendering: pixelated; }
+      .sprite .battle-art { object-fit: contain; image-rendering: pixelated; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
    <style>
@@ -38,7 +42,7 @@
     .arena { 
         flex: 1; 
         /* Verifica se é base64/url ou arquivo local */
-        background: url('<%= (bgImage.startsWith("http") || bgImage.startsWith("data:")) ? bgImage : "/uploads/" + bgImage %>') no-repeat center center; 
+        background: url('/uploads/swamp-battle-v1.png') no-repeat center center;
         background-position: calc(var(--bgPosX, 50) * 1%) calc(var(--bgPosY, 50) * 1%);
         /* Zoom: 100 = tamanho base, >100 aproxima, <100 afasta */
         background-size: calc(var(--bgZoom, 100) * 1%) auto;
@@ -128,8 +132,13 @@
         transition: transform 0.2s; 
         margin-bottom: 5px; 
     }
-    .sprite img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); animation: breathe 3s infinite ease-in-out; opacity: 0; transition: opacity 0.2s ease-out; }
-    .sprite img.attack { animation: attackBump 0.3s ease-in-out; }
+    .sprite .battle-art { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5)); animation: breathe 3s infinite ease-in-out; opacity: 0; transition: opacity 0.2s ease-out; }
+    .battle-art { display:block; position:relative; }
+    .battle-art > img, .battle-art > canvas { display:block; position:absolute; inset:0; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+    .battle-art > [hidden] { display:none; }
+    .fighter.p1-position .sprite.has-spritecollab { transform:none; }
+    @media (prefers-reduced-motion: reduce) { .sprite .battle-art { animation:none!important; transition:none!important; } }
+    .sprite .battle-art.attack { animation: attackBump 0.3s ease-in-out; }
     @keyframes attackBump {
         0% { transform: translateX(0); }
         25% { transform: translateX(20px); }
@@ -137,8 +146,8 @@
         100% { transform: translateX(0); }
     }
     @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
-    .sprite img.hurt { filter: brightness(2) saturate(0) sepia(1) hue-rotate(-50deg); animation: shake 0.4s; }
-    .sprite img.status-dmg { filter: brightness(0.8) sepia(1) hue-rotate(240deg) saturate(3); }
+    .sprite .battle-art.hurt { filter: brightness(2) saturate(0) sepia(1) hue-rotate(-50deg); animation: shake 0.4s; }
+    .sprite .battle-art.status-dmg { filter: brightness(0.8) sepia(1) hue-rotate(240deg) saturate(3); }
     
     .trainer { 
         position: relative; 
@@ -746,14 +755,15 @@
         100% { transform: translateY(-120px) scale(1.5); opacity: 0; } 
     }
 </style>
+    <link rel="stylesheet" href="/styles/gba-battle.css">
 </head>
-<body>
+<body class="gba-battle">
     <div id="global-loader">
         <div class="spinner"></div>
         <div class="loading-text">PREPARANDO ARENA...</div>
     </div>
 
-    <div class="arena" id="arena" style="--bgPosX:<%= (Number.isFinite(bgPosX) ? bgPosX : 50) %>; --bgPosY:<%= (Number.isFinite(bgPosY) ? bgPosY : 50) %>; --bgZoom:<%= (Number.isFinite(bgZoom) ? bgZoom : 100) %>;">
+    <div class="arena" id="arena" data-background="<%= bgImage || '' %>" style="--bgPosX:<%= (Number.isFinite(bgPosX) ? bgPosX : 50) %>; --bgPosY:<%= (Number.isFinite(bgPosY) ? bgPosY : 50) %>; --bgZoom:<%= (Number.isFinite(bgZoom) ? bgZoom : 100) %>;">
         <div class="flash-overlay" id="flashOverlay"></div>
         <div class="status-msg" id="statusMsg" style="display:none; position:absolute; top:50%; width:100%; text-align:center; color:#fff; font-family:'Press Start 2P'; font-size:0.8rem; text-shadow:2px 2px 0 #000; z-index:500;">Aguardando...</div>
         <% if(isSpectator) { %> <div class="spectator-banner">MODO ESPECTADOR - APENAS OBSERVANDO</div> <% } %>
@@ -814,16 +824,16 @@
                  data-skin="<%= p2.skin || 'char1' %>" 
                   style="<% const p2Skin = (p2 && p2.skin) ? String(p2.skin) : 'char1'; const p2Url = (p2.isCustomSkin || (p2Skin && (p2Skin.startsWith('http') || p2Skin.startsWith('data:')))) ? p2Skin : ((/^char\d+$/i.test(p2Skin)) ? ('/uploads/' + p2Skin + '.png') : ('/skins/' + p2Skin + '.png')); %>background-image: url('<%= p2Url %>');<%= battleMode === 'wild' ? 'opacity:0;' : '' %>">
             </div>
-            <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p2">
-                <img src="<%= (()=>{ const s=String((p2&&p2.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="inimigo" onerror="this.onerror=null;this.src='/uploads/placeholder.png'">
+            <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p2" data-dex-order="<%= p2.dexOrder || 0 %>" data-name="<%= p2.name || '' %>">
+                <div class="battle-art"><img src="/uploads/placeholder.png" data-ent="battle" data-sprite="<%= p2.sprite || '' %>" data-icon="<%= p2.icon || '' %>" alt="inimigo" loading="eager"></div>
             </div>
         </div>
 
         <div class="fighter p1-position" id="fighter-p1">
             <div class="command-bubble" id="bubble-p1"></div>
             <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>" style="<% const p1Skin = (p1 && p1.skin) ? String(p1.skin) : 'char1'; const p1Url = (p1.isCustomSkin || (p1Skin && (p1Skin.startsWith('http') || p1Skin.startsWith('data:')))) ? p1Skin : ((/^char\d+$/i.test(p1Skin)) ? ('/uploads/' + p1Skin + '.png') : ('/skins/' + p1Skin + '.png')); %>background-image: url('<%= p1Url %>');"></div>
-            <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p1">
-                <img src="<%= (()=>{ const s=String((p1&&p1.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="aliado" onerror="this.onerror=null;this.src='/uploads/placeholder.png'">
+            <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p1" data-dex-order="<%= p1.dexOrder || 0 %>" data-name="<%= p1.name || '' %>">
+                <div class="battle-art"><img src="/uploads/placeholder.png" data-ent="battle" data-sprite="<%= p1.sprite || '' %>" data-icon="<%= p1.icon || '' %>" alt="aliado" loading="eager"></div>
             </div>
         </div>
 
@@ -996,6 +1006,12 @@
             return (s.startsWith('http') || s.startsWith('data:') || s.startsWith('blob:') || s.startsWith('/')) ? s : '/uploads/' + s;
         }
 
+        function applyBattleSprite(side, entity) {
+            const img = document.querySelector('#sprite-' + side + ' img');
+            if (window.BattleSprites) return window.BattleSprites.set(side, entity);
+            if (img) window.PokemonDisplay.setImage(img, entity, 'battle');
+        }
+
         function resolveSkinUrl(skin) {
             if (!skin) return '';
             try {
@@ -1094,7 +1110,7 @@
 
         async function returnPokemon(side) {
             const fighterDiv = document.getElementById(`fighter-${side}`);
-            const spriteImg = document.querySelector(`#sprite-${side} img`);
+            const spriteImg = document.querySelector(`#sprite-${side} .battle-art`);
             const trainer = document.getElementById(`trainer-${side}`);
             const sprite = document.getElementById(`sprite-${side}`);
             
@@ -1133,7 +1149,7 @@
         async function deployPokemon(side, isWild = false) {
             const fighterDiv = document.getElementById(`fighter-${side}`);
             const spriteDiv = document.getElementById(`sprite-${side}`);
-            const spriteImg = spriteDiv ? spriteDiv.querySelector('img') : null;
+            const spriteImg = spriteDiv ? spriteDiv.querySelector('.battle-art') : null;
             const trainerDiv = document.getElementById(`trainer-${side}`);
 
             if (!spriteImg || !fighterDiv) return;
@@ -1228,8 +1244,8 @@
             const atkSprite = document.getElementById(`sprite-${attackerSide}`);
             const defSprite = document.getElementById(`sprite-${defenderSide}`);
             if(!atkSprite) return;
-            const atkImg = atkSprite.querySelector('img');
-            const defImg = defSprite ? defSprite.querySelector('img') : null;
+            const atkImg = atkSprite.querySelector('.battle-art');
+            const defImg = defSprite ? defSprite.querySelector('.battle-art') : null;
             if(atkImg) {
                 atkImg.classList.remove('attack','hurt','shake');
                 atkImg.classList.add('attack');
@@ -1530,7 +1546,7 @@
                         setHudNameLevel('p2', p2Mon, data.p2State.level);
                         document.getElementById('max-hp-p2').innerText = p2MaxHp;
                         const s2 = document.querySelector('#sprite-p2 img');
-                        s2.src = resolveImg(data.p2State.sprite);
+                        applyBattleSprite('p2', data.p2State);
                         deployPokemon('p2', false);
                         updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
                     } else {
@@ -1544,7 +1560,7 @@
                         applyTrainerSkin('p1', data.p1State.skin);
                         setHudNameLevel('p1', p1Mon, data.p1State.level);
                         document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
-                        document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
+                        applyBattleSprite('p1', data.p1State);
                         deployPokemon('p1', false); 
                         updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
                         updateBar(p1RawId, currentEnergy, 100, 'en'); 
@@ -1659,6 +1675,7 @@
                         </div>
                     </div>
                 `;
+                window.PokemonDisplay.setImage(card.querySelector('img'), p, 'switch');
                 card.onclick = () => performSwitch(p.instanceId, !!isForced);
                 listDiv.appendChild(card);
             });
@@ -1705,7 +1722,7 @@
                 const data = await res.json();
                 p1RawId = data.newP1Id; p1Mon = data.p1State.name; p1CurHp = data.p1State.hp; p1MaxHp = data.p1State.maxHp; currentEnergy = data.p1State.energy;
                 setHudNameLevel('p1', p1Mon, data.p1State.level); document.getElementById('max-hp-p1').innerText = data.p1State.maxHp;
-                document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
+                applyBattleSprite('p1', data.p1State);
                 deployPokemon('p1', false); 
                 updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
                 updateBar(p1RawId, currentEnergy, 100, 'en'); 
@@ -1930,7 +1947,7 @@
                     document.getElementById('max-hp-p2').innerText = p2MaxHp;
                     
                     const s2 = document.querySelector('#sprite-p2 img');
-                    s2.src = resolveImg(newState.sprite);
+                    applyBattleSprite('p2', newState);
                     
                     setTimeout(() => deployPokemon('p2', false), 50);
                     updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
@@ -1945,7 +1962,7 @@
                     
                     setHudNameLevel('p1', p1Mon, newState.level);
                     document.getElementById('max-hp-p1').innerText = newState.maxHp;
-                    document.querySelector('#sprite-p1 img').src = resolveImg(newState.sprite); 
+                    applyBattleSprite('p1', newState);
                     
                     setTimeout(() => deployPokemon('p1', false), 50);
                     updateBar(p1RawId, p1CurHp, newState.maxHp, 'hp'); 

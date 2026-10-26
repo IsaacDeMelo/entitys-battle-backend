@@ -328,6 +328,8 @@ async function getStarterOptionsForNpc(npc) {
 const dbReady = mongoose.connect(MONGO_URI)
     .then(() => {
         console.log('[OK] MongoDB Conectado');
+        // Visual development can use existing data without running global migrations.
+        if (process.env.SKIP_STARTUP_MIGRATIONS === '1') return refreshItemCatalogCache();
         return Promise.all([
             fixLegacyUsers(),
             ensureDefaultItemCatalog(),
@@ -448,9 +450,9 @@ function loginRateLimited(ip) {
     loginAttempts.set(ip, arr);
     return arr.length > 20;
 }
-function sanitizeUsername(u) {
+function sanitizeUsername(u, minLength = 3) {
     const s = String(u || '').trim();
-    if (!s || s.length < 3 || s.length > 24) return '';
+    if (!s || s.length < minLength || s.length > 24) return '';
     if (/[$.{}\[\]]/.test(s)) return '';
     return s;
 }
@@ -1076,7 +1078,7 @@ async function createBattleInstance(baseId, level, knownBase = null) {
         baseId: base.id, name: base.name, type: normalizeEntityType(base.type) || EntityType.BEAST, level: level, 
         maxHp: stats.hp, hp: stats.hp, maxEnergy: ENERGY_CONFIG.maxEnergy, energy: ENERGY_CONFIG.maxEnergy, stats: stats, 
         moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m.id), 
-        sprite: base.sprite, catchRate: base.catchRate || 0.5, xpYield: Math.max(5, Math.floor(level * 25)), 
+        sprite: base.sprite, icon: base.icon, dexOrder: base.dexOrder || 0, catchRate: base.catchRate || 0.5, xpYield: Math.max(5, Math.floor(level * 25)),
         isWild: true, status: null, combo: 0, defending: false
     }; 
 }
@@ -1119,6 +1121,7 @@ function userEntityToEntity(userEntity, baseData) {
         moves: movesObj,
         sprite: baseData.sprite,
         icon: baseData.icon,
+        dexOrder: baseData.dexOrder || 0,
         isWild: false,
         xp: Number.isFinite(userEntity.xp) ? userEntity.xp : 0,
         xpToNext: getXpForNextLevel(level),
@@ -1169,7 +1172,8 @@ app.get('/', async (req, res) => {
 
 app.post('/login', async (req, res) => {
     if (loginRateLimited(req.ip)) return res.status(429).render('login', { error: 'Muitas tentativas. Aguarde 1 minuto.', skinCount: SKIN_COUNT, skins: [] });
-    const username = sanitizeUsername(req.body && req.body.username);
+    // Existing accounts may predate the registration minimum (e.g. "M").
+    const username = sanitizeUsername(req.body && req.body.username, 1);
     const password = String((req.body && req.body.password) || '');
     if (!username || !password) {
         const skins = await PlayerSkin.find({}).sort({ name: 1 }).lean();
@@ -4207,7 +4211,7 @@ app.post('/battle/contract', async (req, res) => {
         maxEnergy: enemyStats.energy,
         stats: enemyStats,
         moves: enemyMoves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id),
-        sprite: enemyBase.sprite,
+        sprite: enemyBase.sprite, icon: enemyBase.icon, dexOrder: enemyBase.dexOrder || 0,
         playerName: 'Desafio',
         skin: 'char2',
         status: null
@@ -4306,7 +4310,7 @@ app.post('/battle/npc', async (req, res) => {
             instanceId: 'npc_mon_' + Date.now() + Math.random(), baseId: base.id, name: base.name, type: base.type, level: member.level, 
             maxHp: stats.hp, hp: stats.hp, maxEnergy: stats.energy, energy: stats.energy, stats: stats, 
             moves: moves.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })).filter(m => m && m.id), 
-            sprite: base.sprite, playerName: npc.name, skin: npc.skin, isCustomSkin: npc.isCustomSkin, isWild: false, status: null
+            sprite: base.sprite, icon: base.icon, dexOrder: base.dexOrder || 0, playerName: npc.name, skin: npc.skin, isCustomSkin: npc.isCustomSkin, isWild: false, status: null
         });
     }
 
@@ -4394,7 +4398,7 @@ app.post('/battle', async (req, res) => {
         maxEnergy: s2.energy,
         stats: s2,
         moves: cpuMoves.map(mid => ({...MOVES_LIBRARY[mid], id:mid})),
-        sprite: randomBase.sprite,
+        sprite: randomBase.sprite, icon: randomBase.icon, dexOrder: randomBase.dexOrder || 0,
         playerName: 'CPU',
         skin: 'char2',
         status: null
@@ -4429,14 +4433,14 @@ app.get('/teste-ui-batalha', async (req, res) => {
             baseId: b1Base.id, name: b1Base.name, type: b1Base.type, level,
             hp: s1.hp, maxHp: s1.hp, energy: s1.energy || ENERGY_CONFIG.maxEnergy, maxEnergy: ENERGY_CONFIG.maxEnergy,
             stats: s1, moves: m1.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
-            sprite: b1Base.sprite, playerName: 'Jogador', skin: skin1, status: null, xp: 0, xpToNext: 100
+            sprite: b1Base.sprite, icon: b1Base.icon, dexOrder: b1Base.dexOrder || 0, playerName: 'Jogador', skin: skin1, status: null, xp: 0, xpToNext: 100
         };
         const p2 = {
             instanceId: 'test_p2_' + Date.now(),
             baseId: b2Base.id, name: b2Base.name, type: b2Base.type, level,
             hp: s2.hp, maxHp: s2.hp, energy: s2.energy || ENERGY_CONFIG.maxEnergy, maxEnergy: ENERGY_CONFIG.maxEnergy,
             stats: s2, moves: m2.map(mid => ({ ...MOVES_LIBRARY[mid], id: mid })),
-            sprite: b2Base.sprite, playerName: 'CPU Teste', skin: skin2, status: null
+            sprite: b2Base.sprite, icon: b2Base.icon, dexOrder: b2Base.dexOrder || 0, playerName: 'CPU Teste', skin: skin2, status: null
         };
 
         const battleId = 'test_' + Date.now();
@@ -4537,7 +4541,7 @@ app.post('/api/turn', async (req, res) => {
             const p1PokeData = userXp ? userXp.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;
             const p1Xp = p1PokeData ? (p1PokeData.xp || 0) : 0;
             const p1XpNext = p1PokeData ? getXpForNextLevel(p1PokeData.level) : 100;
-            return res.json({ events, p1State: { hp: p1.hp, maxHp: p1.maxHp, energy: p1.energy, maxEnergy: p1.maxEnergy, name: p1.name, level: p1.level, sprite: p1.sprite, moves: p1.moves, xp: p1Xp, xpToNext: p1XpNext }, p2State: { hp: p2.hp }, switched: true, newP1Id: p1.instanceId }); 
+            return res.json({ events, p1State: { hp: p1.hp, maxHp: p1.maxHp, energy: p1.energy, maxEnergy: p1.maxEnergy, name: p1.name, level: p1.level, sprite: p1.sprite, icon: p1.icon, dexOrder: p1.dexOrder || 0, moves: p1.moves, xp: p1Xp, xpToNext: p1XpNext }, p2State: { hp: p2.hp }, switched: true, newP1Id: p1.instanceId });
         }
 
         if (action === 'catch') { 

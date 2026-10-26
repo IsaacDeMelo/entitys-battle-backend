@@ -44,6 +44,25 @@
     return pickField(entity, context);
   }
 
+  // Try the alternate artwork before the local placeholder, once per source.
+  function setImage(img, entity, context) {
+    const rule = CONTEXT_RULE[context] || CONTEXT_RULE.team;
+    const sources = [...new Set([...rule.fields.map(field => resolveSrc((entity || {})[field])).filter(Boolean), PLACEHOLDER])];
+    const key = JSON.stringify(sources);
+    if (img._pokemonSourceKey === key) return img;
+    img._pokemonSourceKey = key;
+    let index = 0;
+    img.dataset.imageStatus = 'loading';
+    img.onload = function () { img.dataset.imageStatus = sources[index] === PLACEHOLDER ? 'placeholder' : index ? 'fallback' : 'loaded'; };
+    img.onerror = function () {
+      index++;
+      if (index < sources.length) img.src = sources[index];
+      else { img.onerror = null; img.dataset.imageStatus = 'unavailable'; }
+    };
+    img.src = sources[0];
+    return img;
+  }
+
   // Cria <div class="ent-sprite ..."><img ...></div> padronizado.
   function createSpriteEl(entity, context, alt) {
     const rule = CONTEXT_RULE[context] || CONTEXT_RULE.team;
@@ -52,10 +71,7 @@
     const img = document.createElement('img');
     img.alt = alt || (entity && entity.name) || 'entidade';
     img.loading = 'lazy';
-    img.src = pickField(entity, context);
-    img.onerror = function () {
-      if (img.src !== PLACEHOLDER) img.src = PLACEHOLDER;
-    };
+    setImage(img, entity, context);
     wrap.appendChild(img);
     return wrap;
   }
@@ -69,13 +85,11 @@
       img.style.objectFit = 'contain';
       img.style.imageRendering = 'pixelated';
       img.loading = img.loading || 'lazy';
-      const resolved = pickField(entity, ctx);
-      if (img.src !== resolved) img.src = resolved;
-      img.onerror = function () { if (img.src !== PLACEHOLDER) img.src = PLACEHOLDER; };
+      setImage(img, entity, ctx);
     });
   }
 
-  const api = { PLACEHOLDER, CONTEXT_RULE, resolveSrc, resolvePokemonImage, createSpriteEl, hydrate };
+  const api = { PLACEHOLDER, CONTEXT_RULE, resolveSrc, resolvePokemonImage, setImage, createSpriteEl, hydrate };
   global.PokemonDisplay = api;
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => hydrate(document));

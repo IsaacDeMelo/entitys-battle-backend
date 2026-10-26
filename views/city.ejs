@@ -1014,8 +1014,9 @@
 
         .drawing-box { position: absolute; z-index: 100; pointer-events: none; }
     </style>
+    <link rel="stylesheet" href="/styles/classic-hud.css">
 </head>
-<body data-user-bag="<%= JSON.stringify(user.bag || { pokeball: 5, 'rare-candy': 0 }) %>" data-user-money="<%= user.money || 0 %>">
+<body class="classic-city" data-user-bag="<%= JSON.stringify(user.bag || { pokeball: 5, 'rare-candy': 0 }) %>" data-user-money="<%= user.money || 0 %>">
     <%- include('partials/menu') %>
 
     <style>
@@ -1199,6 +1200,11 @@
     </div>
     <% } %>
 
+    <button id="trainerStatus" class="trainer-status" type="button" aria-label="Abrir cartão do treinador">
+        <span class="trainer-monogram" aria-hidden="true">EB</span>
+        <span class="trainer-status-name"><small>ENTITYS BATTLE</small><strong><%= user.username %></strong></span>
+        <span id="trainerBalance">$ <%= Number(user.money || 0).toLocaleString('pt-BR') %></span>
+    </button>
     <div id="gameViewport">
         <div id="gameArea">
             <div id="areaHud">
@@ -1220,7 +1226,7 @@
                 </div>
             </div>
         </div>
-        <div id="chatBar"><input type="text" id="chatInput" placeholder="Mensagem..." autocomplete="off" maxlength="30"><button id="chatSend">»</button></div>
+        <div id="chatBar"><input type="text" id="chatInput" placeholder="Converse com outros treinadores..." aria-label="Mensagem para o chat" autocomplete="off" maxlength="30"><button id="chatSend" aria-label="Enviar mensagem">»</button></div>
     </div>
 
     <div id="controlsDock">
@@ -1228,25 +1234,25 @@
             <div id="virtualPadWrap">
                 <div id="virtualPad">
                     <div class="vpadSpacer"></div>
-                    <button class="vpadBtn" type="button" data-vdir="up">▲</button>
+                    <button class="vpadBtn" type="button" data-vdir="up" aria-label="Cima">▲</button>
                     <div class="vpadSpacer"></div>
-                    <button class="vpadBtn" type="button" data-vdir="left">◀</button>
+                    <button class="vpadBtn" type="button" data-vdir="left" aria-label="Esquerda">◀</button>
                     <div class="vpadSpacer"></div>
-                    <button class="vpadBtn" type="button" data-vdir="right">▶</button>
+                    <button class="vpadBtn" type="button" data-vdir="right" aria-label="Direita">▶</button>
                     <div class="vpadSpacer"></div>
-                    <button class="vpadBtn" type="button" data-vdir="down">▼</button>
+                    <button class="vpadBtn" type="button" data-vdir="down" aria-label="Baixo">▼</button>
                     <div class="vpadSpacer"></div>
                 </div>
             </div>
         </div>
 
         <div id="controlsCenter">
-            <button id="startBtn" type="button" title="Menu">START</button>
+            <button id="startBtn" type="button" title="Menu (M)" aria-haspopup="dialog" aria-controls="classic-menu" aria-expanded="false">MENU</button>
         </div>
 
         <div id="controlsRight">
-            <button id="virtualPadInteract" type="button" title="Interagir">A</button>
-            <button id="virtualPadB" type="button" title="Interagir (mapa)">B</button>
+            <button id="virtualPadInteract" type="button" title="Confirmar / interagir" aria-label="A: confirmar ou interagir">A</button>
+            <button id="virtualPadB" type="button" title="Voltar / interagir" aria-label="B: voltar ou interagir">B</button>
         </div>
     </div>
 
@@ -2204,6 +2210,8 @@
 
     <script src="/scripts/common.js"></script>
     <script src="/scripts/pokemon-display.js"></script>
+    <script src="/scripts/pokemon-sizes.js"></script>
+    <script src="/scripts/spritecollab.js"></script>
 
     <script>
         // Lista completa de monstros (puxada do servidor)
@@ -2814,10 +2822,7 @@
         window.isInteracting = false;
 
         function __isPokemonModalBlocked() {
-            if (!window.__menuOpen) return false;
-            const pm = document.getElementById('modalPokemon');
-            if (pm && pm.style.display === 'flex') return false;
-            return true;
+            return !!window.__menuOpen;
         }
 
         // Cooldown de portal (persiste entre páginas para evitar "voltar pro lugar antigo" ao dar o primeiro passo)
@@ -3026,7 +3031,11 @@
         socket.on('player_joined', (p) => { if(p.id !== window.myId) createPlayerElement(p); });
 
         socket.on('player_following_updated', (data) => {
-            if (!data || !data.id || data.id === window.myId) return;
+            if (!data || !data.id) return;
+            if (data.id === window.myId) {
+                setFollowingEntityId(data.followingEntityId || '');
+                return;
+            }
             const el = document.getElementById(`p-${data.id}`);
             const x = el ? parseFloat(el.style.left) : 50;
             const y = el ? parseFloat(el.style.top) : 50;
@@ -5393,7 +5402,7 @@
             window.isMoving = true;
 
             const step = () => {
-                if (window.isInteracting || window.isTeleporting) { window.isMoving = false; return; }
+                if (window.isInteracting || window.isTeleporting || window.__menuOpen) { window.isMoving = false; return; }
                 if (segIndex >= segments.length) {
                     window.isMoving = false;
                     const me = document.getElementById(`p-${window.myId}`);
@@ -5528,6 +5537,7 @@
 
         function createPlayerElement(p) { 
             const div = document.createElement('div'); div.id = `p-${p.id}`; div.className = 'player'; 
+            const displayName = (p.name || "").replace(/\(kid\)/i, '').trim();
             div.style.left = p.x + '%'; div.style.top = p.y + '%'; div.style.zIndex = Math.floor(p.y); div.setAttribute('data-dir', p.direction || 'down'); 
             if (p.name && p.name.toLowerCase().includes('(kid)')) { div.classList.add('kid-scale'); }
             if (p.sprite) { const img = document.createElement('img'); img.src = resolveImg(p.sprite); img.alt = displayName || 'jogador'; img.loading = 'lazy'; img.style.width='48px'; img.style.height='48px'; img.style.objectFit='contain'; img.style.imageRendering='pixelated'; img.onerror = function(){ this.onerror=null; const url=getSkinUrl(p.skin); if(url) { this.remove(); div.style.backgroundImage=`url('${url}')`; } }; div.appendChild(img); div.style.backgroundImage='none'; }
@@ -5535,7 +5545,6 @@
                 const url = getSkinUrl(p.skin);
                 div.style.backgroundImage = url ? `url('${url}')` : 'none';
             }
-            const displayName = (p.name || "").replace(/\(kid\)/i, '').trim();
             const label = document.createElement('div'); label.className = 'player-name'; label.innerText = displayName; div.appendChild(label);
 
             const isSelf = (p.id === window.myId) || (p.userId && String(p.userId) === String(window.CURRENT_USER_ID));
@@ -5604,105 +5613,10 @@
         let followerTimer = null;
         let followerAnim = null;
 
-        const SPRITECOLLAB_BASE = 'https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/sprite';
-        const POKEAPI_BASE = 'https://pokeapi.co/api/v2/pokemon';
-        const spriteCache = new Map();
-        const pokeHeightCache = new Map();
-
-        const DIR_TO_ROW = { down: 0, downRight: 1, left: 6, upLeft: 3, up: 4, upRight: 5, right: 2, downLeft: 7 };
-        const DIR_MAP = { down: 'down', left: 'left', up: 'up', right: 'right' };
-
-        function padId(n) { return String(n).padStart(4, '0'); }
-
-        function fetchWithTimeout(url, opts = {}, ms = 5000) {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), ms);
-            return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
-        }
-
-        function loadImageWithTimeout(src, ms = 5000) {
-            return new Promise((resolve, reject) => {
-                const timer = setTimeout(() => reject(new Error('timeout')), ms);
-                const i = new Image();
-                i.crossOrigin = 'anonymous';
-                i.onload = () => { clearTimeout(timer); resolve(i); };
-                i.onerror = () => { clearTimeout(timer); reject(new Error('img')); };
-                i.src = src;
-            });
-        }
-
-        async function loadSpriteData(dexOrder) {
-            if (!dexOrder || dexOrder <= 0) return null;
-            if (spriteCache.has(dexOrder)) return spriteCache.get(dexOrder);
-            const id = padId(dexOrder);
-            const base = `${SPRITECOLLAB_BASE}/${id}`;
-            try {
-                const [walkImg, idleImg, xmlRes] = await Promise.all([
-                    loadImageWithTimeout(`${base}/Walk-Anim.png`, 6000),
-                    loadImageWithTimeout(`${base}/Idle-Anim.png`, 6000).catch(() => null),
-                    fetchWithTimeout(`${base}/AnimData.xml`, {}, 6000).then(r => r.ok ? r.text() : Promise.reject('xml'))
-                ]);
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(xmlRes, 'text/xml');
-                const parseAnim = (name) => {
-                    for (const anim of xml.querySelectorAll('Anim')) {
-                        if (anim.querySelector('Name')?.textContent === name) {
-                            return {
-                                fw: parseInt(anim.querySelector('FrameWidth')?.textContent) || 40,
-                                fh: parseInt(anim.querySelector('FrameHeight')?.textContent) || 40,
-                                framesPerDir: anim.querySelectorAll('Duration').length || 6
-                            };
-                        }
-                    }
-                    return null;
-                };
-                const walkMeta = parseAnim('Walk');
-                const idleMeta = parseAnim('Idle');
-                const fw = walkMeta?.fw || 40, fh = walkMeta?.fh || 40;
-                const framesPerDir = walkMeta?.framesPerDir || 6;
-                const walkData = walkImg ? {
-                    img: walkImg, fw: walkMeta?.fw || fw, fh: walkMeta?.fh || fh,
-                    framesPerDir: walkMeta?.framesPerDir || framesPerDir,
-                    cols: Math.floor(walkImg.width / (walkMeta?.fw || fw)),
-                    rows: Math.floor(walkImg.height / (walkMeta?.fh || fh))
-                } : null;
-                const idleData = idleImg ? {
-                    img: idleImg, fw: idleMeta?.fw || fw, fh: idleMeta?.fh || fh,
-                    framesPerDir: idleMeta?.framesPerDir || 6,
-                    cols: Math.floor(idleImg.width / (idleMeta?.fw || fw)),
-                    rows: Math.floor(idleImg.height / (idleMeta?.fh || fh))
-                } : null;
-                const data = { walk: walkData, idle: idleData, fw, fh, framesPerDir };
-                spriteCache.set(dexOrder, data);
-                return data;
-            } catch (_) {
-                spriteCache.set(dexOrder, null);
-                return null;
-            }
-        }
-
-        async function fetchPokeHeight(dexOrder) {
-            if (!dexOrder || dexOrder <= 0) return null;
-            if (pokeHeightCache.has(dexOrder)) return pokeHeightCache.get(dexOrder);
-            try {
-                const res = await fetchWithTimeout(`${POKEAPI_BASE}/${dexOrder}`, {}, 5000);
-                if (!res.ok) return null;
-                const json = await res.json();
-                const heightDm = json.height || 10;
-                pokeHeightCache.set(dexOrder, heightDm);
-                return heightDm;
-            } catch (_) {
-                pokeHeightCache.set(dexOrder, null);
-                return null;
-            }
-        }
-
-        function calcFollowerSize(heightDm) {
-            if (!heightDm) return 40;
-            const min = 36, max = 56;
-            const size = Math.round(min + (heightDm / 25) * (max - min));
-            return Math.max(min, Math.min(max, size));
-        }
+        let followerLoadVersion = 0;
+        function loadSpriteData(dexOrder) { return window.SpriteCollab.load(dexOrder); }
+        function fetchPokeHeight(dexOrder) { return Promise.resolve(window.PokemonSizes.height(dexOrder)); }
+        function calcFollowerSize(heightDm) { return window.PokemonSizes.followerPixels(heightDm); }
 
         function createFollowerCanvas(spriteData, dir, size) {
             size = size || 44;
@@ -5715,21 +5629,10 @@
             return canvas;
         }
 
-        function drawFollowerFrame(canvas, spriteData, frameIdx, dir) {
-            if (!spriteData || !canvas) return;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.imageSmoothingEnabled = false;
-            const row = DIR_TO_ROW[dir] ?? 0;
-            const col = frameIdx % spriteData.cols;
-            const sx = col * spriteData.fw;
-            const sy = row * spriteData.fh;
-            const scale = Math.min(canvas.width / spriteData.fw, canvas.height / spriteData.fh);
-            const dw = spriteData.fw * scale;
-            const dh = spriteData.fh * scale;
-            const dx = (canvas.width - dw) / 2;
-            const dy = (canvas.height - dh) / 2;
-            ctx.drawImage(spriteData.img, sx, sy, spriteData.fw, spriteData.fh, dx, dy, dw, dh);
+        function drawFollowerFrame(canvas, data, frame, direction) {
+            window.SpriteCollab.drawFrame(canvas, data, frame, direction, {
+                fitContent: true, uniformScale: true, padding: 2, anchor: 'bottom'
+            });
         }
 
         class FollowerAnimator {
@@ -5790,6 +5693,7 @@
 
         function setFollowingEntityId(id) {
             window.FOLLOWING_ENTITY_ID = id || '';
+            if (window.__ME_CACHE) window.__ME_CACHE.followingEntityId = window.FOLLOWING_ENTITY_ID;
             setupFollower();
         }
         window.setFollowingEntityId = setFollowingEntityId;
@@ -5803,6 +5707,7 @@
         }
 
         function removeFollower() {
+            ++followerLoadVersion;
             if (followerAnim) { followerAnim.stop(); followerAnim = null; }
             if (followerEl) followerEl.remove();
             followerEl = null;
@@ -5812,16 +5717,21 @@
 
         async function ensureFollowerElement(data) {
             if (!data) return false;
+            const version = ++followerLoadVersion;
             const dexOrder = data.dexOrder || 0;
             const [spriteData, heightDm] = await Promise.all([
                 dexOrder ? loadSpriteData(dexOrder) : Promise.resolve(null),
                 dexOrder ? fetchPokeHeight(dexOrder) : Promise.resolve(null)
             ]);
+            if (version !== followerLoadVersion) return null;
             const canvasSize = calcFollowerSize(heightDm);
 
             function positionFollower(el, sz) {
+                el.style.width = sz + 'px';
+                el.style.height = sz + 'px';
                 el.style.marginLeft = -Math.round(sz / 2) + 'px';
-                el.style.marginTop = -Math.round(sz * 0.8) + 'px';
+                // Player feet sit 8px below the map point; canvas has 1px bottom padding.
+                el.style.marginTop = (9 - sz) + 'px';
             }
 
             if (!followerEl) {
@@ -5841,10 +5751,11 @@
                     img.alt = data.name || 'Seguidor';
                     img.loading = 'lazy';
                     img.style.objectFit = 'contain';
+                    img.style.width = img.style.height = '100%';
                     img.style.imageRendering = 'pixelated';
                     img.onerror = function () { if (img.src.indexOf('placeholder.png') === -1) img.src = '/uploads/placeholder.png'; };
                     followerEl.appendChild(img);
-                    positionFollower(followerEl, 52);
+                    positionFollower(followerEl, canvasSize);
                 }
                 gameArea.appendChild(followerEl);
             } else {
@@ -5861,6 +5772,7 @@
                     followerAnim.setSprites(spriteData.walk, spriteData.idle);
                     positionFollower(followerEl, canvasSize);
                 } else {
+                    if (followerAnim) { followerAnim.stop(); followerAnim = null; }
                     const oldCanvas = followerEl.querySelector('canvas');
                     if (oldCanvas) oldCanvas.remove();
                     let img = followerEl.querySelector('img');
@@ -5870,8 +5782,9 @@
                     }
                     img.src = resolveEnt(data, 'follower');
                     img.style.objectFit = 'contain';
+                    img.style.width = img.style.height = '100%';
                     img.style.imageRendering = 'pixelated';
-                    positionFollower(followerEl, 52);
+                    positionFollower(followerEl, canvasSize);
                 }
             }
             return true;
@@ -5880,7 +5793,32 @@
         function setupFollower() {
             const data = getFollowerData();
             if (!data) { removeFollower(); return; }
+            // Replace the previous companion immediately while its sheets load.
+            const instanceId = String(data.instanceId || '');
+            if (!followerEl || followerEl.dataset.instanceId !== instanceId) {
+                if (followerAnim) { followerAnim.stop(); followerAnim = null; }
+                if (!followerEl) {
+                    followerEl = document.createElement('div');
+                    followerEl.id = 'follower';
+                    followerEl.className = 'follower ent-sprite ent-sprite--follower';
+                    gameArea.appendChild(followerEl);
+                }
+                followerEl.dataset.instanceId = instanceId;
+                followerEl.dataset.name = data.name || '';
+                const img = document.createElement('img');
+                img.alt = data.name || 'Seguidor';
+                img.style.width = img.style.height = '100%';
+                window.PokemonDisplay.setImage(img, data, 'follower');
+                followerEl.replaceChildren(img);
+                const size = calcFollowerSize(window.PokemonSizes.height(data.dexOrder));
+                followerEl.style.width = followerEl.style.height = size + 'px';
+                followerEl.style.marginLeft = -Math.round(size / 2) + 'px';
+                followerEl.style.marginTop = (9 - size) + 'px';
+                const player = document.getElementById(`p-${window.myId}`);
+                if (player) updateFollowerPosition({ x: parseFloat(player.style.left), y: parseFloat(player.style.top), dir: player.getAttribute('data-dir') || 'down' }, true);
+            }
             ensureFollowerElement(data).then(ok => {
+                if (ok === null) return;
                 if (!ok) { removeFollower(); return; }
                 const me = document.getElementById(`p-${window.myId}`);
                 if (me) {
@@ -5898,8 +5836,8 @@
             const dir = pos.dir || 'down';
             if (dir === 'up') { y = y + 6; }
             else if (dir === 'down') { y = y - 3; }
-            else if (dir === 'left') { x = x + 8; y = y + 2; }
-            else if (dir === 'right') { x = x - 8; y = y + 2; }
+            else if (dir === 'left') { x = x + 8; }
+            else if (dir === 'right') { x = x - 8; }
             x = Math.max(0, Math.min(100, x));
             y = Math.max(0, Math.min(100, y));
             return { x, y, dir };
@@ -5962,8 +5900,10 @@
             let entry = remoteFollowers.get(playerId);
 
             function positionFollower(el, sz) {
+                el.style.width = sz + 'px';
+                el.style.height = sz + 'px';
                 el.style.marginLeft = -Math.round(sz / 2) + 'px';
-                el.style.marginTop = -Math.round(sz * 0.8) + 'px';
+                el.style.marginTop = (9 - sz) + 'px';
             }
 
             if (!entry) {
@@ -5996,11 +5936,11 @@
                         img.loading = 'lazy';
                         img.style.objectFit = 'contain';
                         img.style.imageRendering = 'pixelated';
-                        img.style.width = '52px';
-                        img.style.height = '52px';
+                        img.style.width = '100%';
+                        img.style.height = '100%';
                         img.onerror = function () { if (img.src.indexOf('placeholder.png') === -1) img.src = '/uploads/placeholder.png'; };
                         el.appendChild(img);
-                        positionFollower(el, 52);
+                        positionFollower(el, canvasSize);
                     }
                 }
                 gameArea.appendChild(el);
@@ -6544,25 +6484,7 @@
         document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
 
-        // START (menu): entrada única — abre o radial no personagem.
-        // START: menus removidos — botão avisa e não faz nada (ver DOCUMENTATION.md).
-        // Mantidos os aliases __openStartMenu/__closeStartMenu para não quebrar chamadores.
-        (function setupStartMenu() {
-            const startBtn = document.getElementById('startBtn');
-            function stubNotice() {
-                try {
-                    if (typeof showToast === 'function') showToast('Menu em reconstrução.');
-                    else alert('Menu em reconstrução.');
-                } catch (_) {}
-            }
-            window.__closeStartMenu = function () {
-                window.__menuOpen = false;
-                document.body.classList.remove('menu-open');
-            };
-            window.__openStartMenu = stubNotice;
-            if (!startBtn) return;
-            startBtn.addEventListener('click', (e) => { e.stopPropagation(); stubNotice(); });
-        })();
+        // START and shared input state are handled by classic-menu.js.
 
         // SHOP MODAL (global) — usado quando /api/npc/interact retorna action.type === 'shop'
         (function ensureGlobalNpcShop() {
@@ -7043,6 +6965,10 @@
             }
 
             function loop(ts) {
+                if (window.__menuOpen || window.isTeleporting || window.isInteracting || document.hidden) {
+                    stop();
+                    return;
+                }
                 if (!window.__virtualPadHolding || !state.dir) {
                     state.rafId = null;
                     return;
@@ -7267,6 +7193,7 @@
                 let lastInteractAt = 0;
                 interactBtn.addEventListener('pointerdown', (e) => {
                     if (window.__menuOpen) {
+                        lastInteractAt = Date.now();
                         e.preventDefault(); e.stopPropagation();
                         if (window.__menuConfirm) window.__menuConfirm();
                         return;
@@ -7295,6 +7222,7 @@
                 let lastBAt = 0;
                 bBtn.addEventListener('pointerdown', (e) => {
                     if (window.__menuOpen) {
+                        lastBAt = Date.now();
                         e.preventDefault(); e.stopPropagation();
                         if (window.__menuBack) { window.__menuBack(); return; }
                         if (window.__closeStartMenu) { window.__closeStartMenu(); return; }
@@ -7348,6 +7276,30 @@
             // Segurança: só solta se era um pointer do D-pad
             document.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
             document.addEventListener('pointercancel', (e) => releasePointer(e.pointerId));
+
+            // Keyboard shares the D-pad movement loop and collision rules.
+            const arrowDirections = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+            const isTyping = target => target instanceof Element && !!target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+            document.addEventListener('keydown', (event) => {
+                const dir = arrowDirections[event.key];
+                if (!dir || event.altKey || event.ctrlKey || event.metaKey || isTyping(event.target)) return;
+                if (window.__menuOpen || window.isInteracting || window.isTeleporting || devMode) return;
+                event.preventDefault();
+                const keyId = 'key:' + event.key;
+                if (state.activePointers.has(keyId)) return;
+                state.activePointers.set(keyId, dir);
+                state.order.push(keyId);
+                start(dir, keyId);
+            });
+            document.addEventListener('keyup', (event) => {
+                const keyId = 'key:' + event.key;
+                if (!state.activePointers.has(keyId)) return;
+                event.preventDefault();
+                releasePointer(keyId);
+            });
+            document.addEventListener('focusin', (event) => { if (isTyping(event.target)) stop(); });
+            window.addEventListener('blur', stop);
+            document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
 
             // wrap já está visível por padrão
         })();

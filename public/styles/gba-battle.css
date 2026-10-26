@@ -1,0 +1,28 @@
+/* Same handheld UI palette as the party and bag screens. */
+body.gba-battle { background:#263e43; }
+body.gba-battle .arena { border-radius:0; }
+body.gba-battle .hud-panel { color:white; background:linear-gradient(#4094b8 50%,#3889b0 50%); background-size:100% 4px; border:3px solid #e3c379; border-radius:2px; box-shadow:0 0 0 2px #3b5069,inset 0 0 0 1px #a1dce6; padding:8px; }
+body.gba-battle .hud-p1,body.gba-battle .hud-p2 { border-inline-width:3px; }
+body.gba-battle .poke-name { color:white; font-size:9px; text-shadow:1px 2px #456e91; }
+body.gba-battle .poke-lv { color:#fff2b0; font-size:7px; }
+body.gba-battle .trainer-sub { color:#c7e8e6; font-size:6px; text-shadow:1px 1px #456e91; }
+body.gba-battle .bar-container { height:8px; border:1px solid #f4e9c3; outline:1px solid #4a5e70; background:#48556d; border-radius:5px; margin-block:5px; }
+body.gba-battle .hp-fill { background:#64d098; box-shadow:inset 0 2px #c6f4b8; }
+body.gba-battle .en-fill { background:#f3dc76; }
+body.gba-battle .xp-fill { background:#9cdef0; }
+body.gba-battle .stat-text { font-family:'Press Start 2P',monospace; font-size:7px; text-align:right; color:white; text-shadow:1px 1px #456e91; }
+body.gba-battle .bottom-panel { background:repeating-linear-gradient(0deg,#49978e 0px,#49978e 2px,#408b84 2px,#408b84 4px); border:3px solid #a5c6b2; border-top-width:3px; border-radius:0; padding:10px; box-shadow:0 0 0 2px #3c5067; }
+body.gba-battle .action-btn,body.gba-battle .action-attack,body.gba-battle .action-btn.btn-bag,body.gba-battle .move-btn,body.gba-battle .move-btn-back,body.gba-battle .rest-btn { position:relative; color:#465d6c; background:#faf8df; border:3px solid #a3b4b9; border-radius:1px; box-shadow:0 0 0 1px #3c5067,inset 0 0 0 1px #fff; font-family:'Press Start 2P',monospace; text-shadow:none; }
+body.gba-battle .action-btn:hover,body.gba-battle .move-btn:hover { border-color:#e6b763; background:#fff1bd; }
+body.gba-battle .action-btn:focus-visible,body.gba-battle .move-btn:focus-visible { outline:2px solid #ffbe58; outline-offset:2px; }
+body.gba-battle .action-attack { background:#88d1e0; border-color:#e8c37b; color:#fff; text-shadow:1px 1px #496c8a; }
+body.gba-battle .action-btn:active,body.gba-battle .move-btn:active { transform:none; box-shadow:inset 2px 2px #d9dbba; }
+body.gba-battle .move-btn strong { text-shadow:none; font-size:9px; }
+body.gba-battle .move-btn small { color:#6a7d7e; font-family:'Press Start 2P',monospace; font-size:6px; }
+body.gba-battle .battle-log { background:#f8f8ed; color:#465d6c; border:3px solid #a3b4b9; border-radius:0; box-shadow:0 0 0 1px #3c5067; font:9px/1.8 'Press Start 2P',monospace; }
+body.gba-battle .bag-inner,body.gba-battle .switch-box { background:repeating-linear-gradient(0deg,#49978e 0px,#49978e 2px,#408b84 2px,#408b84 4px); border:3px solid #a8cab8; border-radius:2px; box-shadow:0 0 0 2px #3c5067; }
+body.gba-battle .switch-header { background:#3a83a4; border-bottom:2px solid #e3c781; color:white; }
+body.gba-battle .switch-card { background:#70c2dc; color:white; border:2px solid #e4c47b; border-radius:2px; box-shadow:0 0 0 1px #3c5067; }
+body.gba-battle .switch-card-name { color:white; text-shadow:1px 1px #4b6f91; }
+body.gba-battle .switch-back-btn { border-radius:4px; background:#7957a7; border:2px solid #554875; color:white; }
+body.gba-battle .bag-item-card { border-radius:1px; background:#f9f7dc; color:#3c5067; border:2px solid #dcc17d; box-shadow:none; }
