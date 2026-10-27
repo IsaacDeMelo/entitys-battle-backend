@@ -164,12 +164,12 @@ kbd { font-family:inherit; color:#eee3ff; }
 .trainer-card-meta h3 { max-width:100%; margin:2px 0 6px; overflow:hidden; text-overflow:ellipsis; font-size:7px; white-space:nowrap; }
 .trainer-card-meta p { margin:3px 0 0; color:#e0e1d5; }
 .trainer-card-meta strong { color:#fff; }
-.trainer-avatar { width:47px; height:62px; flex:0 0 47px; background-size:400% 400%; background-position:0 0; image-rendering:pixelated; }
+.trainer-avatar { width:52px; height:52px; flex:0 0 52px; background-size:400% 400%; background-position:0 0; image-rendering:pixelated; }
 .trainer-avatar-empty { display:grid; place-items:center; border:2px solid #e9ce85; color:#fff; font-size:12px; }
-.trainer-card-party { min-width:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,1fr); gap:1px; }
-.trainer-party-mon { min-width:0; min-height:45px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0; }
-.trainer-party-mon>span { display:grid; place-items:center; width:100%; height:37px; }
-.trainer-party-mon .handheld-sprite { width:54px; height:39px; }
+.trainer-card-party { min-width:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,1fr); column-gap:0; row-gap:1px; }
+.trainer-party-mon { min-width:0; min-height:55px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0; }
+.trainer-party-mon>span { display:grid; place-items:center; width:100%; height:49px; }
+.trainer-party-mon .handheld-sprite { width:64px; max-width:none; height:64px; }
 .trainer-party-mon small { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#354252; font-size:4px; line-height:1.4; }
 .trainer-party-mon.is-empty { background:#393b42; border:1px solid #737078; box-shadow:inset 0 0 0 1px #292b32; }
 .trainer-party-mon.is-empty>span { width:18px; height:18px; margin:7px 0; border:1px dashed #929198; border-radius:50%; }
@@ -243,14 +243,14 @@ body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1
   .dex-detail-view { padding:5px; grid-template-columns:42% 1fr; }
   .dex-detail-view>.handheld-sprite { height:105px; }
   .trainer-card-heading { padding:5px 6px; font-size:5px; }
-  .trainer-card-body { grid-template-columns:minmax(0,39%) minmax(0,61%); gap:2px; padding:4px; }
+  .trainer-card-body { grid-template-columns:minmax(0,37%) minmax(0,63%); gap:2px; padding:4px; }
   .trainer-card-player { flex-direction:column; justify-content:center; gap:0; padding:3px; }
-  .trainer-avatar { width:37px; height:49px; flex-basis:37px; }
+  .trainer-avatar { width:40px; height:40px; flex-basis:40px; }
   .trainer-card-meta { width:100%; text-align:center; font-size:4px; }
   .trainer-card-meta h3 { font-size:6px; }
-  .trainer-party-mon { min-height:40px; }
-  .trainer-party-mon>span { height:32px; }
-  .trainer-party-mon .handheld-sprite { width:46px; height:34px; }
+  .trainer-party-mon { min-height:48px; }
+  .trainer-party-mon>span { height:42px; }
+  .trainer-party-mon .handheld-sprite { width:54px; max-width:none; height:54px; }
   .trainer-party-mon small { font-size:3px; }
   .trainer-card-badge-row { gap:5px; padding:6px; }
   .trainer-card-badges { gap:3px; }
