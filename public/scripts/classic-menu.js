@@ -3,7 +3,7 @@
   'use strict';
   const config = window.CLASSIC_MENU_CONFIG;
   if (!config) return;
-  const tabs = [['team', 'Equipe', 'Seus parceiros de aventura'], ['bag', 'Mochila', 'Prepare sua próxima jornada'], ['dex', 'Entitydex', 'Suas descobertas pelo mundo'], ['card', 'Treinador', 'Seu cartão de aventura']];
+  const tabs = [['team', 'Equipe', 'Seus parceiros de aventura'], ['bag', 'Mochila', 'Prepare sua próxima jornada'], ['card', 'Treinador', 'Seu cartão de aventura']];
   const initialData = config.initialData || window.__ME_CACHE || null;
   const state = { menuOpen: false, activeModal: null, tab: 'team', teamData: Array.isArray(initialData?.team) ? initialData.team : [], data: initialData, catalog: [], detail: null, bagPocket: 'items', bagSelection: '', bagPocketChosen: false, busy: false, loading: false, error: '', request: 0 };
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -118,7 +118,7 @@
     const tab = tabs.find(t => t[0] === state.tab);
     root.querySelector('h2').textContent = tab[1];
     root.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-current', b.dataset.tab === state.tab ? 'page' : 'false'));
-    root.querySelector('#classic-hint').textContent = state.detail !== null ? 'O que deseja fazer?' : ({team: 'Escolha um POKÉMON.', bag: 'Escolha um item.', dex: 'Escolha um registro.'})[state.tab] || tab[2];
+    root.querySelector('#classic-hint').textContent = state.detail !== null ? 'O que deseja fazer?' : ({team: 'Escolha um POKÉMON.', bag: 'Escolha um item.'})[state.tab] || tab[2];
     if (state.loading && state.tab === 'dex') { content.innerHTML = '<div class="handheld-empty" role="status">Iniciando a Entitydex...</div>'; return; }
     if (state.error && state.tab === 'dex' && !state.data) { content.innerHTML = `<div class="handheld-empty"><p>${esc(state.error)}</p>${button('retry', 'Tentar novamente')}</div>`; return; }
     if (!state.data) return;
@@ -245,9 +245,8 @@
     }
   }, true);
   document.addEventListener('focusin', event => { if (state.menuOpen && !root.contains(event.target) && !event.target.closest('#controlsDock')) root.querySelector('.handheld-close').focus(); });
-  window.MenuSystem = { state, setMenuOpen: v => v ? open() : setOpen(false), openModal: id => open(({ modalPokemon: 'team', modalPokedex: 'dex', modalBag: 'bag', modalCard: 'card' })[id]), closeModal: () => setOpen(false) };
+  window.MenuSystem = { state, setMenuOpen: v => v ? open() : setOpen(false), openModal: id => open(({ modalPokemon: 'team', modalBag: 'bag', modalCard: 'card' })[id]), closeModal: () => setOpen(false) };
   window.openEntityTeam = window.openPokemon = () => open('team');
-  window.openPokedex = () => open('dex');
   window.openBag = window.openBagScreen = window.dexOpenBag = () => open('bag');
   window.openCard = () => open('card');
   window.closeModal = window.closeAllModals = window.closePokedex = () => setOpen(false);

@@ -44,7 +44,7 @@ body.classic-city button:disabled,#classic-menu button:disabled { cursor:default
 .handheld-eyebrow { display:block; font-size:6px; letter-spacing:1px; color:#bce5d5; }
 .handheld-header h2 { margin:4px 0 0; font-size:11px; line-height:1.3; text-transform:uppercase; color:white; text-shadow:2px 2px #365569; }
 .handheld-close { width:28px; height:26px; color:white; background:#7957a7; border:2px solid #4a466f; border-radius:3px; box-shadow:inset 1px 1px #b59cd1; font-size:16px; }
-.handheld-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; padding:7px 9px; background:#33727b; border-bottom:2px solid #a5c5b3; }
+.handheld-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; padding:7px 9px; background:#33727b; border-bottom:2px solid #a5c5b3; }
 .handheld-tabs button { min-height:30px; padding:5px 3px; text-transform:uppercase; font-size:7px; color:#eaf1f4; text-shadow:1px 1px #344c60; border:2px solid #4c6786; border-radius:2px; background:#3a91b9; box-shadow:inset 1px 1px #a9e5e9; }
 .handheld-tabs button span { display:none; }
 .handheld-tabs button[aria-current="page"] { color:#fff7cf; border-color:#f3b65d; background:#70c6d8; text-shadow:1px 1px #3e6d91; }
@@ -176,7 +176,7 @@ body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1
   .handheld-header { padding:7px 9px; }
   .handheld-header h2 { font-size:10px; }
   .handheld-eyebrow { font-size:5px; }
-  .handheld-tabs { grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding:6px; }
+  .handheld-tabs { grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:6px; }
   .handheld-tabs button { font-size:6px; min-height:28px; }
   #classic-content { padding:13px 9px; }
   .party-screen { grid-template-columns:32% minmax(0,1fr); gap:14px; min-height:235px; padding-left:5px; }
