@@ -4,7 +4,7 @@
   const config = window.CLASSIC_MENU_CONFIG;
   if (!config) return;
   const tabs = [['team', 'Equipe', 'Seus parceiros de aventura'], ['bag', 'Mochila', 'Prepare sua próxima jornada'], ['dex', 'Entitydex', 'Suas descobertas pelo mundo'], ['pc', 'PC', 'Organize seus parceiros'], ['rank', 'Ranking', 'A liga de treinadores'], ['card', 'Treinador', 'Seu cartão de aventura']];
-  const state = { menuOpen: false, activeModal: null, tab: 'team', teamData: [], data: null, pc: null, catalog: [], rank: [], detail: null, bagPocket: 'items', bagSelection: '', busy: false, loading: false, error: '', request: 0 };
+  const state = { menuOpen: false, activeModal: null, tab: 'team', teamData: [], data: null, pc: null, catalog: [], rank: [], detail: null, bagPocket: 'items', bagSelection: '', bagPocketChosen: false, busy: false, loading: false, error: '', request: 0 };
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => Math.max(0, Number(v) || 0);
   const money = v => num(v).toLocaleString('pt-BR');
@@ -77,12 +77,12 @@
     const balls = new Set(['pokeball', 'great-ball', 'ultra-ball', 'master-ball']);
     const definition = id => state.catalog.find(item => item.id === id) || {};
     const pocket = id => keys.has(id) || definition(id).type === 'key' ? 'keys' : balls.has(id) ? 'balls' : 'items';
+    const pockets = [['items', 'ITENS'], ['keys', 'ITENS IMPORTANTES'], ['balls', 'POKÉ BOLAS']];
     const entries = all.filter(id => pocket(id) === state.bagPocket);
     if (!entries.includes(state.bagSelection)) state.bagSelection = entries[0] || '';
     const selected = state.bagSelection;
     const def = definition(selected);
     const name = id => definition(id).name || ({ 'rare-candy': 'Doce Raro', pokeball: 'Pokébola' })[id] || id;
-    const pockets = [['items', 'ITENS'], ['keys', 'ITENS IMPORTANTES'], ['balls', 'POKÉ BOLAS']];
     return '<div class="gba-bag-screen"><aside class="gba-bag-side"><div class="gba-pockets">' + pockets.map(([id,label]) => '<button data-action="pocket" data-pocket="'+id+'" aria-pressed="'+(id===state.bagPocket)+'">'+label+'</button>').join('') + '</div><div class="gba-bag-art">'+bagArt+'</div><span class="bag-balance">$ '+money(state.data.money)+'</span></aside><div class="gba-bag-list" role="group" aria-label="Itens do bolso">'+(entries.length ? entries.map(id => '<button class="gba-item-row" data-action="bag-select" data-id="'+esc(id)+'" aria-pressed="'+(id===selected)+'"><span class="gba-item-cursor" aria-hidden="true">'+(id===selected?'▶':'')+'</span><span>'+esc(name(id))+'</span><span>×'+(num(bag[id])||1)+'</span></button>').join('') : '<p class="bag-empty">Este bolso está vazio.</p>')+'</div><div class="gba-bag-description"><span class="gba-item-art">'+(def.hasIcon ? '<img src="/api/items/icon/'+encodeURIComponent(selected)+'.png" alt="">' : '<span aria-hidden="true">◇</span>')+'</span><p>'+esc(selected ? def.description || (state.bagPocket==='keys'?'Um item importante para a aventura.':selected==='rare-candy'?'Aumenta em um o nível do Pokémon escolhido.':state.bagPocket==='balls'?'Use durante a batalha para capturar um Pokémon.':'Um item para usar durante sua aventura.') : 'Escolha outro bolso para ver seus itens.')+'</p>'+(selected==='rare-candy'?button('choose-candy','USAR'):'')+'</div></div>';
   }
   function renderDex() {
@@ -132,7 +132,18 @@
       window.USER_KEY_ITEMS = data.keyItems || [];
       if (tab === 'pc') state.pc = extra;
       if (tab === 'rank') state.rank = extra.list || [];
-      if (tab === 'bag') state.catalog = extra.items || [];
+      if (tab === 'bag') {
+        state.catalog = extra.items || [];
+        if (!state.bagPocketChosen) {
+          const bag = data.bag || {};
+          const keys = new Set((data.keyItems || []).map(v => String(typeof v === 'object' ? v.itemId || v.id : v)));
+          const ids = [...new Set([...Object.keys(bag), ...keys])].filter(id => num(bag[id]) > 0 || keys.has(id));
+          const balls = new Set(['pokeball', 'great-ball', 'ultra-ball', 'master-ball']);
+          const pocketOf = id => keys.has(id) || state.catalog.find(item => item.id === id)?.type === 'key' ? 'keys' : balls.has(id) ? 'balls' : 'items';
+          const available = ['items', 'keys', 'balls'].find(pocket => ids.some(id => pocketOf(id) === pocket));
+          if (available) state.bagPocket = available;
+        }
+      }
       const balance = document.getElementById('trainerBalance');
       if (balance) balance.textContent = '$ ' + money(data.money);
       window.__ME_CACHE = data;
@@ -190,7 +201,7 @@
     else if (action === 'select') { state.detail = index; render(); }
     else if (action === 'pc-select') { state.detail = { from: target.dataset.from, index }; render(); }
     else if (action === 'dex-select') { state.detail = target.dataset.id; render(); }
-    else if (action === 'pocket') { state.bagPocket = target.dataset.pocket; state.bagSelection = ''; render(); }
+    else if (action === 'pocket') { state.bagPocketChosen = true; state.bagPocket = target.dataset.pocket; state.bagSelection = ''; render(); }
     else if (action === 'bag-select') { state.bagSelection = target.dataset.id; render(); }
     else if (action === 'choose-candy') { state.detail = 'rare-candy'; render(); }
     else if (action === 'candy') mutate('/api/use-item', { itemId: 'rare-candy', pokemonId: state.teamData[index].instanceId, qty: 1 }, 'Doce Raro usado! Seu parceiro ficou mais forte.');
