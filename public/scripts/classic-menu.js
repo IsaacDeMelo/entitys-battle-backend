@@ -83,18 +83,20 @@
     const selected = state.bagSelection;
     const def = definition(selected);
     const name = id => definition(id).name || ({ 'rare-candy': 'Doce Raro', pokeball: 'Pokébola' })[id] || id;
+    const aliases = { pokeball: 'poke-ball', capturecube: 'poke-ball', capture_cube: 'poke-ball', key_villain: 'basement-key', levelupcrystal: 'rare-candy' };
+    const standardItemSprite = id => {
+      const lower = String(id).toLowerCase();
+      if (aliases[lower]) return aliases[lower];
+      if (balls.has(id) || id === 'rare-candy') return lower;
+      return '';
+    };
     const iconFor = id => {
       if (!id) return '';
       const item = definition(id);
-      if (item.hasIcon) return '/api/items/icon/' + encodeURIComponent(id) + '.png';
-      if (item.icon) return item.icon;
-      if (id === 'rare-candy') return '/items/rarecandy.svg';
-      if (id === 'levelupcrystal') return '/items/levelupcrystal.svg';
-      if (pocket(id) === 'balls') return '/items/catchcube.svg';
-      if (pocket(id) === 'keys') return '/items/key.svg';
-      const aliases = { pokeball: 'poke-ball', capturecube: 'poke-ball', capture_cube: 'poke-ball' };
-      const slug = aliases[id.toLowerCase()] || id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/' + encodeURIComponent(slug) + '.png';
+      const slug = standardItemSprite(id) || id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (!standardItemSprite(id) && item.hasIcon) return '/api/items/icon/' + encodeURIComponent(id) + '.png';
+      if (!standardItemSprite(id) && item.icon) return item.icon;
+      return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gen5/' + encodeURIComponent(slug) + '.png';
     };
     const fallbackIconFor = id => pocket(id) === 'keys' ? '/items/key.svg' : pocket(id) === 'balls' ? '/items/catchcube.svg' : id === 'rare-candy' ? '/items/rarecandy.svg' : '/items/generic.svg';
     const icon = iconFor(selected);

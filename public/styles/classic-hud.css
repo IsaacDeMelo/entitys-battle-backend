@@ -112,10 +112,10 @@ kbd { font-family:inherit; color:#eee3ff; }
 .gba-bag-art svg { width:64px; height:77px; position:relative; z-index:1; image-rendering:pixelated; }
 .bag-balance { max-width:100%; overflow:hidden; font-size:6px; color:#fff9c6; padding:4px 0; }
 .gba-bag-list { min-height:0; padding:9px 8px; background:repeating-linear-gradient(0deg,#fffecf 0px,#fffecf 13px,#f8f4c4 13px,#f8f4c4 15px); border:3px solid #d1ac62; outline:2px solid #fae5a5; box-shadow:inset 0 0 0 2px #fff6c7; overflow:auto; color:#5a625a; }
-.gba-item-row { display:flex; align-items:center; gap:7px; width:100%; min-height:35px; background:transparent; border:0; padding:7px 0; color:#515d63; text-align:left; font-size:8px; line-height:1.7; }
+.gba-item-row { display:flex; align-items:center; gap:7px; width:100%; min-height:40px; background:transparent; border:0; padding:4px 0; color:#515d63; text-align:left; font-size:8px; line-height:1.7; }
 .gba-item-row>span:nth-child(3) { flex:1; overflow-wrap:anywhere; }
 .gba-item-row>span:last-child { white-space:nowrap; }
-.gba-item-icon { width:20px; height:20px; object-fit:contain; image-rendering:pixelated; flex:0 0 20px; }
+.gba-item-icon { width:32px; height:32px; object-fit:contain; image-rendering:pixelated; flex:0 0 32px; }
 .gba-item-row[aria-pressed="true"] { color:#344857; background:#efe8ad; }
 .gba-item-row:hover,.gba-item-row:focus-visible { color:#283e50; background:#e9d88d; outline:2px solid #8e744a; outline-offset:-2px; }
 .gba-item-cursor { width:12px; flex-shrink:0; font-size:8px; }
@@ -196,9 +196,9 @@ body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1
   .gba-pockets button { font-size:5px; min-height:29px; }
   .gba-bag-side { padding:5px; }
   .gba-bag-list { padding:7px 4px; }
-  .gba-item-row { font-size:6px; gap:3px; min-height:35px; }
+  .gba-item-row { font-size:6px; gap:3px; min-height:38px; }
   .gba-item-cursor { width:7px; font-size:5px; }
-  .gba-item-icon { width:18px; height:18px; flex-basis:18px; }
+  .gba-item-icon { width:28px; height:28px; flex-basis:28px; }
   .gba-bag-description { padding:7px; gap:7px; }
   .gba-bag-description p { font-size:6px; }
   .gba-item-art { width:24px; height:24px; }
