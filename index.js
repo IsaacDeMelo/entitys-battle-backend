@@ -1122,6 +1122,8 @@ function userEntityToEntity(userEntity, baseData) {
         sprite: baseData.sprite,
         icon: baseData.icon,
         dexOrder: baseData.dexOrder || 0,
+        captureBall: userEntity.obtainedViaDevMode || userEntity.acquisitionSource === 'devmode' || userEntity.source === 'devmode' ? 'master-ball' : (userEntity.captureBall || 'pokeball'),
+        obtainedViaDevMode: !!(userEntity.obtainedViaDevMode || userEntity.acquisitionSource === 'devmode' || userEntity.source === 'devmode'),
         isWild: false,
         xp: Number.isFinite(userEntity.xp) ? userEntity.xp : 0,
         xpToNext: getXpForNextLevel(level),
@@ -3504,6 +3506,8 @@ app.get('/api/me', async (req, res) => {
             sprite: base ? base.sprite : '',
             icon: base ? base.icon : '',
             dexOrder: base && base.dexOrder ? base.dexOrder : 0,
+            captureBall: p.obtainedViaDevMode || p.acquisitionSource === 'devmode' || p.source === 'devmode' ? 'master-ball' : (p.captureBall || 'pokeball'),
+            obtainedViaDevMode: !!(p.obtainedViaDevMode || p.acquisitionSource === 'devmode' || p.source === 'devmode'),
             moves: p.moves,
             learnedMoves: allLearned
         });
@@ -4570,7 +4574,7 @@ app.post('/api/turn', async (req, res) => {
                     const wildBase = await BaseEntity.findOne({ id: p2.baseId }).lean();
                     const baseStatsForCapture = (wildBase && wildBase.baseStats) ? wildBase.baseStats : p2.stats;
                     const newStats = calculateStats(baseStatsForCapture, p2.level); 
-                    const newPokeObj = { baseId: p2.baseId, nickname: p2.name, level: p2.level, currentHp: newStats.hp, stats: newStats, moves: p2.moves.map(m => m.id), learnedMoves: p2.moves.map(m => m.id) }; 
+                    const newPokeObj = { baseId: p2.baseId, nickname: p2.name, level: p2.level, currentHp: newStats.hp, stats: newStats, moves: p2.moves.map(m => m.id), learnedMoves: p2.moves.map(m => m.id), captureBall: 'pokeball' };
                     let sentToPC = false; 
                     if (!user.pc) user.pc = []; 
                     if (user.entityTeam.length < 6) user.entityTeam.push(newPokeObj); else { user.pc.push(newPokeObj); sentToPC = true; } 

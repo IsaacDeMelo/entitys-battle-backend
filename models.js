@@ -65,6 +65,8 @@ const UserSchema = new mongoose.Schema({
         nickname: String,
         level: Number,
         currentHp: Number,
+        captureBall: { type: String, default: 'pokeball' },
+        obtainedViaDevMode: { type: Boolean, default: false },
         xp: { type: Number, default: 0 },
         stats: Object,
         moves: [String],

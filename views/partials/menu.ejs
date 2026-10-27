@@ -1,6 +1,21 @@
 <script>
 const USER_ID = <%- JSON.stringify(String(user._id)).replace(/</g, '\\u003c') %>;
 const IS_ADMIN = <%= user.isAdmin ? 'true' : 'false' %>;
-window.CLASSIC_MENU_CONFIG = <%- JSON.stringify({ userId: String(user._id), entities: (typeof entities !== 'undefined' ? entities : []).map(e => ({ id: String(e.id), name: e.name, type: e.type, sprite: e.sprite, icon: e.icon, dexOrder: e.dexOrder })) }).replace(/</g, '\\u003c') %>;
+window.CLASSIC_MENU_CONFIG = <%- JSON.stringify({
+  userId: String(user._id),
+  entities: (typeof entities !== 'undefined' ? entities : []).map(e => ({ id: String(e.id), name: e.name, type: e.type, sprite: e.sprite, icon: e.icon, dexOrder: e.dexOrder })),
+  initialData: {
+    team: (typeof team !== 'undefined' ? team : []).map(e => ({ ...e, captureBall: e.captureBall || (e.obtainedViaDevMode ? 'master-ball' : 'pokeball') })),
+    username: user.username,
+    skin: user.skin || '',
+    dex: Array.isArray(user.dex) ? user.dex.map(String) : [],
+    money: user.money || 0,
+    bag: user.bag || {},
+    keyItems: user.keyItems || [],
+    defeatedNPCs: Array.isArray(user.defeatedNPCs) ? user.defeatedNPCs.map(d => String(d && d.npcId ? d.npcId : d)) : [],
+    followingEntityId: user.followingEntityId || '',
+    allMoves: {}
+  }
+}).replace(/</g, '\\u003c') %>;
 </script>
 <script src="/scripts/classic-menu.js" defer></script>

@@ -4,7 +4,8 @@
   const config = window.CLASSIC_MENU_CONFIG;
   if (!config) return;
   const tabs = [['team', 'Equipe', 'Seus parceiros de aventura'], ['bag', 'Mochila', 'Prepare sua próxima jornada'], ['dex', 'Entitydex', 'Suas descobertas pelo mundo'], ['card', 'Treinador', 'Seu cartão de aventura']];
-  const state = { menuOpen: false, activeModal: null, tab: 'team', teamData: [], data: null, catalog: [], detail: null, bagPocket: 'items', bagSelection: '', bagPocketChosen: false, busy: false, loading: false, error: '', request: 0 };
+  const initialData = config.initialData || window.__ME_CACHE || null;
+  const state = { menuOpen: false, activeModal: null, tab: 'team', teamData: Array.isArray(initialData?.team) ? initialData.team : [], data: initialData, catalog: [], detail: null, bagPocket: 'items', bagSelection: '', bagPocketChosen: false, busy: false, loading: false, error: '', request: 0 };
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => Math.max(0, Number(v) || 0);
   const money = v => num(v).toLocaleString('pt-BR');
@@ -50,7 +51,8 @@
   const empty = message => `<div class="handheld-empty"><span class="empty-symbol" aria-hidden="true">◇</span><p>${esc(message)}</p></div>`;
   const button = (action, label) => `<button class="handheld-action" data-action="${action}" ${state.busy ? 'disabled' : ''}>${label}</button>`;
   function partyCard(e, i, action = 'select') {
-    return `<button class="party-card ${num(e.hp) === 0 ? 'is-fainted' : ''}" data-action="${action}" data-index="${i}"><span class="gba-ball" aria-hidden="true"></span><span class="party-index">${String(i + 1).padStart(2, '0')}</span>${sprite(e)}<span class="party-info"><span class="party-name">${esc(e.name || 'Entidade')}<small>Nv.${num(e.level)}</small></span><span class="party-type">${num(e.hp) === 0 ? 'DESMAIADO' : esc(e.type || 'Entidade')}</span>${hp(e)}</span><span class="party-arrow" aria-hidden="true">›</span></button>`;
+    const ball = e.obtainedViaDevMode || e.captureBall === 'master-ball' ? 'master-ball' : (e.captureBall || 'poke-ball').toLowerCase().replace(/^pokeball$/, 'poke-ball').replace(/[^a-z0-9-]/g, '');
+    return `<button class="party-card ${num(e.hp) === 0 ? 'is-fainted' : ''}" data-action="${action}" data-index="${i}"><img class="gba-ball" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/gen5/${encodeURIComponent(ball)}.png" data-icon-fallback="/items/catchcube.svg" alt="Poké Bola usada para capturar" title="${ball === 'master-ball' ? 'Master Ball' : 'Poké Bola'}" loading="eager"><span class="party-index">${String(i + 1).padStart(2, '0')}</span>${sprite(e)}<span class="party-info"><span class="party-name">${esc(e.name || 'Entidade')}<small>Nv.${num(e.level)}</small></span><span class="party-type">${num(e.hp) === 0 ? 'DESMAIADO' : esc(e.type || 'Entidade')}</span>${hp(e)}</span><span class="party-arrow" aria-hidden="true">›</span></button>`;
   }
   function renderTeam() {
     const team = state.teamData, e = team[state.detail];
@@ -98,8 +100,12 @@
     const registered = new Set((state.data.dex || []).map(String));
     const entities = [...config.entities].sort((a, b) => num(a.dexOrder) - num(b.dexOrder));
     const selected = entities.find(e => e.id === state.detail);
-    if (selected) return `<div class="dex-selected">${sprite(selected, 'dexDetail')}<span class="handheld-eyebrow">REGISTRO #${String(selected.dexOrder || entities.indexOf(selected) + 1).padStart(3, '0')}</span><h3>${esc(selected.name)}</h3><p>${esc(selected.type)}</p><span class="handheld-badge">Registrado na sua Entitydex</span></div>`;
-    return `<div class="section-line"><span>REGISTROS DA JORNADA</span><strong>${registered.size} descobertos</strong></div>${entities.length ? `<div class="dex-grid">${entities.map((e, i) => { const seen = registered.has(e.id); return `<button class="dex-cell ${seen ? '' : 'is-unknown'}" data-action="dex-select" data-id="${esc(e.id)}" ${seen ? '' : 'disabled'}><small>#${String(e.dexOrder || i + 1).padStart(3, '0')}</small>${seen ? sprite(e, 'dexGrid') : '<span class="dex-mystery">?</span>'}<strong>${seen ? esc(e.name) : 'Desconhecido'}</strong></button>`; }).join('')}</div>` : empty('O catálogo de entidades ainda não está disponível.')}`;
+    const heading = `<div class="pokedex-brand"><span class="pokedex-lens"><i></i></span><span><small>ENTITYS BATTLE</small><strong>ENTITYDEX</strong></span><span class="pokedex-lights"><i></i><i></i><i></i></span></div>`;
+    if (selected) {
+      const seen = registered.has(selected.id);
+      return `<section class="pokedex-device">${heading}<div class="pokedex-screen"><div class="pokedex-screen-head"><button class="dex-back" data-action="dex-back" aria-label="Voltar à lista">◀</button><span>REGISTRO #${String(selected.dexOrder || entities.indexOf(selected) + 1).padStart(3, '0')}</span><span>${registered.size}/${entities.length}</span></div><div class="dex-detail-view">${seen ? sprite(selected, 'dexDetail') : '<span class="dex-unknown-large">?</span>'}<div class="dex-profile"><h3>${seen ? esc(selected.name) : 'DESCONHECIDO'}</h3><span>${seen ? esc(selected.type || '???') : 'TIPO: ???'}</span><p>${seen ? 'DADOS REGISTRADOS' : 'AINDA NÃO DESCOBERTO'}</p></div></div></div><div class="pokedex-controls"><span>● LIGAÇÃO</span><span>ENTITYDEX / Nº ${String(entities.indexOf(selected) + 1).padStart(3, '0')}</span></div></section>`;
+    }
+    return `<section class="pokedex-device">${heading}<div class="pokedex-screen"><div class="pokedex-screen-head"><span>LISTA DE ENTIDADES</span><span>VISTOS ${registered.size}</span></div>${entities.length ? `<div class="dex-list">${entities.map((e, i) => { const seen = registered.has(e.id); return `<button class="dex-entry ${seen ? '' : 'is-unknown'}" data-action="dex-select" data-id="${esc(e.id)}" ${seen ? '' : 'disabled'}><small>${String(e.dexOrder || i + 1).padStart(3, '0')}</small>${seen ? sprite(e, 'dexGrid') : '<span class="dex-entry-mystery">?</span>'}<strong>${seen ? esc(e.name) : '-----'}</strong><span>${seen ? esc(e.type || 'NORMAL') : '???'}</span></button>`; }).join('')}</div>` : '<p class="dex-no-data">O catálogo está vazio.</p>'}</div><div class="pokedex-controls"><span>● STATUS</span><span>POKÉDEX PORTÁTIL / EB-01</span></div></section>`;
   }
   function renderCard() {
     const d = state.data;
@@ -113,8 +119,8 @@
     root.querySelector('h2').textContent = tab[1];
     root.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-current', b.dataset.tab === state.tab ? 'page' : 'false'));
     root.querySelector('#classic-hint').textContent = state.detail !== null ? 'O que deseja fazer?' : ({team: 'Escolha um POKÉMON.', bag: 'Escolha um item.', dex: 'Escolha um registro.'})[state.tab] || tab[2];
-    if (state.loading) { content.innerHTML = '<div class="handheld-empty" role="status">Carregando sua aventura...</div>'; return; }
-    if (state.error) { content.innerHTML = `<div class="handheld-empty"><p>${esc(state.error)}</p>${button('retry', 'Tentar novamente')}</div>`; return; }
+    if (state.loading && state.tab === 'dex') { content.innerHTML = '<div class="handheld-empty" role="status">Iniciando a Entitydex...</div>'; return; }
+    if (state.error && state.tab === 'dex' && !state.data) { content.innerHTML = `<div class="handheld-empty"><p>${esc(state.error)}</p>${button('retry', 'Tentar novamente')}</div>`; return; }
     if (!state.data) return;
     const renderers = { team: renderTeam, bag: renderBag, dex: renderDex, card: renderCard };
     content.innerHTML = renderers[state.tab]();
@@ -125,12 +131,23 @@
   }
   async function load() {
     const token = ++state.request, tab = state.tab;
-    state.loading = true;
-    state.error = '';
-    render();
+    const cached = state.data || window.__ME_CACHE || config.initialData;
+    if (cached) {
+      state.data = cached;
+      state.teamData = Array.isArray(cached.team) ? cached.team : [];
+      state.loading = false;
+      state.error = '';
+      render();
+    } else {
+      state.loading = tab === 'dex';
+      state.error = '';
+      render();
+    }
+    const catalogPromise = tab === 'bag' && !state.catalog.length
+      ? request('/api/items/catalog').then(extra => { if (token === state.request) { state.catalog = extra.items || []; if (state.menuOpen && state.tab === 'bag') render(); } }).catch(() => {})
+      : Promise.resolve();
     try {
       const data = await request(`/api/me?userId=${encodeURIComponent(config.userId)}`);
-      const extra = tab === 'bag' ? await request('/api/items/catalog') : null;
       if (token !== state.request) return;
       state.data = data;
       state.teamData = Array.isArray(data.team) ? data.team : [];
@@ -138,7 +155,6 @@
       window.USER_BAG = data.bag || {};
       window.USER_KEY_ITEMS = data.keyItems || [];
       if (tab === 'bag') {
-        state.catalog = extra.items || [];
         if (!state.bagPocketChosen) {
           const bag = data.bag || {};
           const keys = new Set((data.keyItems || []).map(v => String(typeof v === 'object' ? v.itemId || v.id : v)));
@@ -155,8 +171,8 @@
       if (typeof window.setFollowingEntityId === 'function') window.setFollowingEntityId(data.followingEntityId || '');
       else window.FOLLOWING_ENTITY_ID = data.followingEntityId || '';
     } catch (error) {
-      if (token === state.request) state.error = error.name === 'AbortError' ? 'A conexão demorou. Tente novamente.' : error.message;
-    } finally { if (token === state.request) { state.loading = false; render(); } }
+      if (token === state.request && !state.data && tab === 'dex') state.error = error.name === 'AbortError' ? 'A conexão demorou. Tente novamente.' : error.message;
+    } finally { await catalogPromise; if (token === state.request) { state.loading = false; render(); } }
   }
   function setOpen(open) {
     state.menuOpen = !!open;
@@ -205,6 +221,7 @@
     else if (action === 'retry') load();
     else if (action === 'select') { state.detail = index; render(); }
     else if (action === 'dex-select') { state.detail = target.dataset.id; render(); }
+    else if (action === 'dex-back') { state.detail = null; render(); }
     else if (action === 'pocket') { state.bagPocketChosen = true; state.bagPocket = target.dataset.pocket; state.bagSelection = ''; render(); }
     else if (action === 'bag-select') { state.bagSelection = target.dataset.id; render(); }
     else if (action === 'choose-candy') { state.detail = 'rare-candy'; render(); }
