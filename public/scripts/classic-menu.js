@@ -83,8 +83,23 @@
     const selected = state.bagSelection;
     const def = definition(selected);
     const name = id => definition(id).name || ({ 'rare-candy': 'Doce Raro', pokeball: 'Pokébola' })[id] || id;
-    const icon = selected && (def.icon || (def.hasIcon ? '/api/items/icon/' + encodeURIComponent(selected) + '.png' : selected === 'rare-candy' ? '/items/rarecandy.svg' : selected === 'levelupcrystal' ? '/items/levelupcrystal.svg' : state.bagPocket === 'balls' ? '/items/catchcube.svg' : state.bagPocket === 'keys' ? '/items/key.svg' : ''));
-    return '<div class="gba-bag-screen"><aside class="gba-bag-side"><div class="gba-pockets">' + pockets.map(([id,label]) => '<button data-action="pocket" data-pocket="'+id+'" aria-pressed="'+(id===state.bagPocket)+'">'+label+'</button>').join('') + '</div><div class="gba-bag-art">'+bagArt+'</div><span class="bag-balance">$ '+money(state.data.money)+'</span></aside><div class="gba-bag-list" role="group" aria-label="Itens do bolso">'+(entries.length ? entries.map(id => '<button class="gba-item-row" data-action="bag-select" data-id="'+esc(id)+'" aria-pressed="'+(id===selected)+'"><span class="gba-item-cursor" aria-hidden="true">'+(id===selected?'▶':'')+'</span><span>'+esc(name(id))+'</span><span>×'+(num(bag[id])||1)+'</span></button>').join('') : '<p class="bag-empty">Este bolso está vazio.</p>')+'</div><div class="gba-bag-description"><span class="gba-item-art">'+(icon ? '<img src="'+esc(icon)+'" alt="'+esc(name(selected))+'">' : '<span aria-hidden="true">◇</span>')+'</span><p>'+esc(selected ? def.description || (state.bagPocket==='keys'?'Um item importante para a aventura.':selected==='rare-candy'?'Aumenta em um o nível do Pokémon escolhido.':state.bagPocket==='balls'?'Use durante a batalha para capturar um Pokémon.':'Um item para usar durante sua aventura.') : 'Selecione um item para ver os detalhes e as opções.')+'</p>'+(selected==='rare-candy'?button('choose-candy','USAR'):'')+'</div></div>';
+    const iconFor = id => {
+      if (!id) return '';
+      const item = definition(id);
+      if (item.hasIcon) return '/api/items/icon/' + encodeURIComponent(id) + '.png';
+      if (item.icon) return item.icon;
+      if (id === 'rare-candy') return '/items/rarecandy.svg';
+      if (id === 'levelupcrystal') return '/items/levelupcrystal.svg';
+      if (pocket(id) === 'balls') return '/items/catchcube.svg';
+      if (pocket(id) === 'keys') return '/items/key.svg';
+      const aliases = { pokeball: 'poke-ball', capturecube: 'poke-ball', capture_cube: 'poke-ball' };
+      const slug = aliases[id.toLowerCase()] || id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      return 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/' + encodeURIComponent(slug) + '.png';
+    };
+    const fallbackIconFor = id => pocket(id) === 'keys' ? '/items/key.svg' : pocket(id) === 'balls' ? '/items/catchcube.svg' : id === 'rare-candy' ? '/items/rarecandy.svg' : '/items/generic.svg';
+    const icon = iconFor(selected);
+    const itemIcon = id => '<img class="gba-item-icon" src="'+esc(iconFor(id))+'" data-icon-fallback="'+esc(fallbackIconFor(id))+'" alt="" loading="eager">';
+    return '<div class="gba-bag-screen"><aside class="gba-bag-side"><div class="gba-pockets">' + pockets.map(([id,label]) => '<button data-action="pocket" data-pocket="'+id+'" aria-pressed="'+(id===state.bagPocket)+'">'+label+'</button>').join('') + '</div><div class="gba-bag-art">'+bagArt+'</div><span class="bag-balance">$ '+money(state.data.money)+'</span></aside><div class="gba-bag-list" role="group" aria-label="Itens do bolso">'+(entries.length ? entries.map(id => '<button class="gba-item-row" data-action="bag-select" data-id="'+esc(id)+'" aria-pressed="'+(id===selected)+'"><span class="gba-item-cursor" aria-hidden="true">'+(id===selected?'▶':'')+'</span>'+itemIcon(id)+'<span>'+esc(name(id))+'</span><span>×'+(num(bag[id])||1)+'</span></button>').join('') : '<p class="bag-empty">Este bolso está vazio.</p>')+'</div><div class="gba-bag-description"><span class="gba-item-art">'+(icon ? '<img src="'+esc(icon)+'" data-icon-fallback="'+esc(fallbackIconFor(selected))+'" alt="'+esc(name(selected))+'">' : '<span aria-hidden="true">◇</span>')+'</span><p>'+esc(selected ? def.description || (state.bagPocket==='keys'?'Um item importante para a aventura.':selected==='rare-candy'?'Aumenta em um o nível do Pokémon escolhido.':state.bagPocket==='balls'?'Use durante a batalha para capturar um Pokémon.':'Um item para usar durante sua aventura.') : 'Selecione um item para ver os detalhes e as opções.')+'</p>'+(selected==='rare-candy'?button('choose-candy','USAR'):'')+'</div></div>';
   }
   function renderDex() {
     const registered = new Set((state.data.dex || []).map(String));
@@ -111,7 +126,8 @@
     const renderers = { team: renderTeam, pc: renderPC, bag: renderBag, dex: renderDex, card: renderCard, rank: () => state.rank.length ? `<div class="section-line">LIGA DE TREINADORES</div><div class="rank-list">${state.rank.map((e, i) => `<div class="rank-row"><span class="rank-position">${String(i + 1).padStart(2, '0')}</span><strong>${esc(e.username)}</strong><span>${num(e.pvpWins)} V / ${num(e.pvpLosses)} D</span><b>${num(e.pvpPoints)} pts</b></div>`).join('')}</div>` : empty('A liga ainda não tem classificados. Seu próximo desafio pode mudar isso.') };
     content.innerHTML = renderers[state.tab]();
     window.PokemonDisplay.hydrate(content);
-    content.querySelectorAll('img:not([data-ent])').forEach(img => img.addEventListener('error', () => { img.hidden = true; }, { once: true }));
+    content.querySelectorAll('img[data-icon-fallback]').forEach(img => img.addEventListener('error', () => { img.src = img.dataset.iconFallback || '/items/generic.svg'; }, { once: true }));
+    content.querySelectorAll('img:not([data-ent]):not([data-icon-fallback])').forEach(img => img.addEventListener('error', () => { img.hidden = true; }, { once: true }));
     if (state.menuOpen && (restoreContentFocus || document.activeElement === document.body)) (content.querySelector('button:not(:disabled)') || root.querySelector('[data-action="back"]')).focus();
   }
   async function load() {
