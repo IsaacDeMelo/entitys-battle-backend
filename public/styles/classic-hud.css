@@ -154,17 +154,30 @@ kbd { font-family:inherit; color:#eee3ff; }
 .dex-profile p { margin:13px 0 0; color:#677d5b; }
 .dex-unknown-large { justify-self:center; display:grid; place-items:center; width:88px; height:88px; border-radius:50%; background:#9eaf88; color:#e4edc9; font-size:42px; }
 .pokedex-controls { display:flex; justify-content:space-between; align-items:center; padding:10px 2px 0; color:#ffe4c0; font-size:5px; text-shadow:1px 1px #74232d; }
-.trainer-card { width:min(460px,100%); margin:0 auto; background:#fff9df; color:#233d4c; border:3px solid #c89d4e; outline:2px solid #273f55; box-shadow:inset 0 0 0 2px #fff; }
-.trainer-card-heading { display:flex; justify-content:space-between; gap:8px; padding:8px 10px; color:#fffbe9; font-size:6px; line-height:1.8; background:#245b75; border-bottom:3px solid #c89d4e; text-shadow:1px 1px #17394d; }
-.trainer-identity { display:flex; align-items:center; gap:12px; padding:10px 12px; color:#233d4c; }
-.trainer-identity .handheld-eyebrow { color:#435d6a; text-shadow:none; }
-.trainer-identity h3 { font-size:11px; color:#183d53; text-shadow:none; margin:3px 0 6px; }
-.trainer-identity .handheld-badge { background:#d8ead1; border-color:#6e8d6c; color:#264d39; text-shadow:none; }
-.trainer-avatar { width:42px; height:42px; flex-shrink:0; background-size:400% 400%; background-position:0 0; image-rendering:pixelated; }
-.trainer-avatar-empty { display:grid; place-items:center; border:2px solid #e9ce85; font-size:14px; }
-.trainer-records { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 14px; padding:0 12px 10px; }
-.trainer-records>div { display:flex; justify-content:space-between; gap:6px; padding:7px 0; border-bottom:1px solid #b6c9c1; color:#425866; font-size:7px; line-height:1.8; }
-.trainer-records strong { color:#183d53; font-size:7px; text-align:right; }
+.trainer-card { width:min(460px,100%); margin:0 auto; padding:3px; border:3px solid #1c2430; border-radius:5px; background:#242b38; color:#fff; box-shadow:0 0 0 2px #d6d0b9,inset 0 0 0 1px #596171; image-rendering:pixelated; }
+.trainer-card-heading { display:flex; justify-content:space-between; gap:8px; padding:6px 8px; color:#fff; font-size:6px; line-height:1.8; background:repeating-linear-gradient(0deg,#33343c 0 2px,#272932 2px 4px); border-bottom:2px solid #c74b52; text-shadow:1px 1px #10151d; }
+.trainer-card-heading span:last-child { color:#f3cf57; }
+.trainer-card-body { display:grid; grid-template-columns:minmax(0,42%) minmax(0,58%); gap:5px; padding:8px; background:repeating-linear-gradient(0deg,#a52e3b 0 3px,#b63743 3px 6px); }
+.trainer-card-player { min-width:0; display:flex; align-items:center; gap:6px; padding:5px; background:#2d303a; border:2px solid #d2c6a2; box-shadow:inset 0 0 0 1px #555965; }
+.trainer-card-meta { min-width:0; color:#fff; font-size:5px; line-height:1.8; text-shadow:1px 1px #171a22; }
+.trainer-card-meta>span { color:#f4d55f; }
+.trainer-card-meta h3 { max-width:100%; margin:2px 0 6px; overflow:hidden; text-overflow:ellipsis; font-size:7px; white-space:nowrap; }
+.trainer-card-meta p { margin:3px 0 0; color:#e0e1d5; }
+.trainer-card-meta strong { color:#fff; }
+.trainer-avatar { width:47px; height:62px; flex:0 0 47px; background-size:400% 400%; background-position:0 0; image-rendering:pixelated; }
+.trainer-avatar-empty { display:grid; place-items:center; border:2px solid #e9ce85; color:#fff; font-size:12px; }
+.trainer-card-party { min-width:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:repeat(2,1fr); gap:4px; }
+.trainer-party-mon { min-width:0; min-height:45px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2px; border:1px solid #5c5360; background:#f4e6cf; box-shadow:inset 0 0 0 1px #fff8e9; }
+.trainer-party-mon>span { display:grid; place-items:center; height:32px; }
+.trainer-party-mon .handheld-sprite { width:38px; height:34px; }
+.trainer-party-mon small { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#354252; font-size:4px; line-height:1.4; }
+.trainer-party-mon.is-empty { background:#393b42; border-color:#737078; box-shadow:inset 0 0 0 1px #292b32; }
+.trainer-party-mon.is-empty>span { width:18px; height:18px; margin:7px 0; border:1px dashed #929198; border-radius:50%; }
+.trainer-party-mon.is-empty small { color:#bbb8b0; }
+.trainer-card-badge-row { display:flex; align-items:center; gap:8px; padding:6px 8px; background:#232832; border-top:2px solid #dc5960; }
+.trainer-card-badge-row>span { color:#f4d55f; font-size:5px; white-space:nowrap; }
+.trainer-card-badges { flex:1; display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:4px; }
+.trainer-badge-slot { aspect-ratio:1; max-width:23px; width:100%; justify-self:center; border:1px solid #85858a; border-radius:2px; background:linear-gradient(135deg,#464950,#30333a); box-shadow:inset 1px 1px #5b5e64,inset -1px -1px #24262c; }
 .handheld-toast { position:fixed; z-index:15000; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom) + 20px); width:max-content; max-width:calc(100% - 32px); padding:12px 16px; background:#f8f8f0; border:3px solid #9faeb6; outline:2px solid #3c5067; color:#4b5961; font:8px/1.9 var(--gba-font); }
 body.classic-city :is(#bagWindow,.npc-shop-panel,.player-profile-card,.barrier-card) { background:#71bdd0; color:#fff; border:3px solid #dec383; border-radius:2px; box-shadow:0 0 0 2px #3c5067,inset 0 0 0 2px #baebed; }
 body.classic-city :is(#bagHeader,.npc-shop-header) { background:#3f90b2; color:white; text-shadow:1px 1px #3c5067; border-bottom:2px solid #dfc587; font:9px var(--gba-font); }
@@ -229,11 +242,17 @@ body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1
   .pokedex-brand strong { font-size:9px; }
   .dex-detail-view { padding:5px; grid-template-columns:42% 1fr; }
   .dex-detail-view>.handheld-sprite { height:105px; }
-  .trainer-card-heading { padding:6px 7px; font-size:5px; }
-  .trainer-identity { padding:8px; gap:9px; }
-  .trainer-avatar { width:36px; height:36px; }
-  .trainer-records { padding:0 8px 8px; gap:0 8px; }
-  .trainer-records>div { font-size:6px; padding:6px 0; }
-  .trainer-records strong { font-size:6px; }
+  .trainer-card-heading { padding:5px 6px; font-size:5px; }
+  .trainer-card-body { grid-template-columns:minmax(0,43%) minmax(0,57%); gap:3px; padding:5px; }
+  .trainer-card-player { flex-direction:column; justify-content:center; gap:0; padding:3px; }
+  .trainer-avatar { width:37px; height:49px; flex-basis:37px; }
+  .trainer-card-meta { width:100%; text-align:center; font-size:4px; }
+  .trainer-card-meta h3 { font-size:6px; }
+  .trainer-party-mon { min-height:40px; }
+  .trainer-party-mon>span { height:28px; }
+  .trainer-party-mon .handheld-sprite { width:32px; height:30px; }
+  .trainer-party-mon small { font-size:3px; }
+  .trainer-card-badge-row { gap:5px; padding:6px; }
+  .trainer-card-badges { gap:3px; }
 }
 @media(prefers-reduced-motion:reduce) { #classic-menu *,body.classic-city #gameArea { animation:none!important; transition:none!important; } }
