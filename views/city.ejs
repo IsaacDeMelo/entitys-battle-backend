@@ -2169,6 +2169,16 @@
 
         window.addEventListener('resize', syncHandheldViewport);
 
+        function syncPlayableMapArea(config = mapConfig) {
+            const editing = document.body.classList.contains('dev-mode');
+            const width = editing ? (config.width || 100) : 100;
+            const height = editing ? (config.height || 100) : 100;
+            gameAreaEl.style.width = `${width}%`;
+            gameAreaEl.style.height = `${height}%`;
+            gameAreaEl.classList.toggle('indoor-mode', editing && (width < 100 || height < 100));
+            syncHandheldViewport();
+        }
+
         function applyMapVisuals(config) {
             const bg = (config && config.bgImage) ? `url('${config.bgImage}')` : '';
             const sceneEl = document.getElementById('worldScene');
@@ -2190,12 +2200,7 @@
                 fgEl.style.backgroundImage = fg;
                 fgEl.style.display = fg ? 'block' : 'none';
             }
-            const w = config.width || 100;
-            const h = config.height || 100;
-            gameAreaEl.style.width = w + '%';
-            gameAreaEl.style.height = h + '%';
-            if (w < 100 || h < 100) gameAreaEl.classList.add('indoor-mode'); else gameAreaEl.classList.remove('indoor-mode');
-            syncHandheldViewport();
+            syncPlayableMapArea(config);
             
             const dl = document.getElementById('darkness-layer');
             if(dl) dl.style.opacity = config.darknessLevel || 0;
@@ -7503,6 +7508,7 @@
             devMode = !devMode;
             document.body.classList.toggle('dev-mode', devMode);
             syncHandheldViewport();
+            syncPlayableMapArea(mapConfig);
             if (devMode) { worldScene.style.transform = ''; }
             setDevToolsVisible(devMode && devPanelOpen);
             document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "[DEV] ATIVAR EDIÇÃO";
@@ -7522,6 +7528,7 @@
                 devMode = !!settings.devMode;
                 document.body.classList.toggle('dev-mode', devMode);
                 syncHandheldViewport();
+                syncPlayableMapArea(mapConfig);
                 if (devMode) { worldScene.style.transform = ''; }
                 devPanelOpen = !!settings.panelOpen;
                 sessionStorage.setItem('devPanelOpen', devPanelOpen ? '1' : '0');
