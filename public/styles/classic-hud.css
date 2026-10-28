@@ -8,12 +8,6 @@
 }
 body.classic-city { background:#263b42; font-family:var(--gba-font); }
 body.classic-city #gameViewport { border-inline:4px solid #39536a; box-shadow:0 0 0 2px #172d3d; }
-.trainer-status { position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 12px); transform:translateX(-50%); width:calc(100% - 32px); max-width:386px; display:flex; align-items:center; gap:9px; padding:8px 10px; z-index:8000; color:#fff; background:linear-gradient(#4b9fc2 50%,#438faf 50%); background-size:100% 4px; border:3px solid #dbce8c; border-radius:2px; box-shadow:0 0 0 2px #3c5067,inset 0 0 0 2px #91d1de; cursor:pointer; text-align:left; font-family:var(--gba-font); }
-.trainer-monogram { width:24px; height:24px; display:grid; place-items:center; color:#344c60; background:#e6edf3; border:2px solid #344c60; font-size:7px; }
-.trainer-status-name { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
-.trainer-status strong { font-size:9px; text-shadow:1px 1px #344c60; overflow:hidden; text-overflow:ellipsis; }
-.trainer-status small { font-size:5px; letter-spacing:1px; }
-#trainerBalance { font:7px var(--gba-font); max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:1px 1px #344c60; }
 body.classic-city #areaHud { top:80px; }
 body.classic-city #areaHudZone { background:#f8f8ed; color:#344c60; border:3px solid #a8b3b4; border-radius:0; box-shadow:0 0 0 2px #344c60; text-shadow:none; font:8px var(--gba-font); padding:8px; }
 body.classic-city #chatBar { width:calc(100% - 32px); max-width:386px; bottom:calc(env(safe-area-inset-bottom) + 12px); gap:6px; padding:6px 7px 6px 10px; border:3px solid #a7b4b9; border-radius:0; background:#f8f8f0; box-shadow:0 0 0 2px #3c5067,inset 0 0 0 2px white; }
@@ -32,7 +26,7 @@ body.classic-city.menu-open #controlsDock { z-index:12510; bottom:calc(env(safe-
 body.classic-city.menu-open #controlsCenter { visibility:hidden; }
 body.classic-city.menu-open #virtualPad { width:108px; height:108px; }
 body.classic-city.menu-open #controlsRight { position:absolute; right:0; bottom:0; padding:0; }
-body.classic-city.menu-open #chatBar,body.classic-city.menu-open .trainer-status { visibility:hidden; }
+body.classic-city.menu-open #chatBar { visibility:hidden; }
 body.classic-city :is(button,input):focus-visible,#classic-menu button:focus-visible { outline:2px solid #ffbd54; outline-offset:2px; }
 body.classic-city button:disabled,#classic-menu button:disabled { cursor:default; opacity:.6; }
 #classic-menu { position:fixed; inset:0; z-index:12500; display:flex; align-items:center; justify-content:center; padding:24px; background:#172c3caa; color:#f8f8ed; font:9px/1.7 var(--gba-font); }
@@ -185,7 +179,7 @@ body.classic-city :is(#bagHeader,.npc-shop-header) { background:#3f90b2; color:w
 body.classic-city :is(.npc-shop-card,.bag-item-card) { background:#f9f7dc; color:#3c5067; border:2px solid #d8bb7a; border-radius:1px; box-shadow:none; }
 body.classic-city :is(.cityActionBtn,#bagClose,.npc-shop-close) { background:#7957a7; color:white; border:2px solid #514572; border-radius:3px; box-shadow:inset 1px 1px #b59bd3; font:8px var(--gba-font); text-shadow:1px 1px #4c466e; }
 body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1px solid #dfc589; }
-@media(min-width:769px) { body.classic-city { align-items:center; padding-block:20px; } body.classic-city #gameViewport { height:calc(100dvh - 40px); border-radius:2px; } .trainer-status { top:34px; } body.classic-city.menu-open #controlsDock { display:none; } }
+@media(min-width:769px) { body.classic-city { align-items:center; padding-block:20px; } body.classic-city #gameViewport { height:calc(100dvh - 40px); border-radius:2px; } body.classic-city.menu-open #controlsDock { display:none; } }
 @media(max-width:600px) {
   #classic-menu { padding:12px 10px 148px; }
   .handheld-menu { height:min(490px,calc(100dvh - 160px)); }

@@ -1200,11 +1200,6 @@
     </div>
     <% } %>
 
-    <button id="trainerStatus" class="trainer-status" type="button" aria-label="Abrir cartão do treinador">
-        <span class="trainer-monogram" aria-hidden="true">EB</span>
-        <span class="trainer-status-name"><small>ENTITYS BATTLE</small><strong><%= user.username %></strong></span>
-        <span id="trainerBalance">$ <%= Number(user.money || 0).toLocaleString('pt-BR') %></span>
-    </button>
     <div id="gameViewport">
         <div id="gameArea">
             <div id="areaHud">

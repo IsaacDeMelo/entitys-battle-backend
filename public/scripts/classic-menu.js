@@ -166,8 +166,6 @@
           if (available) state.bagPocket = available;
         }
       }
-      const balance = document.getElementById('trainerBalance');
-      if (balance) balance.textContent = '$ ' + money(data.money);
       window.__ME_CACHE = data;
       if (typeof window.setFollowingEntityId === 'function') window.setFollowingEntityId(data.followingEntityId || '');
       else window.FOLLOWING_ENTITY_ID = data.followingEntityId || '';
@@ -256,6 +254,5 @@
   window.__menuConfirm = () => { if (root.contains(document.activeElement)) document.activeElement.click(); };
   window.__openStartMenu = () => open(); window.__closeStartMenu = () => setOpen(false);
   document.getElementById('startBtn')?.addEventListener('click', () => window.toggleFloatMenu());
-  document.getElementById('trainerStatus')?.addEventListener('click', () => open('card'));
   document.getElementById('chatInput')?.addEventListener('keydown', event => { if (event.key === 'Enter') document.getElementById('chatSend').click(); });
 })();
