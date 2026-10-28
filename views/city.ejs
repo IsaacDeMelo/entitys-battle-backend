@@ -1223,6 +1223,12 @@
             </div>
             </div>
         </div>
+        <div id="devMapZoom" aria-label="Zoom do mapa no modo de edição" title="Use a roda do mouse para ampliar; clique com o botão do meio e arraste para mover o mapa.">
+            <button type="button" id="devMapZoomOut" aria-label="Diminuir zoom">−</button>
+            <span id="devMapZoomValue">100%</span>
+            <button type="button" id="devMapZoomIn" aria-label="Aumentar zoom">+</button>
+            <button type="button" id="devMapZoomReset" aria-label="Restaurar zoom">↺</button>
+        </div>
         <div id="chatBar"><input type="text" id="chatInput" placeholder="Converse com outros treinadores..." aria-label="Mensagem para o chat" autocomplete="off" maxlength="30"><button id="chatSend" aria-label="Enviar mensagem">»</button></div>
     </div>
 
@@ -2846,16 +2852,67 @@
         const WORLD_CAMERA_ZOOM = 1.8;
         const WORLD_CAMERA_SMOOTHING = 0.12;
         let worldCameraX = null, worldCameraY = null;
+        let devMapZoom = 1;
+        let devMapPanX = 0, devMapPanY = 0, devMapPanning = false, devMapPanPointerId = null, devMapPanLast = null;
+        function applyDevMapZoom() {
+            const value = document.getElementById('devMapZoomValue');
+            if (value) value.textContent = `${Math.round(devMapZoom * 100)}%`;
+            if (!devMode) return;
+            if (!window.matchMedia('(min-width: 769px)').matches) { worldScene.style.transform = ''; return; }
+            const width = gameArea.clientWidth, height = gameArea.clientHeight;
+            const x = (width - worldScene.clientWidth * devMapZoom) / 2 + devMapPanX;
+            const y = (height - worldScene.clientHeight * devMapZoom) / 2 + devMapPanY;
+            worldScene.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) scale(${devMapZoom})`;
+        }
+        function setDevMapZoom(nextZoom) {
+            devMapZoom = Math.max(0.5, Math.min(3, Math.round(nextZoom * 20) / 20));
+            applyDevMapZoom();
+        }
+        document.getElementById('devMapZoomIn')?.addEventListener('click', () => setDevMapZoom(devMapZoom + 0.1));
+        document.getElementById('devMapZoomOut')?.addEventListener('click', () => setDevMapZoom(devMapZoom - 0.1));
+        document.getElementById('devMapZoomReset')?.addEventListener('click', () => { devMapPanX = devMapPanY = 0; setDevMapZoom(1); });
+        gameViewport.addEventListener('wheel', (event) => {
+            if (!devMode || !window.matchMedia('(min-width: 769px)').matches) return;
+            event.preventDefault();
+            setDevMapZoom(devMapZoom + (event.deltaY < 0 ? 0.1 : -0.1));
+        }, { passive: false });
+        gameViewport.addEventListener('pointerdown', (event) => {
+            if (!devMode || !window.matchMedia('(min-width: 769px)').matches || event.button !== 1) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            devMapPanning = true;
+            devMapPanPointerId = event.pointerId;
+            devMapPanLast = { x: event.clientX, y: event.clientY };
+            gameViewport.setPointerCapture(event.pointerId);
+        });
+        gameViewport.addEventListener('pointermove', (event) => {
+            if (!devMapPanning || event.pointerId !== devMapPanPointerId) return;
+            devMapPanX += event.clientX - devMapPanLast.x;
+            devMapPanY += event.clientY - devMapPanLast.y;
+            devMapPanLast = { x: event.clientX, y: event.clientY };
+            applyDevMapZoom();
+        });
+        const stopDevMapPan = (event) => {
+            if (event.pointerId !== devMapPanPointerId) return;
+            devMapPanning = false;
+            devMapPanPointerId = null;
+            devMapPanLast = null;
+        };
+        gameViewport.addEventListener('pointerup', stopDevMapPan);
+        gameViewport.addEventListener('pointercancel', stopDevMapPan);
         function updateWorldCamera() {
             if (!worldScene || !gameViewport) return;
-            if (devMode || !window.myId) {
+            if (devMode) {
+                applyDevMapZoom();
+                worldCameraX = worldCameraY = null;
+            } else if (!window.myId) {
                 worldScene.style.transform = '';
                 worldCameraX = worldCameraY = null;
             } else {
                 const player = document.getElementById(`p-${window.myId}`);
                 if (player) {
-                    const viewportWidth = gameViewport.clientWidth;
-                    const viewportHeight = gameViewport.clientHeight;
+                    const viewportWidth = gameArea.clientWidth;
+                    const viewportHeight = gameArea.clientHeight;
                     const sceneWidth = worldScene.clientWidth;
                     const sceneHeight = worldScene.clientHeight;
                     const playerX = (parseFloat(player.style.left) || 0) / 100 * sceneWidth;
@@ -6301,7 +6358,7 @@
                     return;
                 }
                 e.stopPropagation();
-                const rect = gameArea.getBoundingClientRect();
+                const rect = worldScene.getBoundingClientRect();
                 const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1));
                 const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
                 const cap = window.__devClickCapture;
@@ -6329,7 +6386,7 @@
             if (devMode) {
                 if (currentTool === 'moveNpc' && selectedNpcId) {
                     e.stopPropagation();
-                    const rect = gameArea.getBoundingClientRect(); 
+                    const rect = worldScene.getBoundingClientRect();
                     const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
                     const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
                     teleportNpc(clickX, clickY);
@@ -6338,7 +6395,7 @@
                 
                 if (pendingPortalData) {
                     e.stopPropagation();
-                    const rect = gameArea.getBoundingClientRect(); 
+                    const rect = worldScene.getBoundingClientRect();
                     const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
                     const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
 
@@ -6369,7 +6426,7 @@
 
                 if (currentTool === 'spawn') {
                     e.stopPropagation();
-                    const rect = gameArea.getBoundingClientRect(); 
+                    const rect = worldScene.getBoundingClientRect();
                     const clickX = parseFloat((((e.clientX - rect.left)/rect.width)*100).toFixed(1)); 
                     const clickY = parseFloat((((e.clientY - rect.top)/rect.height)*100).toFixed(1));
                     mapConfig.spawnPoint = { x: clickX, y: clickY };
@@ -7390,6 +7447,7 @@
 
         function toggleDevMode() {
             devMode = !devMode;
+            document.body.classList.toggle('dev-mode', devMode);
             if (devMode) { worldScene.style.transform = ''; worldCameraX = worldCameraY = null; }
             setDevToolsVisible(devMode && devPanelOpen);
             document.getElementById('btnDevMode').innerText = devMode ? "DESATIVAR EDIÇÃO" : "[DEV] ATIVAR EDIÇÃO";
@@ -7407,6 +7465,7 @@
                 if (!js || !js.success || !js.settings) return;
                 const settings = js.settings;
                 devMode = !!settings.devMode;
+                document.body.classList.toggle('dev-mode', devMode);
                 if (devMode) { worldScene.style.transform = ''; worldCameraX = worldCameraY = null; }
                 devPanelOpen = !!settings.panelOpen;
                 sessionStorage.setItem('devPanelOpen', devPanelOpen ? '1' : '0');
@@ -8066,7 +8125,7 @@
             if (gameArea.setPointerCapture && e.pointerId !== undefined) {
                 try { gameArea.setPointerCapture(e.pointerId); } catch (_) {}
             }
-            const rect = gameArea.getBoundingClientRect(); 
+            const rect = worldScene.getBoundingClientRect();
             startPoint = {x: ((e.clientX - rect.left)/rect.width)*100, y: ((e.clientY - rect.top)/rect.height)*100}; 
             tempBox = document.createElement('div'); tempBox.className = 'drawing-box'; 
             if(currentTool === 'collision') tempBox.classList.add('dev-collision'); 
@@ -8082,7 +8141,7 @@
         gameArea.addEventListener('pointermove', (e) => {
             if(!isDrawing || !tempBox) return; 
             e.preventDefault();
-            const rect = gameArea.getBoundingClientRect(); 
+            const rect = worldScene.getBoundingClientRect();
             const curX = ((e.clientX - rect.left)/rect.width)*100; const curY = ((e.clientY - rect.top)/rect.height)*100; 
             const w = Math.abs(curX - startPoint.x); const h = Math.abs(curY - startPoint.y); 
             tempBox.style.width = w+'%'; tempBox.style.height = h+'%'; 
