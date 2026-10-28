@@ -208,7 +208,7 @@ body #toastContainer .toast, body .toast {
 /* ===== LAB: mesma língua do menu (era dark genérico) ===== */
 body.lab-theme { font-family: 'Rajdhani', sans-serif; }
 body.lab-theme .tab-btn {
-  font-family: var(--hud-font-display);
+  font-family: 'Rajdhani', sans-serif;
   background: var(--hud-btn);
   border: 2px solid var(--hud-cream);
   border-radius: 6px;
@@ -221,8 +221,8 @@ body.lab-theme .tab-btn.active {
   text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
 }
 body.lab-theme .btn-save {
-  font-family: var(--hud-font-display);
-  font-size: 0.6rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
   background: linear-gradient(180deg, #1f6f43 0%, #14532d 100%);
   border: 2px solid var(--hud-cream);
   border-radius: 6px;
@@ -233,8 +233,8 @@ body.lab-theme .btn-save {
 body.lab-theme .btn-save:active { transform: translateY(2px); box-shadow: none; }
 body.lab-theme .btn-save:disabled { opacity: 0.6; }
 body.lab-theme .btn-delete {
-  font-family: var(--hud-font-display);
-  font-size: 0.6rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
   border: 2px solid var(--hud-cream);
   border-radius: 6px;
   box-shadow: 0 3px 0 var(--hud-btn-shadow);
@@ -243,11 +243,11 @@ body.lab-theme .btn-new {
   border: 2px solid var(--hud-cream);
   border-radius: 6px;
   box-shadow: 0 3px 0 var(--hud-btn-shadow);
-  font-family: var(--hud-font-display);
-  font-size: 0.55rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
 }
 body.lab-theme .sidebar-header {
-  font-family: var(--hud-font-display);
+  font-family: 'Rajdhani', sans-serif;
   background: linear-gradient(180deg, var(--hud-head1) 0%, var(--hud-head2) 100%);
   text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
 }
@@ -262,8 +262,8 @@ body.lab-theme .lab-toast-msg {
   border-radius: 6px;
   box-shadow: 0 0 0 2px var(--hud-ink), 0 8px 20px rgba(0,0,0,0.6);
   color: var(--hud-text);
-  font-family: var(--hud-font-display);
-  font-size: 0.6rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
   padding: 12px 16px;
   text-align: center;
   animation: labToastIn 0.2s ease-out;
