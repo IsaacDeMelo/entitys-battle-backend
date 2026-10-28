@@ -7,31 +7,31 @@
   --gba-font:'Press Start 2P',monospace;
 }
 body.classic-city { background:#263b42; font-family:var(--gba-font); }
-/* Keep the world inside a centered square and reserve the lower band for touch controls/chat. */
-body.classic-city { --world-safe-band:230px; --world-square-size:min(calc(100vw - 48px),720px,calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band) - 48px)); }
+/* Preserve the map image's aspect ratio and reserve the lower band for chat/touch controls. */
+body.classic-city { --world-safe-band:230px; --safe-bottom:env(safe-area-inset-bottom); }
 body.classic-city #gameViewport {
-  position:fixed; left:50%; top:calc(env(safe-area-inset-top) + (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band) - var(--world-square-size) - 48px)/2);
-  width:calc(var(--world-square-size) + 32px); height:calc(var(--world-square-size) + 48px); max-width:none; max-height:none; padding:13px 13px 29px;
+  position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 8px);
+  width:min(calc(100vw - 48px),452px); height:min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band)),900px); max-width:none; max-height:none; padding:13px 13px 29px;
   transform:translateX(-50%); border:3px solid #e2e5e9; border-radius:22px 22px 30px 30px;
   background:linear-gradient(135deg,#d8dce1,#aeb5bf 28%,#c7ccd3 62%,#969eaa); box-shadow:inset 2px 2px 3px #fff9,inset -3px -4px 5px #606a7880,0 0 0 2px #626b78,0 12px 28px #0009;
 }
 body.classic-city #gameViewport::after { content:'ENTITY  •  ADVANCE'; position:absolute; left:0; right:0; bottom:8px; height:13px; color:#526071; text-align:center; letter-spacing:2px; font: bold 8px/13px Arial,sans-serif; text-shadow:1px 1px #f5f6f7; pointer-events:none; }
-body.classic-city #gameArea { width:100%; height:100%; border:8px solid #182331; border-radius:4px; background:#101820; box-shadow:inset 0 0 0 2px #536071,inset 0 0 10px #000; }
+body.classic-city #gameArea { width:100%; height:100%; overflow:hidden; border:0; outline:8px solid #182331; outline-offset:-8px; border-radius:4px; background:#101820; box-shadow:inset 0 0 0 2px #536071,inset 0 0 10px #000; }
 body.classic-city #devMapZoom { display:none; }
 body.classic-city.dev-mode #devMapZoom { display:none; }
 body.classic-city.dev-mode #gameViewport { position:relative; left:auto; top:auto; transform:none; width:100%; max-width:420px; height:100%; max-height:900px; padding:0; border:0; border-radius:0; background:#111; box-shadow:0 0 50px #000c; }
 body.classic-city.dev-mode #gameViewport::after { display:none; }
-body.classic-city.dev-mode #gameArea { width:100%; height:100%; border:0; border-radius:0; box-shadow:none; }
+body.classic-city.dev-mode #gameArea { width:100%; height:100%; overflow:hidden; border:0; outline:none; outline-offset:0; border-radius:0; box-shadow:none; }
 body.classic-city.dev-mode #devMapZoom { position:fixed; z-index:11000; top:12px; right:12px; gap:4px; align-items:center; padding:5px; border:2px solid #51677c; background:#263b42eF; color:white; font:8px var(--gba-font); }
 body.classic-city.dev-mode #devMapZoom button { min-width:30px; height:28px; border:2px solid #b3cad2; border-radius:3px; background:#3a91b9; color:white; font:bold 18px monospace; cursor:pointer; }
 body.classic-city.dev-mode #devMapZoomValue { min-width:42px; text-align:center; }
 body.classic-city #areaHud { top:80px; }
 body.classic-city #areaHudZone { background:#f8f8ed; color:#344c60; border:3px solid #a8b3b4; border-radius:0; box-shadow:0 0 0 2px #344c60; text-shadow:none; font:8px var(--gba-font); padding:8px; }
-body.classic-city #chatBar { width:calc(100% - 32px); max-width:386px; bottom:calc(env(safe-area-inset-bottom) + 12px); gap:6px; padding:6px 7px 6px 10px; border:3px solid #a7b4b9; border-radius:0; background:#f8f8f0; box-shadow:0 0 0 2px #3c5067,inset 0 0 0 2px white; }
-body.classic-city #chatInput { min-width:0; height:30px; color:#344c60; font:10px/1.5 monospace; }
+body.classic-city #chatBar { width:calc(100% - 32px); max-width:386px; bottom:calc(env(safe-area-inset-bottom) + 164px); gap:6px; padding:6px 7px 6px 10px; border:3px solid #a7b4b9; border-radius:0; background:#f8f8f0; box-shadow:0 0 0 2px #3c5067,inset 0 0 0 2px white; }
+body.classic-city #chatInput { min-width:0; height:30px; color:#344c60; font:9px/1.5 monospace; }
 body.classic-city #chatInput::placeholder { color:#687c83; }
 body.classic-city #chatSend { width:34px; height:30px; background:#7957a7; color:white; border:2px solid #4d466e; border-radius:4px; box-shadow:inset 2px 2px #a490c9,inset -2px -2px #5b4388; font-size:18px; }
-body.classic-city #controlsDock { width:calc(100% - 40px); max-width:378px; bottom:calc(env(safe-area-inset-bottom) + 78px); }
+body.classic-city #controlsDock { width:calc(100% - 40px); max-width:378px; bottom:calc(env(safe-area-inset-bottom) + 12px); }
 body.classic-city #virtualPad { width:124px; height:124px; padding:8px; gap:3px; background:#3c5067b5; border:2px solid #92b9bd; border-radius:4px; box-shadow:0 0 0 2px #344c60; }
 body.classic-city .vpadBtn { background:#b5d0d0; color:#3b5366; border:2px solid #40596b; border-radius:1px; box-shadow:inset 2px 2px #eff7e7,inset -2px -2px #73949f; font-size:13px; }
 body.classic-city #virtualPadInteract,body.classic-city #virtualPadB { width:46px; height:46px; border:3px solid #4c466e; border-radius:50%; background:#8864b3; color:white; box-shadow:inset 3px 3px #b49bd6,inset -3px -3px #604585; font:12px var(--gba-font); text-shadow:1px 1px #3c5067; }
