@@ -66,6 +66,7 @@ kbd { font-family:inherit; color:#eee3ff; }
 .gba-ball { position:absolute; left:-13px; top:50%; transform:translateY(-50%); width:25px; height:25px; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(1px 1px 0 #263d51); }
 .party-index,.party-arrow { display:none; }
 .handheld-sprite { width:40px; height:40px; object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
+.party-card .handheld-sprite { width:32px; height:32px; }
 .party-info { flex:1; min-width:0; }
 .party-name { display:flex; justify-content:space-between; align-items:center; gap:5px; font-size:9px; line-height:1.5; text-transform:uppercase; text-shadow:1px 2px #427095; overflow-wrap:anywhere; }
 .party-name small { font-size:7px; white-space:nowrap; }
@@ -74,9 +75,9 @@ kbd { font-family:inherit; color:#eee3ff; }
 .party-health>span:first-child { color:#ffdf78; font-size:6px; }
 .health-track { display:block; height:8px; padding:1px; background:#45566d; border:1px solid #e4e4c8; outline:1px solid #536278; border-radius:5px; overflow:hidden; }
 .health-track i { display:block; height:100%; border-radius:2px; box-shadow:inset 0 1px #c6f9c4; }
-.party-lead .party-card { min-height:116px; padding:12px 9px 10px; display:grid; grid-template-columns:48px minmax(0,1fr); gap:6px; background:#79cde1; }
+.party-lead .party-card { min-height:116px; padding:12px 9px 10px; display:grid; grid-template-columns:36px minmax(0,1fr); gap:6px; background:#79cde1; }
 .party-lead .gba-ball { left:-12px; top:0; transform:translateY(-50%); }
-.party-lead .handheld-sprite { width:48px; height:48px; }
+.party-lead .handheld-sprite { width:32px; height:32px; }
 .party-lead .party-name { flex-direction:column; align-items:flex-start; font-size:8px; }
 .party-lead .party-type { margin:6px 0; }
 .party-lead .party-health { grid-template-columns:13px minmax(10px,1fr); font-size:7px; }
@@ -197,7 +198,7 @@ body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1
   .party-screen { grid-template-columns:32% minmax(0,1fr); gap:14px; min-height:235px; padding-left:5px; }
   .party-bench { gap:7px; }
   .party-card { min-height:41px; padding:4px 4px 4px 12px; gap:1px; }
-  .party-card .handheld-sprite { width:30px; height:30px; }
+  .party-card .handheld-sprite { width:28px; height:28px; }
   .party-name { font-size:6px; gap:2px; }
   .party-name small { font-size:5px; }
   .party-type { font-size:4px; }
@@ -206,7 +207,7 @@ body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1
   .health-track { height:6px; }
   .gba-ball { width:21px; height:21px; left:-10px; }
   .party-lead .party-card { display:flex; flex-direction:column; padding:10px 6px 7px; gap:3px; min-height:112px; }
-  .party-lead .handheld-sprite { width:44px; height:44px; }
+  .party-lead .handheld-sprite { width:28px; height:28px; }
   .party-lead .party-info { width:100%; }
   .party-lead .party-name { font-size:6px; align-items:center; gap:5px; }
   .party-lead .party-type { margin:4px 0; text-align:center; }
