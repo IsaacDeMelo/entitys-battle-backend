@@ -1498,7 +1498,6 @@
                         deployPokemon('p2', false);
                         updateBar(p2RawId, p2CurHp, p2MaxHp, 'hp');
                     } else {
-                        await wait(800);
                         p1RawId = data.newP1Id; 
                         p1Mon = data.p1State.name; 
                         p1CurHp = data.p1State.hp; 
@@ -1511,7 +1510,10 @@
                         applyBattleSprite('p1', data.p1State);
                         deployPokemon('p1', false); 
                         updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
-                        updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                        updateBar(p1RawId, currentEnergy, data.p1State.maxEnergy || <%= energyConfig.maxEnergy %>, 'en');
+                        if (data.p1State.xp !== undefined && data.p1State.xpToNext !== undefined) {
+                            updateBar(p1RawId, data.p1State.xp, data.p1State.xpToNext, 'xp');
+                        }
                         const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                         data.p1State.moves.forEach(move => { 
                             const btn = document.createElement('button'); btn.className = `move-btn ${getMoveCategory(move)}`; 
@@ -1819,7 +1821,10 @@
                     
                     setTimeout(() => deployPokemon('p1', false), 50);
                     updateBar(p1RawId, p1CurHp, newState.maxHp, 'hp'); 
-                    updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                    updateBar(p1RawId, currentEnergy, newState.maxEnergy || <%= energyConfig.maxEnergy %>, 'en');
+                    if (newState.xp !== undefined && newState.xpToNext !== undefined) {
+                        updateBar(p1RawId, newState.xp, newState.xpToNext, 'xp');
+                    }
                     
                     const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                     newState.moves.forEach(move => { 
