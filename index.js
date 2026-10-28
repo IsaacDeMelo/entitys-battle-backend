@@ -4529,6 +4529,8 @@ app.post('/api/turn', async (req, res) => {
     try {
         let p1 = battle.p1; const p2 = battle.p2; const events = []; let threwCaptureCube = false;
         let npcDefeatedId = null;
+        let postBattleDialogue = null;
+        let progressionState = null;
         
         if (action === 'switch') { 
             // Normal battle - use user.entityTeam
@@ -4656,6 +4658,11 @@ app.post('/api/turn', async (req, res) => {
                 let poke = user.entityTeam.find(p => p._id.toString() === p1.instanceId);
                 if (poke) { 
                     const progression = await applyOwnedEntityProgression(user, p1.instanceId, { xpGain: xpGained });
+                    progressionState = {
+                        level: Number(poke.level || 1),
+                        xp: Number(poke.xp || 0),
+                        xpToNext: getXpForNextLevel(poke.level) || 100
+                    };
                     buildProgressionMessages(progression, poke.nickname).forEach(text => events.push({ type: 'MSG', text }));
                     poke.currentHp = p1.hp; await user.save(); 
                 }
@@ -4669,7 +4676,7 @@ app.post('/api/turn', async (req, res) => {
                 if (nextNpcPoke) {
                     battle.p2 = nextNpcPoke;
                     events.push({ type: 'MSG', text: `${battle.p2.playerName} vai usar ${nextNpcPoke.name}!` });
-                    return res.json({ events, switched: true, p2Switched: true, newP1Id: p1.instanceId, p1State: p1, p2State: nextNpcPoke });
+                    return res.json({ events, switched: true, p2Switched: true, newP1Id: p1.instanceId, p1State: { ...p1, ...(progressionState || {}) }, p2State: nextNpcPoke });
                 }
             }
 
@@ -4686,10 +4693,10 @@ app.post('/api/turn', async (req, res) => {
                         const recordIndex = user.defeatedNPCs.findIndex(r => String(r.npcId) === npcIdStr);
                         if (recordIndex !== -1) { user.defeatedNPCs[recordIndex].defeatedAt = Date.now(); } else { user.defeatedNPCs.push({ npcId: npcIdStr, defeatedAt: Date.now() }); }
                         events.push({ type: 'MSG', text: `Ganhou ${reward} moedas!` }); 
-                        // adiciona diálogo de vitória do treinador (pré-desaparecimento)
+                        // A fala do treinador que perdeu será exibida no mapa após a batalha.
                         try {
                             const winText = resolveNpcDialogue(npc, user, 'winDialogue') || npc.winDialogue || null;
-                            if (winText) events.push({ type: 'MSG', text: winText });
+                            if (winText) postBattleDialogue = { npcId: npcIdStr, name: npc.name || 'Treinador', skin: npc.skin || '', text: winText };
                         } catch (e) {}
                         npcDefeatedId = npcIdStr;
                         if (npc && npc.reward && npc.reward.type !== 'none') {
@@ -4759,7 +4766,7 @@ app.post('/api/turn', async (req, res) => {
             } catch (e) { console.error('Erro preparando p1State:', e); }
 
             delete activeBattles[battleId];
-            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube, npcDefeatedId, moneyReward, expReward, p1State });
+            return res.json({ events, finished: true, win: true, winnerId: p1.instanceId, threw: threwCaptureCube, npcDefeatedId, moneyReward, expReward, p1State, postBattleDialogue });
         }
         const user = await User.findById(battle.userId);
         const p1PokeData = user ? user.entityTeam.find(p => p._id.toString() === p1.instanceId) : null;

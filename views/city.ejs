@@ -3714,6 +3714,21 @@
                 const id = (el.id || '').replace('npc-', '');
                 if (!seen.has(id)) el.remove();
             });
+
+            // A fala do treinador que acabou de perder aparece já no mapa, no diálogo normal.
+            try {
+                const pending = JSON.parse(sessionStorage.getItem('pendingPostBattleDialogue') || 'null');
+                const defeatedNpc = pending && list.find(n => String(n._id) === String(pending.npcId));
+                if (pending && pending.text && defeatedNpc && !window.__postBattleDialogueShown) {
+                    window.__postBattleDialogueShown = true;
+                    sessionStorage.removeItem('pendingPostBattleDialogue');
+                    setTimeout(() => showRPGDialog(
+                        pending.name || defeatedNpc.name || 'Treinador',
+                        pending.skin || defeatedNpc.skin || '',
+                        pending.text
+                    ), 500);
+                }
+            } catch (_) {}
         });
 
         function openNpcEditor() {
