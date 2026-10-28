@@ -7,7 +7,17 @@
   --gba-font:'Press Start 2P',monospace;
 }
 body.classic-city { background:#263b42; font-family:var(--gba-font); }
-body.classic-city #gameViewport { border-inline:4px solid #39536a; box-shadow:0 0 0 2px #172d3d; }
+/* Keep the world inside a centered square and reserve the lower band for touch controls/chat. */
+body.classic-city {
+  --world-safe-band:230px;
+  --world-square-size:min(calc(100vw - 16px),720px,calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band)));
+}
+body.classic-city #gameViewport {
+  position:fixed; left:50%; top:calc(env(safe-area-inset-top) + (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band) - var(--world-square-size))/2);
+  width:var(--world-square-size); height:var(--world-square-size); max-width:none; max-height:none;
+  transform:translateX(-50%); border:4px solid #39536a; box-shadow:0 0 0 2px #172d3d;
+}
+body.classic-city #gameArea { width:100%; height:100%; }
 body.classic-city #areaHud { top:80px; }
 body.classic-city #areaHudZone { background:#f8f8ed; color:#344c60; border:3px solid #a8b3b4; border-radius:0; box-shadow:0 0 0 2px #344c60; text-shadow:none; font:8px var(--gba-font); padding:8px; }
 body.classic-city #chatBar { width:calc(100% - 32px); max-width:386px; bottom:calc(env(safe-area-inset-bottom) + 12px); gap:6px; padding:6px 7px 6px 10px; border:3px solid #a7b4b9; border-radius:0; background:#f8f8f0; box-shadow:0 0 0 2px #3c5067,inset 0 0 0 2px white; }
@@ -179,7 +189,7 @@ body.classic-city :is(#bagHeader,.npc-shop-header) { background:#3f90b2; color:w
 body.classic-city :is(.npc-shop-card,.bag-item-card) { background:#f9f7dc; color:#3c5067; border:2px solid #d8bb7a; border-radius:1px; box-shadow:none; }
 body.classic-city :is(.cityActionBtn,#bagClose,.npc-shop-close) { background:#7957a7; color:white; border:2px solid #514572; border-radius:3px; box-shadow:inset 1px 1px #b59bd3; font:8px var(--gba-font); text-shadow:1px 1px #4c466e; }
 body.classic-city #bagMoney { background:#438fb0; color:#fff1ac; border-bottom:1px solid #dfc589; }
-@media(min-width:769px) { body.classic-city { align-items:center; padding-block:20px; } body.classic-city #gameViewport { height:calc(100dvh - 40px); border-radius:2px; } body.classic-city.menu-open #controlsDock { display:none; } }
+@media(min-width:769px) { body.classic-city.menu-open #controlsDock { display:none; } }
 @media(max-width:600px) {
   #classic-menu { padding:12px 10px 148px; }
   .handheld-menu { height:min(490px,calc(100dvh - 160px)); }
