@@ -254,5 +254,4 @@
   window.__menuConfirm = () => { if (root.contains(document.activeElement)) document.activeElement.click(); };
   window.__openStartMenu = () => open(); window.__closeStartMenu = () => setOpen(false);
   document.getElementById('startBtn')?.addEventListener('click', () => window.toggleFloatMenu());
-  document.getElementById('chatInput')?.addEventListener('keydown', event => { if (event.key === 'Enter') document.getElementById('chatSend').click(); });
 })();

@@ -3009,10 +3009,14 @@
         }
 
         // --- SOCKETS ---
-        socket.on('connect', () => { 
+        const enterCurrentMap = () => {
             window.myId = socket.id; 
             socket.emit('enter_map', { userId: window.CURRENT_USER_ID, name: myName, skin: mySkin, map: currentMapId, x: startX, y: startY, direction: startDir }); 
-        });
+        };
+        socket.on('connect', enterCurrentMap);
+        // common.js creates the shared socket before this page finishes loading.
+        // If it connected already, the connect event will not fire again until reconnect.
+        if (socket.connected) enterCurrentMap();
 
         socket.on('map_state', (players) => { 
             document.querySelectorAll('.player:not(.npc-entity)').forEach(el => { if(el.id !== `p-${window.myId}`) el.remove(); });
@@ -6476,7 +6480,28 @@
         }
 
         const chatIn = document.getElementById('chatInput');
-        document.getElementById('chatSend').onclick = () => { if(chatIn.value.trim()) { socket.emit('send_chat', chatIn.value); chatIn.value=''; } };
+        const chatSend = document.getElementById('chatSend');
+        const sendChatMessage = () => {
+            const message = chatIn.value.trim();
+            if (!message) return;
+            if (!socket.connected) {
+                if (typeof showToast === 'function') showToast('Sem conexão com o chat. Tentando reconectar…', { bg: '#c0392b' });
+                return;
+            }
+            chatSend.disabled = true;
+            socket.timeout(5000).emit('send_chat', message, (error, result) => {
+                chatSend.disabled = false;
+                if (error || !result || !result.success) {
+                    if (typeof showToast === 'function') showToast((result && result.error) || 'Não foi possível enviar a mensagem.', { bg: '#c0392b' });
+                    return;
+                }
+                chatIn.value = '';
+            });
+        };
+        chatSend.onclick = sendChatMessage;
+        chatIn.addEventListener('keydown', event => {
+            if (event.key === 'Enter') { event.preventDefault(); sendChatMessage(); }
+        });
         if(isAdmin) document.getElementById('adminToolbar').style.display = 'flex';
 
         // START and shared input state are handled by classic-menu.js.

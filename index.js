@@ -4877,7 +4877,21 @@ io.on('connection', (socket) => {
             }
         }
     });
-    socket.on('send_chat', (data) => { const p = players[socket.id]; if (p) { const payload = { id: socket.id, msg: (typeof data === 'object' ? data.msg : data).substring(0, 50) }; const room = (typeof data === 'object' ? data.roomId : null) || p.map; io.to(room).emit('chat_message', payload); } });
+    socket.on('send_chat', (data, acknowledge) => {
+        const p = players[socket.id];
+        const rawMessage = data && typeof data === 'object' ? data.msg : data;
+        const message = String(rawMessage || '').trim().slice(0, 50);
+        if (!p || !p.map) {
+            if (typeof acknowledge === 'function') acknowledge({ success: false, error: 'Você ainda não entrou no mapa.' });
+            return;
+        }
+        if (!message) {
+            if (typeof acknowledge === 'function') acknowledge({ success: false, error: 'Digite uma mensagem.' });
+            return;
+        }
+        io.to(p.map).emit('chat_message', { id: socket.id, msg: message });
+        if (typeof acknowledge === 'function') acknowledge({ success: true });
+    });
     
   socket.on('check_encounter', (data) => { 
         const player = players[socket.id];
