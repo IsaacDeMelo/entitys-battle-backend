@@ -2283,6 +2283,7 @@
         // Velocidade do player em pixels/s (para não ficar mais rápido na horizontal em telas largas)
         // (320 estava rápido demais na prática)
         const PLAYER_MOVE_PX_PER_S = 200;
+        const WORLD_CAMERA_ZOOM = 1.8;
         const MIN_PLAYER_MOVE_S = 0.08; // garante animação mesmo em passos pequenos
         const NPC_SERVER_TICK_S = 0.35; // precisa bater com NPC_PATROL_TICK_MS do servidor
         // Sequenciamento simples para ignorar pacotes atrasados do servidor (Render pode atrasar ticks)
@@ -2290,19 +2291,16 @@
         let __lastMoveSeqReceived = 0;
         let __virtualPadReleasedAt = 0;
 
-        function getWorldMapFitScale() {
-            if (!worldScene || !gameArea) return 1;
-            const sceneWidth = worldScene.clientWidth;
-            const sceneHeight = worldScene.clientHeight;
-            if (!(sceneWidth > 0 && sceneHeight > 0)) return 1;
-            return Math.min(gameArea.clientWidth / sceneWidth, gameArea.clientHeight / sceneHeight);
+        function getWorldMapDisplayScale() {
+            if (!document.body.classList.contains('dev-mode')) return WORLD_CAMERA_ZOOM;
+            return window.matchMedia('(min-width: 769px)').matches ? (parseFloat(window.__devMapZoom) || 1) : 1;
         }
 
         function getWorldMapDistancePixels(dxPercent, dyPercent) {
             if (!worldScene) return Math.hypot(dxPercent, dyPercent);
-            const fitScale = getWorldMapFitScale();
-            const dx = dxPercent * (worldScene.clientWidth / 100) * fitScale;
-            const dy = dyPercent * (worldScene.clientHeight / 100) * fitScale;
+            const displayScale = getWorldMapDisplayScale();
+            const dx = dxPercent * (worldScene.clientWidth / 100) * displayScale;
+            const dy = dyPercent * (worldScene.clientHeight / 100) * displayScale;
             return Math.hypot(dx, dy);
         }
         window.getWorldMapDistancePixels = getWorldMapDistancePixels;
@@ -2914,32 +2912,24 @@
         }
 
         let devMode = false; let currentTool = null; let isDrawing = false; let startPoint = {x:0, y:0}; let tempBox = null;
+        const WORLD_CAMERA_SMOOTHING = 0.12;
+        let worldCameraX = null, worldCameraY = null;
         let devMapZoom = 1;
         let devMapPanX = 0, devMapPanY = 0, devMapPanning = false, devMapPanPointerId = null, devMapPanLast = null;
-        function getWorldMapFit() {
-            const width = gameArea.clientWidth, height = gameArea.clientHeight;
-            const scale = getWorldMapFitScale();
-            const x = (width - worldScene.clientWidth * scale) / 2;
-            const y = (height - worldScene.clientHeight * scale) / 2;
-            return { scale, x, y, width, height };
-        }
-        function applyWorldMapFit() {
-            const fit = getWorldMapFit();
-            worldScene.style.transform = `translate3d(${Math.round(fit.x)}px, ${Math.round(fit.y)}px, 0) scale(${fit.scale})`;
-        }
+        window.__devMapZoom = devMapZoom;
         function applyDevMapZoom() {
             const value = document.getElementById('devMapZoomValue');
             if (value) value.textContent = `${Math.round(devMapZoom * 100)}%`;
             if (!devMode) return;
-            if (!window.matchMedia('(min-width: 769px)').matches) { applyWorldMapFit(); return; }
-            const fit = getWorldMapFit();
-            const scale = fit.scale * devMapZoom;
-            const x = (fit.width - worldScene.clientWidth * scale) / 2 + devMapPanX;
-            const y = (fit.height - worldScene.clientHeight * scale) / 2 + devMapPanY;
-            worldScene.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) scale(${scale})`;
+            if (!window.matchMedia('(min-width: 769px)').matches) { worldScene.style.transform = ''; return; }
+            const width = gameArea.clientWidth, height = gameArea.clientHeight;
+            const x = (width - worldScene.clientWidth * devMapZoom) / 2 + devMapPanX;
+            const y = (height - worldScene.clientHeight * devMapZoom) / 2 + devMapPanY;
+            worldScene.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) scale(${devMapZoom})`;
         }
         function setDevMapZoom(nextZoom) {
             devMapZoom = Math.max(0.5, Math.min(3, Math.round(nextZoom * 20) / 20));
+            window.__devMapZoom = devMapZoom;
             applyDevMapZoom();
         }
         document.getElementById('devMapZoomIn')?.addEventListener('click', () => setDevMapZoom(devMapZoom + 0.1));
@@ -2979,7 +2969,30 @@
             if (devMode) {
                 applyDevMapZoom();
             } else {
-                applyWorldMapFit();
+                const player = document.getElementById(`p-${window.myId}`);
+                if (player) {
+                    const viewportWidth = gameArea.clientWidth;
+                    const viewportHeight = gameArea.clientHeight;
+                    const sceneWidth = worldScene.clientWidth;
+                    const sceneHeight = worldScene.clientHeight;
+                    const playerX = (parseFloat(player.style.left) || 0) / 100 * sceneWidth;
+                    const playerY = (parseFloat(player.style.top) || 0) / 100 * sceneHeight - 16;
+                    const minX = Math.min(0, viewportWidth - sceneWidth * WORLD_CAMERA_ZOOM);
+                    const minY = Math.min(0, viewportHeight - sceneHeight * WORLD_CAMERA_ZOOM);
+                    const targetX = Math.max(minX, Math.min(0, viewportWidth / 2 - playerX * WORLD_CAMERA_ZOOM));
+                    const targetY = Math.max(minY, Math.min(0, viewportHeight / 2 - playerY * WORLD_CAMERA_ZOOM));
+                    if (worldCameraX === null || worldCameraY === null) {
+                        worldCameraX = targetX;
+                        worldCameraY = targetY;
+                    } else {
+                        worldCameraX += (targetX - worldCameraX) * WORLD_CAMERA_SMOOTHING;
+                        worldCameraY += (targetY - worldCameraY) * WORLD_CAMERA_SMOOTHING;
+                    }
+                    worldScene.style.transform = `translate3d(${Math.round(worldCameraX)}px, ${Math.round(worldCameraY)}px, 0) scale(${WORLD_CAMERA_ZOOM})`;
+                } else if (!window.myId) {
+                    worldScene.style.transform = '';
+                    worldCameraX = worldCameraY = null;
+                }
             }
             requestAnimationFrame(updateWorldCamera);
         }
@@ -7162,7 +7175,7 @@
                 let STEP_X = 0;
                 let STEP_Y = 0;
                 try {
-                    const mapScale = getWorldMapFitScale();
+                    const mapScale = getWorldMapDisplayScale();
                     let stepPx = PLAYER_MOVE_PX_PER_S * (TICK_MS / 1000);
                     // Ramp-up de aceleração no começo da arrancada do D-pad
                     const now = Date.now();
