@@ -1229,8 +1229,9 @@
             <button type="button" id="devMapZoomIn" aria-label="Aumentar zoom">+</button>
             <button type="button" id="devMapZoomReset" aria-label="Restaurar zoom">↺</button>
         </div>
-        <div id="chatBar"><input type="text" id="chatInput" placeholder="Converse com outros treinadores..." aria-label="Mensagem para o chat" autocomplete="off" maxlength="30"><button id="chatSend" aria-label="Enviar mensagem">»</button></div>
     </div>
+
+    <div id="chatBar"><input type="text" id="chatInput" placeholder="Converse com outros treinadores..." aria-label="Mensagem para o chat" autocomplete="off" maxlength="30"><button id="chatSend" aria-label="Enviar mensagem">»</button></div>
 
     <div id="controlsDock">
         <div id="controlsLeft">
@@ -2138,23 +2139,32 @@
                 viewport.style.removeProperty('width');
                 viewport.style.removeProperty('height');
                 viewport.style.removeProperty('top');
+                syncWorldSceneToMap();
                 return;
             }
 
             const bodyStyle = getComputedStyle(document.body);
             const safeTop = parseFloat(bodyStyle.paddingTop) || 0;
-            const safeBottom = parseFloat(bodyStyle.getPropertyValue('--safe-bottom')) || 0;
+            const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 0;
             const safeBand = 230;
             const frameWidth = 32, frameHeight = 48;
-            const availableScreenHeight = Math.max(1, window.innerHeight - safeTop - safeBottom - safeBand - frameHeight);
-            const screenWidth = Math.max(1, Math.min(420, window.innerWidth - 48, availableScreenHeight * worldMapAspectRatio));
-            const screenHeight = screenWidth / worldMapAspectRatio;
-            const outerWidth = screenWidth + frameWidth;
-            const outerHeight = screenHeight + frameHeight;
             const availableRegionHeight = window.innerHeight - safeTop - safeBottom - safeBand;
+            const screenSize = Math.max(1, Math.min(720, window.innerWidth - 48, availableRegionHeight - frameHeight));
+            const outerWidth = screenSize + frameWidth;
+            const outerHeight = screenSize + frameHeight;
             viewport.style.width = `${outerWidth}px`;
             viewport.style.height = `${outerHeight}px`;
             viewport.style.top = `${safeTop + Math.max(0, (availableRegionHeight - outerHeight) / 2)}px`;
+            syncWorldSceneToMap();
+        }
+
+        function syncWorldSceneToMap() {
+            const scene = document.getElementById('worldScene');
+            const area = document.getElementById('gameArea');
+            if (!scene || !area || area.clientWidth <= 0) return;
+            const mapWidth = area.clientWidth;
+            scene.style.width = `${mapWidth}px`;
+            scene.style.height = `${mapWidth / worldMapAspectRatio}px`;
         }
 
         window.addEventListener('resize', syncHandheldViewport);
