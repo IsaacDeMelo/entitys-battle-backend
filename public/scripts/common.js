@@ -816,8 +816,11 @@ function moveToAndTalkToNPC(npc) {
     const currentTop = parseFloat(myPlayer.style.top);
     const dx = npc.x - currentLeft;
     const dy = npc.y - currentTop;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const MOVEMENT_SPEED = 55;
+    const mapDistancePx = window.getWorldMapDistancePixels;
+    const usesMapPixels = typeof mapDistancePx === 'function';
+    const dist = usesMapPixels ? mapDistancePx(dx, dy) : Math.sqrt(dx*dx + dy*dy);
+    const MOVEMENT_SPEED = usesMapPixels ? 200 : 55;
+    const ENGAGE_DISTANCE = usesMapPixels ? 24 : 6;
 
     function engageAt(px, py) {
         try {
@@ -836,9 +839,9 @@ function moveToAndTalkToNPC(npc) {
         }
     }
 
-    if (dist > 8) { 
+    if (dist > ENGAGE_DISTANCE) {
         window.isInteracting = true; 
-        const ratio = 6 / dist; 
+        const ratio = ENGAGE_DISTANCE / dist;
         const targetX = npc.x - (dx * ratio);
         const targetY = npc.y - (dy * ratio);
 
@@ -849,7 +852,7 @@ function moveToAndTalkToNPC(npc) {
         
         socket.emit('move_player', { x: targetX, y: targetY });
         
-        const timeToTravel = (dist / MOVEMENT_SPEED) * 1000;
+        const timeToTravel = ((dist - ENGAGE_DISTANCE) / MOVEMENT_SPEED) * 1000;
         
         setTimeout(() => {
             if(gameArea) gameArea.classList.remove('locked');

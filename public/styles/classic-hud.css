@@ -1,5 +1,6 @@
 /* Handheld RPG interface: pixel borders, turquoise panels and dialogue boxes. */
 :root {
+  --safe-bottom:env(safe-area-inset-bottom);
   --classic-paper:#f8f8ed; --classic-ink:#344c60; --classic-muted:#486c78;
   --classic-line:#637e87; --classic-green:#427f7b; --classic-soft:#c0e4df;
   --gba-teal:#408e85; --gba-cyan:#6fc7e6; --gba-blue:#368db9;
@@ -7,7 +8,7 @@
   --gba-font:'Press Start 2P',monospace;
 }
 body.classic-city { background:#263b42; font-family:var(--gba-font); }
-/* The display stays square; the map itself keeps its source ratio and scrolls inside it. */
+/* The display stays square; the complete map keeps its source ratio inside the frame. */
 body.classic-city { --world-safe-band:230px; --world-square-size:min(calc(100vw - 48px),720px,calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band) - 48px)); }
 body.classic-city #gameViewport {
   position:fixed; left:50%; top:calc(env(safe-area-inset-top) + (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--world-safe-band) - var(--world-square-size) - 48px)/2);
