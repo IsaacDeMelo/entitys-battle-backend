@@ -38,10 +38,12 @@
     .arena { 
         flex: 1; 
         /* Verifica se é base64/url ou arquivo local */
-        background: url('<%= (bgImage.startsWith("http") || bgImage.startsWith("data:")) ? bgImage : "/uploads/" + bgImage %>') no-repeat center center; 
-        background-position: calc(var(--bgPosX, 50) * 1%) calc(var(--bgPosY, 50) * 1%);
+        /* Camada 2 = cenário genérico de fallback se a imagem do mapa não carregar */
+        background-image: url('<%= (bgImage.startsWith("http") || bgImage.startsWith("data:")) ? bgImage : "/uploads/" + bgImage %>'), linear-gradient(180deg, #8ecdf0 0%, #d6f0fb 52%, #9bd17f 53%, #5f9f4c 100%);
+        background-repeat: no-repeat, no-repeat;
+        background-position: calc(var(--bgPosX, 50) * 1%) calc(var(--bgPosY, 50) * 1%), center;
         /* Zoom: 100 = tamanho base, >100 aproxima, <100 afasta */
-        background-size: calc(var(--bgZoom, 100) * 1%) auto;
+        background-size: calc(var(--bgZoom, 100) * 1%) auto, cover;
         position: relative; 
         overflow: hidden; 
         z-index: 10; 
@@ -746,8 +748,10 @@
         100% { transform: translateY(-120px) scale(1.5); opacity: 0; } 
     }
 </style>
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles/battle-classic.css">
 </head>
-<body>
+<body class="battle-classic">
     <div id="global-loader">
         <div class="spinner"></div>
         <div class="loading-text">PREPARANDO ARENA...</div>
@@ -787,25 +791,22 @@
         </div>
 
         <div class="hud-panel hud-p1">
-            <div class="poke-name"><span id="p1-name"><%= p1.name || '???' %></span> <span class="poke-lv">Lv.<span id="p1-lv"><%= (Number.isFinite(p1.level) ? p1.level : (parseInt(p1.level, 10) || 1)) %></span></span></div>
+            <div class="poke-name"><span id="p1-name"><%= p1.name || '???' %></span> <span class="poke-lv">Nv.<span id="p1-lv"><%= (Number.isFinite(p1.level) ? p1.level : (parseInt(p1.level, 10) || 1)) %></span></span></div>
             <div class="trainer-sub"><%= p1.playerName || 'Você' %></div>
-            <div class="bar-container"><div class="hp-fill" id="hp-bar-p1"></div></div>
-            <div class="stat-text"><span id="hp-val-p1"><%= p1.hp %></span>/<span id="max-hp-p1"><%= p1.maxHp %></span></div>
+            <div class="hud-bar-row"><span class="hud-bar-label">HP</span><div class="bar-container"><div class="hp-fill" id="hp-bar-p1"></div></div></div>
+            <div class="hud-hp-num"><span id="hp-val-p1"><%= p1.hp %></span>/<span id="max-hp-p1"><%= p1.maxHp %></span></div>
             <% if(!isSpectator) { %>
-                <div class="bar-container" style="height:5px; margin-top:4px; border-color:#555;"><div class="en-fill" id="en-bar-p1"></div></div>
-                <div class="stat-text" style="color:#f1c40f; font-size:0.5rem;">EN: <span id="en-val-p1"><%= p1.energy %></span></div>
-                <!-- Barra de XP -->
-                <div class="bar-container" style="height:4px; margin-top:6px; border-color:#2980b9; background:#1a252f;"><div class="xp-fill" id="xp-bar-p1"></div></div>
-                <div class="stat-text" style="color:#3498db; font-size:0.45rem;">XP: <span id="xp-val-p1"><%= p1.xp || 0 %></span>/<span id="xp-max-p1"><%= p1.xpToNext || 100 %></span></div>
+                <div class="hud-bar-row hud-en-row"><span class="hud-bar-label">EN</span><div class="bar-container"><div class="en-fill" id="en-bar-p1"></div></div><span class="hud-en-num"><span id="en-val-p1"><%= p1.energy %></span>/<%= energyConfig.maxEnergy %></span></div>
+                <div class="hud-xp-row" title="Experiência"><span class="hud-bar-label">XP</span><div class="bar-container"><div class="xp-fill" id="xp-bar-p1"></div></div><span class="sr-only"><span id="xp-val-p1"><%= p1.xp || 0 %></span>/<span id="xp-max-p1"><%= p1.xpToNext || 100 %></span></span></div>
             <% } %>
         </div>
 
         <div class="hud-panel hud-p2">
-            <div class="poke-name"><span id="p2-name"><%= p2.name || '???' %></span> <span class="poke-lv">Lv.<span id="p2-lv"><%= (Number.isFinite(p2.level) ? p2.level : (parseInt(p2.level, 10) || 1)) %></span></span></div>
+            <div class="poke-name"><span id="p2-name"><%= p2.name || '???' %></span> <span class="poke-lv">Nv.<span id="p2-lv"><%= (Number.isFinite(p2.level) ? p2.level : (parseInt(p2.level, 10) || 1)) %></span></span></div>
             <% if(battleMode !== 'wild') { %> <div class="trainer-sub"><%= p2.playerName || 'Oponente' %></div>
             <% } else { %> <div class="trainer-sub">Selvagem</div> <% } %>
-            <div class="bar-container"><div class="hp-fill" id="hp-bar-p2"></div></div>
-            <div class="stat-text" style="text-align:right"><span id="hp-val-p2"><%= p2.hp %></span>/<span id="max-hp-p2"><%= p2.maxHp %></span></div>
+            <div class="hud-bar-row"><span class="hud-bar-label">HP</span><div class="bar-container"><div class="hp-fill" id="hp-bar-p2"></div></div></div>
+            <span class="sr-only"><span id="hp-val-p2"><%= p2.hp %></span>/<span id="max-hp-p2"><%= p2.maxHp %></span></span>
         </div>
 
         <div class="fighter p2-position" id="fighter-p2">
@@ -815,7 +816,7 @@
                   style="<% const p2Skin = (p2 && p2.skin) ? String(p2.skin) : 'char1'; const p2Url = (p2.isCustomSkin || (p2Skin && (p2Skin.startsWith('http') || p2Skin.startsWith('data:')))) ? p2Skin : ((/^char\d+$/i.test(p2Skin)) ? ('/uploads/' + p2Skin + '.png') : ('/skins/' + p2Skin + '.png')); %>background-image: url('<%= p2Url %>');<%= battleMode === 'wild' ? 'opacity:0;' : '' %>">
             </div>
             <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p2">
-                <img src="<%= (()=>{ const s=String((p2&&p2.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="inimigo" onerror="this.onerror=null;this.src='/uploads/placeholder.png'">
+                <img src="<%= (()=>{ const s=String((p2&&p2.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="inimigo" onerror="this.onerror=null;this.src='/uploads/placeholder.png';this.parentNode.classList.add('is-missing')" onload="if(this.naturalWidth>1)this.parentNode.classList.remove('is-missing')">
             </div>
         </div>
 
@@ -823,16 +824,9 @@
             <div class="command-bubble" id="bubble-p1"></div>
             <div class="trainer" id="trainer-p1" data-skin="<%= p1.skin %>" style="<% const p1Skin = (p1 && p1.skin) ? String(p1.skin) : 'char1'; const p1Url = (p1.isCustomSkin || (p1Skin && (p1Skin.startsWith('http') || p1Skin.startsWith('data:')))) ? p1Skin : ((/^char\d+$/i.test(p1Skin)) ? ('/uploads/' + p1Skin + '.png') : ('/skins/' + p1Skin + '.png')); %>background-image: url('<%= p1Url %>');"></div>
             <div class="sprite ent-sprite ent-sprite--battle" id="sprite-p1">
-                <img src="<%= (()=>{ const s=String((p1&&p1.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="aliado" onerror="this.onerror=null;this.src='/uploads/placeholder.png'">
+                <img src="<%= (()=>{ const s=String((p1&&p1.sprite)||''); if(!s) return '/uploads/placeholder.png'; return (s.startsWith('http')||s.startsWith('data:')||s.startsWith('/'))?s:('/uploads/'+s); })() %>" alt="aliado" onerror="this.onerror=null;this.src='/uploads/placeholder.png';this.parentNode.classList.add('is-missing')" onload="if(this.naturalWidth>1)this.parentNode.classList.remove('is-missing')">
             </div>
         </div>
-
-        <% if(battleMode === 'wild') { %>
-            <div id="floatingBagBtn">
-                <div id="floatingBagIcon" class="floating-bag-button" onclick="openBattleBag()">BAG</div>
-                <div id="hud-money" class="floating-hud-money">0</div>
-            </div>
-        <% } %>
 
         <div id="overlay">
             <div class="victory-container">
@@ -901,15 +895,16 @@
     <% } else { %>
         <div class="bottom-panel">
             <% if (battleMode === 'online' || battleMode === 'manual' || battleMode === 'wild') { %>
+                <div class="battle-dialog" id="battleDialog" aria-live="polite">
+                    <p id="battleDialogText">Um <%= p2.name %> <%= battleMode === 'wild' ? 'selvagem apareceu!' : 'entrou na batalha!' %></p>
+                    <button type="button" class="battle-speed-btn" id="battleSpeedBtn" onclick="toggleBattleSpeed()" title="Velocidade das animações">1x</button>
+                </div>
                 <div class="controls-panel" id="controlsPanel">
                     <div id="action-menu" class="battle-move-menu is-visible">
-                        <button class="action-btn action-attack" data-cost="0" onclick="showBattleMoves()">Atacar</button>
-                        <button class="action-btn" data-cost="0" onclick="openSwitchSelector(false)">Equipe</button>
-                        <button class="action-btn" data-cost="0" onclick="openBattleBag()">Mochila</button>
-                        <% if (battleMode === 'wild') { %>
-                            <button class="action-btn" data-cost="0" onclick="sendAction('catch')">Capturar</button>
-                        <% } %>
-                        <button class="action-btn" data-cost="0" onclick="sendAction('run')">Fugir</button>
+                        <button class="action-btn action-attack" data-cost="0" onclick="showBattleMoves()">Lutar</button>
+                        <button class="action-btn action-bag" data-cost="0" onclick="openBattleBag()"><%= battleMode === 'wild' ? 'Mochila / Capturar' : 'Mochila' %></button>
+                        <button class="action-btn action-team" data-cost="0" onclick="openSwitchSelector(false)">Equipe</button>
+                        <button class="action-btn action-run" data-cost="0" onclick="sendAction('run')"><%= battleMode === 'online' ? 'Desistir' : 'Fugir' %></button>
                     </div>
                     <div id="moves-view" class="battle-move-menu">
                         <button type="button" class="move-btn move-btn-back" onclick="showBattleMenu()">
@@ -985,7 +980,27 @@
 
         let currentEnergy = parseInt("<%= p1.energy %>");
         let canAct = true; 
-        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        // Velocidade das animações (1x/2x), lembrada por jogador neste navegador.
+        let battleSpeed = 1;
+        try { battleSpeed = (localStorage.getItem('battleSpeed') === '2') ? 2 : 1; } catch (_) {}
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms / battleSpeed));
+        function toggleBattleSpeed() {
+            battleSpeed = (battleSpeed === 2) ? 1 : 2;
+            try { localStorage.setItem('battleSpeed', String(battleSpeed)); } catch (_) {}
+            const b = document.getElementById('battleSpeedBtn'); if (b) b.innerText = battleSpeed + 'x';
+        }
+        // Caixa de diálogo fixa: substitui toasts rápidos que ninguém conseguia ler.
+        function setDialog(text) {
+            const el = document.getElementById('battleDialogText');
+            if (el && text) el.innerText = text;
+            const lb = document.getElementById('logBox');
+            if (lb && text) { const div = document.createElement('div'); div.className = 'log-entry'; div.innerText = text; lb.appendChild(div); lb.scrollTop = lb.scrollHeight; }
+            if (!el && !lb && text) { try { showToast(text); } catch (_) {} }
+        }
+        function sideMonName(side) {
+            if (side === 'p1') return p1Mon;
+            return (battleMode === 'wild') ? `${p2Mon} selvagem` : p2Mon;
+        }
         function resolveImg(src) {
             try {
                 if (window.PokemonDisplay) return window.PokemonDisplay.resolveSrc(src) || window.PokemonDisplay.PLACEHOLDER;
@@ -1068,7 +1083,7 @@
             const trainer = document.getElementById(`trainer-${side}`);
             const monName = (side === 'p1') ? p1Mon : p2Mon;
             if(bubble) {
-                bubble.innerText = (moveName === 'rest') ? `${monName}, volte!` : `${monName}, ${moveName}!`;
+                bubble.innerText = `${monName}, ${moveName}!`;
                 bubble.classList.add('show');
             }
             if(trainer) { animateTrainerCommand(trainer).catch(()=>{}); }
@@ -1259,6 +1274,7 @@
             if(fill) {
                 fill.style.width = pct + '%'; 
                 if(type === 'hp') {
+                    fill.dataset.level = pct > 50 ? 'high' : (pct > 20 ? 'mid' : 'low');
                     const txt = document.getElementById(`hp-val-${side}`);
                     const maxTxt = document.getElementById(`max-hp-${side}`); 
                     if(txt) txt.innerText = Math.max(0, cur);
@@ -1280,7 +1296,13 @@
             if(isSpectator) return; 
             document.querySelectorAll('.move-btn:not(.rest-btn)').forEach(btn => { 
                 const small = btn.querySelector('small');
-                if(small) { const cost = parseInt(small.innerText); btn.disabled = (currentEnergy < cost); }
+                if(small) {
+                    const cost = parseInt(small.innerText);
+                    const noEnergy = Number.isFinite(cost) && currentEnergy < cost;
+                    btn.disabled = noEnergy;
+                    btn.classList.toggle('no-energy', noEnergy);
+                    btn.title = noEnergy ? `Sem energia: precisa ${cost} EN, você tem ${currentEnergy}` : '';
+                }
             }); 
         }
         
@@ -1300,15 +1322,15 @@
                 const actorIdRaw = evt.actorId || evt.attackerId || evt.attacker || evt.actor || null;
                 const targetIdRaw = evt.targetId || evt.target || evt.defenderId || evt.defender || null;
 
-                if (evt.type === 'MSG') {
-                    try { if(evt.text) showToast(evt.text); } catch(e) {}
-                    const lb = document.getElementById('logBox'); if(lb) { const div = document.createElement('div'); div.className = 'log-entry'; div.innerText = evt.text; lb.appendChild(div); lb.scrollTop = lb.scrollHeight; }
-                    await wait(350); continue;
+                if (evt.type === 'MSG' || evt.type === 'STATUS_APPLIED' || evt.type === 'STATUS_END') {
+                    if (evt.text) setDialog(evt.text);
+                    await wait(900); continue;
                 }
                 const actorSide = getSide(actorIdRaw); const targetSide = getSide(targetIdRaw);
 
                 if (evt.type === 'USE_MOVE') { 
                     lastMoveElement = evt.moveElement || 'beast';
+                    setDialog(`${sideMonName(actorSide)} usou ${evt.moveName}!`);
                     if (battleMode === 'wild' && actorSide === 'p2') { await wait(800); } 
                     else { await speak(actorIdRaw, evt.moveName); }
                     playMoveAnimation(actorSide, targetSide, evt.moveElement || 'beast', evt.moveCategory, evt.moveType);
@@ -1352,8 +1374,15 @@
                     await wait(800);
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp'); 
+                    if (evt.isEffective) { setDialog('Foi super eficaz!'); await wait(500); }
+                    else if (evt.isBlocked) { setDialog(`Não afetou ${sideMonName(targetSide)}...`); await wait(500); }
+                    else if (evt.isNotEffective) { setDialog('Não foi muito eficaz...'); await wait(500); }
                     if (evt.newHp <= 0) { await wait(400); await returnPokemon(targetSide); } await wait(800);
                 } else if (evt.type === 'HEAL') { 
+                    setDialog(evt.energyRestored
+                        ? `${sideMonName(actorSide)} descansou: +${evt.amount} HP e +${evt.energyRestored} EN!`
+                        : `${sideMonName(actorSide)} recuperou ${evt.amount} HP!`);
+                    if (actorSide === 'p1' && !isSpectator && evt.newEnergy !== undefined) updateBar(actorIdRaw, evt.newEnergy, <%= energyConfig.maxEnergy %>, 'en');
                     await speak(actorIdRaw, 'Cura'); updateBar(actorIdRaw, evt.newHp, (actorSide === 'p1' ? p1MaxHp : p2MaxHp), 'hp'); 
                     const txt = document.createElement('div'); txt.className = 'floating-text heal-text'; txt.innerText = `+${evt.amount}`; 
                     document.getElementById(`fighter-${actorSide}`).appendChild(txt); setTimeout(() => txt.remove(), 1500); await wait(800); 
@@ -1363,6 +1392,7 @@
                     const t = document.createElement('div'); t.className = 'floating-text status-text'; t.innerText = `-${evt.damage}`; fd.appendChild(t); setTimeout(() => t.remove(), 1500);
                     const maxHp = (targetSide === 'p1') ? p1MaxHp : p2MaxHp; 
                     updateBar(targetIdRaw, evt.newHp, maxHp, 'hp');
+                    if (evt.text) setDialog(evt.text);
                     if (evt.newHp <= 0) { await wait(400); await returnPokemon(targetSide); } await wait(1200);
                 }
                 else if (evt.type === 'REST') {
@@ -1510,8 +1540,15 @@
                     socket.emit('online_action', { roomId: battleId, action: 'forfeit', value: '', playerId: realUserId }); 
                 }
             } else { 
-                const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
-                const data = await res.json(); 
+                let data;
+                try {
+                    const res = await fetch('/api/turn', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ battleId, action: type, moveId }) }); 
+                    data = await res.json(); 
+                } catch (e) {
+                    setDialog('Falha de conexão. Tente de novo.');
+                    setControlsState(true); showBattleMenu();
+                    return;
+                }
                 
                 if (data.switched) {
                     if (data.p2Switched) {
@@ -1547,7 +1584,7 @@
                         document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
                         deployPokemon('p1', false); 
                         updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
-                        updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                        updateBar(p1RawId, currentEnergy, <%= energyConfig.maxEnergy %>, 'en'); 
                         const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                         data.p1State.moves.forEach(move => { 
                             const btn = document.createElement('button'); btn.className = `move-btn ${getMoveCategory(move)}`; 
@@ -1708,7 +1745,7 @@
                 document.querySelector('#sprite-p1 img').src = resolveImg(data.p1State.sprite); 
                 deployPokemon('p1', false); 
                 updateBar(p1RawId, p1CurHp, data.p1State.maxHp, 'hp'); 
-                updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                updateBar(p1RawId, currentEnergy, <%= energyConfig.maxEnergy %>, 'en'); 
                 const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                 data.p1State.moves.forEach(move => { 
                     const btn = document.createElement('button'); btn.className = `move-btn ${getMoveCategory(move)}`; 
@@ -1949,7 +1986,7 @@
                     
                     setTimeout(() => deployPokemon('p1', false), 50);
                     updateBar(p1RawId, p1CurHp, newState.maxHp, 'hp'); 
-                    updateBar(p1RawId, currentEnergy, 100, 'en'); 
+                    updateBar(p1RawId, currentEnergy, <%= energyConfig.maxEnergy %>, 'en'); 
                     
                     const mc = document.getElementById('moves-container'); mc.innerHTML = ''; 
                     newState.moves.forEach(move => { 
@@ -2003,7 +2040,7 @@
             loader.style.display = 'none';
 
             if(battleMode === 'auto') { playEvents(initialData.log).then(() => endGame(initialData.winnerId, initialData)); } 
-            else if (!isSpectator) { setControlsState(true); } 
+            else if (!isSpectator) { await wait(1000); setControlsState(true); showBattleMenu(); } 
 
             setTimeout(discoverSpriteAlts, 300);
         };
@@ -2042,6 +2079,8 @@
             if (moves) moves.classList.add('is-visible');
             if (bag) bag.classList.remove('is-visible');
             updateButtons();
+            const anyUsable = Array.from(document.querySelectorAll('#moves-container .move-btn:not(.move-btn-empty)')).some(b => !b.classList.contains('no-energy'));
+            setDialog(anyUsable ? `Qual golpe ${p1Mon} vai usar?` : `${p1Mon} está sem energia! Troque de monstro ou fuja.`);
         }
 
         function showBattleMenu() {
@@ -2051,6 +2090,7 @@
             if (menu) menu.classList.remove('is-hidden');
             if (moves) moves.classList.remove('is-visible');
             if (bag) bag.classList.remove('is-visible');
+            if (!isSpectator && p1CurHp > 0) setDialog(`O que ${p1Mon} vai fazer?`);
         }
 
         function closeBattleBag() {
@@ -2063,10 +2103,10 @@
         }
 
         const BAG_ITEM_META = {
-            pokeball: { type: 'consumable', name: 'Poké Ball', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png', desc: 'Arremesse para tentar capturar uma criatura selvagem.' },
+            pokeball: { type: 'consumable', name: 'Poké Ball', icon: '/items/catchcube.svg', desc: 'Arremesse para tentar capturar uma criatura selvagem.' },
             'great-ball': { type: 'consumable', name: 'Great Ball', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/great-ball.png', desc: 'Uma Poké Ball melhor que a normal.' },
             'ultra-ball': { type: 'consumable', name: 'Ultra Ball', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png', desc: 'Uma Poké Ball de alta performance.' },
-            'rare-candy': { type: 'consumable', name: 'Rare Candy', icon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/rare-candy.png', desc: 'Doce raro que eleva o nível de uma criatura.' },
+            'rare-candy': { type: 'consumable', name: 'Rare Candy', icon: '/items/rarecandy.svg', desc: 'Doce raro que eleva o nível de uma criatura.' },
             key_example: { type: 'key', name: 'Chave (exemplo)', icon: '', desc: 'Item-chave de exemplo.' }
         };
 
@@ -2079,6 +2119,7 @@
             if (menu) menu.classList.add('is-hidden');
             if (moves) moves.classList.add('is-hidden');
             bag.classList.add('is-visible');
+            setDialog(battleMode === 'wild' ? 'Escolha um item. Use a bola para capturar!' : 'Escolha um item.');
             cont.innerHTML = 'Carregando...';
             try {
                 if (!window.__battleCache) await refreshBattleCache();
@@ -2106,7 +2147,7 @@
                 for (const it of items) {
                     const canUse = (it.id === 'pokeball' || it.id === 'great-ball' || it.id === 'ultra-ball') && it.count > 0;
                     const useBtn = canUse
-                        ? '<button class="bag-use-btn" onclick="event.stopPropagation();useCatchballFromBag()">Usar</button>'
+                        ? '<button class="bag-use-btn" onclick="event.stopPropagation();useCatchballFromBag()">' + (battleMode === 'wild' ? 'Capturar' : 'Usar') + '</button>'
                         : '';
                     const badge = (it.count > 1 || it.isKey)
                         ? '<span class="bag-item-count">' + (it.isKey ? 'KEY' : 'x' + it.count) + '</span>'
@@ -2123,8 +2164,9 @@
             } catch(e) { cont.innerHTML = 'Erro.'; }
         }
         async function useCatchballFromBag() {
-            if (battleMode !== 'wild') { showToast('Apenas em batalhas selvagens.'); return; }
-            if(!confirm('Usar uma Catchball agora?')) return; 
+            if (battleMode !== 'wild') { setDialog('Só dá para capturar monstros selvagens.'); return; }
+            if (!canAct) return;
+            setControlsState(false);
             try {
                 closeBattleBag(); 
                 

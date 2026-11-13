@@ -1,0 +1,383 @@
+/* battle-classic.css — Tela de batalha no layout clássico de RPG de monstros.
+ *
+ * Convenções do gênero: inimigo no alto à direita com HUD no alto à esquerda;
+ * seu monstro embaixo à esquerda com HUD embaixo à direita; caixa de diálogo
+ * e menu de comandos na parte de baixo. Identidade visual própria do jogo
+ * (creme + azul-marinho de hud-theme.css), sem arte de terceiros.
+ *
+ * Carregado por último em views/battle.ejs; tudo prefixado com
+ * body.battle-classic para vencer o <style> inline e o hud-theme.css.
+ */
+
+body.battle-classic {
+  --bc-cream: #f8f1dc;
+  --bc-cream-2: #efe3bf;
+  --bc-ink: #1b2440;
+  --bc-ink-soft: #46506e;
+  --bc-navy: #24365e;
+  --bc-navy-2: #18264a;
+  --bc-frame: #0e1630;
+  --bc-gold: #e8b422;
+  --bc-hp-high: #3cbf5a;
+  --bc-hp-mid: #e9b52a;
+  --bc-hp-low: #e0483b;
+  --bc-en: #3d8be0;
+  --bc-xp: #5fb8f0;
+  --bc-font-ui: 'Jersey 10', 'Press Start 2P', system-ui, sans-serif;
+  --bc-font-label: 'Press Start 2P', monospace;
+  --bc-screen-w: min(960px, 100vw, calc((100dvh - 210px) * 16 / 9));
+
+  background: radial-gradient(ellipse at 50% 0%, #1d2a4d 0%, #0a0f1f 70%);
+  flex-direction: column !important;
+  justify-content: center;
+  align-items: center;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+
+/* ===== Tela (arena) ===== */
+body.battle-classic .arena {
+  container-type: inline-size;
+  flex: none !important;
+  width: var(--bc-screen-w);
+  max-width: none !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
+  border-radius: 0 !important;
+  border: 4px solid var(--bc-frame);
+  border-bottom: none;
+  image-rendering: pixelated;
+}
+
+/* ===== HUDs ===== */
+body.battle-classic .hud-panel {
+  background: linear-gradient(180deg, var(--bc-cream) 0%, var(--bc-cream-2) 100%);
+  color: var(--bc-ink);
+  border: 3px solid var(--bc-ink);
+  border-radius: 10px 10px 10px 2px;
+  box-shadow: inset 0 0 0 2px #fffaf0, 4px 4px 0 rgba(14, 22, 48, 0.45);
+  backdrop-filter: none;
+  padding: 8px 12px 9px;
+  font-family: var(--bc-font-ui);
+  width: clamp(180px, 40cqw, 330px);
+  text-align: left;
+}
+body.battle-classic .hud-p2 {
+  top: 5%; left: 4%; right: auto; bottom: auto;
+  border-right: 3px solid var(--bc-ink);
+}
+body.battle-classic .hud-p1 {
+  bottom: 5%; right: 4%; left: auto; top: auto;
+  border-left: 3px solid var(--bc-ink);
+  border-radius: 10px 10px 2px 10px;
+}
+
+body.battle-classic .poke-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--bc-font-ui);
+  font-size: clamp(20px, 2.7cqw, 26px);
+  color: var(--bc-ink);
+  text-shadow: none;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 2px;
+}
+body.battle-classic .poke-lv {
+  font-family: var(--bc-font-ui);
+  font-size: clamp(17px, 2.2cqw, 22px);
+  color: var(--bc-ink-soft);
+}
+body.battle-classic .trainer-sub {
+  font-family: var(--bc-font-ui);
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: var(--bc-ink-soft);
+  margin-bottom: 4px;
+}
+
+body.battle-classic .hud-bar-row,
+body.battle-classic .hud-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+body.battle-classic .hud-bar-label {
+  flex: none;
+  font-family: var(--bc-font-label);
+  font-size: 10px;
+  line-height: 1;
+  color: var(--bc-gold);
+  background: var(--bc-ink);
+  padding: 3px 4px 2px;
+  border-radius: 4px;
+}
+body.battle-classic .bar-container {
+  flex: 1;
+  height: 9px;
+  margin: 0;
+  background: #3a3f52;
+  border: 2px solid var(--bc-ink);
+  border-radius: 6px;
+}
+body.battle-classic .hp-fill { background: var(--bc-hp-high); }
+body.battle-classic .hp-fill[data-level="mid"] { background: var(--bc-hp-mid); }
+body.battle-classic .hp-fill[data-level="low"] { background: var(--bc-hp-low); }
+body.battle-classic .en-fill { background: var(--bc-en); }
+body.battle-classic .xp-fill { background: var(--bc-xp); box-shadow: none; }
+
+body.battle-classic .hud-hp-num {
+  text-align: right;
+  font-family: var(--bc-font-ui);
+  font-size: clamp(20px, 2.6cqw, 25px);
+  color: var(--bc-ink);
+  margin: 2px 0 4px;
+  letter-spacing: 1px;
+}
+body.battle-classic .hud-en-row { margin-bottom: 4px; }
+body.battle-classic .hud-en-row .bar-container { height: 7px; }
+body.battle-classic .hud-en-num {
+  flex: none;
+  min-width: 42px;
+  text-align: right;
+  font-family: var(--bc-font-ui);
+  font-size: 18px;
+  color: var(--bc-en);
+}
+body.battle-classic .hud-xp-row .hud-bar-label { color: var(--bc-xp); }
+body.battle-classic .hud-xp-row .bar-container { height: 5px; border-width: 1px; }
+
+body.battle-classic .sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ===== Lutadores ===== */
+body.battle-classic #fighter-p2 {
+  top: 12%; right: 7%; left: auto; bottom: auto;
+  transform: none;
+  width: auto; height: auto;
+}
+body.battle-classic #fighter-p1 {
+  bottom: 3%; left: 5%; top: auto; right: auto;
+  transform: none;
+  width: auto; height: auto;
+}
+body.battle-classic .sprite.ent-sprite--battle {
+  overflow: visible;
+  background: transparent;
+  margin-bottom: 0;
+}
+body.battle-classic #sprite-p2 { width: clamp(96px, 24cqw, 230px); height: clamp(96px, 24cqw, 230px); }
+body.battle-classic #sprite-p1 { width: clamp(112px, 30cqw, 290px); height: clamp(112px, 30cqw, 290px); }
+
+/* Plataforma oval sob cada monstro */
+body.battle-classic .sprite.ent-sprite--battle::before {
+  content: '';
+  position: absolute;
+  left: -18%; right: -18%;
+  bottom: -4%;
+  height: 26%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 45%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 45%, rgba(20, 30, 20, 0.35) 70%, rgba(0, 0, 0, 0) 72%);
+  z-index: -1;
+}
+body.battle-classic .trainer {
+  width: clamp(44px, 7cqw, 72px);
+  height: clamp(44px, 7cqw, 72px);
+  margin-bottom: 4%;
+}
+/* Balões de fala substituídos pela caixa de diálogo */
+body.battle-classic .command-bubble { display: none; }
+
+/* ===== Painel inferior: diálogo + comandos ===== */
+body.battle-classic .bottom-panel {
+  width: var(--bc-screen-w);
+  max-width: none !important;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  background: var(--bc-frame);
+  border: 4px solid var(--bc-frame);
+  border-top: 4px solid var(--bc-ink);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+body.battle-classic .battle-dialog {
+  position: relative;
+  min-height: 132px;
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--bc-cream);
+  color: var(--bc-ink);
+  border: 4px solid var(--bc-navy);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 3px var(--bc-cream-2), inset 0 0 0 5px var(--bc-navy-2);
+  font-family: var(--bc-font-ui);
+  font-size: clamp(22px, 2.9vw, 27px);
+  line-height: 1.45;
+}
+body.battle-classic .battle-dialog p { margin: 0; padding-right: 44px; }
+body.battle-classic .battle-speed-btn {
+  position: absolute;
+  right: 10px; bottom: 10px;
+  min-width: 40px;
+  padding: 6px 8px;
+  background: var(--bc-navy);
+  color: var(--bc-cream);
+  border: 2px solid var(--bc-ink);
+  border-radius: 6px;
+  font-family: var(--bc-font-label);
+  font-size: 10px;
+  cursor: pointer;
+}
+body.battle-classic .battle-speed-btn:focus-visible { outline: 3px solid var(--bc-gold); outline-offset: 2px; }
+
+body.battle-classic .controls-panel {
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+body.battle-classic .battle-move-menu.is-visible {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  height: 100%;
+  align-content: stretch;
+}
+
+/* Botões de comando */
+body.battle-classic .action-btn,
+body.battle-classic .move-btn {
+  height: auto;
+  min-height: 58px;
+  padding: 8px 10px;
+  background: linear-gradient(180deg, #2f4a80 0%, var(--bc-navy-2) 100%);
+  color: var(--bc-cream);
+  border: 3px solid var(--bc-cream-2);
+  border-radius: 8px;
+  box-shadow: 0 4px 0 #070c1c;
+  font-family: var(--bc-font-ui);
+  font-size: clamp(20px, 2.5vw, 25px);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s, filter 0.12s;
+}
+body.battle-classic .action-btn:hover:not(:disabled),
+body.battle-classic .move-btn:hover:not(:disabled) { filter: brightness(1.15); }
+body.battle-classic .action-btn:active,
+body.battle-classic .move-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #070c1c; }
+body.battle-classic .action-btn:focus-visible,
+body.battle-classic .move-btn:focus-visible { outline: 3px solid var(--bc-gold); outline-offset: 2px; }
+
+body.battle-classic .action-attack { grid-column: auto; background: linear-gradient(180deg, #e0573f 0%, #a8301f 100%); }
+body.battle-classic .action-bag    { background: linear-gradient(180deg, #e8a52a 0%, #a8680f 100%); }
+body.battle-classic .action-team   { background: linear-gradient(180deg, #45a35a 0%, #23663a 100%); }
+body.battle-classic .action-run    { background: linear-gradient(180deg, #5a6f9c 0%, #33405f 100%); }
+body.battle-classic .action-bag { font-size: clamp(17px, 2.1vw, 21px); }
+
+/* Golpes */
+body.battle-classic #moves-view.is-visible { grid-template-rows: auto 1fr; }
+body.battle-classic .moves-grid { gap: 8px; }
+body.battle-classic .move-btn {
+  align-items: flex-start;
+  text-align: left;
+  min-height: 54px;
+  padding-left: 14px;
+  text-transform: none;
+}
+body.battle-classic .move-btn::before { width: 6px; }
+body.battle-classic .move-btn strong {
+  font-size: clamp(18px, 2.2vw, 22px);
+  text-transform: none;
+  text-align: left;
+  margin: 0;
+}
+body.battle-classic .move-btn small {
+  font-family: var(--bc-font-ui);
+  font-size: 17px;
+  color: #bcd3ff;
+  margin-top: 2px;
+}
+body.battle-classic .move-category-badge { font-size: 10px; }
+body.battle-classic .move-btn.no-energy,
+body.battle-classic .move-btn:disabled { opacity: 0.55; filter: grayscale(0.8); }
+body.battle-classic .move-btn.no-energy small::after {
+  content: ' · sem energia';
+  color: #ffb4a8;
+}
+body.battle-classic .move-btn-empty { opacity: 0.25; }
+body.battle-classic .move-btn-back {
+  grid-column: 1 / -1;
+  min-height: 0;
+  height: 34px;
+  padding: 4px 10px;
+  align-items: center;
+  background: var(--bc-navy-2);
+  border-width: 2px;
+  font-size: 18px;
+  box-shadow: none;
+}
+
+/* Mochila dentro do painel */
+body.battle-classic .bag-inner { padding: 8px; max-height: 190px; overflow-y: auto; }
+body.battle-classic .bag-item-name { font-family: var(--bc-font-ui); font-size: 18px; font-weight: 600; }
+body.battle-classic .item-desc { font-family: var(--bc-font-ui); font-size: 17px; }
+body.battle-classic .bag-use-btn { font-family: var(--bc-font-ui); font-size: 18px; font-weight: 700; }
+
+/* Mensagens centrais (online) */
+body.battle-classic .status-msg {
+  font-family: var(--bc-font-ui) !important;
+  font-size: 20px !important;
+}
+
+/* Sprite que não carregou (ex.: CDN fora do ar): silhueta visível em vez de nada */
+body.battle-classic .sprite.is-missing img { opacity: 0 !important; }
+body.battle-classic .sprite.is-missing::after {
+  content: '?';
+  position: absolute;
+  inset: 12% 18% 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(27, 36, 64, 0.55);
+  border-radius: 46% 46% 40% 40%;
+  color: var(--bc-cream);
+  font-family: var(--bc-font-label);
+  font-size: clamp(22px, 5cqw, 44px);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ===== Celular: diálogo em cima, comandos embaixo ===== */
+@media (max-width: 720px) {
+  body.battle-classic {
+    --bc-screen-w: 100vw;
+    justify-content: flex-start;
+  }
+  body.battle-classic .arena { aspect-ratio: auto; height: 56dvh !important; min-height: 300px; border-left: none; border-right: none; border-top: none; }
+  body.battle-classic .bottom-panel {
+    grid-template-columns: 1fr;
+    flex: 1;
+    align-content: start;
+    border-left: none; border-right: none;
+  }
+  body.battle-classic .battle-dialog { min-height: 84px; padding: 12px 14px; }
+  body.battle-classic .hud-panel { width: 50cqw; padding: 6px 9px 7px; }
+  body.battle-classic .trainer-sub { display: none; }
+  body.battle-classic .hud-xp-row { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.battle-classic .action-btn,
+  body.battle-classic .move-btn { transition: none; }
+}
+
+/* O sprite do jogador é espelhado (scaleX(-1)); desespelha o "?" do fallback */
+body.battle-classic #sprite-p1.is-missing::after { transform: scaleX(-1); }
